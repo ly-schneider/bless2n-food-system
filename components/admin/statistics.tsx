@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
-import { AreaChart, BarChart, PieChart } from "../ui/charts";
+import { AreaChart, BarChart } from "../ui/charts";
 
 type OrderSummary = {
   date: string;
@@ -193,7 +193,7 @@ export function StatisticsPanel() {
   if (isLoading) {
     return (
       <div className="w-full h-[400px] flex items-center justify-center">
-        <p className="text-lg text-muted-foreground">Loading statistics...</p>
+        <p className="text-lg text-muted-foreground">Statistik wird geladen...</p>
       </div>
     );
   }
@@ -204,10 +204,10 @@ export function StatisticsPanel() {
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-medium">Dashboard Overview</h2>
+        <h2 className="text-2xl font-medium">Dashboard-Übersicht</h2>
         {lastUpdated && (
           <p className="text-sm text-muted-foreground">
-            Last updated:{" "}
+            Letztes Update:{" "}
             {formatDistanceToNow(lastUpdated, { addSuffix: true })}
           </p>
         )}
@@ -217,9 +217,9 @@ export function StatisticsPanel() {
         {/* Daily Revenue Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Daily Revenue (CHF)</CardTitle>
+            <CardTitle>Tagesumsatz (CHF)</CardTitle>
             <CardDescription>
-              Gross income per day over the last 7 days
+              Bruttoeinnahmen pro Tag der letzten 7 Tage
             </CardDescription>
           </CardHeader>
           <CardContent className="h-[350px]">
@@ -238,9 +238,9 @@ export function StatisticsPanel() {
         {/* Products Sold & Orders Chart */}
         <Card>
           <CardHeader>
-            <CardTitle>Products & Orders</CardTitle>
+            <CardTitle>Produkte & Bestellungen</CardTitle>
             <CardDescription>
-              Number of products sold and orders placed
+              Anzahl verkaufter Produkte und aufgegebener Bestellungen
             </CardDescription>
           </CardHeader>
           <CardContent className="h-[350px]">
@@ -257,9 +257,9 @@ export function StatisticsPanel() {
 
         <Card className="md:col-span-2">
           <CardHeader>
-            <CardTitle>Top 3 Trending Products</CardTitle>
+            <CardTitle>Top 3 Trendprodukte</CardTitle>
             <CardDescription>
-              Most popular products in the last 7 days
+              Beliebteste Produkte der letzten 7 Tage
             </CardDescription>
           </CardHeader>
           <CardContent className="h-[350px]">
@@ -270,7 +270,7 @@ export function StatisticsPanel() {
                   categories={["value"]}
                   index="name"
                   colors={["blue", "green", "orange"]}
-                  valueFormatter={(value) => `${value} units`}
+                  valueFormatter={(value) => `${value} Stück`}
                   yAxisWidth={60}
                   showLegend={false}
                   className="h-[300px]"
@@ -278,7 +278,7 @@ export function StatisticsPanel() {
               </div>
             ) : (
               <div className="text-center text-muted-foreground h-full flex items-center justify-center">
-                No product data available
+                Keine Produktdaten verfügbar
               </div>
             )}
           </CardContent>

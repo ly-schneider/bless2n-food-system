@@ -24,9 +24,9 @@ type GroupedProducts = {
 
 // Color mapping for different categories
 const categoryColors: Record<string, string> = {
-  Drinks: "bg-blue-600/10",
-  Foods: "bg-red-600/10",
-  Sweets: "bg-yellow-600/10",
+  Getränke: "bg-blue-600/10",
+  Speisen: "bg-red-600/10",
+  Süßigkeiten: "bg-yellow-600/10",
 };
 
 export default function ProductList() {
@@ -102,7 +102,7 @@ export default function ProductList() {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
-        <div className="animate-pulse text-lg">Loading products...</div>
+        <div className="animate-pulse text-lg">Produkte werden geladen...</div>
       </div>
     );
   }
@@ -110,9 +110,9 @@ export default function ProductList() {
   if (!groupedProducts || Object.keys(groupedProducts).length === 0) {
     return (
       <div className="text-center py-12">
-        <h3 className="text-xl font-medium">No products available</h3>
+        <h3 className="text-xl font-medium">Keine Produkte verfügbar</h3>
         <p className="text-muted-foreground mt-2">
-          Check back soon for our product listings.
+          Schauen Sie später wieder vorbei für unsere Produktliste.
         </p>
       </div>
     );
@@ -132,7 +132,7 @@ export default function ProductList() {
                   categoryColors[category] || categoryColors.default
                 } ${product.available ? "" : "opacity-40 pointer-events-none"}`}
                 onClick={() => handleAddToCart(product)}
-                aria-label={`Add ${product.name} to cart`}
+                aria-label={`${product.name} zum Warenkorb hinzufügen`}
                 role="button"
                 tabIndex={0}
               >
