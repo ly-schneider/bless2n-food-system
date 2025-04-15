@@ -5,6 +5,7 @@ import { Metadata } from 'next'
 import { Toaster } from "sonner";
 import AuthNavigation from "@/components/auth-navigation";
 import { LockProvider, LockButton } from "@/components/lock-provider";
+import Navigation from "@/components/navigation";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -35,7 +36,7 @@ export default function RootLayout({
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
       </head>
-      <body className="font-custom bg-background text-foreground">
+      <body className="font-custom bg-background text-foreground overflow-hidden select-none">
         <LockProvider>
           <main className="min-h-screen flex flex-col items-center">
             <div className="flex-1 w-full flex flex-col gap-6 items-center">
@@ -45,12 +46,11 @@ export default function RootLayout({
                     <Image src={"https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Icf-logo.svg/250px-Icf-logo.svg.png"} alt="ICF Bern Image" width={80} height={0}></Image>
                   </div>
                   <div className="flex items-center gap-2">
-                    <LockButton />
-                    <AuthNavigation />
+                    <Navigation />
                   </div>
                 </div>
               </nav>
-              <div className="flex flex-col gap-20 w-full px-5 pb-5">{children}</div>
+              <div className="flex flex-col gap-20 w-full">{children}</div>
             </div>
           </main>
           <Toaster position="top-center" richColors />
