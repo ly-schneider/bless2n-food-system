@@ -13,6 +13,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 export function Cart() {
   const { items, removeItem, updateQuantity, clearCart, getTotal } = useCart();
@@ -70,6 +71,9 @@ export function Cart() {
 
       setCheckoutModalOpen(false);
       clearCart();
+      toast.success("Bestellung abgeschlossen!", {
+        duration: 1000,
+      });
     } catch (error) {
       console.error("Error processing order:", error);
     } finally {
