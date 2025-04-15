@@ -1,0 +1,134 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { createClient } from '@/utils/supabase/client'
+import { Card, CardContent } from '@/components/ui/card'
+import { useCart } from '@/contexts/cart-context'
+
+type Product = {
+  id: number
+  name: string
+  price: number
+  category_id: number
+}
+
+type Category = {
+  id: number
+  name: string
+}
+
+type GroupedProducts = {
+  [category: string]: Product[]
+}
+
+export default function ProductList() {
+  const [groupedProducts, setGroupedProducts] = useState<GroupedProducts | null>(null)
+  const [loading, setLoading] = useState(true)
+  const supabase = createClient()
+  const { addItem } = useCart()
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        // Fetch both products and categories
+        const [productsResponse, categoriesResponse] = await Promise.all([
+          supabase.from('products').select('*'),
+          supabase.from('categories').select('*')
+        ])
+        
+        if (productsResponse.error) {
+          throw productsResponse.error
+        }
+        
+        if (categoriesResponse.error) {
+          throw categoriesResponse.error
+        }
+        
+        const products = productsResponse.data as Product[]
+        const categories = categoriesResponse.data as Category[]
+        
+        // Create a categories lookup map for easy access
+        const categoryMap = categories.reduce((map, category) => {
+          map[category.id] = category.name
+          return map
+        }, {} as Record<number, string>)
+        
+        // Group products by category name using the category_id
+        const grouped = products.reduce((acc: GroupedProducts, product: Product) => {
+          const categoryName = categoryMap[product.category_id] || 'Uncategorized'
+          if (!acc[categoryName]) {
+            acc[categoryName] = []
+          }
+          acc[categoryName].push(product)
+          return acc
+        }, {})
+        
+        setGroupedProducts(grouped)
+      } catch (error) {
+        console.error('Error fetching products:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProducts()
+  }, [])
+
+  const handleAddToCart = (product: Product) => {
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      quantity: 1
+    })
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <div className="animate-pulse text-lg">Loading products...</div>
+      </div>
+    )
+  }
+
+  if (!groupedProducts || Object.keys(groupedProducts).length === 0) {
+    return (
+      <div className="text-center py-12">
+        <h3 className="text-xl font-medium">No products available</h3>
+        <p className="text-muted-foreground mt-2">Check back soon for our product listings.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-16 pb-8">
+      {Object.keys(groupedProducts).map((category) => (
+        <div key={category} className="space-y-4">
+          <h2 className="text-2xl font-medium">
+            {category}
+          </h2>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {groupedProducts[category].map((product) => (
+              <Card 
+                key={product.id} 
+                className="overflow-hidden h-full transition-shadow hover:shadow-md flex items-center"
+                onClick={() => handleAddToCart(product)}
+                aria-label={`Add ${product.name} to cart`}
+                role="button"
+                tabIndex={0}
+              >
+                <CardContent className="p-4 flex flex-col">
+                  <h3 className="text-lg font-medium line-clamp-1">{product.name}</h3>
+                  <p className="text-sm mt-1 text-muted-foreground flex-grow">
+                    CHF {product.price.toFixed(2)}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
