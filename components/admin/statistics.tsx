@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatDistanceToNow } from "date-fns";
+import { de } from "date-fns/locale";
 import { AreaChart, BarChart } from "../ui/charts";
 
 type OrderSummary = {
@@ -208,7 +209,7 @@ export function StatisticsPanel() {
         {lastUpdated && (
           <p className="text-sm text-muted-foreground">
             Letztes Update:{" "}
-            {formatDistanceToNow(lastUpdated, { addSuffix: true })}
+            {formatDistanceToNow(lastUpdated, { addSuffix: true, locale: de })}
           </p>
         )}
       </div>
