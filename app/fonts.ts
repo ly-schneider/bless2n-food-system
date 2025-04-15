@@ -5,7 +5,7 @@ import localFont from 'next/font/local';
 export const customFont = localFont({
   src: [
     {
-      path: '../assets/fonts/FlamaSemicondensed-Medium.otf',
+      path: '../public/fonts/FlamaSemicondensed-Medium.otf',
       weight: '400',
       style: 'normal',
     },

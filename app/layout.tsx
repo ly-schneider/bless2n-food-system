@@ -1,14 +1,25 @@
 import "./globals.css";
 import Image from "next/image";
 import { fontVariables } from './fonts';
+import { Metadata } from 'next'
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : "http://localhost:3000";
 
-export const metadata = {
+export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
   title: "Bestellungs System",
+  manifest: '/manifest.webmanifest', // Add manifest reference here
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Bestellungs System'
+  },
+  applicationName: 'Bestellungs System',
+  formatDetection: {
+    telephone: false
+  }
 };
 
 export default function RootLayout({
@@ -18,6 +29,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="de" className={fontVariables}>
+      <head>
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+      </head>
       <body className="font-custom bg-background text-foreground overflow-hidden select-none">
         <main className="min-h-screen flex flex-col items-center">
           <div className="flex-1 w-full flex flex-col gap-6 items-center">
