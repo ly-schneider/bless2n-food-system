@@ -10,7 +10,7 @@ export function AdminDashboard() {
 
   return (
     <div className="">
-      <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
+      <h1 className="text-3xl font-medium mb-8">Admin Dashboard</h1>
       
       <Tabs defaultValue="products" value={activeTab} onValueChange={setActiveTab} className="space-y-8">
         <TabsList className="grid w-full grid-cols-2">

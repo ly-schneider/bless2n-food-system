@@ -51,7 +51,7 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<any, any>) => {
                 {item.name}
               </span>
             </div>
-            <span className="font-bold">
+            <span className="font-medium">
               {item.value}
             </span>
           </div>

@@ -200,7 +200,7 @@ export function Cart() {
 
             <Separator />
 
-            <div className="flex justify-between font-bold text-lg">
+            <div className="flex justify-between font-medium text-lg">
               <span>Total</span>
               <span>CHF {subtotal.toFixed(2)}</span>
             </div>

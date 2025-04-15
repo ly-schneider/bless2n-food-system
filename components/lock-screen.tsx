@@ -68,7 +68,7 @@ export function LockScreen({ isOpen, onUnlock }: LockScreenProps) {
               {[...Array(4)].map((_, i) => (
                 <div 
                   key={i}
-                  className={`w-10 h-14 border-2 rounded-md flex items-center justify-center text-xl font-bold ${
+                  className={`w-10 h-14 border-2 rounded-md flex items-center justify-center text-xl font-medium ${
                     error ? "border-destructive" : pin.length > i ? "border-primary" : "border-muted-foreground"
                   }`}
                 >
@@ -86,7 +86,7 @@ export function LockScreen({ isOpen, onUnlock }: LockScreenProps) {
                 key={num}
                 type="button"
                 variant="outline"
-                className="h-16 text-xl font-semibold"
+                className="h-16 text-xl font-medium"
                 onClick={() => addDigit(num.toString())}
               >
                 {num}
@@ -103,7 +103,7 @@ export function LockScreen({ isOpen, onUnlock }: LockScreenProps) {
             <Button
               type="button"
               variant="outline"
-              className="h-16 text-xl font-semibold"
+              className="h-16 text-xl font-medium"
               onClick={() => addDigit("0")}
             >
               0

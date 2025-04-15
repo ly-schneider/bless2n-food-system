@@ -210,7 +210,7 @@ export function ProductManagement() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between gap-4 items-start md:items-center">
-        <h2 className="text-2xl font-semibold">Produktverwaltung</h2>
+        <h2 className="text-2xl font-medium">Produktverwaltung</h2>
         <div className="flex gap-2 w-full md:w-auto">
           <div className="relative flex-1 md:w-64">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
