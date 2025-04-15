@@ -24,9 +24,9 @@ type GroupedProducts = {
 
 // Color mapping for different categories
 const categoryColors: Record<string, string> = {
-  Getränke: "bg-blue-600/10",
-  Speisen: "bg-red-600/10",
-  Süßigkeiten: "bg-yellow-600/10",
+  Drinks: "bg-blue-600/10",
+  Foods: "bg-red-600/10",
+  Sweets: "bg-yellow-600/10",
 };
 
 export default function ProductList() {
@@ -146,7 +146,9 @@ export default function ProductList() {
 
                       {!product.available && (
                         <>
-                          <p className="text-sm text-muted-foreground">&bull;</p>
+                          <p className="text-sm text-muted-foreground">
+                            &bull;
+                          </p>
                           <p className="text-sm text-muted-foreground">
                             Nicht verfügbar
                           </p>
