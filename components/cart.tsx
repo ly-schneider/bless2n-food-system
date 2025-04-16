@@ -5,7 +5,14 @@ import { useCart, CartItem } from "@/contexts/cart-context";
 import { createClient } from "@/utils/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { MinusCircle, PlusCircle, ShoppingCart, X } from "lucide-react";
+import {
+  Minus,
+  MinusCircle,
+  Plus,
+  PlusCircle,
+  ShoppingCart,
+  X,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -76,8 +83,12 @@ export function Cart() {
   };
 
   const handleQuantityChange = (item: CartItem, change: number) => {
-    const qty = Math.max(1, item.quantity + change);
-    updateQuantity(item.id, qty);
+    if (item.quantity + change <= 0) {
+      removeItem(item.id);
+    } else {
+      const qty = item.quantity + change;
+      updateQuantity(item.id, qty);
+    }
   };
 
   const subtotal = getTotal();
@@ -107,13 +118,15 @@ export function Cart() {
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between">
                     <h3 className="font-medium line-clamp-1">{item.name}</h3>
-                    <button
+                    <Button
+                      variant={"outline"}
+                      size="sm"
                       onClick={() => removeItem(item.id)}
-                      className="text-muted-foreground hover:text-destructive transition-colors"
+                      className="text-primary hover:text-destructive transition-colors"
                       aria-label="Remove item"
                     >
-                      <X className="h-4 w-4" />
-                    </button>
+                      <X className="h-2 w-2" />
+                    </Button>
                   </div>
 
                   <div className="text-sm mt-1">
@@ -121,21 +134,25 @@ export function Cart() {
                   </div>
 
                   <div className="flex items-center gap-2 mt-2">
-                    <button
+                    <Button
+                      variant={"outline"}
                       onClick={() => handleQuantityChange(item, -1)}
                       className="text-primary hover:text-primary/80 transition-colors"
                       aria-label="Decrease quantity"
+                      size={"sm"}
                     >
-                      <MinusCircle className="h-4 w-4" />
-                    </button>
+                      <Minus className="h-4 w-4" />
+                    </Button>
                     <span className="w-8 text-center">{item.quantity}</span>
-                    <button
+                    <Button
+                      variant={"outline"}
                       onClick={() => handleQuantityChange(item, 1)}
                       className="text-primary hover:text-primary/80 transition-colors"
                       aria-label="Increase quantity"
+                      size={"sm"}
                     >
-                      <PlusCircle className="h-4 w-4" />
-                    </button>
+                      <Plus className="h-4 w-4" />
+                    </Button>
 
                     <div className="ml-auto text-sm font-medium">
                       CHF {(item.price * item.quantity).toFixed(2)}
