@@ -135,7 +135,6 @@ export function StatisticsPanel() {
       const productCounts: Record<string, number> = {};
 
       trendingData.forEach((item) => {
-        console.log(item);
         const productName = item.product.name;
         if (!productCounts[productName]) {
           productCounts[productName] = 0;

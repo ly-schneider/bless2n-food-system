@@ -1,10 +1,9 @@
 import "./globals.css";
 import Image from "next/image";
 import { fontVariables } from './fonts';
-import { Metadata } from 'next'
+import { Metadata } from 'next';
 import { Toaster } from "sonner";
-import AuthNavigation from "@/components/auth-navigation";
-import { LockProvider, LockButton } from "@/components/lock-provider";
+import { LockProvider } from "@/components/lock-provider";
 import Navigation from "@/components/navigation";
 
 const defaultUrl = process.env.VERCEL_URL

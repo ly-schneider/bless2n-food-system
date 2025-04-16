@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { LockButton } from "./lock-provider";
 import AuthNavigation from "./auth-navigation";
+import { RefreshButton } from "./refresh-button";
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -10,7 +11,12 @@ export default function Navigation() {
 
   return (
     <>
-      {!isSignInPage && <LockButton />}
+      {!isSignInPage && (
+        <>
+          <RefreshButton />
+          <LockButton />
+        </>
+      )}
       <AuthNavigation />
     </>
   );

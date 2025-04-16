@@ -79,6 +79,18 @@ export default function ProductList() {
           {}
         );
 
+        // Sort products in each category by availability (available first) and then by name
+        Object.keys(grouped).forEach(category => {
+          grouped[category].sort((a, b) => {
+            // First sort by availability
+            if (a.available !== b.available) {
+              return a.available ? -1 : 1; // Available products first
+            }
+            // Then sort by name
+            return a.name.localeCompare(b.name);
+          });
+        });
+
         setGroupedProducts(grouped);
       } catch (error) {
         console.error("Error fetching products:", error);
@@ -120,7 +132,7 @@ export default function ProductList() {
 
   return (
     <div className="space-y-16 pb-8">
-      {Object.keys(groupedProducts).map((category) => (
+      {Object.keys(groupedProducts).sort().map((category) => (
         <div key={category} className="space-y-4">
           <h2 className="text-2xl font-medium">{category}</h2>
 
