@@ -15,23 +15,29 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
+const bonConfigUI: Record<string, { bg: string; text: string; label: string }> =
+  {
+    "2.50": { bg: "bg-purple-300", text: "text-magenta-900", label: "Magenta" },
+    "4.00": { bg: "bg-green-300", text: "text-green-900", label: "Grün" },
+    "4.50": { bg: "bg-gray-300", text: "text-gray-900", label: "Weiss" },
+    "5.00": { bg: "bg-orange-300", text: "text-orange-900", label: "Orange" },
+    "7.00": { bg: "bg-yellow-300", text: "text-yellow-900", label: "Gelb" },
+  };
+
 export function Cart() {
-  const { items, removeItem, updateQuantity, clearCart, getTotal } = useCart();
+  const { items, removeItem, updateQuantity, clearCart, getTotal, getBons } =
+    useCart();
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const supabase = createClient();
 
   const handleCheckout = async () => {
-    if (items.length === 0) return;
-
+    if (!items.length) return;
     setIsProcessing(true);
-
     try {
-      // Get current user
       const {
         data: { user },
       } = await supabase.auth.getUser();
-
       const orderBody = {
         admin_id: user?.id,
         order_date: new Date().toISOString(),
@@ -40,20 +46,13 @@ export function Cart() {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-
-      // Create order in database
       const { data: order, error: orderError } = await supabase
         .from("orders")
         .insert(orderBody)
         .select();
-
       if (orderError) throw orderError;
-
-      // Add order items
-      if (order && order.length > 0) {
+      if (order?.length) {
         const orderId = order[0].id;
-
-        // Prepare order items for insertion
         const orderItems = items.map((item) => ({
           order_id: orderId,
           product_id: item.id,
@@ -61,19 +60,14 @@ export function Cart() {
           price_at_order: item.price,
           created_at: new Date().toISOString(),
         }));
-
         const { error: orderItemsError } = await supabase
           .from("order_items")
           .insert(orderItems);
-
         if (orderItemsError) throw orderItemsError;
       }
-
       setCheckoutModalOpen(false);
       clearCart();
-      toast.success("Bestellung abgeschlossen!", {
-        duration: 1000,
-      });
+      toast.success("Bestellung abgeschlossen!", { duration: 1000 });
     } catch (error) {
       console.error("Error processing order:", error);
     } finally {
@@ -81,16 +75,13 @@ export function Cart() {
     }
   };
 
-  const handleCloseModal = () => {
-    setCheckoutModalOpen(false);
-  };
-
   const handleQuantityChange = (item: CartItem, change: number) => {
-    const newQuantity = Math.max(1, item.quantity + change);
-    updateQuantity(item.id, newQuantity);
+    const qty = Math.max(1, item.quantity + change);
+    updateQuantity(item.id, qty);
   };
 
   const subtotal = getTotal();
+  const bonsCount = getBons();
 
   return (
     <div className="flex flex-col h-full">
@@ -180,46 +171,65 @@ export function Cart() {
         </div>
       </div>
 
-      <Dialog open={checkoutModalOpen} onOpenChange={handleCloseModal}>
+      <Dialog
+        open={checkoutModalOpen}
+        onOpenChange={() => setCheckoutModalOpen(false)}
+      >
         <DialogContent>
-          <DialogHeader className="mb-4">
+          <DialogHeader>
             <DialogTitle>Abschliessen</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-2 mb-4">
-            {items.map((item) => (
-              <div
-                key={item.id}
-                className="flex justify-between items-center text-sm"
-              >
-                <span>
-                  {item.quantity} x {item.name}
-                </span>
-                <span>CHF {(item.price * item.quantity).toFixed(2)}</span>
+          <div className="flex flex-col gap-4 overflow-y-auto pr-2 mb-4">
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2">
+                {items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex justify-between items-center text-sm"
+                  >
+                    <span>
+                      {item.quantity} x {item.name}
+                    </span>
+                    <span>CHF {(item.price * item.quantity).toFixed(2)}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-
-            <Separator />
-
-            <div className="flex justify-between font-medium text-lg">
-              <span>Total</span>
-              <span>CHF {subtotal.toFixed(2)}</span>
+              <div className="flex justify-between font-medium text-xl">
+                <span>Total</span>
+                <span>CHF {subtotal.toFixed(2)}</span>
+              </div>
             </div>
-
-            {/* <Separator />
-                  Implement Bons */}
+            <Separator />
+            <div className="flex flex-col">
+              <h4 className="font-medium mb-2">Bons</h4>
+              <ul className="space-y-2">
+                {Object.entries(bonsCount)
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([price, count]) => {
+                    const cfg = bonConfigUI[price];
+                    return (
+                      <li key={price} className="flex items-center gap-2">
+                        <span
+                          className={`${cfg.bg} ${cfg.text} inline-block w-6 h-6 rounded-full`}
+                        />
+                        <span className="text-base">
+                          {count} x {cfg.label}
+                        </span>
+                      </li>
+                    );
+                  })}
+              </ul>
+            </div>
           </div>
-
           <DialogFooter>
             <Button
-              type="button"
               variant="outline"
-              onClick={handleCloseModal}
+              onClick={() => setCheckoutModalOpen(false)}
               className="w-full"
             >
               Abbrechen
             </Button>
             <Button
-              type="button"
               disabled={isProcessing}
               onClick={handleCheckout}
               className="w-full"

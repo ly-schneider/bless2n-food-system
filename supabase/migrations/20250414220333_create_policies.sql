@@ -30,16 +30,3 @@ CREATE POLICY "Admins can manage order items"
   ON order_items FOR ALL USING (
     EXISTS (SELECT 1 FROM admins WHERE id = auth.uid())
   );
-
--- Policy for uploading thumbnails (admin only)
-CREATE POLICY "Admin can upload thumbnails"
-  ON storage.objects FOR INSERT
-  WITH CHECK (
-    EXISTS (SELECT 1 FROM admins WHERE id = auth.uid())
-    AND bucket_id = 'product-thumbnails'
-  );
-
--- Policy for public viewing of thumbnails (open access to thumbnail images)
-CREATE POLICY "Public can view product thumbnails"
-  ON storage.objects FOR SELECT
-  USING (bucket_id = 'product-thumbnails');

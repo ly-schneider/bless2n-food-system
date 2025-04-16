@@ -50,10 +50,10 @@ export function StatisticsPanel() {
 
     try {
       // Get the last 7 days data
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const fourDaysAgo = new Date();
+      fourDaysAgo.setDate(fourDaysAgo.getDate() - 4);
 
-      // Fetch daily revenue, orders, and products sold
+      // Fetch daily Umsatz, orders, and products sold
       const { data: orderData, error: orderError } = await supabase
         .from("orders")
         .select(
@@ -64,7 +64,7 @@ export function StatisticsPanel() {
           order_items(quantity)
         `
         )
-        .gte("order_date", sevenDaysAgo.toISOString());
+        .gte("order_date", fourDaysAgo.toISOString());
 
       if (orderError) throw orderError;
 
@@ -103,7 +103,7 @@ export function StatisticsPanel() {
       const { data: rawTrendingData, error: trendingError } = (await supabase
         .from("order_items")
         .select("quantity, product:product_id(name)")
-        .gte("created_at", sevenDaysAgo.toISOString())) as unknown as {
+        .gte("created_at", fourDaysAgo.toISOString())) as unknown as {
         data: SupabaseTrendingItem[];
         error: any;
       };
@@ -173,9 +173,9 @@ export function StatisticsPanel() {
         day: "numeric",
         month: "short",
       }),
-      Revenue: Number(day.income.toFixed(2)),
-      Products: day.products_sold,
-      Orders: day.orders,
+      Umsatz: Number(day.income.toFixed(2)),
+      Produkte: day.products_sold,
+      Bestellungen: day.orders,
     }));
 
     // Format trending products data
@@ -214,18 +214,18 @@ export function StatisticsPanel() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Daily Revenue Chart */}
+        {/* Daily Umsatz Chart */}
         <Card>
           <CardHeader>
             <CardTitle>Tagesumsatz (CHF)</CardTitle>
             <CardDescription>
-              Bruttoeinnahmen pro Tag der letzten 7 Tage
+              Bruttoeinnahmen pro Tag der letzten 4 Tage
             </CardDescription>
           </CardHeader>
           <CardContent className="h-[350px]">
             <AreaChart
               data={formattedDailyData}
-              categories={["Revenue"]}
+              categories={["Umsatz"]}
               index="name"
               colors={["blue"]}
               valueFormatter={(value) => `CHF ${value}`}
@@ -246,7 +246,7 @@ export function StatisticsPanel() {
           <CardContent className="h-[350px]">
             <BarChart
               data={formattedDailyData}
-              categories={["Products", "Orders"]}
+              categories={["Produkte", "Bestellungen"]}
               index="name"
               colors={["green", "orange"]}
               yAxisWidth={40}
@@ -259,25 +259,39 @@ export function StatisticsPanel() {
           <CardHeader>
             <CardTitle>Top 3 Trendprodukte</CardTitle>
             <CardDescription>
-              Beliebteste Produkte der letzten 7 Tage
+              Beliebteste Produkte der letzten 4 Tage
             </CardDescription>
           </CardHeader>
-          <CardContent className="h-[350px]">
+          <CardContent>
             {trendingProducts.length > 0 ? (
-              <div className="mx-auto w-full max-w-md">
-                <BarChart
-                  data={formattedTrendingData}
-                  categories={["value"]}
-                  index="name"
-                  colors={["blue", "green", "orange"]}
-                  valueFormatter={(value) => `${value} Stück`}
-                  yAxisWidth={60}
-                  showLegend={false}
-                  className="h-[300px]"
-                />
+              <div className="">
+                <div className="grid grid-cols-3 font-semibold border-b pb-2">
+                  <div>Produkt</div>
+                  <div className="text-center">Verkaufte Menge</div>
+                  <div className="text-right">% der Gesamtverkäufe</div>
+                </div>
+                
+                {trendingProducts.map((product, index) => {
+                  // Calculate percentage of total sales
+                  const totalSales = trendingProducts.reduce((sum, p) => sum + p.count, 0);
+                  const percentage = Math.round((product.count / totalSales) * 100);
+                  
+                  return (
+                    <div 
+                      key={product.name} 
+                      className={`grid grid-cols-3 items-center py-3 ${
+                        index < trendingProducts.length - 1 ? "border-b border-border/50" : ""
+                      }`}
+                    >
+                      <div className="font-medium truncate">{product.name}</div>
+                      <div className="text-center">{product.count} Stück</div>
+                      <div className="text-right">{percentage}%</div>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
-              <div className="text-center text-muted-foreground h-full flex items-center justify-center">
+              <div className="text-center text-muted-foreground h-[200px] flex items-center justify-center">
                 Keine Produktdaten verfügbar
               </div>
             )}

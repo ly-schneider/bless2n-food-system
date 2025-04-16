@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useState, useContext, ReactNode } from 'react'
+import React, { createContext, useState, useContext, ReactNode, useMemo } from 'react'
 
 export type CartItem = {
   id: number
@@ -16,6 +16,8 @@ interface CartContextType {
   updateQuantity: (id: number, quantity: number) => void
   clearCart: () => void
   getTotal: () => number
+  /** Liefert die aktuellen Bons als Mapping von Preis zu Anzahl */
+  getBons: () => Record<string, number>
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
@@ -25,20 +27,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addItem = (newItem: CartItem) => {
     setItems(currentItems => {
-      // Check if item already exists
-      const existingItemIndex = currentItems.findIndex(item => item.id === newItem.id)
-      
-      if (existingItemIndex > -1) {
-        // Just increment quantity by 1 if item exists, ignore newItem.quantity
-        const updatedItems = [...currentItems]
-        updatedItems[existingItemIndex] = {
-          ...updatedItems[existingItemIndex],
-          quantity: updatedItems[existingItemIndex].quantity + 1
-        }
-        return updatedItems
+      const idx = currentItems.findIndex(item => item.id === newItem.id)
+      if (idx > -1) {
+        const updated = [...currentItems]
+        updated[idx] = { ...updated[idx], quantity: updated[idx].quantity + 1 }
+        return updated
       }
-      
-      // Add new item if it doesn't exist
       return [...currentItems, newItem]
     })
   }
@@ -48,32 +42,42 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }
 
   const updateQuantity = (id: number, quantity: number) => {
-    setItems(currentItems => 
-      currentItems.map(item => 
+    setItems(currentItems =>
+      currentItems.map(item =>
         item.id === id ? { ...item, quantity } : item
       )
     )
   }
 
-  const clearCart = () => {
-    setItems([])
-  }
+  const clearCart = () => setItems([])
 
-  const getTotal = () => {
-    return items.reduce((total, item) => total + (item.price * item.quantity), 0)
-  }
+  const getTotal = () => items.reduce((sum, i) => sum + i.price * i.quantity, 0)
+
+  // Bon-Konfiguration
+  const bonConfig: Record<string, { label: string }> = useMemo(() => ({
+    '2.50': { label: 'Magenta' },
+    '4.00': { label: 'Green' },
+    '4.50': { label: 'White' },
+    '5.00': { label: 'Orange' },
+    '7.00': { label: 'Yellow' },
+  }), [])
+
+  // Berechnet Bons anhand aktueller Items (nur perf. Realtime im Provider)
+  const bonsMap = useMemo(() => {
+    const counts: Record<string, number> = {}
+    items.forEach(item => {
+      const key = item.price.toFixed(2)
+      if (bonConfig[key]) {
+        counts[key] = (counts[key] || 0) + item.quantity
+      }
+    })
+    return counts
+  }, [items, bonConfig])
+
+  const getBons = () => bonsMap
 
   return (
-    <CartContext.Provider 
-      value={{ 
-        items, 
-        addItem, 
-        removeItem, 
-        updateQuantity, 
-        clearCart,
-        getTotal
-      }}
-    >
+    <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, getTotal, getBons }}>
       {children}
     </CartContext.Provider>
   )
@@ -81,8 +85,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
 export function useCart() {
   const context = useContext(CartContext)
-  if (context === undefined) {
-    throw new Error('useCart must be used within a CartProvider')
-  }
+  if (!context) throw new Error('useCart must be used within a CartProvider')
   return context
 }
