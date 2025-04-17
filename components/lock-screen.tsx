@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Lock, Delete } from "lucide-react";
+import { SleepButton } from "./lock-provider";
 
 interface LockScreenProps {
   isOpen: boolean;
@@ -18,7 +19,7 @@ interface LockScreenProps {
 export function LockScreen({ isOpen, onUnlock }: LockScreenProps) {
   const [pin, setPin] = useState("");
   const [error, setError] = useState(false);
-  
+
   // Reset error state when pin changes
   useEffect(() => {
     if (error) setError(false);
@@ -30,7 +31,7 @@ export function LockScreen({ isOpen, onUnlock }: LockScreenProps) {
   const handleSubmit = () => {
     // Compare with environment variable
     const correctPin = process.env.NEXT_PUBLIC_UNLOCK_PIN;
-    
+
     if (pin === correctPin) {
       setPin("");
       onUnlock();
@@ -43,12 +44,12 @@ export function LockScreen({ isOpen, onUnlock }: LockScreenProps) {
   const addDigit = (digit: string) => {
     // Limit to 4 digits
     if (pin.length < 4) {
-      setPin(prev => prev + digit);
+      setPin((prev) => prev + digit);
     }
   };
 
   const removeDigit = () => {
-    setPin(prev => prev.slice(0, -1));
+    setPin((prev) => prev.slice(0, -1));
   };
 
   return (
@@ -66,22 +67,28 @@ export function LockScreen({ isOpen, onUnlock }: LockScreenProps) {
           <div className="text-center mb-6">
             <div className="flex justify-center items-center gap-2">
               {[...Array(4)].map((_, i) => (
-                <div 
+                <div
                   key={i}
                   className={`w-10 h-14 border-2 rounded-md flex items-center justify-center text-xl font-medium ${
-                    error ? "border-destructive" : pin.length > i ? "border-primary" : "border-muted-foreground"
+                    error
+                      ? "border-destructive"
+                      : pin.length > i
+                        ? "border-primary"
+                        : "border-muted-foreground"
                   }`}
                 >
-                  {pin.length > i ? '•' : ''}
+                  {pin.length > i ? "•" : ""}
                 </div>
               ))}
             </div>
-            {error && <p className="text-destructive text-center mt-2">Incorrect PIN</p>}
+            {error && (
+              <p className="text-destructive text-center mt-2">Incorrect PIN</p>
+            )}
           </div>
-          
+
           {/* Numpad */}
           <div className="grid grid-cols-3 gap-3">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
               <Button
                 key={num}
                 type="button"
@@ -116,6 +123,11 @@ export function LockScreen({ isOpen, onUnlock }: LockScreenProps) {
             >
               <Delete className="h-5 w-5" />
             </Button>
+          </div>
+
+          {/* Sleep Buttno */}
+          <div className="mt-12 flex justify-center">
+            <SleepButton />
           </div>
         </div>
       </DialogContent>

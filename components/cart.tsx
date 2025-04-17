@@ -6,12 +6,8 @@ import { createClient } from "@/utils/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
-  Minus,
-  MinusCircle,
-  Plus,
-  PlusCircle,
-  ShoppingCart,
-  X,
+  Minus, Plus, ShoppingCart,
+  X
 } from "lucide-react";
 import {
   Dialog,
