@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 96%; /* Light Gray #F5F5F5 */
+    --foreground: 0 0% 10%; /* Dark Gray #1A1A1A */
+    --card: 0 0% 100%; /* Pure White #FFFFFF */
+    --card-foreground: 0 0% 0%; /* Rich Black #000000 */
+    --popover: 0 0% 100%; /* Pure White #FFFFFF */
+    --popover-foreground: 0 0% 0%; /* Rich Black #000000 */
+    --primary: 228 100% 82%; /* #A3B3FF */
+    --primary-foreground: 0 0% 100%; /* Pure White #FFFFFF */
+    --secondary: 0 0% 96%; /* Slate 100 #F5F5F5 */
+    --secondary-foreground: 0 0% 10%; /* Slate 900 #1A1A1A */
+    --muted: 0, 3%, 94%; /* Slate 100 #F5F5F5 */
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 270 100% 85%; /* #DAB2FF */
+    --accent-foreground: 0 0% 0%; /* Rich Black #000000 */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%; /* Pure White #FFFFFF */
+    --border: 0 0% 90%; /* Light version of Slate 100 */
+    --input: 0 0% 90%; /* Light version of Slate 100 */
+    --ring: 228 100% 82%; /* #A3B3FF */
+    --radius: 0.5rem;
+    --chart-1: 228 100% 82%; /* #A3B3FF */
+    --chart-2: 270 100% 85%; /* #DAB2FF */
+    --chart-3: 197 37% 24%;
+    --chart-4: 228 90% 90%; /* Lighter #A3B3FF */
+    --chart-5: 270 90% 90%; /* Lighter #DAB2FF */
+    --sidebar-background: 0 0% 96%; /* Slate 100 #F5F5F5 */
+    --sidebar-foreground: 0 0% 10%; /* Slate 900 #1A1A1A */
+    --sidebar-primary: 228 100% 82%; /* #A3B3FF */
+    --sidebar-primary-foreground: 0 0% 100%; /* Pure White #FFFFFF */
+    --sidebar-accent: 270 100% 85%; /* #DAB2FF */
+    --sidebar-accent-foreground: 0 0% 0%; /* Rich Black #000000 */
+    --sidebar-border: 0 0% 90%; /* Light version of Slate 100 */
+    --sidebar-ring: 228 100% 82%; /* #A3B3FF */
+  }
+
+  .dark {
+    --background: 0 0% 10%; /* Dark Gray #1A1A1A */
+    --foreground: 0 0% 96%; /* Light Gray #F5F5F5 */
+    --card: 0 0% 10%; /* Slate 900 #1A1A1A */
+    --card-foreground: 0 0% 100%; /* Pure White #FFFFFF */
+    --popover: 0 0% 0%; /* Rich Black #000000 */
+    --popover-foreground: 0 0% 100%; /* Pure White #FFFFFF */
+    --primary: 228 100% 82%; /* #A3B3FF */
+    --primary-foreground: 0 0% 100%; /* Pure White #FFFFFF */
+    --secondary: 0 0% 10%; /* Slate 900 #1A1A1A */
+    --secondary-foreground: 0 0% 100%; /* Pure White #FFFFFF */
+    --muted: 0 0% 10%; /* Slate 900 #1A1A1A */
+    --muted-foreground: 0 0% 70%; /* Lighter version of Pure White */
+    --accent: 270 100% 85%; /* #DAB2FF */
+    --accent-foreground: 0 0% 0%; /* Rich Black #000000 */
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 100%; /* Pure White #FFFFFF */
+    --border: 0 0% 20%; /* Darker version of Slate 900 */
+    --input: 0 0% 20%; /* Darker version of Slate 900 */
+    --ring: 228 100% 82%; /* #A3B3FF */
+    --chart-1: 228 100% 87%; /* Brighter #A3B3FF for dark mode */
+    --chart-2: 270 100% 90%; /* Brighter #DAB2FF for dark mode */
+    --chart-3: 30 80% 55%;
+    --chart-4: 228 95% 92%; /* Very light #A3B3FF */
+    --chart-5: 270 95% 92%; /* Very light #DAB2FF */
+    --sidebar-background: 0 0% 10%; /* Slate 900 #1A1A1A */
+    --sidebar-foreground: 0 0% 100%; /* Pure White #FFFFFF */
+    --sidebar-primary: 228 100% 82%; /* #A3B3FF */
+    --sidebar-primary-foreground: 0 0% 100%; /* Pure White #FFFFFF */
+    --sidebar-accent: 270 100% 85%; /* #DAB2FF */
+    --sidebar-accent-foreground: 0 0% 0%; /* Rich Black #000000 */
+    --sidebar-border: 0 0% 20%; /* Darker version of Slate 900 */
+    --sidebar-ring: 228 100% 82%; /* #A3B3FF */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "431239382541",
+    "project_id": "tt-plus-31f53",
+    "storage_bucket": "tt-plus-31f53.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:431239382541:android:6d0e9858d7a55d1a80b744",
+        "android_client_info": {
+          "package_name": "ch.leys.tt_plus"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "431239382541-gsfa61c78f9c63ni9bha7qn2f10jbj9b.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "ch.leys.tt_plus",
+            "certificate_hash": "f687bfdf13357e0f3a98e5c498da79e835b79ae6"
+          }
+        },
+        {
+          "client_id": "431239382541-lssoje3lirhi0b2cerhcobvpboejcanq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDMayJWd5UiYjgkPt8wn4pxHfqH-XRHnxc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "431239382541-lssoje3lirhi0b2cerhcobvpboejcanq.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "431239382541-rbhvdtjbmccqav9b2666apjhdikvq6nc.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "ch.leys.tt-plus"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
