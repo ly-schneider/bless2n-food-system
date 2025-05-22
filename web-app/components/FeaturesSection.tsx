@@ -8,13 +8,8 @@ export default function FeaturesSection() {
       icon: CheckCircle2
     },
     {
-      title: "Bargeldlose Zahlungen",
-      description: "Akzeptieren Sie alle gängigen bargeldlosen Zahlungsmethoden mit einem Gerät.",
-      icon: CheckCircle2
-    },
-    {
-      title: "Offline-Modus",
-      description: "Auch bei schwacher Internetverbindung bleibt Ihr Kassensystem voll funktionsfähig.",
+      title: "TWINT-Integration",
+      description: "Akzeptieren Sie Zahlungen mit TWINT und bieten Sie Ihren Kunden mehr Flexibilität.",
       icon: CheckCircle2
     },
     {
@@ -28,8 +23,8 @@ export default function FeaturesSection() {
       icon: CheckCircle2
     },
     {
-      title: "Premium Support",
-      description: "Schweizer Support-Team, das Ihnen bei allen Fragen zur Seite steht.",
+      title: "Schweizer Qualität und Support",
+      description: "Profitieren Sie von unserem erstklassigen Support und der Zuverlässigkeit eines Schweizer Unternehmens.",
       icon: CheckCircle2
     }
   ];
@@ -43,16 +38,16 @@ export default function FeaturesSection() {
             rentro bietet alles, was Sie für ein erfolgreiches Event-Kassensystem benötigen
           </p>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+
+        <div className="flex flex-wrap justify-center gap-8">
           {features.map((feature, index) => (
             <div 
               key={index} 
-              className="bg-background p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300"
+              className="w-[30%] p-6 bg-background rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300"
             >
-              <div className="mb-4 text-rentro">
+              {/* <div className="mb-4 text-rentro">
                 <feature.icon className="w-10 h-10" />
-              </div>
+              </div> */}
               <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
               <p className="text-gray-600">{feature.description}</p>
             </div>

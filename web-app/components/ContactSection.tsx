@@ -62,13 +62,9 @@ export default function ContactSection() {
             <div>
               <h3 className="text-xl font-semibold mb-4">Kontaktinformationen</h3>
               <div className="space-y-3">
-                <p className="flex items-start">
-                  <span className="mr-3 text-rentro">📍</span>
-                  <span>rentro GmbH<br />Musterstrasse 123<br />8000 Zürich, Schweiz</span>
-                </p>
                 <p className="flex items-center">
                   <span className="mr-3 text-rentro">📞</span>
-                  <span>+41 44 123 45 67</span>
+                  <span>+41 079 757 16 08</span>
                 </p>
                 <p className="flex items-center">
                   <span className="mr-3 text-rentro">✉️</span>

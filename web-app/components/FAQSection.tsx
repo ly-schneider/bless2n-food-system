@@ -10,15 +10,23 @@ export default function FAQSection() {
   const faqs = [
     {
       question: "Wie lange dauert die Einrichtung des rentro Systems?",
-      answer: "Die Einrichtung dauert in der Regel weniger als 5 Minuten. Das System ist nach dem Auspacken sofort einsatzbereit - Sie müssen nur das iPad einschalten und können direkt loslegen."
+      answer: "Die Einrichtung dauert in der Regel weniger als 5 Minuten. Das System ist nach dem Auspacken sofort einsatzbereit - Sie müssen nur das Tablet einschalten, mit dem Event linken und können direkt loslegen."
     },
     {
       question: "Funktioniert das System auch ohne Internetverbindung?",
-      answer: "Ja, rentro verfügt über einen vollständigen Offline-Modus. Alle Verkäufe werden lokal gespeichert und automatisch synchronisiert, sobald die Verbindung wiederhergestellt ist."
+      answer: "Nein, rentro benötigt eine Internetverbindung, um TWINT-Transaktionen zu verarbeiten und Echtzeitdaten zu liefern. Wir empfehlen, eine stabile WLAN-Verbindung oder mobile Daten zu nutzen."
+    },
+    {
+      question: "Was bedeutet 'unlimitierte POS-Lizenzen'?",
+      answer: "Das bedeutet, dass Sie so viele Kassensysteme (POS) einrichten können, wie Sie benötigen. Es gibt keine Begrenzung für die Anzahl der Geräte, die Sie gleichzeitig verwenden können."
+    },
+    {
+      question: "Was bedeutet 'Dual-Display'?",
+      answer: "Das bedeutet, dass Sie zwei Bildschirme für das Kassensystem verwenden können - einen für den Kassierer und einen für den Kunden. Dies verbessert die Benutzererfahrung und ermöglicht eine einfachere Interaktion."
     },
     {
       question: "Welche Zahlungsmethoden werden unterstützt?",
-      answer: "rentro unterstützt alle gängigen bargeldlosen Zahlungsmethoden, darunter Kredit- und Debitkarten, TWINT, Apple Pay und Google Pay."
+      answer: "rentro ist eine TWINT-Lösung und unterstützt daher nur TWINT-Zahlungen."
     },
     {
       question: "Muss ich die Hardware kaufen oder kann ich sie mieten?",

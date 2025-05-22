@@ -1,7 +1,6 @@
 import "./globals.css";
 import { fontVariables } from "./fonts";
 import { Metadata } from "next";
-import ContactSection from "@/components/ContactSection";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 
@@ -53,7 +52,6 @@ export default function RootLayout({
       <body className="font-custom bg-background text-foreground overflow-x-hidden flex flex-col min-h-screen">
         <Navbar />
         {children}
-        <ContactSection />
         <Footer />
       </body>
     </html>

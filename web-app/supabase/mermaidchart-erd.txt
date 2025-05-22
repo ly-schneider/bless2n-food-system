@@ -14,6 +14,9 @@ erDiagram
         uuid id PK
         uuid owner_id FK "NOT NULL"
         string name "NOT NULL"
+        int checkout_spots "NOT NULL"
+        string location "NOT NULL"
+        boolean self_checkout "DEFAULT FALSE NOT NULL"
         date start_date "NOT NULL"
         date end_date "NOT NULL"
         timestamptz created_at "DEFAULT NOW() NOT NULL"

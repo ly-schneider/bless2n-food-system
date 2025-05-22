@@ -93,3 +93,113 @@ SELECT
   NULL,                  -- disabled_reason
   created_at
 FROM src;
+
+--------------------------------------------------------------------
+-- 4.  Insert devices
+--------------------------------------------------------------------
+INSERT INTO public.devices (
+  id,
+  serial_number
+  model,
+  is_active,
+  registered_at
+)
+VALUES (
+  uuid_generate_v4(),
+  'SERIAL_1',
+  'Samsung Galaxy Tab A9+',
+  true,
+  current_timestamp
+), (
+  uuid_generate_v4(),
+  'SERIAL_2',
+  'Samsung Galaxy Tab A9+',
+  true,
+  current_timestamp
+), (
+  uuid_generate_v4(),
+  'SERIAL_3',
+  'Samsung Galaxy Tab A9+',
+  true,
+  current_timestamp
+), (
+  uuid_generate_v4(),
+  'SERIAL_4',
+  'Samsung Galaxy Tab A9+',
+  true,
+  current_timestamp
+), (
+  uuid_generate_v4(),
+  'SERIAL_5',
+  'Samsung Galaxy Tab A9+',
+  true,
+  current_timestamp
+), (
+  uuid_generate_v4(),
+  'SERIAL_6',
+  'Samsung Galaxy Tab A9+',
+  true,
+  current_timestamp
+), (
+  uuid_generate_v4(),
+  'SERIAL_7',
+  'Samsung Galaxy Tab A9+',
+  true,
+  current_timestamp
+), (
+  uuid_generate_v4(),
+  'SERIAL_8',
+  'Samsung Galaxy Tab A9+',
+  true,
+  current_timestamp
+), (
+  uuid_generate_v4(),
+  'SERIAL_9',
+  'Samsung Galaxy Tab A9+',
+  true,
+  current_timestamp
+), (
+  uuid_generate_v4(),
+  'SERIAL_10',
+  'Samsung Galaxy Tab A9+',
+  true,
+  current_timestamp
+);
+
+--------------------------------------------------------------------
+-- 5.  Insert event user roles
+--------------------------------------------------------------------
+INSERT INTO public.event_user_roles (
+  id,
+  name,
+  display_name,
+  description,
+  is_default,
+  is_active,
+  created_at
+)
+VALUES (
+  uuid_generate_v4(),
+  'admin',
+  'Administrator',
+  'Event Administrator mit vollen Rechten.',
+  true,
+  true,
+  current_timestamp
+), (
+  uuid_generate_v4(),
+  'bearbeiter',
+  'Bearbeiter',
+  'Event Bearbeiter mit eingeschränkten Rechten.',
+  false,
+  true,
+  current_timestamp
+), (
+  uuid_generate_v4(),
+  'gast',
+  'Gast',
+  'Event Gast mit nur Lesezugriff auf das Event.',
+  false,
+  true,
+  current_timestamp
+);

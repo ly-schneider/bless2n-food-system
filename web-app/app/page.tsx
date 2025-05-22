@@ -1,3 +1,4 @@
+import ContactSection from "@/components/ContactSection";
 import CTASection from "@/components/CTASection";
 import FAQSection from "@/components/FAQSection";
 import FeaturesSection from "@/components/FeaturesSection";
@@ -14,6 +15,7 @@ export default async function HomePage() {
       <PricingSection />
       <FAQSection />
       <CTASection />
+      <ContactSection />
     </>
   );
 }
