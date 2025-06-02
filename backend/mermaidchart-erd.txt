@@ -1,0 +1,128 @@
+erDiagram
+    USERS {
+        uuid id PK
+        string firstname "NOT NULL"
+        string lastname "NOT NULL"
+        string email UK "NOT NULL"
+        bool is_site_admin "DEFAULT FALSE NOT NULL"
+        bool is_disabled "DEFAULT FALSE NOT NULL"
+        string disabled_reason
+        timestamptz created_at "DEFAULT NOW() NOT NULL"
+    }
+
+    EVENTS {
+        uuid id PK
+        uuid owner_id FK "NOT NULL"
+        string name "NOT NULL"
+        int checkout_spots "NOT NULL"
+        string location "NOT NULL"
+        boolean self_checkout "DEFAULT FALSE NOT NULL"
+        date start_date "NOT NULL"
+        date end_date "NOT NULL"
+        timestamptz created_at "DEFAULT NOW() NOT NULL"
+    }
+
+    EVENT_USER_ROLES {
+        uuid id PK
+        string name UK "NOT NULL, CHECK (name = lower(name)"
+        string display_name "NOT NULL"
+        string description
+        bool is_default "DEFAULT FALSE NOT NULL"
+        bool is_active "DEFAULT TRUE NOT NULL"
+        timestamptz created_at "DEFAULT NOW() NOT NULL"
+    }
+
+    EVENT_USERS {
+        uuid id PK
+        uuid event_id FK "NOT NULL"
+        uuid user_id FK "NOT NULL"
+        uuid role_id FK "NOT NULL"
+        timestamptz invited_at "DEFAULT NOW() NOT NULL"
+        timestamptz joined_at "NOT NULL"
+    }
+
+    EVENT_INVITES {
+        uuid id PK
+        uuid event_id FK "NOT NULL"
+        uuid role_id FK "NOT NULL"
+        string invitee_email "NOT NULL"
+        timestamptz expires_at "NOT NULL"
+    }
+
+    DEVICES {
+        uuid id PK
+        string serial_number UK "NOT NULL"
+        string model "NOT NULL"
+        bool is_active "DEFAULT TRUE NOT NULL"
+        timestamptz registered_at "DEFAULT NOW() NOT NULL"
+    }
+
+    EVENT_DEVICES {
+        uuid id PK
+        uuid event_id FK "NOT NULL"
+        uuid device_id FK "NOT NULL"
+        timestamptz assigned_at "DEFAULT NOW() NOT NULL"
+    }
+
+    EVENT_DEVICE_PAIRINGS {
+        uuid id PK
+        uuid customer_device_id FK "UK"
+        uuid cashier_device_id FK "UK"
+        timestamptz linked_at "NOT NULL"
+    }
+
+    CATEGORY {
+        uuid id PK
+        uuid event_id FK "NOT NULL"
+        string name "NOT NULL"
+        string emoji  "NOT NULL"
+        bool is_active "DEFAULT TRUE, NOT NULL"
+        timestamptz created_at "DEFAULT NOW() NOT NULL"
+    }
+
+    PRODUCTS {
+        uuid id PK
+        uuid event_id FK "NOT NULL"
+        uuid category_id FK
+        string name "NOT NULL"
+        string emoji  "NOT NULL"
+        decimal price
+        bool is_active "DEFAULT TRUE, NOT NULL"
+        timestamptz created_at "DEFAULT NOW() NOT NULL"
+    }
+
+    ORDERS {
+        uuid id PK
+        uuid event_id FK "NOT NULL"
+        uuid device_id FK "NOT NULL"
+        decimal total "NOT NULL"
+        string status "ENUM('pending','completed','cancelled') NOT NULL"
+        timestamptz ordered_at "DEFAULT NOW() NOT NULL"
+    }
+
+    ORDER_ITEMS {
+        uuid id PK
+        uuid order_id FK "NOT NULL"
+        uuid product_id FK "NOT NULL"
+        int quantity "NOT NULL, CHECK (quantity > 0)"
+        decimal price_per_unit "NOT NULL"
+    }
+
+    %% relationships
+    USERS            ||--o{  EVENTS                 : owns
+    USERS            ||--o{  EVENT_USERS            : user
+    EVENTS           ||--o{  EVENT_USERS            : participants
+    EVENT_USER_ROLES ||--o{  EVENT_USERS            : role
+    EVENT_USER_ROLES ||--o{  EVENT_INVITES          : role
+    EVENTS           ||--o{  EVENT_INVITES          : invites
+    EVENTS           ||--o{  EVENT_DEVICES          : event_devices
+    DEVICES          ||--o{  EVENT_DEVICES          : device
+    EVENT_DEVICES    ||--o{  EVENT_DEVICE_PAIRINGS  : customer_device
+    EVENT_DEVICES    ||--o{  EVENT_DEVICE_PAIRINGS  : cashier_device
+    EVENTS           ||--o{  CATEGORY               : categories
+    CATEGORY         ||--o{  PRODUCTS               : category_products
+    EVENTS           ||--o{  PRODUCTS               : event_products
+    EVENTS           ||--o{  ORDERS                 : orders
+    DEVICES          ||--o{  ORDERS                 : placed_on
+    ORDERS           ||--o{  ORDER_ITEMS            : contains
+    PRODUCTS         ||--o{  ORDER_ITEMS            : line_items

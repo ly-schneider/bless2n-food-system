@@ -1,0 +1,22 @@
+type: http_request
+model: http_request
+id: rq_MXsfHwiwFb
+createdAt: 2025-05-28T09:31:45.324145
+updatedAt: 2025-06-01T19:20:52.795541
+workspaceId: wk_wnN8iaCncF
+folderId: fl_AxXSj5YeMR
+authentication: {}
+authenticationType: basic
+body: {}
+bodyType: null
+description: ''
+headers:
+- enabled: true
+  name: ''
+  value: ''
+  id: ysNVeBTyHk
+method: GET
+name: Get All Categories
+sortPriority: 0.0
+url: ${[ URL ]}/categories
+urlParameters: []

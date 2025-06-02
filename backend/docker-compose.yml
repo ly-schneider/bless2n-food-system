@@ -1,0 +1,55 @@
+name: rentro-backend
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB:       ${DB_NAME}
+      POSTGRES_USER:     ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports: ["5432:5432"]
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  flyway:
+    image: flyway/flyway:11
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      -url=jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+      -user=${DB_USER}
+      -password=${DB_PASSWORD}
+      -connectRetries=60
+      migrate
+    volumes:
+      - ./migrations:/flyway/sql:ro
+    environment:
+      FLYWAY_PLACEHOLDERS_APP_ENV: ${APP_ENV:-development}
+
+  api:
+    build:
+      context: .
+      target: ${APP_ENV:-development}
+      args:
+        APP_ENV: ${APP_ENV:-development}
+    env_file:
+      - .env.${APP_ENV:-development}
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+    volumes:
+      - .:/app
+      - /app/tmp
+    working_dir: /app
+    ports: ["8080:8080"]
+    depends_on:
+      flyway:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

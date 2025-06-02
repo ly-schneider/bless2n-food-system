@@ -1,0 +1,14 @@
+type: environment
+model: environment
+id: ev_2rGvriKsHa
+workspaceId: wk_wnN8iaCncF
+createdAt: 2025-05-07T09:39:43.744401
+updatedAt: 2025-05-28T14:05:02.173299
+name: Global Variables
+public: true
+base: true
+variables:
+- enabled: true
+  name: URL
+  value: localhost:8080
+  id: 5MRxwUyCwm

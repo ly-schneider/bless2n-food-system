@@ -1,0 +1,18 @@
+type: http_request
+model: http_request
+id: rq_LViFjRZjYh
+createdAt: 2025-05-30T22:25:52.868930
+updatedAt: 2025-05-30T22:26:44.039996
+workspaceId: wk_wnN8iaCncF
+folderId: fl_ePof8jdFAL
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: GET
+name: Login
+sortPriority: 0.0
+url: ${[ URL ]}/auth/login
+urlParameters: []

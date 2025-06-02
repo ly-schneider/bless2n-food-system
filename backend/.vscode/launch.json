@@ -1,0 +1,28 @@
+{
+  // VS Code debugger configuration schema
+  "version": "0.2.0",
+  "configurations": [
+    {
+      /* Human-readable name shown in the Debug panel */
+      "name": "Docker Compose (up --build, dev)",
+
+      /* Use the proper type for Docker Compose */
+      "type": "go",
+      "request": "launch",
+      
+      /* Use a preLaunchTask to run Docker Compose */
+      "preLaunchTask": "docker-compose-up-build",
+      
+      /* Main Go file to run */
+      "program": "${workspaceFolder}/server.go",
+      
+      /* Environment variables */
+      "env": {
+        "APP_ENV": "development"
+      },
+
+      /* Keep the integrated terminal open */
+      "internalConsoleOptions": "neverOpen",
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+type: workspace
+model: workspace
+id: wk_wnN8iaCncF
+createdAt: 2025-05-07T09:39:42.988238
+updatedAt: 2025-05-28T09:31:14.152420
+name: rentro
+description: ''
+encryptionKeyChallenge: null
+settingValidateCertificates: true
+settingFollowRedirects: true
+settingRequestTimeout: 0
