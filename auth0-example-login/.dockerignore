@@ -1,7 +1,0 @@
-.env.example
-.gitignore
-README.md
-exec.sh
-exec.ps1
-src/
-pkg/

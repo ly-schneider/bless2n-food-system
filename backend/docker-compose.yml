@@ -1,55 +1,101 @@
 name: rentro-backend
+
+x-base-env: &base_env
+  POSTGRES_USER: ${POSTGRES_USER}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  POSTGRES_DB: ${POSTGRES_DB:-rentro}
+  POSTGRES_HOST: ${POSTGRES_HOST_DOCKER:-postgres}
+  POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+  REDIS_ADDR: ${REDIS_HOST_DOCKER:-redis}:${REDIS_PORT:-6379}
+  REDIS_PASSWORD: ${REDIS_PASSWORD}
+  REDIS_DB: ${REDIS_DB:-0}
+  REDIS_HOST: ${REDIS_HOST_DOCKER:-redis}
+  REDIS_PORT: ${REDIS_PORT:-6379}
+  ASYNQMON_PORT: ${ASYNQMON_PORT:-8081}
+  APP_ENV: ${APP_ENV:-local}
+  READ_TIMEOUT: ${READ_TIMEOUT:-10s}
+  WRITE_TIMEOUT: ${WRITE_TIMEOUT:-15s}
+
 services:
   postgres:
-    image: postgres:17
+    image: postgres:16-alpine
     environment:
-      POSTGRES_DB:       ${DB_NAME}
-      POSTGRES_USER:     ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    ports: ["5432:5432"]
-    volumes: [postgres_data:/var/lib/postgresql/data]
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-rentro}
+    restart: unless-stopped
+    volumes: [pg-data:/var/lib/postgresql/data]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+    networks: [backend]
+    ports: ["${POSTGRES_PORT:-5432}:5432"]
 
-  flyway:
-    image: flyway/flyway:11
-    depends_on:
-      postgres:
-        condition: service_healthy
-    command: >
-      -url=jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
-      -user=${DB_USER}
-      -password=${DB_PASSWORD}
-      -connectRetries=60
-      migrate
-    volumes:
-      - ./migrations:/flyway/sql:ro
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server","--appendonly","yes","--requirepass","${REDIS_PASSWORD}"]
     environment:
-      FLYWAY_PLACEHOLDERS_APP_ENV: ${APP_ENV:-development}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
+    restart: unless-stopped
+    volumes: [redis-data:/data]
+    healthcheck:
+      test: ["CMD-SHELL","redis-cli ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [backend]
+    ports: ["${REDIS_PORT:-6379}:6379"]
 
+  # API service - only built for production/staging, not for development
   api:
+    profiles: ["api"]
     build:
       context: .
-      target: ${APP_ENV:-development}
-      args:
-        APP_ENV: ${APP_ENV:-development}
-    env_file:
-      - .env.${APP_ENV:-development}
-    environment:
-      APP_ENV: ${APP_ENV:-development}
-    volumes:
-      - .:/app
-      - /app/tmp
-    working_dir: /app
-    ports: ["8080:8080"]
+      dockerfile: Dockerfile.api
     depends_on:
-      flyway:
-        condition: service_completed_successfully
+      postgres: {condition: service_healthy}
+      redis:    {condition: service_healthy}
+    environment: *base_env
     restart: unless-stopped
+    networks: [backend]
+    ports: ["${APP_PORT:-8080}:8080"]
+
+  asynqmon:
+    image: hibiken/asynqmon:latest
+    platform: linux/amd64
+    depends_on:
+      redis: {condition: service_healthy}
+    environment:
+      REDIS_ADDR: ${REDIS_HOST_DOCKER:-redis}:${REDIS_PORT:-6379}
+      REDIS_DB: ${REDIS_DB:-0}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL","wget -qO- http://localhost:8080 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks: [backend]
+    ports: ["${ASYNQMON_PORT:-8081}:8080"]
+
+  # Worker service - can run in all environments
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    restart: unless-stopped
+    networks: [backend]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis:    {condition: service_healthy}
+    environment: *base_env
+
+networks:
+  backend: {driver: bridge}
 
 volumes:
-  postgres_data:
+  pg-data:
+  redis-data:

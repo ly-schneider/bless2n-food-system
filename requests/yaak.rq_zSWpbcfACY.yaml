@@ -1,0 +1,30 @@
+type: http_request
+model: http_request
+id: rq_zSWpbcfACY
+createdAt: 2025-06-02T11:38:31.733515
+updatedAt: 2025-06-02T12:26:23.105407
+workspaceId: wk_wnN8iaCncF
+folderId: fl_AxXSj5YeMR
+authentication: {}
+authenticationType: basic
+body:
+  text: |-
+    {
+      "name": "Döner"
+    }
+bodyType: application/json
+description: ''
+headers:
+- enabled: true
+  name: ''
+  value: ''
+  id: ysNVeBTyHk
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: RJAITzER3i
+method: POST
+name: Create Product
+sortPriority: 0.001
+url: ${[ URL ]}/products
+urlParameters: []
