@@ -2,21 +2,32 @@ type: http_request
 model: http_request
 id: rq_MXsfHwiwFb
 createdAt: 2025-05-28T09:31:45.324145
-updatedAt: 2025-06-02T11:37:33.859412
+updatedAt: 2025-06-03T21:29:50.502873
 workspaceId: wk_wnN8iaCncF
 folderId: fl_AxXSj5YeMR
 authentication: {}
 authenticationType: basic
-body: {}
-bodyType: null
+body:
+  text: |-
+    {
+      "first_name": "Levyn",
+      "last_name": "Schneider",
+      "email": "lyschneider@icloud.com",
+      "password": "Test1234!"
+    }
+bodyType: application/json
 description: ''
 headers:
 - enabled: true
   name: ''
   value: ''
   id: ysNVeBTyHk
-method: GET
-name: Get All Products
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: aDEd3NeZja
+method: POST
+name: Register User
 sortPriority: 0.0
-url: ${[ URL ]}/products
+url: ${[ URL ]}/auth/register
 urlParameters: []

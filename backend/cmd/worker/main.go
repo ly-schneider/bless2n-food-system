@@ -41,7 +41,7 @@ func main() {
 	}
 	defer logger.Sync()
 
-	logger.L.Infow("Starting worker", "env", cfg.AppEnv)
+	logger.L.Infow("Starting worker", "env", cfg.App.AppEnv)
 
 	// 3. build Asynq server
 	srv := asynq.NewServer(

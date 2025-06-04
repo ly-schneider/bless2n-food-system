@@ -30,9 +30,15 @@ func main() {
 			func() config.Config { return cfg },
 			db.New,
 			queue.NewAsynqClient,
-			repository.NewProductRepository,
-			service.NewProductService,
-			handlers.NewProductHandler,
+			repository.NewUserRepository,
+			repository.NewRoleRepository,
+			repository.NewAuditLogRepository,
+			repository.NewRefreshTokenRepository,
+			service.NewUserService,
+			service.NewRoleService,
+			service.NewAuthService,
+			service.NewRefreshTokenService,
+			handlers.NewAuthHandler,
 			newRouter,
 		),
 		fx.Invoke(registerRoutes, registerAsynqClient),
@@ -42,10 +48,11 @@ func main() {
 
 func newRouter() *chi.Mux { return chi.NewRouter() }
 
-func registerRoutes(lc fx.Lifecycle, r *chi.Mux, cfg config.Config, ph handlers.ProductHandler) {
-	r.Mount("/products", ph.Routes())
+func registerRoutes(lc fx.Lifecycle, r *chi.Mux, cfg config.Config,
+	ah handlers.AuthHandler) {
+	r.Mount("/auth", ah.Routes())
 
-	server := &http.Server{Addr: ":" + cfg.APPPort, Handler: r}
+	server := &http.Server{Addr: ":" + cfg.App.AppPort, Handler: r}
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error { go server.ListenAndServe(); return nil },
 		OnStop:  func(ctx context.Context) error { return server.Shutdown(ctx) },

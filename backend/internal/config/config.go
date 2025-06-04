@@ -11,13 +11,18 @@ import (
 )
 
 type Config struct {
-	AppEnv       string `env:"APP_ENV"       envDefault:"local"`
-	APPPort      string `env:"APP_PORT"      envDefault:"8080"`
+	App          AppConfig
 	DB           DBConfig
 	Redis        RedisConfig
 	Logger       LoggerConfig
 	ReadTimeout  time.Duration `env:"READ_TIMEOUT"  envDefault:"10s"`
 	WriteTimeout time.Duration `env:"WRITE_TIMEOUT" envDefault:"15s"`
+}
+
+type AppConfig struct {
+	AppEnv       string `env:"APP_ENV"       envDefault:"local"`
+	AppPort      string `env:"APP_PORT"      envDefault:"8080"`
+	JWTSecretKey string `env:"JWT_SECRET_KEY" required:"true"`
 }
 
 type DBConfig struct {

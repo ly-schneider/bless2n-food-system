@@ -3,41 +3,24 @@ ifneq (,$(wildcard .env.$(APP_ENV)))
     include .env.$(APP_ENV)
 endif
 
-DB_URL = postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=disable
-
-.PHONY: help dev api worker migrate-up migrate-down migrate-create docker-up docker-down docker-build test clean install-tools
+.PHONY: help dev docker-up docker-down docker-build flyway-migrate flyway-info flyway-validate clean
 
 # Default target
 help:
 	@echo "Available commands:"
-	@echo "  dev          - Start API server with live-reload (development)"
-	@echo "  migrate-up   - Run database migrations up"
-	@echo "  migrate-down - Run database migrations down"
-	@echo "  migrate-create - Create new migration (usage: make migrate-create name=migration_name)"
-	@echo "  docker-up    - Start all services with Docker Compose"
-	@echo "  docker-down  - Stop all Docker Compose services"
-	@echo "  docker-build - Build Docker images"
-	@echo "  clean        - Clean build artifacts"
-	@echo "  install-tools - Install development tools"
+	@echo "  dev              - Start API server with live-reload (development)"
+	@echo "  docker-up        - Start all services with Docker Compose"
+	@echo "  docker-down      - Stop all Docker Compose services"
+	@echo "  docker-build     - Build Docker images"
+	@echo "  flyway-migrate   - Run Flyway migrations"
+	@echo "  flyway-info      - Get Flyway migration info"
+	@echo "  flyway-validate  - Validate Flyway migrations"
+	@echo "  clean            - Clean build artifacts"
 
 # Development with live-reload
 dev:
 	@echo "Starting API server with live-reload..."
 	./bin/air -c .air.toml
-
-# Database migrations
-migrate-up:
-	@echo "Running migrations up..."
-	migrate -path migrations -database "postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=disable" up
-
-migrate-down:
-	@echo "Running migrations down..."
-	migrate -path migrations -database "postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=disable" down
-
-migrate-create:
-	@if [ -z "$(name)" ]; then echo "Usage: make migrate-create name=migration_name"; exit 1; fi
-	@echo "Creating migration: $(name)"
-	migrate create -ext sql -dir migrations $(name)
 
 # Docker commands
 docker-up:
@@ -46,11 +29,48 @@ docker-up:
 
 docker-down:
 	@echo "Stopping Docker Compose services..."
-	docker-compose down
+	docker-compose down --volumes --remove-orphans
 
 docker-build:
 	@echo "Building Docker images..."
 	docker-compose build
+
+# Flyway commands
+flyway-migrate:
+	@echo "Running Flyway migrations..."
+	docker run --rm \
+		--network rentro-backend_backend \
+		-v $(PWD)/db/migration:/flyway/sql \
+		flyway/flyway:latest \
+		-url=jdbc:postgresql://postgres:5432/$(POSTGRES_DB) \
+		-user=$(POSTGRES_USER) \
+		-password=$(POSTGRES_PASSWORD) \
+		-locations=filesystem:/flyway/sql \
+		migrate
+
+flyway-info:
+	@echo "Getting Flyway migration info..."
+	docker run --rm \
+		--network rentro-backend_backend \
+		-v $(PWD)/db/migration:/flyway/sql \
+		flyway/flyway:latest \
+		-url=jdbc:postgresql://postgres:5432/$(POSTGRES_DB) \
+		-user=$(POSTGRES_USER) \
+		-password=$(POSTGRES_PASSWORD) \
+		-locations=filesystem:/flyway/sql \
+		info
+
+flyway-validate:
+	@echo "Validating Flyway migrations..."
+	docker run --rm \
+		--network rentro-backend_backend \
+		-v $(PWD)/db/migration:/flyway/sql \
+		flyway/flyway:latest \
+		-url=jdbc:postgresql://postgres:5432/$(POSTGRES_DB) \
+		-user=$(POSTGRES_USER) \
+		-password=$(POSTGRES_PASSWORD) \
+		-locations=filesystem:/flyway/sql \
+		validate
 
 # Clean build artifacts
 clean:

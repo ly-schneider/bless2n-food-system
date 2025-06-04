@@ -1,0 +1,27 @@
+type: http_request
+model: http_request
+id: rq_3JwJsiyv9Z
+createdAt: 2025-06-04T22:13:18.556890
+updatedAt: 2025-06-04T22:16:27.794329
+workspaceId: wk_wnN8iaCncF
+folderId: fl_AxXSj5YeMR
+authentication: {}
+authenticationType: basic
+body:
+  text: ''
+bodyType: application/json
+description: ''
+headers:
+- enabled: true
+  name: cookie
+  value: refresh_token=85a81485513656dfe664de050d0be87388072be2011890d8da3f9904e9c87448153fd782a1e270b63b8c4313fba1cb6ecc4adf7f8138396cb9ea1bf3210762ce
+  id: VcWZsekHmw
+- enabled: true
+  name: ''
+  value: ''
+  id: b2HUjs9g2m
+method: POST
+name: Refresh (Browser)
+sortPriority: 0.003
+url: ${[ URL ]}/auth/refresh
+urlParameters: []

@@ -1,0 +1,34 @@
+type: http_request
+model: http_request
+id: rq_aKDEQeS9aW
+createdAt: 2025-06-04T22:06:36.343077
+updatedAt: 2025-06-04T22:11:30.200999
+workspaceId: wk_wnN8iaCncF
+folderId: fl_AxXSj5YeMR
+authentication: {}
+authenticationType: basic
+body:
+  text: |-
+    {
+      "refresh_token": "8534389f0110d1e8f5416b12aa0310bca15889ea3557754fd69bb9d2056463086672f24921cc5a7c7058cf8cf747f460607a1e4a84b31a2a525232ccacd34233"
+    }
+bodyType: application/json
+description: ''
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: aDEd3NeZja
+- enabled: true
+  name: User-Agent
+  value: Android
+  id: rx8hvbYCTD
+- enabled: true
+  name: ''
+  value: ''
+  id: r5ApraREIM
+method: POST
+name: Refresh (Android)
+sortPriority: 0.002
+url: ${[ URL ]}/auth/refresh
+urlParameters: []

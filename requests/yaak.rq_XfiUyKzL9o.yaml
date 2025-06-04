@@ -1,0 +1,31 @@
+type: http_request
+model: http_request
+id: rq_XfiUyKzL9o
+createdAt: 2025-06-04T22:12:22.972922
+updatedAt: 2025-06-04T22:12:38.875318
+workspaceId: wk_wnN8iaCncF
+folderId: fl_AxXSj5YeMR
+authentication: {}
+authenticationType: basic
+body:
+  text: |-
+    {
+      "email": "lyschneider@icloud.com",
+      "password": "Test1234!"
+    }
+bodyType: application/json
+description: ''
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: aDEd3NeZja
+- enabled: true
+  name: ''
+  value: ''
+  id: VcdaIwgSjA
+method: POST
+name: Login (Browser)
+sortPriority: 0.002
+url: ${[ URL ]}/auth/login
+urlParameters: []
