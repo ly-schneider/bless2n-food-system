@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 )
 
 // ErrorResponse represents an error response structure
@@ -29,24 +28,28 @@ func RespondJSON(w http.ResponseWriter, statusCode int, data interface{}) {
 // RespondError writes a JSON error response with the given status code and error
 func RespondError(w http.ResponseWriter, statusCode int, err error) {
 	response := ErrorResponse{
-		Error:   err.Error(),
 		Message: http.StatusText(statusCode),
 	}
+
+	if err != nil {
+		response.Error = err.Error()
+	}
+
 	RespondJSON(w, statusCode, response)
 }
 
-// ParseUUID extracts and parses UUID from URL parameter
-func ParseUUID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
-	idStr := chi.URLParam(r, "id")
-	if idStr == "" {
+// ParseUUID extracts and parses NanoID from URL parameter
+func ParseUUID(w http.ResponseWriter, r *http.Request) (string, bool) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
 		RespondError(w, http.StatusBadRequest, nil)
-		return uuid.Nil, false
+		return "", false
 	}
 
-	id, err := uuid.Parse(idStr)
-	if err != nil {
+	// For NanoID we don't need to parse, just validate
+	if err := Validate("id", id); err != nil {
 		RespondError(w, http.StatusBadRequest, err)
-		return uuid.Nil, false
+		return "", false
 	}
 
 	return id, true

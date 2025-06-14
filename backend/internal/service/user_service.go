@@ -2,21 +2,20 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"backend/internal/domain"
 	"backend/internal/logger"
 	"backend/internal/repository"
-
-	"github.com/google/uuid"
 )
 
 type UserService interface {
 	List(ctx context.Context) ([]domain.User, error)
-	Get(ctx context.Context, id uuid.UUID) (domain.User, error)
+	Get(ctx context.Context, id string) (domain.User, error)
 	GetByEmail(ctx context.Context, email string) (domain.User, error)
 	Create(ctx context.Context, u *domain.User) error
-	Update(ctx context.Context, id uuid.UUID, in *domain.User) (domain.User, error)
-	Delete(ctx context.Context, id uuid.UUID) error
+	Update(ctx context.Context, id string, in *domain.User) (domain.User, error)
+	Delete(ctx context.Context, id string) error
 }
 
 type userService struct {
@@ -38,8 +37,15 @@ func (s *userService) List(ctx context.Context) ([]domain.User, error) {
 	return users, nil
 }
 
-func (s *userService) Get(ctx context.Context, id uuid.UUID) (domain.User, error) {
+func (s *userService) Get(ctx context.Context, id string) (domain.User, error) {
 	logger.L.Infow("Getting user", "id", id)
+
+	if id == "" {
+		err := errors.New("user ID cannot be empty")
+		logger.L.Error(err.Error())
+		return domain.User{}, err
+	}
+
 	user, err := s.repo.Get(ctx, id)
 	if err != nil {
 		logger.L.Errorw("Failed to get user", "id", id, "error", err)
@@ -51,13 +57,20 @@ func (s *userService) Get(ctx context.Context, id uuid.UUID) (domain.User, error
 
 func (s *userService) GetByEmail(ctx context.Context, email string) (domain.User, error) {
 	logger.L.Infow("Getting user by email", "email", email)
+
+	if email == "" {
+		err := errors.New("email cannot be empty")
+		logger.L.Error(err.Error())
+		return domain.User{}, err
+	}
+
 	user, err := s.repo.GetByEmail(ctx, email)
 	if err != nil {
 		logger.L.Errorw("Failed to get user by email", "email", email, "error", err)
 		return user, err
 	}
 
-	if user.ID == uuid.Nil {
+	if user.ID == "" {
 		logger.L.Infow("No user found with email", "email", email)
 	} else {
 		logger.L.Infow("Successfully retrieved user by email", "id", user.ID, "email", email)
@@ -77,8 +90,14 @@ func (s *userService) Create(ctx context.Context, u *domain.User) error {
 	return nil
 }
 
-func (s *userService) Update(ctx context.Context, id uuid.UUID, in *domain.User) (domain.User, error) {
+func (s *userService) Update(ctx context.Context, id string, in *domain.User) (domain.User, error) {
 	logger.L.Infow("Updating user", "id", id)
+
+	if id == "" {
+		err := errors.New("user ID cannot be empty")
+		logger.L.Error(err.Error())
+		return domain.User{}, err
+	}
 
 	u, err := s.repo.Get(ctx, id)
 	if err != nil {
@@ -90,7 +109,6 @@ func (s *userService) Update(ctx context.Context, id uuid.UUID, in *domain.User)
 	u.LastName = in.LastName
 	u.Email = in.Email
 	u.IsVerified = in.IsVerified
-	u.MfaEnabled = in.MfaEnabled
 	u.IsDisabled = in.IsDisabled
 	u.DisabledReason = in.DisabledReason
 	u.RoleID = in.RoleID
@@ -104,8 +122,14 @@ func (s *userService) Update(ctx context.Context, id uuid.UUID, in *domain.User)
 	return u, nil
 }
 
-func (s *userService) Delete(ctx context.Context, id uuid.UUID) error {
+func (s *userService) Delete(ctx context.Context, id string) error {
 	logger.L.Infow("Deleting user", "id", id)
+
+	if id == "" {
+		err := errors.New("user ID cannot be empty")
+		logger.L.Error(err.Error())
+		return err
+	}
 
 	if err := s.repo.Delete(ctx, id); err != nil {
 		logger.L.Errorw("Failed to delete user", "id", id, "error", err)

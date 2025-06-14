@@ -1,8 +1,10 @@
 -- Create password reset tokens table
 CREATE TABLE password_reset_tokens (
-    user_id UUID REFERENCES users (id) ON DELETE CASCADE,
-    token TEXT PRIMARY KEY,
-    expires_at TIMESTAMPTZ NOT NULL
+    id CHAR(14) COLLATE "C" PRIMARY KEY,
+    user_id CHAR(14) COLLATE "C",
+    token UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_password_reset_tokens_user_id ON password_reset_tokens (user_id);

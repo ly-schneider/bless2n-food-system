@@ -5,17 +5,16 @@ import (
 	"context"
 	"errors"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type UserRepository interface {
 	List(ctx context.Context) ([]domain.User, error)
-	Get(ctx context.Context, id uuid.UUID) (domain.User, error)
+	Get(ctx context.Context, id string) (domain.User, error)
 	GetByEmail(ctx context.Context, email string) (domain.User, error)
 	Create(ctx context.Context, u *domain.User) error
 	Update(ctx context.Context, u *domain.User) error
-	Delete(ctx context.Context, id uuid.UUID) error
+	Delete(ctx context.Context, id string) error
 }
 
 type userRepo struct{ db *gorm.DB }
@@ -29,7 +28,7 @@ func (r *userRepo) List(ctx context.Context) ([]domain.User, error) {
 	return out, r.db.WithContext(ctx).Preload("Role").Find(&out).Error
 }
 
-func (r *userRepo) Get(ctx context.Context, id uuid.UUID) (domain.User, error) {
+func (r *userRepo) Get(ctx context.Context, id string) (domain.User, error) {
 	var u domain.User
 	return u, r.db.WithContext(ctx).Preload("Role").First(&u, "id = ?", id).Error
 }
@@ -52,6 +51,6 @@ func (r *userRepo) Update(ctx context.Context, u *domain.User) error {
 	return r.db.WithContext(ctx).Save(u).Error
 }
 
-func (r *userRepo) Delete(ctx context.Context, id uuid.UUID) error {
+func (r *userRepo) Delete(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Delete(&domain.User{}, "id = ?", id).Error
 }

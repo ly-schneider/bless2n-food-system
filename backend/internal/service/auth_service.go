@@ -14,8 +14,8 @@ import (
 	"backend/internal/utils"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type AuthService interface {
@@ -64,14 +64,6 @@ func NewAuthService(u UserService, r RefreshTokenService) AuthService {
 }
 
 func (s *authService) Register(ctx context.Context, req *RegisterRequest) (*RegisterResponse, error) {
-
-	// TODO: Implement registration logic:
-	// - Hash password
-	// - Check if user exists
-	// - Create user
-	// - Send verification email
-	// - Generate tokens
-
 	logger.L.Infow("processing user registration", "email", req.Email)
 
 	// Validate request
@@ -83,11 +75,11 @@ func (s *authService) Register(ctx context.Context, req *RegisterRequest) (*Regi
 
 	// Check if user already exists
 	existingUser, err := s.userSvc.GetByEmail(ctx, req.Email)
-	if err != nil {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		logger.L.Errorw("error checking existing user", "email", req.Email, "error", err)
 		return nil, err
 	}
-	if existingUser.ID != uuid.Nil {
+	if existingUser.ID != "" {
 		err := errors.New("user already exists with this email")
 		logger.L.Errorw(err.Error(), "email", req.Email)
 		return nil, err
@@ -117,8 +109,6 @@ func (s *authService) Register(ctx context.Context, req *RegisterRequest) (*Regi
 		return nil, err
 	}
 
-	// TODO: Send verification email (not implemented here)
-
 	logger.L.Infow("User registration processed", "email", req.Email)
 
 	return &RegisterResponse{
@@ -142,8 +132,18 @@ func (s *authService) Login(ctx context.Context, req *LoginRequest, ua string) (
 		logger.L.Errorw("error fetching user", "email", req.Email, "error", err)
 		return nil, nil, err
 	}
-	if user.ID == uuid.Nil {
+	if user.ID == "" {
 		err := errors.New("user not found")
+		logger.L.Errorw(err.Error(), "email", req.Email)
+		return nil, nil, err
+	}
+
+	if user.IsDisabled {
+		var disabledReason string
+		if user.DisabledReason != nil {
+			disabledReason = *user.DisabledReason
+		}
+		err := errors.New("user account is disabled. reason: " + disabledReason)
 		logger.L.Errorw(err.Error(), "email", req.Email)
 		return nil, nil, err
 	}
@@ -221,7 +221,7 @@ func (s *authService) Refresh(ctx context.Context, rt string, ua string) (*Brows
 		logger.L.Errorw("error fetching refresh token", "refresh_token", rt, "error", err)
 		return nil, nil, err
 	}
-	if refreshToken.ID == uuid.Nil {
+	if refreshToken.ID == "" {
 		err := errors.New("refresh token not found")
 		logger.L.Errorw(err.Error(), "refresh_token", rt)
 		return nil, nil, err
@@ -234,12 +234,12 @@ func (s *authService) Refresh(ctx context.Context, rt string, ua string) (*Brows
 		return nil, nil, err
 	}
 
-	user, err := s.userSvc.Get(ctx, refreshToken.UserID)
+	user, err := s.userSvc.Get(ctx, string(refreshToken.UserID))
 	if err != nil {
 		logger.L.Errorw("error fetching user", "user_id", refreshToken.UserID, "error", err)
 		return nil, nil, err
 	}
-	if user.ID == uuid.Nil {
+	if user.ID == "" {
 		err := errors.New("user not found")
 		logger.L.Errorw(err.Error(), "user_id", refreshToken.UserID)
 		return nil, nil, err
@@ -277,7 +277,7 @@ func (s *authService) Refresh(ctx context.Context, rt string, ua string) (*Brows
 	}
 
 	// Revoke the old refresh token
-	if err := s.refreshTokenSvc.Revoke(ctx, refreshToken.ID); err != nil {
+	if err := s.refreshTokenSvc.Revoke(ctx, string(refreshToken.ID)); err != nil {
 		logger.L.Errorw("error revoking old refresh token", "refresh_token_id", refreshToken.ID, "error", err)
 		return nil, nil, errors.New("failed to revoke old refresh token")
 	}

@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_3JwJsiyv9Z
 createdAt: 2025-06-04T22:13:18.556890
-updatedAt: 2025-06-04T22:16:27.794329
+updatedAt: 2025-06-13T08:28:38.684099
 workspaceId: wk_wnN8iaCncF
 folderId: fl_AxXSj5YeMR
 authentication: {}
@@ -14,12 +14,12 @@ description: ''
 headers:
 - enabled: true
   name: cookie
-  value: refresh_token=85a81485513656dfe664de050d0be87388072be2011890d8da3f9904e9c87448153fd782a1e270b63b8c4313fba1cb6ecc4adf7f8138396cb9ea1bf3210762ce
+  value: refresh_token=d4c35fc61bc4558dc32f3ec1ad347d74cdaa678e08329fb5f75f681541e9a8eee43e40b0a55f2834923aaa80590303eeb82024f37957f67e32c036ca20743518
   id: VcWZsekHmw
 - enabled: true
   name: ''
   value: ''
-  id: b2HUjs9g2m
+  id: xXm0ctgdXY
 method: POST
 name: Refresh (Browser)
 sortPriority: 0.003

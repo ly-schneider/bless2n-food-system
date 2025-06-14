@@ -12,6 +12,7 @@ A Go-based backend service for the Rentro application, featuring REST APIs, back
 - Docker support for development and production
 - Database migrations with Flyway
 - Live-reload for development
+- NanoID14 for compact, URL-safe unique identifiers
 
 ![ory](https://www.ory.sh/docs/assets/images/1-42e65393379b7f7ddc3f9a05474f27ac.png)
 
@@ -89,6 +90,7 @@ The application uses Asynq for background job processing:
 - **PostgreSQL 16** with GORM ORM
 - **Migrations** managed with Flyway
 - **Connection pooling** and health checks
+- **NanoID14** for compact, URL-safe identifiers (14 characters)
 
 ### Running Migrations
 
@@ -118,8 +120,23 @@ Flyway manages database schema changes with versioned SQL scripts located in `db
 - Undo: `U{version}__{description}.sql` (optional)
 - Repeatable: `R__{description}.sql`
 
+## Entity Relationship Diagram
+
+The database schema is visualized in `mermaidchart-erd.txt`, showing relationships between:
+- Users and Roles
+- Events and Participants 
+- Products and Categories
+- Orders and Items
+- Devices and Pairings
+
 ## Logging
 
 - **Zap** structured logging
 - **Development**: Console-friendly output
 - **Production**: JSON format for log aggregation
+
+## ID Generation
+
+- Using **NanoID14** (14 chars) instead of UUIDs (36 chars) for more compact, URL-safe identifiers
+- IDs are auto-generated before create operations in domain models
+- Stored as `CHAR(14)` with `COLLATE "C"` for efficient indexing

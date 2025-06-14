@@ -1,7 +1,7 @@
 -- Create audit log table
 CREATE TABLE audit_log (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID,
+    id CHAR(14) COLLATE "C" PRIMARY KEY,
+    user_id CHAR(14) COLLATE "C",
     ip INET,
     event TEXT,
     created_at TIMESTAMPTZ DEFAULT now()

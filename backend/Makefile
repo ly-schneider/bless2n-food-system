@@ -3,15 +3,15 @@ ifneq (,$(wildcard .env.$(APP_ENV)))
     include .env.$(APP_ENV)
 endif
 
-.PHONY: help dev docker-up docker-down docker-build flyway-migrate flyway-info flyway-validate clean
+.PHONY: help dev podman-up podman-down podman-build flyway-migrate flyway-info flyway-validate clean
 
 # Default target
 help:
 	@echo "Available commands:"
 	@echo "  dev              - Start API server with live-reload (development)"
-	@echo "  docker-up        - Start all services with Docker Compose"
-	@echo "  docker-down      - Stop all Docker Compose services"
-	@echo "  docker-build     - Build Docker images"
+	@echo "  podman-up        - Start all services with Podman Compose"
+	@echo "  podman-down      - Stop all Podman Compose services"
+	@echo "  podman-build     - Build Podman images"
 	@echo "  flyway-migrate   - Run Flyway migrations"
 	@echo "  flyway-info      - Get Flyway migration info"
 	@echo "  flyway-validate  - Validate Flyway migrations"
@@ -23,22 +23,22 @@ dev:
 	./bin/air -c .air.toml
 
 # Docker commands
-docker-up:
-	@echo "Starting services with Docker Compose..."
-	docker-compose up -d
+podman-up:
+	@echo "Starting services with Podman Compose..."
+	podman compose up -d
 
-docker-down:
-	@echo "Stopping Docker Compose services..."
-	docker-compose down --volumes --remove-orphans
+podman-down:
+	@echo "Stopping Podman Compose services..."
+	podman compose down --volumes --remove-orphans
 
-docker-build:
-	@echo "Building Docker images..."
-	docker-compose build
+podman-build:
+	@echo "Building Podman images..."
+	podman compose build
 
 # Flyway commands
 flyway-migrate:
 	@echo "Running Flyway migrations..."
-	docker run --rm \
+	podman run --rm \
 		--network rentro-backend_backend \
 		-v $(PWD)/db/migration:/flyway/sql \
 		flyway/flyway:latest \
@@ -50,7 +50,7 @@ flyway-migrate:
 
 flyway-info:
 	@echo "Getting Flyway migration info..."
-	docker run --rm \
+	podman run --rm \
 		--network rentro-backend_backend \
 		-v $(PWD)/db/migration:/flyway/sql \
 		flyway/flyway:latest \
@@ -62,7 +62,7 @@ flyway-info:
 
 flyway-validate:
 	@echo "Validating Flyway migrations..."
-	docker run --rm \
+	podman run --rm \
 		--network rentro-backend_backend \
 		-v $(PWD)/db/migration:/flyway/sql \
 		flyway/flyway:latest \

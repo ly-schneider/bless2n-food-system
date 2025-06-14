@@ -2,21 +2,20 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"backend/internal/domain"
 	"backend/internal/logger"
 	"backend/internal/repository"
-
-	"github.com/google/uuid"
 )
 
 type RoleService interface {
 	List(ctx context.Context) ([]domain.Role, error)
-	Get(ctx context.Context, id uuid.UUID) (domain.Role, error)
+	Get(ctx context.Context, id string) (domain.Role, error)
 	GetByName(ctx context.Context, name string) (domain.Role, error)
 	Create(ctx context.Context, r *domain.Role) error
-	Update(ctx context.Context, id uuid.UUID, in *domain.Role) (domain.Role, error)
-	Delete(ctx context.Context, id uuid.UUID) error
+	Update(ctx context.Context, id string, in *domain.Role) (domain.Role, error)
+	Delete(ctx context.Context, id string) error
 }
 
 type roleService struct {
@@ -38,8 +37,15 @@ func (s *roleService) List(ctx context.Context) ([]domain.Role, error) {
 	return roles, nil
 }
 
-func (s *roleService) Get(ctx context.Context, id uuid.UUID) (domain.Role, error) {
+func (s *roleService) Get(ctx context.Context, id string) (domain.Role, error) {
 	logger.L.Infow("Getting role", "id", id)
+
+	if id == "" {
+		err := errors.New("role ID cannot be empty")
+		logger.L.Error(err.Error())
+		return domain.Role{}, err
+	}
+
 	role, err := s.repo.Get(ctx, id)
 	if err != nil {
 		logger.L.Errorw("Failed to get role", "id", id, "error", err)
@@ -51,6 +57,13 @@ func (s *roleService) Get(ctx context.Context, id uuid.UUID) (domain.Role, error
 
 func (s *roleService) GetByName(ctx context.Context, name string) (domain.Role, error) {
 	logger.L.Infow("Getting role by name", "name", name)
+
+	if name == "" {
+		err := errors.New("role name cannot be empty")
+		logger.L.Error(err.Error())
+		return domain.Role{}, err
+	}
+
 	role, err := s.repo.GetByName(ctx, name)
 	if err != nil {
 		logger.L.Errorw("Failed to get role by name", "name", name, "error", err)
@@ -63,6 +76,12 @@ func (s *roleService) GetByName(ctx context.Context, name string) (domain.Role, 
 func (s *roleService) Create(ctx context.Context, r *domain.Role) error {
 	logger.L.Infow("Creating role", "name", r.Name)
 
+	if r.Name == "" {
+		err := errors.New("role name cannot be empty")
+		logger.L.Error(err.Error())
+		return err
+	}
+
 	if err := s.repo.Create(ctx, r); err != nil {
 		logger.L.Errorw("Failed to create role", "name", r.Name, "error", err)
 		return err
@@ -72,8 +91,14 @@ func (s *roleService) Create(ctx context.Context, r *domain.Role) error {
 	return nil
 }
 
-func (s *roleService) Update(ctx context.Context, id uuid.UUID, in *domain.Role) (domain.Role, error) {
+func (s *roleService) Update(ctx context.Context, id string, in *domain.Role) (domain.Role, error) {
 	logger.L.Infow("Updating role", "id", id, "name", in.Name)
+
+	if id == "" {
+		err := errors.New("role ID cannot be empty")
+		logger.L.Error(err.Error())
+		return domain.Role{}, err
+	}
 
 	r, err := s.repo.Get(ctx, id)
 	if err != nil {
@@ -92,8 +117,14 @@ func (s *roleService) Update(ctx context.Context, id uuid.UUID, in *domain.Role)
 	return r, nil
 }
 
-func (s *roleService) Delete(ctx context.Context, id uuid.UUID) error {
+func (s *roleService) Delete(ctx context.Context, id string) error {
 	logger.L.Infow("Deleting role", "id", id)
+
+	if id == "" {
+		err := errors.New("role ID cannot be empty")
+		logger.L.Error(err.Error())
+		return err
+	}
 
 	if err := s.repo.Delete(ctx, id); err != nil {
 		logger.L.Errorw("Failed to delete role", "id", id, "error", err)
