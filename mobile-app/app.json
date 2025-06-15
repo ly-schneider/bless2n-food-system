@@ -1,147 +1,52 @@
 {
+  "name": "Rentro",
+  "displayName": "Rentro",
   "expo": {
-    "name": "TT+",
-    "description": "TT+ – Die App für Tischtennis-Vereine",
-    "slug": "tt-plus",
-    "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "ttplus",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "notification": {
-      "icon": "./assets/images/icon.png",
-      "color": "#000000",
-      "iosDisplayInForeground": true,
-      "androidMode": "default"
-    },
+    "name": "Rentro",
+    "description": "Rentro",
+    "slug": "rentro",
+    "scheme": "rentro",
     "version": "1.0.0",
-    "ios": {
-      "supportsTablet": false,
-      "usesAppleSignIn": true,
-      "infoPlist": {
-        "CFBundleDevelopmentRegion": "de",
-        "CFBundleAllowMixedLocalizations": "true"
-      },
-      "splash": {
-        "backgroundColor": "#FDFDFD"
-      },
-      "bundleIdentifier": "ch.leys.tt-plus",
-      "appleTeamId": "74VX767625",
-      "icon": "./assets/images/icon.png",
-      "config": {
-        "usesNonExemptEncryption": false
-      },
-      "googleServicesFile": "./GoogleService-Info.plist",
-      "privacyManifests": {
-        "NSPrivacyCollectedDataTypes": [
-          {
-            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeName",
-            "NSPrivacyCollectedDataTypePurposes": [
-              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
-            ],
-            "NSPrivacyCollectedDataTypeLinked": true,
-            "NSPrivacyCollectedDataTypeTracking": false
-          },
-          {
-            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeEmailAddress",
-            "NSPrivacyCollectedDataTypePurposes": [
-              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
-            ],
-            "NSPrivacyCollectedDataTypeLinked": true,
-            "NSPrivacyCollectedDataTypeTracking": false
-          },
-          {
-            "NSPrivacyCollectedDataType": "NSPrivacyCollectedDataTypeUserID",
-            "NSPrivacyCollectedDataTypePurposes": [
-              "NSPrivacyCollectedDataTypePurposeAppFunctionality"
-            ],
-            "NSPrivacyCollectedDataTypeLinked": true,
-            "NSPrivacyCollectedDataTypeTracking": false
-          }
-        ]
-      },
-      "associatedDomains": ["applinks:www.tt-plus.ch"],
-      "usesBroadcastPushNotifications": true
+    "orientation": "landscape",
+    "userInterfaceStyle": "automatic",
+    "icon": "./assets/images/app-icon-all.png",
+    "updates": {
+      "fallbackToCacheTimeout": 0
     },
+    "newArchEnabled": false,
+    "jsEngine": "hermes",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "android": {
+      "icon": "./assets/images/app-icon-android-legacy.png",
+      "package": "ch.leys.rentro",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#FDFDFD"
+        "foregroundImage": "./assets/images/app-icon-android-adaptive-foreground.png",
+        "backgroundImage": "./assets/images/app-icon-android-adaptive-background.png"
       },
-      "splash": {
-        "backgroundColor": "#FDFDFD"
-      },
-      "softwareKeyboardLayoutMode": "resize",
-      "package": "ch.leys.tt_plus",
-      "versionCode": 1,
-      "permissions": [
-        "ACCESS_NETWORK_STATE",
-        "ACCESS_NOTIFICATION_POLICY",
-        "ACCESS_WIFI_STATE",
-        "BIND_NOTIFICATION_LISTENER_SERVICE",
-        "VIBRATE"
-      ],
-      "googleServicesFile": "./google-services.json",
-      "intentFilters": [
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "https",
-              "host": "www.tt-plus.ch"
-            }
-          ],
-          "category": ["BROWSABLE", "DEFAULT"]
-        }
-      ]
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/icon.png"
-    },
-    "developmentClient": {
-      "silentLaunch": true
+      "allowBackup": false
     },
     "plugins": [
-      "expo-router",
+      "expo-localization",
+      "expo-font",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/icon.png",
-          "imageWidth": 200,
+          "image": "./assets/images/app-icon-android-adaptive-foreground.png",
+          "imageWidth": 300,
           "resizeMode": "contain",
-          "backgroundColor": "#FDFDFD"
-        }
-      ],
-      "expo-apple-authentication",
-      "expo-secure-store",
-      "@react-native-firebase/app",
-      "@react-native-firebase/crashlytics",
-      "@react-native-firebase/messaging",
-      [
-        "expo-build-properties",
-        {
-          "ios": {
-            "useFrameworks": "static"
-          }
+          "backgroundColor": "#191015"
         }
       ]
     ],
     "experiments": {
-      "typedRoutes": true
+      "tsconfigPaths": true
     },
     "extra": {
       "eas": {
-        "projectId": "c5549fe3-9917-4cb7-9e4b-c9fd750496d6"
-      },
-      "router": {
-        "linking": {
-          "prefixes": ["ttplus://"]
-        }
+        "projectId": "04cc6700-3b2e-4337-ba19-78e44a580e66"
       }
-    },
-    "owner": "leys"
+    }
   }
 }

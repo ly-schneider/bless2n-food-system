@@ -1,1 +1,1 @@
-# TT+ App
+# Rentro POS Mobile App

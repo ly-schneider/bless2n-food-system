@@ -1,41 +1,31 @@
 {
   "cli": {
-    "version": ">= 3.13.3",
-    "appVersionSource": "remote"
+    "version": ">= 3.15.1"
   },
   "build": {
-    "staging": {
+    "development": {
+      "extends": "production",
       "distribution": "internal",
-      "channel": "staging",
-      "ios": {
-        "simulator": false,
-        "buildConfiguration": "Debug"
+      "android": {
+        "gradleCommand": ":app:assembleDebug"
       }
     },
-    "production": {
-      "distribution": "store",
-      "channel": "production",
-      "autoIncrement": true,
-      "ios": {
-        "simulator": false,
-        "buildConfiguration": "Release"
-      }
-    }
+    "development:device": {
+      "extends": "development",
+      "distribution": "internal",
+      "android": { "buildType": "apk" }
+    },
+    "preview": {
+      "extends": "production",
+      "distribution": "internal",
+      "android": { "buildType": "apk" }
+    },
+    "preview:device": {
+      "extends": "preview"
+    },
+    "production": {}
   },
   "submit": {
-    "staging": {
-      "ios": {
-        "appleId": "levyn.schneider@leys.ch",
-        "ascAppId": "6742572286",
-        "appleTeamId": "74VX767625"
-      }
-    },
-    "production": {
-      "ios": {
-        "appleId": "levyn.schneider@leys.ch",
-        "ascAppId": "6742572286",
-        "appleTeamId": "74VX767625"
-      }
-    }
+    "production": {}
   }
 }
