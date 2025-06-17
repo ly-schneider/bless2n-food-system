@@ -1,7 +1,7 @@
 package http
 
 import (
-	"backend/internal/handlers"
+	"backend/internal/handler"
 	"backend/internal/http/middleware"
 	"net/http"
 
@@ -9,7 +9,7 @@ import (
 )
 
 func NewRouter(
-	auth handlers.AuthHandler,
+	auth handler.AuthHandler,
 ) http.Handler {
 	r := chi.NewRouter()
 
@@ -17,7 +17,7 @@ func NewRouter(
 	r.Use(middleware.Logging)
 	r.Use(middleware.ErrorHandler)
 
-	r.Route("/api/v1", func(v1 chi.Router) {
+	r.Route("/v1", func(v1 chi.Router) {
 		v1.Mount("/auth", auth.Routes())
 	})
 

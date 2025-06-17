@@ -1,13 +1,13 @@
 package app
 
 import (
-	"backend/internal/handlers"
+	"backend/internal/handler"
 
 	"go.uber.org/fx"
 )
 
 func NewHandlers() fx.Option {
 	return fx.Options(
-		fx.Provide(handlers.NewAuthHandler),
+		fx.Provide(handler.NewAuthHandler),
 	)
 }

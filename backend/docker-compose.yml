@@ -18,7 +18,7 @@ x-base-env: &base_env
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -36,7 +36,7 @@ services:
     ports: ["${POSTGRES_PORT:-5432}:5432"]
 
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     command: ["redis-server","--appendonly","yes","--requirepass","${REDIS_PASSWORD}"]
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}

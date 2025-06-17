@@ -2,7 +2,7 @@ package app
 
 import (
 	"backend/internal/config"
-	"backend/internal/handlers"
+	"backend/internal/handler"
 	"backend/internal/http"
 	"context"
 	h "net/http"
@@ -15,7 +15,7 @@ type HTTPParams struct {
 	fx.In
 	Router h.Handler
 	Cfg    config.AppConfig
-	Auth   handlers.AuthHandler
+	Auth   handler.AuthHandler
 }
 
 func NewRouter(p HTTPParams) h.Handler { return http.NewRouter(p.Auth) }
