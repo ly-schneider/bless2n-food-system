@@ -15,9 +15,7 @@
     },
     "newArchEnabled": false,
     "jsEngine": "hermes",
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "android": {
       "icon": "./assets/images/app-icon-android-legacy.png",
       "package": "ch.leys.rentro",
@@ -38,7 +36,21 @@
           "resizeMode": "contain",
           "backgroundColor": "#191015"
         }
-      ]
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraAndroidManifest": [
+              {
+                "tag": "application",
+                "attributes": { "android:resizeableActivity": "true" }
+              }
+            ]
+          }
+        }
+      ],
+      ["expo-screen-orientation", { "initialOrientation": "LANDSCAPE_LEFT" }]
     ],
     "experiments": {
       "tsconfigPaths": true

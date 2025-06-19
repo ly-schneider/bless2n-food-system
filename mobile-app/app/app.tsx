@@ -8,6 +8,7 @@ import { AppNavigator, useNavigationPersistence } from "./navigators"
 import * as storage from "./utils/storage"
 import { customFontsToLoad } from "./theme"
 import { KeyboardProvider } from "react-native-keyboard-controller"
+import * as ScreenOrientation from "expo-screen-orientation"
 if (__DEV__) {
   // Load Reactotron in development only.
   require("./devtools/ReactotronConfig.ts")
@@ -31,8 +32,11 @@ export function App() {
   const [isI18nInitialized, setIsI18nInitialized] = useState(false)
 
   useEffect(() => {
-    initI18n()
-      .then(() => setIsI18nInitialized(true));
+    initI18n().then(() => setIsI18nInitialized(true))
+  }, [])
+
+  useEffect(() => {
+    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE)
   }, [])
 
   if (!isNavigationStateRestored || !isI18nInitialized || (!areFontsLoaded && !fontLoadError)) {

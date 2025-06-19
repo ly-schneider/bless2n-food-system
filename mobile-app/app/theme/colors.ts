@@ -1,8 +1,8 @@
 export const colors = {
   transparent: "#FFFFFF00",
-  text: "#FBFCF8",
+  text: "#121212",
   textDim: "#B0B0B0",
-  background: "#121212",
+  background: "#FBFCF8",
   primary: "#A3B3FF",
   secondary: "#DAB2FF",
   border: "#4D4D4D",

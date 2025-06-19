@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_MXsfHwiwFb
 createdAt: 2025-05-28T09:31:45.324145
-updatedAt: 2025-06-14T22:30:37.425355
+updatedAt: 2025-06-19T21:46:53.510009
 workspaceId: wk_wnN8iaCncF
 folderId: fl_AxXSj5YeMR
 authentication: {}
@@ -12,7 +12,7 @@ body:
     {
       "first_name": "Levyn",
       "last_name": "Schneider",
-      "email": "lyschneider+2@icloud.com",
+      "email": "lyschneider@icloud.com",
       "password": "Test1234!"
     }
 bodyType: application/json
