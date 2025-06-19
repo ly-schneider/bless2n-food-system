@@ -18,7 +18,7 @@ x-base-env: &base_env
 
 services:
   postgres:
-    image: postgres:17-alpine
+    image: bitnami/postgresql:17
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -60,7 +60,10 @@ services:
     depends_on:
       postgres: {condition: service_healthy}
       redis:    {condition: service_healthy}
-    environment: *base_env
+    environment:
+      <<: *base_env
+      POSTGRES_USER:     ${APP_USER}
+      POSTGRES_PASSWORD: ${APP_USER_PASSWORD}
     restart: unless-stopped
     networks: [backend]
     ports: ["${APP_PORT:-8080}:8080"]
@@ -85,9 +88,19 @@ services:
 
   flyway:
     image: flyway/flyway:latest
-    command: -url=jdbc:postgresql://postgres:5432/${POSTGRES_DB} -user=${POSTGRES_USER} -password=${POSTGRES_PASSWORD} -locations=filesystem:/flyway/sql migrate
+    command: migrate
+    environment:
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      FLYWAY_USER: ${POSTGRES_USER}
+      FLYWAY_PASSWORD: ${POSTGRES_PASSWORD}
+      FLYWAY_LOCATIONS: filesystem:/flyway/sql
+
+      FLYWAY_PLACEHOLDERS_DB_ADMIN_USER:        ${DB_ADMIN_USER}
+      FLYWAY_PLACEHOLDERS_DB_ADMIN_PASSWORD:    ${DB_ADMIN_PASSWORD}
+      FLYWAY_PLACEHOLDERS_APP_USER:             ${APP_USER}
+      FLYWAY_PLACEHOLDERS_APP_USER_PASSWORD:    ${APP_USER_PASSWORD}
     volumes:
-      - ./db/migration:/flyway/sql
+      - ./db/migrations:/flyway/sql
     depends_on:
       postgres:
         condition: service_healthy
@@ -102,7 +115,10 @@ services:
     depends_on:
       postgres: {condition: service_healthy}
       redis:    {condition: service_healthy}
-    environment: *base_env
+    environment:
+      <<: *base_env
+      POSTGRES_USER:     ${APP_USER}
+      POSTGRES_PASSWORD: ${APP_USER_PASSWORD}
 
 networks:
   backend: {driver: bridge}

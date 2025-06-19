@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"backend/internal/errors"
+	"backend/internal/apperrors"
 	"backend/internal/http/respond"
 	"backend/internal/logger"
 	"net/http"
@@ -13,9 +13,9 @@ func ErrorHandler(next http.Handler) http.Handler {
 		// capture panic → 500
 		defer func() {
 			if rec := recover(); rec != nil {
-				logger.L.Errorw("panic", "recover", rec)
+				logger.Error("panic", "recover", rec)
 				respond.JSON(w, http.StatusInternalServerError,
-					errors.FromStatus(http.StatusInternalServerError, "internal error", nil))
+					apperrors.FromStatus(http.StatusInternalServerError, "internal error", nil))
 			}
 		}()
 

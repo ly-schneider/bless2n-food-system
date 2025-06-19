@@ -30,6 +30,11 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 // It relies on RequestID middleware (if present) for correlation.
 func Logging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Ensure logger is initialized
+		if logger.L == nil {
+			logger.InitDefault()
+		}
+
 		start := time.Now()
 		rw := &responseWriter{ResponseWriter: w}
 
@@ -37,7 +42,7 @@ func Logging(next http.Handler) http.Handler {
 
 		duration := time.Since(start)
 
-		logger.L.Infow("HTTP request",
+		logger.Info("HTTP request",
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", rw.status,

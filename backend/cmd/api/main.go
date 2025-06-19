@@ -9,15 +9,17 @@ import (
 func main() {
 	fx.New(
 		fx.Provide(
-			app.NewConfig, // viper/envconfig
-			app.NewLogger, // zap
-			app.NewDB,     // gorm
+			app.NewConfig,
+			app.ProvideAppConfig, // Add this line to provide AppConfig
+			app.NewLogger,
+			app.NewDB,
 			app.NewAsynqClient,
-			app.NewRepositories,
-			app.NewServices,
-			app.NewHandlers,
 			app.NewRouter,
 		),
-		fx.Invoke(app.StartHTTPServer), // hides graceful shutdown logic
+		// Use these fx.Option returning functions directly
+		app.NewRepositories(), // Now used as an fx.Option, not as a provider
+		app.NewServices(),
+		app.NewHandlers(),
+		fx.Invoke(app.StartHTTPServer),
 	).Run()
 }

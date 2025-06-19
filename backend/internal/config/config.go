@@ -46,10 +46,8 @@ type LoggerConfig struct {
 }
 
 func Load() Config {
-	// Load base .env file
 	files := []string{".env"}
 
-	// Load environment-specific file if it exists
 	if appEnv := os.Getenv("APP_ENV"); appEnv != "" && appEnv != "local" {
 		envFile := fmt.Sprintf(".env.%s", appEnv)
 		if _, err := os.Stat(envFile); err == nil {
@@ -57,7 +55,6 @@ func Load() Config {
 		}
 	}
 
-	// Load files (later files override earlier ones)
 	if err := godotenv.Overload(files...); err != nil {
 		log.Printf("Warning: could not load env files %v: %v", files, err)
 	}
@@ -70,13 +67,11 @@ func Load() Config {
 	return cfg
 }
 
-// GetDSN returns the database connection string
 func (d DBConfig) GetDSN() string {
 	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		d.User, d.Pass, d.Host, d.Port, d.Name)
 }
 
-// GetRedisAddr returns the Redis connection string
 func (r RedisConfig) GetRedisAddr() string {
 	return r.Host + ":" + r.Port
 }

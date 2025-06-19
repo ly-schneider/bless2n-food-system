@@ -1,57 +1,62 @@
 erDiagram
-    role {
-        integer id PK
+    roles {
+        integer id PK "not null"
         text name UK "not null"
+        text display_name "not null"
+        text description
+        boolean is_default "default false not null"
+        boolean is_active  "default true not null"
+        timestamptz created_at "default now() not null"
     }
 
-    user {
-        varchar(14) id PK "not null"
+    users {
+        nano_id id PK "not null"
         text first_name "not null"
         text last_name  "not null"
         text email      UK "not null"
-        bytea(30) password_hash "not null --bcrypt"
-        boolean  is_verified "default false not null"
-        boolean  is_disabled "default false not null"
-        text  disabled_reason
+        bcrypt_hash password_hash "not null --bcrypt"
+        boolean is_verified  "default false not null"
+        boolean is_disabled  "default false not null"
+        text disabled_reason
         integer role_id FK "not null"
         timestamptz created_at "default now() not null"
         timestamptz updated_at
     }
 
-    verification_token {
-        varchar(14) user_id FK   "not null"
-        bytea(32)  token_hash      "not null --SHA-256"
+    verification_tokens {
+        nano_id user_id FK   "not null"
+        sha256_hash token_hash "not null --SHA-256"
         timestamptz expires_at "not null"
     }
 
-    password_reset_token {
-        varchar(14) user_id FK   "not null"
-        bytea(32)  token_hash      "not null --SHA-256"
+    password_reset_tokens {
+        nano_id user_id FK   "not null"
+        sha256_hash token_hash "not null --SHA-256"
         timestamptz expires_at "not null"
     }
 
-    refresh_token {
-        varchar(14) user_id FK   "not null"
-        bytea(32)  token_hash      "not null --SHA-256"
+    refresh_tokens {
+        nano_id user_id FK   "not null"
+        sha256_hash token_hash "not null --SHA-256"
         timestamptz issued_at  "default now() not null"
         timestamptz expires_at "not null"
         boolean is_revoked "default false not null"
     }
 
-    audit_log {
-        varchar(14) id PK "not null"
-        varchar(14) user_id FK "not null"
-        inet ip        "not null"
-        text event     "not null"
+    audit_logs {
+        integer id PK "not null"
+        nano_id user_id FK "not null"
+        inet public_ip      "not null"
+        text event   "not null"
         timestamptz created_at "default now() not null"
     }
 
-    event {
-        varchar(14) id PK "not null"
-        varchar(14) owner_id FK  "not null"
-        text name         "not null"
+    events {
+        nano_id id PK "not null"
+        nano_id owner_id FK  "not null"
+        text name           "not null"
         integer checkout_spots "not null check (checkout_spots >= 0)"
-        text location     "not null"
+        text location       "not null"
         boolean is_self_checkout "default false not null"
         date start_date
         date end_date
@@ -59,7 +64,7 @@ erDiagram
         timestamptz updated_at
     }
 
-    event_role {
+    event_roles {
         integer id PK "not null"
         text name         "not null"
         text display_name "not null"
@@ -69,24 +74,24 @@ erDiagram
         timestamptz created_at "default now() not null"
     }
 
-    event_user {
-        varchar(14) event_id FK "not null"
-        varchar(14) user_id  FK "not null"
-        varchar(14) event_role_id  FK "not null"
+    event_users {
+        nano_id event_id FK "not null"
+        nano_id user_id  FK "not null"
+        integer event_role_id FK "not null"
         timestamptz invited_at "default now() not null"
         timestamptz joined_at
     }
 
-    event_invite {
-        varchar(14) id PK "not null"
-        varchar(14) event_id FK "not null"
-        varchar(14) event_role_id  FK "not null"
+    event_invites {
+        nano_id id PK "not null"
+        nano_id event_id FK "not null"
+        integer event_role_id FK "not null"
         text invitee_email "not null"
         timestamptz expires_at "not null"
     }
 
-    device {
-        varchar(14) id PK "not null"
+    devices {
+        nano_id id PK "not null"
         text serial_number UK "not null"
         text model "not null"
         boolean is_active "default true not null"
@@ -94,23 +99,24 @@ erDiagram
         timestamptz updated_at
     }
 
-    event_device {
-        integer id PK "not null"
-        varchar(14) event_id FK  "not null"
-        varchar(14) device_id FK "not null"
+    event_devices {
+        nano_id id PK "not null"
+        nano_id event_id FK  "not null"
+        nano_id device_id FK "not null"
         timestamptz assigned_at "default now() not null"
     }
 
-    device_pairing {
-        integer event_device_id FK  "not null"
-        text role "not null check (role in ('customer','cashier'))"
+    device_pairings {
+        nano_id id PK "not null"
+        nano_id event_device_id FK  "not null"
+        device_pairing_role_enum role "not null"
         timestamptz created_at "default now() not null"
         timestamptz updated_at
     }
 
-    event_category {
-        varchar(14) id PK "not null"
-        varchar(14) event_id FK "not null"
+    event_categories {
+        nano_id id PK "not null"
+        nano_id event_id FK "not null"
         varchar(20) name  "not null"
         text emoji "not null"
         boolean is_active "default true not null"
@@ -118,10 +124,10 @@ erDiagram
         timestamptz updated_at
     }
 
-    event_product {
-        varchar(14) id PK "not null"
-        varchar(14) event_id FK    "not null"
-        varchar(14) event_category_id FK "not null"
+    event_products {
+        nano_id id PK "not null"
+        nano_id event_id FK    "not null"
+        nano_id event_category_id FK "not null"
         varchar(30) name   "not null"
         text emoji  "not null"
         numeric price "not null check (price > 0) -- numeric(6,2)"
@@ -130,40 +136,41 @@ erDiagram
         timestamptz updated_at
     }
 
-    customer_order {
-        varchar(14) id PK "not null"
-        varchar(14) event_id  FK "not null"
-        varchar(14) device_id FK "not null"
+    customer_orders {
+        nano_id id PK "not null"
+        nano_id event_id  FK "not null"
+        nano_id event_device_id FK "not null"
         numeric total "not null check (total >= 0) -- numeric(6,2)"
         order_status status "not null"
-        timestamptz ordered_at "default now() not null"
+        timestamptz created_at "default now() not null"
+        timestamptz updated_at
     }
 
-    customer_order_item {
-        varchar(14) customer_order_id   FK "not null"
-        varchar(14) event_product_id FK "not null"
+    customer_order_items {
+        nano_id customer_order_id   FK "not null"
+        nano_id event_product_id FK "not null"
         integer quantity "not null check (quantity > 0)"
         numeric price_per_unit "not null check (price_per_unit > 0) -- numeric(6,2)"
     }
 
     %% relationships
-    role                  ||--o{ user                 : has
-    user                  ||--o{ verification_token   : issues
-    user                  ||--o{ password_reset_token : issues
-    user                  ||--o{ refresh_token        : issues
-    user                  ||--o{ audit_log            : generates
-    user                  ||--o{ event                : owns
-    event                 ||--o{ event_user           : contains
-    user                  ||--o{ event_user           : participates_in
-    event_role            ||--o{ event_user           : assigns
-    event                 ||--o{ event_invite         : sends
-    event_role            ||--o{ event_invite         : for_role
-    device                ||--o{ event_device         : is_assigned_in
-    event                 ||--o{ event_device         : uses
-    event_device          ||--o{ device_pairing       : pairs
-    event                 ||--o{ event_category       : categorizes
-    event_category        ||--o{ event_product        : includes
-    event_product         ||--o{ customer_order_item  : ordered_in
-    customer_order        ||--o{ customer_order_item  : contains
-    event                 ||--o{ customer_order       : receives
-    device                ||--o{ customer_order       : processes
+    roles               ||--o{ users                 : has
+    users               ||--o{ verification_tokens   : issues
+    users               ||--o{ password_reset_tokens : issues
+    users               ||--o{ refresh_tokens        : issues
+    users               ||--o{ audit_logs            : generates
+    users               ||--o{ events                : owns
+    events              ||--o{ event_users           : contains
+    users               ||--o{ event_users           : participates_in
+    event_roles         ||--o{ event_users           : assigns
+    events              ||--o{ event_invites         : sends
+    event_roles         ||--o{ event_invites         : for_role
+    devices             ||--o{ event_devices         : is_assigned_in
+    events              ||--o{ event_devices         : uses
+    event_devices       ||--o{ device_pairings       : pairs
+    events              ||--o{ event_categories      : categorizes
+    event_categories    ||--o{ event_products        : includes
+    event_products      ||--o{ customer_order_items  : ordered_in
+    customer_orders     ||--o{ customer_order_items  : contains
+    events              ||--o{ customer_orders       : receives
+    event_devices       ||--o{ customer_orders       : processes

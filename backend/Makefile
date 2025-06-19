@@ -3,15 +3,15 @@ ifneq (,$(wildcard .env.$(APP_ENV)))
     include .env.$(APP_ENV)
 endif
 
-.PHONY: help dev podman-up podman-down podman-build flyway-migrate flyway-info flyway-validate clean
+.PHONY: help dev docker-up docker-down docker-build flyway-migrate flyway-info flyway-validate clean
 
 # Default target
 help:
 	@echo "Available commands:"
 	@echo "  dev              - Start API server with live-reload (development)"
-	@echo "  podman-up        - Start all services with Podman Compose"
-	@echo "  podman-down      - Stop all Podman Compose services"
-	@echo "  podman-build     - Build Podman images"
+	@echo "  docker-up        - Start all services with Docker Compose"
+	@echo "  docker-down      - Stop all Docker Compose services"
+	@echo "  docker-build     - Build Docker images"
 	@echo "  flyway-migrate   - Run Flyway migrations"
 	@echo "  flyway-info      - Get Flyway migration info"
 	@echo "  flyway-validate  - Validate Flyway migrations"
@@ -23,24 +23,24 @@ dev:
 	./bin/air -c .air.toml
 
 # Docker commands
-podman-up:
-	@echo "Starting services with Podman Compose..."
-	podman compose up -d
+docker-up:
+	@echo "Starting services with docker Compose..."
+	docker compose up -d
 
-podman-down:
-	@echo "Stopping Podman Compose services..."
-	podman compose down --volumes --remove-orphans
+docker-down:
+	@echo "Stopping docker Compose services..."
+	docker compose down --volumes --remove-orphans
 
-podman-build:
-	@echo "Building Podman images..."
-	podman compose build
+docker-build:
+	@echo "Building docker images..."
+	docker compose build
 
 # Flyway commands
 flyway-migrate:
 	@echo "Running Flyway migrations..."
-	podman run --rm \
+	docker run --rm \
 		--network rentro-backend_backend \
-		-v $(PWD)/db/migration:/flyway/sql \
+		-v $(PWD)/db/migrations:/flyway/sql \
 		flyway/flyway:latest \
 		-url=jdbc:postgresql://postgres:5432/$(POSTGRES_DB) \
 		-user=$(POSTGRES_USER) \
@@ -50,9 +50,9 @@ flyway-migrate:
 
 flyway-info:
 	@echo "Getting Flyway migration info..."
-	podman run --rm \
+	docker run --rm \
 		--network rentro-backend_backend \
-		-v $(PWD)/db/migration:/flyway/sql \
+		-v $(PWD)/db/migrations:/flyway/sql \
 		flyway/flyway:latest \
 		-url=jdbc:postgresql://postgres:5432/$(POSTGRES_DB) \
 		-user=$(POSTGRES_USER) \
@@ -62,9 +62,9 @@ flyway-info:
 
 flyway-validate:
 	@echo "Validating Flyway migrations..."
-	podman run --rm \
+	docker run --rm \
 		--network rentro-backend_backend \
-		-v $(PWD)/db/migration:/flyway/sql \
+		-v $(PWD)/db/migrations:/flyway/sql \
 		flyway/flyway:latest \
 		-url=jdbc:postgresql://postgres:5432/$(POSTGRES_DB) \
 		-user=$(POSTGRES_USER) \

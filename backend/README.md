@@ -109,7 +109,7 @@ make flyway-validate
 
 ## Migrations
 
-Flyway manages database schema changes with versioned SQL scripts located in `db/migration/`:
+Flyway manages database schema changes with versioned SQL scripts located in `db/migrations/`:
 
 - `V001__create_uuid_extension.sql`
 - `V002__create_roles.sql`

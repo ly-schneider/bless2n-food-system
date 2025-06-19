@@ -60,8 +60,41 @@ func InitDefault() error {
 }
 
 // Sync flushes any buffered log entries
-func Sync() {
+func Sync() error {
 	if L != nil {
-		L.Sync()
+		return L.Sync()
+	}
+	return nil
+}
+
+// Safe logging functions that handle nil logger
+
+func Info(msg string, keysAndValues ...interface{}) {
+	if L != nil {
+		L.Infow(msg, keysAndValues...)
+	}
+}
+
+func Warn(msg string, keysAndValues ...interface{}) {
+	if L != nil {
+		L.Warnw(msg, keysAndValues...)
+	}
+}
+
+func Error(msg string, keysAndValues ...interface{}) {
+	if L != nil {
+		L.Errorw(msg, keysAndValues...)
+	}
+}
+
+func Debug(msg string, keysAndValues ...interface{}) {
+	if L != nil {
+		L.Debugw(msg, keysAndValues...)
+	}
+}
+
+func Fatal(msg string, keysAndValues ...interface{}) {
+	if L != nil {
+		L.Fatalw(msg, keysAndValues...)
 	}
 }
