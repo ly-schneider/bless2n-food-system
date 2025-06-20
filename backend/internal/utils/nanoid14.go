@@ -8,7 +8,7 @@ import (
 	nanoid "github.com/matoous/go-nanoid/v2"
 )
 
-// Fixed nanoid parameters used in the Rails application.
+// Fixed nanoid parameters
 const (
 	alphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
 	length   = 14

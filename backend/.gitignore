@@ -295,4 +295,7 @@ $RECYCLE.BIN/
 .env.*
 !.env.example
 
+# tmp directory
+tmp/
+
 # End of https://www.toptal.com/developers/gitignore/api/go,goland,jetbrains,visualstudiocode,windows,macos

@@ -10,5 +10,6 @@ func NewRepositories() fx.Option {
 	return fx.Options(
 		fx.Provide(repository.NewUserRepository),
 		fx.Provide(repository.NewRefreshTokenRepository),
+		fx.Provide(repository.NewAuditLogRepository),
 	)
 }

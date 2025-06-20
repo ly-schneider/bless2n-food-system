@@ -10,6 +10,8 @@ var (
 
 	// Refresh‑token‑related
 	ErrRefreshTokenNotFound = errors.New("refresh token not found")
+	ErrRefreshTokenRevoked  = errors.New("refresh token is revoked")
+	ErrRefreshTokenExpired  = errors.New("refresh token has expired")
 
 	// Generic helpers
 	ErrParseBody                = errors.New("unable to parse request body")

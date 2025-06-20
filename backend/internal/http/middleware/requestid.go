@@ -11,9 +11,6 @@ type ctxKey struct{ name string }
 
 var requestIDKey = &ctxKey{"request-id"}
 
-// RequestID attaches / propagates a request-scoped ID using the standard
-// `X-Request-ID` header.  Down-stream handlers can retrieve the value with
-// `RequestIDFromContext`.
 func RequestID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.Header.Get("X-Request-ID")

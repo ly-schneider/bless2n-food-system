@@ -8,11 +8,9 @@ import (
 )
 
 var (
-	// Global logger instance
 	L *zap.SugaredLogger
 )
 
-// Init initializes the global logger
 func Init(cfg config.LoggerConfig) error {
 	var config zap.Config
 
@@ -26,7 +24,6 @@ func Init(cfg config.LoggerConfig) error {
 		config.Encoding = "json"
 	}
 
-	// Parse log level
 	level, err := zapcore.ParseLevel(cfg.Level)
 	if err != nil {
 		return err
@@ -68,7 +65,6 @@ func Sync() error {
 }
 
 // Safe logging functions that handle nil logger
-
 func Info(msg string, keysAndValues ...interface{}) {
 	if L != nil {
 		L.Infow(msg, keysAndValues...)

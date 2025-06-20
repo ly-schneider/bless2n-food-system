@@ -4,7 +4,6 @@ import (
 	"net/http"
 )
 
-// APIError is the single source of truth for problems returned to the client.
 type APIError struct {
 	Status  int    `json:"-"`
 	Code    string `json:"code"`    // machine readable
@@ -13,8 +12,6 @@ type APIError struct {
 }
 
 func (e *APIError) Error() string { return e.Message }
-
-// Helpers -------------------------------------------------------------------
 
 // Convenience constructors keep handlers readable.
 func BadRequest(code, msg string, err error) *APIError {

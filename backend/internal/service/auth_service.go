@@ -2,19 +2,30 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"net/http"
+	"time"
 
 	"backend/internal/apperrors"
+	"backend/internal/config"
 	"backend/internal/domain"
+	"backend/internal/http/middleware"
 	"backend/internal/logger"
 	"backend/internal/repository"
+	"backend/internal/utils"
 
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthService interface {
 	Register(ctx context.Context, req *RegisterRequest) (*RegisterResponse, *apperrors.APIError)
+	Login(ctx context.Context, req *LoginRequest) (*BrowserLoginResp, *MobileLoginResp, *apperrors.APIError)
+	Refresh(ctx context.Context, refreshToken string) (*BrowserLoginResp, *MobileLoginResp, *apperrors.APIError)
+	Logout(ctx context.Context, refreshToken string) *apperrors.APIError
 }
 
 type RegisterRequest struct {
@@ -48,11 +59,13 @@ type MobileLoginResp struct {
 }
 
 type authService struct {
-	userRepo repository.UserRepository
+	userRepo         repository.UserRepository
+	auditLogRepo     repository.AuditLogRepository
+	refreshTokenRepo repository.RefreshTokenRepository
 }
 
-func NewAuthService(ur repository.UserRepository) AuthService {
-	return &authService{userRepo: ur}
+func NewAuthService(ur repository.UserRepository, alr repository.AuditLogRepository, rtr repository.RefreshTokenRepository) AuthService {
+	return &authService{userRepo: ur, auditLogRepo: alr, refreshTokenRepo: rtr}
 }
 
 var (
@@ -82,7 +95,6 @@ func (s *authService) Register(ctx context.Context, req *RegisterRequest) (*Regi
 		RoleID:    domain.Roles["user"].ID,
 	}
 
-	// Hash the password using bcrypt
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		logger.L.Errorw("error hashing password", "email", req.Email, "error", err)
@@ -90,10 +102,20 @@ func (s *authService) Register(ctx context.Context, req *RegisterRequest) (*Regi
 	}
 	user.PasswordHash = string(passwordHash)
 
-	// Create the user
 	if err := s.userRepo.Create(ctx, &user); err != nil {
 		logger.L.Errorw("error creating user", "email", req.Email, "error", err)
 		return nil, apperrors.FromStatus(http.StatusInternalServerError, "there was an internal error", errCreateUserFailed)
+	}
+
+	auditLog := domain.AuditLog{
+		UserID:   user.ID,
+		PublicIP: middleware.ExtractIPFromContext(ctx),
+		Event:    domain.EventUserCreated,
+	}
+
+	if err := s.auditLogRepo.Create(ctx, &auditLog); err != nil {
+		logger.L.Errorw("error creating audit log for user registration", "user_id", user.ID, "email", req.Email, "error", err)
+		return nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to log user registration", err)
 	}
 
 	logger.L.Infow("User registration processed", "email", req.Email)
@@ -102,4 +124,228 @@ func (s *authService) Register(ctx context.Context, req *RegisterRequest) (*Regi
 		User:    user,
 		Message: "Registration successful. Please verify your email.",
 	}, nil
+}
+
+func (s *authService) Login(ctx context.Context, req *LoginRequest) (*BrowserLoginResp, *MobileLoginResp, *apperrors.APIError) {
+	if req.Email == "" || req.Password == "" {
+		logger.L.Error("missing required fields in login request", "request", req)
+		return nil, nil, apperrors.BadRequest("invalid_body", "missing required fields", domain.ErrInvalidBodyMissingFields)
+	}
+
+	user, err := s.userRepo.GetByEmail(ctx, req.Email)
+	if err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			return nil, nil, apperrors.Unauthorized("email or password is incorrect")
+		}
+		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to retrieve user", err)
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+		return nil, nil, apperrors.Unauthorized("email or password is incorrect")
+	}
+
+	// Issue access-token (15min) + refresh-token (30d)
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub":  user.ID,
+		"role": user.Role.Name,
+		"iat":  time.Now().Unix(),
+		"exp":  time.Now().Add(15 * time.Minute).Unix(),
+	})
+
+	accessTokenString, err := accessToken.SignedString([]byte(config.Load().App.JWTSecretKey))
+	if err != nil {
+		logger.L.Errorw("error signing access token", "email", req.Email, "error", err)
+		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to sign access token", err)
+	}
+
+	// Generate refresh token and store the hash
+	plainRefreshToken := randomString(64)
+	hash := sha256.Sum256([]byte(plainRefreshToken))
+
+	refreshToken := &domain.RefreshToken{
+		UserID:    user.ID,
+		TokenHash: hex.EncodeToString(hash[:]),
+		IssuedAt:  time.Now(),
+		ExpiresAt: time.Now().Add(30 * 24 * time.Hour),
+	}
+	if err := s.refreshTokenRepo.Create(ctx, refreshToken); err != nil {
+		logger.L.Errorw("error creating refresh token", "email", req.Email, "error", err)
+		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to create refresh token", err)
+	}
+
+	logger.L.Infow("User logged in successfully", "email", req.Email, "user_id", user.ID)
+
+	auditLog := domain.AuditLog{
+		UserID:   user.ID,
+		PublicIP: middleware.ExtractIPFromContext(ctx),
+		Event:    domain.EventUserLoggedIn,
+	}
+	if err := s.auditLogRepo.Create(ctx, &auditLog); err != nil {
+		logger.L.Errorw("error creating audit log for user login", "user_id", user.ID, "email", req.Email, "error", err)
+		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to log user login", err)
+	}
+
+	// Extract user agent and check if it's mobile
+	userAgent := middleware.ExtractUAFromContext(ctx)
+	isMobile := false
+	if userAgent != nil {
+		isMobile = utils.IsMobile(userAgent)
+	}
+
+	if isMobile {
+		return nil, &MobileLoginResp{
+			AccessToken:  accessTokenString,
+			RefreshToken: plainRefreshToken,
+			ExpiresIn:    30 * 24 * 60 * 60,
+		}, nil
+	}
+
+	return &BrowserLoginResp{
+		AccessToken:  accessTokenString,
+		RefreshToken: plainRefreshToken,
+		TokenType:    "Bearer",
+		ExpiresIn:    15 * 60,
+	}, nil, nil
+}
+
+// Refresh generates a new access token and refresh token using the provided refresh token. Revokes the old refresh token.
+func (s *authService) Refresh(ctx context.Context, refreshToken string) (*BrowserLoginResp, *MobileLoginResp, *apperrors.APIError) {
+	if refreshToken == "" {
+		logger.L.Error("missing refresh token in request")
+		return nil, nil, apperrors.BadRequest("invalid_body", "missing refresh token", domain.ErrInvalidBodyMissingFields)
+	}
+
+	refreshTokenHash := sha256.Sum256([]byte(refreshToken))
+
+	rt, err := s.refreshTokenRepo.GetByHash(ctx, hex.EncodeToString(refreshTokenHash[:]))
+	if err != nil {
+		if errors.Is(err, domain.ErrRefreshTokenNotFound) {
+			return nil, nil, apperrors.Unauthorized("invalid refresh token")
+		} else if errors.Is(err, domain.ErrRefreshTokenRevoked) {
+			return nil, nil, apperrors.Unauthorized("refresh token has been revoked")
+		} else if errors.Is(err, domain.ErrRefreshTokenExpired) {
+			return nil, nil, apperrors.Unauthorized("refresh token has expired")
+		}
+		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to retrieve refresh token", err)
+	}
+
+	user, err := s.userRepo.GetByID(ctx, rt.UserID)
+	if err != nil {
+		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to retrieve user", err)
+	}
+
+	newAccessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub":  user.ID,
+		"role": user.Role.Name,
+		"iat":  time.Now().Unix(),
+		"exp":  time.Now().Add(15 * time.Minute).Unix(),
+	})
+
+	newAccessTokenString, err := newAccessToken.SignedString([]byte(config.Load().App.JWTSecretKey))
+	if err != nil {
+		logger.L.Errorw("error signing new access token", "user_id", user.ID, "error", err)
+		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to sign new access token", err)
+	}
+
+	newPlainRefreshToken := randomString(64)
+	newHash := sha256.Sum256([]byte(newPlainRefreshToken))
+
+	newRefreshToken := &domain.RefreshToken{
+		UserID:    user.ID,
+		TokenHash: hex.EncodeToString(newHash[:]),
+		IssuedAt:  time.Now(),
+		ExpiresAt: time.Now().Add(30 * 24 * time.Hour),
+	}
+	if err := s.refreshTokenRepo.Create(ctx, newRefreshToken); err != nil {
+		logger.L.Errorw("error creating new refresh token", "user_id", user.ID, "error", err)
+		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to create new refresh token", err)
+	}
+
+	err = s.refreshTokenRepo.RevokeByHash(ctx, rt.TokenHash)
+	if err != nil {
+		logger.L.Errorw("error revoking old refresh token", "user_id", user.ID, "error", err)
+		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to revoke old refresh token", err)
+	}
+
+	logger.L.Infow("User refreshed tokens successfully", "user_id", user.ID)
+
+	auditLog := domain.AuditLog{
+		UserID:   user.ID,
+		PublicIP: middleware.ExtractIPFromContext(ctx),
+		Event:    domain.EventUserRefreshedToken,
+	}
+	if err := s.auditLogRepo.Create(ctx, &auditLog); err != nil {
+		logger.L.Errorw("error creating audit log for token refresh", "user_id", user.ID, "error", err)
+		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to log token refresh", err)
+	}
+
+	isMobile := false
+	userAgent := middleware.ExtractUAFromContext(ctx)
+	if userAgent != nil {
+		isMobile = utils.IsMobile(userAgent)
+	}
+
+	if isMobile {
+		return nil, &MobileLoginResp{
+			AccessToken:  newAccessTokenString,
+			RefreshToken: newPlainRefreshToken,
+			ExpiresIn:    30 * 24 * 60 * 60,
+		}, nil
+	}
+	return &BrowserLoginResp{
+		AccessToken:  newAccessTokenString,
+		RefreshToken: newPlainRefreshToken,
+		TokenType:    "Bearer",
+		ExpiresIn:    15 * 60,
+	}, nil, nil
+}
+
+// Logout revokes the refresh token
+func (s *authService) Logout(ctx context.Context, refreshToken string) *apperrors.APIError {
+	if refreshToken == "" {
+		logger.L.Error("missing refresh token in logout request")
+		return apperrors.BadRequest("invalid_body", "missing refresh token", domain.ErrInvalidBodyMissingFields)
+	}
+
+	refreshTokenHash := sha256.Sum256([]byte(refreshToken))
+
+	rt, err := s.refreshTokenRepo.GetByHash(ctx, hex.EncodeToString(refreshTokenHash[:]))
+	if err != nil {
+		if errors.Is(err, domain.ErrRefreshTokenNotFound) {
+			return apperrors.Unauthorized("invalid refresh token")
+		} else if errors.Is(err, domain.ErrRefreshTokenRevoked) {
+			return apperrors.Unauthorized("refresh token has been revoked")
+		} else if errors.Is(err, domain.ErrRefreshTokenExpired) {
+			return apperrors.Unauthorized("refresh token has expired")
+		}
+		return apperrors.FromStatus(http.StatusInternalServerError, "failed to retrieve refresh token", err)
+	}
+
+	err = s.refreshTokenRepo.RevokeByHash(ctx, hex.EncodeToString(refreshTokenHash[:]))
+	if err != nil {
+		if errors.Is(err, domain.ErrRefreshTokenNotFound) {
+			return apperrors.Unauthorized("invalid refresh token")
+		}
+		return apperrors.FromStatus(http.StatusInternalServerError, "failed to revoke refresh token", err)
+	}
+
+	logger.L.Infow("User logged out successfully", "refresh_token_hash", hex.EncodeToString(refreshTokenHash[:]))
+
+	auditLog := domain.AuditLog{
+		UserID:   rt.UserID,
+		PublicIP: middleware.ExtractIPFromContext(ctx),
+		Event:    domain.EventUserLoggedOut,
+	}
+	if err := s.auditLogRepo.Create(ctx, &auditLog); err != nil {
+		logger.L.Errorw("error creating audit log for user logout", "error", err)
+		return apperrors.FromStatus(http.StatusInternalServerError, "failed to log user logout", err)
+	}
+
+	return nil
+}
+
+func randomString(n int) string {
+	b := make([]byte, n)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
 }

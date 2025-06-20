@@ -26,8 +26,6 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 	return n, err
 }
 
-// Logging adds a structured, per-request log entry using zap.
-// It relies on RequestID middleware (if present) for correlation.
 func Logging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Ensure logger is initialized

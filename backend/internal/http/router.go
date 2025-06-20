@@ -18,6 +18,8 @@ func NewRouter(
 	r.Use(middleware.ErrorHandler)
 	r.Use(middleware.JWT)
 	r.Use(middleware.CORS)
+	r.Use(middleware.PublicIP)
+	r.Use(middleware.UserAgent)
 
 	r.Route("/v1", func(v1 chi.Router) {
 		v1.Mount("/auth", auth.Routes())

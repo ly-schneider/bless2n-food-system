@@ -15,7 +15,6 @@ type loggerOut struct {
 }
 
 func NewLogger(cfg config.Config, lc fx.Lifecycle) (loggerOut, error) {
-	// Initialize logger immediately to avoid nil logger issues
 	if err := logger.Init(cfg.Logger); err != nil {
 		return loggerOut{}, err
 	}

@@ -6,7 +6,7 @@ import (
 	"errors"
 )
 
-// NanoID14 is a 14-character public ID stored as CHAR(14) in PostgreSQL.
+// NanoID14 is a 14-character public ID stored as VARCHAR(14) in PostgreSQL.
 type NanoID14 string
 
 /* ---------- driver.Valuer ---------- */

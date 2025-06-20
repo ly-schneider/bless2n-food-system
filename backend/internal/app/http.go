@@ -15,7 +15,6 @@ type HTTPParams struct {
 	fx.In
 	Cfg  config.AppConfig
 	Auth handler.AuthHandler
-	// Add any other handlers here when needed
 }
 
 func NewRouter(p HTTPParams) h.Handler {
