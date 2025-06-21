@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_Q2YB4bWp9H
 createdAt: 2025-06-03T21:29:56.317797
-updatedAt: 2025-06-04T22:06:59.454942
+updatedAt: 2025-06-20T15:23:52.061697
 workspaceId: wk_wnN8iaCncF
 folderId: fl_AxXSj5YeMR
 authentication: {}
@@ -31,5 +31,5 @@ headers:
 method: POST
 name: Login (Android)
 sortPriority: 0.001
-url: ${[ URL ]}/auth/login
+url: ${[ API_URL ]}/auth/login
 urlParameters: []

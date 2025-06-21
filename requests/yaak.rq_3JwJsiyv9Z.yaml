@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_3JwJsiyv9Z
 createdAt: 2025-06-04T22:13:18.556890
-updatedAt: 2025-06-13T08:28:38.684099
+updatedAt: 2025-06-20T15:24:08.107363
 workspaceId: wk_wnN8iaCncF
 folderId: fl_AxXSj5YeMR
 authentication: {}
@@ -14,14 +14,14 @@ description: ''
 headers:
 - enabled: true
   name: cookie
-  value: refresh_token=d4c35fc61bc4558dc32f3ec1ad347d74cdaa678e08329fb5f75f681541e9a8eee43e40b0a55f2834923aaa80590303eeb82024f37957f67e32c036ca20743518
+  value: refresh_token=15fa0a3efd695a72ac3a82827e35bfc149ec5ece4450ab9bf4fe4c4ce0dec166bf3411cc53eba16b369ac545ed60c2dadaa8397f5b33f0493f3243c5f1a76594; Path=/v1/auth/refresh; Domain=rentro.ch; Expires=Sun, 20 Jul 2025 14:58:28 GMT; HttpOnly; Secure; SameSite=Lax
   id: VcWZsekHmw
 - enabled: true
   name: ''
   value: ''
-  id: xXm0ctgdXY
+  id: jY4czxKRwM
 method: POST
 name: Refresh (Browser)
 sortPriority: 0.003
-url: ${[ URL ]}/auth/refresh
+url: ${[ API_URL ]}/auth/refresh
 urlParameters: []

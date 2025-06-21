@@ -1,0 +1,27 @@
+type: http_request
+model: http_request
+id: rq_3wsAvm53Gw
+createdAt: 2025-06-20T15:08:45.283980
+updatedAt: 2025-06-20T15:24:17.878299
+workspaceId: wk_wnN8iaCncF
+folderId: fl_AxXSj5YeMR
+authentication: {}
+authenticationType: basic
+body:
+  text: ''
+bodyType: application/json
+description: ''
+headers:
+- enabled: true
+  name: cookie
+  value: refresh_token=bfa60477dd11a2c40a50aa04b1d242349fc95aaa0a4dfc2db345d39b951a6f44268667aa9eb88e6fd8ccb6b8fb0ebff4665904d8723043598267b21ce042f329; Path=/v1/auth/refresh; Domain=rentro.ch; Expires=Sun, 20 Jul 2025 15:09:10 GMT; HttpOnly; Secure; SameSite=Lax
+  id: VcWZsekHmw
+- enabled: true
+  name: ''
+  value: ''
+  id: sdeZgmeNZ5
+method: POST
+name: Logout (Browser)
+sortPriority: 0.004
+url: ${[ API_URL ]}/auth/logout
+urlParameters: []

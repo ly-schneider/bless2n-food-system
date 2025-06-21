@@ -16,7 +16,7 @@ const de = {
     retry: "Erneut versuchen",
   },
   homeScreen: {
-    title: "Willkommen in der App",
+    title: "Willkommen in der App!",
   },
   errorScreen: {
     title: "Ein Fehler ist aufgetreten",

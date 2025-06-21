@@ -1,8 +1,8 @@
 type: http_request
 model: http_request
-id: rq_aKDEQeS9aW
-createdAt: 2025-06-04T22:06:36.343077
-updatedAt: 2025-06-20T15:24:03.773708
+id: rq_TvgJNsa9st
+createdAt: 2025-06-20T15:05:29.756347
+updatedAt: 2025-06-20T15:24:12.619006
 workspaceId: wk_wnN8iaCncF
 folderId: fl_AxXSj5YeMR
 authentication: {}
@@ -10,7 +10,7 @@ authenticationType: basic
 body:
   text: |-
     {
-      "refresh_token": "01de173b9a8db7610783075aa4fabe93fe0ecad88e4002c27ea7a89adbce15eb08f2dfcd0c593c62bebb8517f53152d0f781fff1573d2265a8b363dd81889e15"
+      "refresh_token": "6b191f52ff829df46aeac94b284bd0de98baeed92bf2c5df8121972e8fd22219e03d35316b7093d54d399d0c81df69840e88ee93fecafad4cf9ab83088299e32"
     }
 bodyType: application/json
 description: ''
@@ -28,7 +28,7 @@ headers:
   value: ''
   id: r5ApraREIM
 method: POST
-name: Refresh (Android)
-sortPriority: 0.002
-url: ${[ API_URL ]}/auth/refresh
+name: Logout (Android)
+sortPriority: 0.003
+url: ${[ API_URL ]}/auth/logout
 urlParameters: []

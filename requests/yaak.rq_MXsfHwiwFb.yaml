@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_MXsfHwiwFb
 createdAt: 2025-05-28T09:31:45.324145
-updatedAt: 2025-06-19T21:46:53.510009
+updatedAt: 2025-06-20T15:23:46.588982
 workspaceId: wk_wnN8iaCncF
 folderId: fl_AxXSj5YeMR
 authentication: {}
@@ -29,5 +29,5 @@ headers:
 method: POST
 name: Register User
 sortPriority: 0.0
-url: ${[ URL ]}/auth/register
+url: ${[ API_URL ]}/auth/register
 urlParameters: []
