@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_TvgJNsa9st
 createdAt: 2025-06-20T15:05:29.756347
-updatedAt: 2025-06-20T15:24:12.619006
+updatedAt: 2025-06-29T18:09:35.883198
 workspaceId: wk_wnN8iaCncF
 folderId: fl_AxXSj5YeMR
 authentication: {}
@@ -29,6 +29,6 @@ headers:
   id: r5ApraREIM
 method: POST
 name: Logout (Android)
-sortPriority: 0.003
+sortPriority: 5000.0
 url: ${[ API_URL ]}/auth/logout
 urlParameters: []

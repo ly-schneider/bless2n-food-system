@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_aKDEQeS9aW
 createdAt: 2025-06-04T22:06:36.343077
-updatedAt: 2025-06-20T15:24:03.773708
+updatedAt: 2025-06-29T18:09:35.881699
 workspaceId: wk_wnN8iaCncF
 folderId: fl_AxXSj5YeMR
 authentication: {}
@@ -29,6 +29,6 @@ headers:
   id: r5ApraREIM
 method: POST
 name: Refresh (Android)
-sortPriority: 0.002
+sortPriority: 3000.0
 url: ${[ API_URL ]}/auth/refresh
 urlParameters: []

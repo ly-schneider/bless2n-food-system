@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_XfiUyKzL9o
 createdAt: 2025-06-04T22:12:22.972922
-updatedAt: 2025-06-20T15:23:57.536190
+updatedAt: 2025-06-29T18:09:35.881041
 workspaceId: wk_wnN8iaCncF
 folderId: fl_AxXSj5YeMR
 authentication: {}
@@ -26,6 +26,6 @@ headers:
   id: VcdaIwgSjA
 method: POST
 name: Login (Browser)
-sortPriority: 0.002
+sortPriority: 2000.0
 url: ${[ API_URL ]}/auth/login
 urlParameters: []
