@@ -3,7 +3,7 @@ CREATE TABLE users (
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
-    password_hash bcrypt_hash NOT NULL,
+    password_hash argon2_hash NOT NULL,
     is_verified BOOLEAN DEFAULT FALSE,
     is_disabled BOOLEAN DEFAULT FALSE,
     disabled_reason TEXT,

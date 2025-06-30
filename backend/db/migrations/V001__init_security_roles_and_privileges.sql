@@ -30,8 +30,8 @@ END$$;
 GRANT EXECUTE ON FUNCTION set_app_user_id(text) TO ${APP_USER};
 
 -- 4. make db_admin own the public schema ---------------------------
-ALTER SCHEMA public OWNER TO db_admin;
-GRANT USAGE ON SCHEMA public TO db_admin;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO db_admin;
+ALTER SCHEMA public OWNER TO ${DB_ADMIN_USER};
+GRANT USAGE ON SCHEMA public TO ${DB_ADMIN_USER};
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ${DB_ADMIN_USER};
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
-       GRANT ALL ON TABLES TO db_admin;
+       GRANT ALL ON TABLES TO ${DB_ADMIN_USER};

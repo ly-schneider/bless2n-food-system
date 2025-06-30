@@ -14,8 +14,6 @@ A Go-based backend service for the Rentro application, featuring REST APIs, back
 - Live-reload for development
 - NanoID14 for compact, URL-safe unique identifiers
 
-![ory](https://www.ory.sh/docs/assets/images/1-42e65393379b7f7ddc3f9a05474f27ac.png)
-
 ## Development Setup
 
 ### Prerequisites

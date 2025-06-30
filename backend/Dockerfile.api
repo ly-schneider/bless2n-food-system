@@ -11,5 +11,6 @@ RUN addgroup -S app && adduser -S app -G app
 USER app
 WORKDIR /app
 COPY --from=build /src/api .
+ENV DOCKER_CONTAINER=true
 EXPOSE 8080
 ENTRYPOINT ["./api"]

@@ -1,20 +1,26 @@
 name: rentro-backend
 
 x-base-env: &base_env
-  POSTGRES_USER: ${POSTGRES_USER}
-  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-  POSTGRES_DB: ${POSTGRES_DB:-rentro}
-  POSTGRES_HOST: ${POSTGRES_HOST_DOCKER:-postgres}
-  POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-  REDIS_ADDR: ${REDIS_HOST_DOCKER:-redis}:${REDIS_PORT:-6379}
+  POSTGRES_USER: ${APP_USER}
+  POSTGRES_PASSWORD: ${APP_USER_PASSWORD}
+  POSTGRES_DB: ${POSTGRES_DB}
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: ${POSTGRES_PORT}
+  REDIS_HOST: redis
+  REDIS_PORT: ${REDIS_PORT}
   REDIS_PASSWORD: ${REDIS_PASSWORD}
-  REDIS_DB: ${REDIS_DB:-0}
-  REDIS_HOST: ${REDIS_HOST_DOCKER:-redis}
-  REDIS_PORT: ${REDIS_PORT:-6379}
-  ASYNQMON_PORT: ${ASYNQMON_PORT:-8081}
-  APP_ENV: ${APP_ENV:-local}
-  READ_TIMEOUT: ${READ_TIMEOUT:-10s}
-  WRITE_TIMEOUT: ${WRITE_TIMEOUT:-15s}
+  REDIS_DB: ${REDIS_DB}
+  APP_ENV: ${APP_ENV}
+  APP_PORT: ${APP_PORT}
+  JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+  MAILGUN_DOMAIN: ${MAILGUN_DOMAIN}
+  MAILGUN_API_KEY: ${MAILGUN_API_KEY}
+  MAILGUN_FROM_EMAIL: ${MAILGUN_FROM_EMAIL}
+  MAILGUN_FROM_NAME: ${MAILGUN_FROM_NAME}
+  LOG_LEVEL: ${LOG_LEVEL}
+  LOG_DEVELOPMENT: ${LOG_DEVELOPMENT}
+  READ_TIMEOUT: ${READ_TIMEOUT}
+  WRITE_TIMEOUT: ${WRITE_TIMEOUT}
 
 services:
   postgres:
@@ -22,18 +28,18 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-rentro}
+      POSTGRES_DB: ${POSTGRES_DB}
     restart: unless-stopped
     volumes: 
       - pg-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL",
-         "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-rentro}"]
+         "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks: [backend]
-    ports: ["${POSTGRES_PORT:-5432}:5432"]
+    ports: ["${POSTGRES_PORT}:5432"]
 
   redis:
     image: redis:8-alpine
@@ -49,7 +55,7 @@ services:
       timeout: 5s
       retries: 5
     networks: [backend]
-    ports: ["${REDIS_PORT:-6379}:6379"]
+    ports: ["${REDIS_PORT}:6379"]
 
   # API service - only built for production/staging, not for development
   api:
@@ -60,13 +66,12 @@ services:
     depends_on:
       postgres: {condition: service_healthy}
       redis:    {condition: service_healthy}
+      flyway:   {condition: service_completed_successfully}
     environment:
       <<: *base_env
-      POSTGRES_USER:     ${APP_USER}
-      POSTGRES_PASSWORD: ${APP_USER_PASSWORD}
     restart: unless-stopped
     networks: [backend]
-    ports: ["${APP_PORT:-8080}:8080"]
+    ports: ["${APP_PORT}:8080"]
 
   asynqmon:
     image: hibiken/asynqmon:latest
@@ -74,8 +79,8 @@ services:
     depends_on:
       redis: {condition: service_healthy}
     environment:
-      REDIS_ADDR: ${REDIS_HOST_DOCKER:-redis}:${REDIS_PORT:-6379}
-      REDIS_DB: ${REDIS_DB:-0}
+      REDIS_ADDR: redis:${REDIS_PORT}
+      REDIS_DB: ${REDIS_DB}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     healthcheck:
       test: ["CMD-SHELL","wget -qO- http://localhost:8080 || exit 1"]
@@ -84,7 +89,7 @@ services:
       retries: 5
     restart: unless-stopped
     networks: [backend]
-    ports: ["${ASYNQMON_PORT:-8081}:8080"]
+    ports: ["${ASYNQMON_PORT}:8080"]
 
   flyway:
     image: flyway/flyway:latest
@@ -105,6 +110,7 @@ services:
       postgres:
         condition: service_healthy
     networks: [backend]
+    restart: "no"
 
   worker:
     build:
@@ -115,10 +121,9 @@ services:
     depends_on:
       postgres: {condition: service_healthy}
       redis:    {condition: service_healthy}
+      flyway:   {condition: service_completed_successfully}
     environment:
       <<: *base_env
-      POSTGRES_USER:     ${APP_USER}
-      POSTGRES_PASSWORD: ${APP_USER_PASSWORD}
 
 networks:
   backend: {driver: bridge}

@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"net/http"
@@ -13,12 +12,12 @@ import (
 	"backend/internal/config"
 	"backend/internal/domain"
 	"backend/internal/http/middleware"
+	"backend/internal/jobs"
 	"backend/internal/logger"
 	"backend/internal/repository"
 	"backend/internal/utils"
 
 	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthService interface {
@@ -62,10 +61,16 @@ type authService struct {
 	userRepo         repository.UserRepository
 	auditLogRepo     repository.AuditLogRepository
 	refreshTokenRepo repository.RefreshTokenRepository
+	jobService       *jobs.JobService
 }
 
-func NewAuthService(ur repository.UserRepository, alr repository.AuditLogRepository, rtr repository.RefreshTokenRepository) AuthService {
-	return &authService{userRepo: ur, auditLogRepo: alr, refreshTokenRepo: rtr}
+func NewAuthService(ur repository.UserRepository, alr repository.AuditLogRepository, rtr repository.RefreshTokenRepository, js *jobs.JobService) AuthService {
+	return &authService{
+		userRepo:         ur,
+		auditLogRepo:     alr,
+		refreshTokenRepo: rtr,
+		jobService:       js,
+	}
 }
 
 var (
@@ -95,12 +100,12 @@ func (s *authService) Register(ctx context.Context, req *RegisterRequest) (*Regi
 		RoleID:    domain.Roles["user"].ID,
 	}
 
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	passwordHash, err := utils.HashPassword(req.Password)
 	if err != nil {
 		logger.L.Errorw("error hashing password", "email", req.Email, "error", err)
 		return nil, apperrors.FromStatus(http.StatusInternalServerError, "there was an internal error", errHashFailed)
 	}
-	user.PasswordHash = string(passwordHash)
+	user.PasswordHash = passwordHash
 
 	if err := s.userRepo.Create(ctx, &user); err != nil {
 		logger.L.Errorw("error creating user", "email", req.Email, "error", err)
@@ -116,6 +121,17 @@ func (s *authService) Register(ctx context.Context, req *RegisterRequest) (*Regi
 	if err := s.auditLogRepo.Create(ctx, &auditLog); err != nil {
 		logger.L.Errorw("error creating audit log for user registration", "user_id", user.ID, "email", req.Email, "error", err)
 		return nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to log user registration", err)
+	}
+
+	emailPayload := &jobs.EmailVerificationPayload{
+		UserID:      string(user.ID),
+		Email:       user.Email,
+		FirstName:   user.FirstName,
+		Token:       randomString(32),
+		RequestedAt: time.Now().Unix(),
+	}
+	if err := s.jobService.EnqueueEmailVerification(ctx, emailPayload, 0); err != nil {
+		logger.L.Errorw("failed to enqueue email verification job", "user_id", user.ID, "email", req.Email, "error", err)
 	}
 
 	logger.L.Infow("User registration processed", "email", req.Email)
@@ -140,7 +156,9 @@ func (s *authService) Login(ctx context.Context, req *LoginRequest) (*BrowserLog
 		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to retrieve user", err)
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+	logger.L.Infow("User found for login", "email", req.Email, "user_id", user.ID, "password_hash", user.PasswordHash)
+
+	if !utils.VerifyPassword(req.Password, user.PasswordHash) {
 		return nil, nil, apperrors.Unauthorized("email or password is incorrect")
 	}
 
@@ -160,11 +178,15 @@ func (s *authService) Login(ctx context.Context, req *LoginRequest) (*BrowserLog
 
 	// Generate refresh token and store the hash
 	plainRefreshToken := randomString(64)
-	hash := sha256.Sum256([]byte(plainRefreshToken))
+	tokenHash, err := utils.HashToken(plainRefreshToken)
+	if err != nil {
+		logger.L.Errorw("error hashing refresh token", "email", req.Email, "error", err)
+		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to create refresh token", err)
+	}
 
 	refreshToken := &domain.RefreshToken{
 		UserID:    user.ID,
-		TokenHash: hex.EncodeToString(hash[:]),
+		TokenHash: tokenHash,
 		IssuedAt:  time.Now(),
 		ExpiresAt: time.Now().Add(30 * 24 * time.Hour),
 	}
@@ -215,9 +237,8 @@ func (s *authService) Refresh(ctx context.Context, refreshToken string) (*Browse
 		return nil, nil, apperrors.BadRequest("invalid_body", "missing refresh token", domain.ErrInvalidBodyMissingFields)
 	}
 
-	refreshTokenHash := sha256.Sum256([]byte(refreshToken))
-
-	rt, err := s.refreshTokenRepo.GetByHash(ctx, hex.EncodeToString(refreshTokenHash[:]))
+	// Use new method to verify argon2 hashed tokens
+	rt, err := s.refreshTokenRepo.GetValidTokenForUser(ctx, refreshToken)
 	if err != nil {
 		if errors.Is(err, domain.ErrRefreshTokenNotFound) {
 			return nil, nil, apperrors.Unauthorized("invalid refresh token")
@@ -248,11 +269,15 @@ func (s *authService) Refresh(ctx context.Context, refreshToken string) (*Browse
 	}
 
 	newPlainRefreshToken := randomString(64)
-	newHash := sha256.Sum256([]byte(newPlainRefreshToken))
+	newTokenHash, err := utils.HashToken(newPlainRefreshToken)
+	if err != nil {
+		logger.L.Errorw("error hashing new refresh token", "user_id", user.ID, "error", err)
+		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to create new refresh token", err)
+	}
 
 	newRefreshToken := &domain.RefreshToken{
 		UserID:    user.ID,
-		TokenHash: hex.EncodeToString(newHash[:]),
+		TokenHash: newTokenHash,
 		IssuedAt:  time.Now(),
 		ExpiresAt: time.Now().Add(30 * 24 * time.Hour),
 	}
@@ -307,9 +332,8 @@ func (s *authService) Logout(ctx context.Context, refreshToken string) *apperror
 		return apperrors.BadRequest("invalid_body", "missing refresh token", domain.ErrInvalidBodyMissingFields)
 	}
 
-	refreshTokenHash := sha256.Sum256([]byte(refreshToken))
-
-	rt, err := s.refreshTokenRepo.GetByHash(ctx, hex.EncodeToString(refreshTokenHash[:]))
+	// Use new method to verify argon2 hashed tokens
+	rt, err := s.refreshTokenRepo.GetValidTokenForUser(ctx, refreshToken)
 	if err != nil {
 		if errors.Is(err, domain.ErrRefreshTokenNotFound) {
 			return apperrors.Unauthorized("invalid refresh token")
@@ -321,7 +345,7 @@ func (s *authService) Logout(ctx context.Context, refreshToken string) *apperror
 		return apperrors.FromStatus(http.StatusInternalServerError, "failed to retrieve refresh token", err)
 	}
 
-	err = s.refreshTokenRepo.RevokeByHash(ctx, hex.EncodeToString(refreshTokenHash[:]))
+	err = s.refreshTokenRepo.RevokeByHash(ctx, rt.TokenHash)
 	if err != nil {
 		if errors.Is(err, domain.ErrRefreshTokenNotFound) {
 			return apperrors.Unauthorized("invalid refresh token")
@@ -329,7 +353,7 @@ func (s *authService) Logout(ctx context.Context, refreshToken string) *apperror
 		return apperrors.FromStatus(http.StatusInternalServerError, "failed to revoke refresh token", err)
 	}
 
-	logger.L.Infow("User logged out successfully", "refresh_token_hash", hex.EncodeToString(refreshTokenHash[:]))
+	logger.L.Infow("User logged out successfully", "user_id", rt.UserID)
 
 	auditLog := domain.AuditLog{
 		UserID:   rt.UserID,
@@ -349,3 +373,4 @@ func randomString(n int) string {
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
 }
+

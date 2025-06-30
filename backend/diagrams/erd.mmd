@@ -14,7 +14,7 @@ erDiagram
         text first_name "not null"
         text last_name  "not null"
         text email      UK "not null"
-        bcrypt_hash password_hash "not null --bcrypt"
+        argon2_hash password_hash "not null --argon2"
         boolean is_verified  "default false not null"
         boolean is_disabled  "default false not null"
         text disabled_reason
@@ -25,19 +25,19 @@ erDiagram
 
     verification_tokens {
         nano_id user_id FK   "not null"
-        sha256_hash token_hash "not null --SHA-256"
+        argon2_hash token_hash "not null --argon2"
         timestamptz expires_at "not null"
     }
 
     password_reset_tokens {
         nano_id user_id FK   "not null"
-        sha256_hash token_hash "not null --SHA-256"
+        argon2_hash token_hash "not null --argon2"
         timestamptz expires_at "not null"
     }
 
     refresh_tokens {
         nano_id user_id FK   "not null"
-        sha256_hash token_hash "not null --SHA-256"
+        argon2_hash token_hash "not null --argon2"
         timestamptz issued_at  "default now() not null"
         timestamptz expires_at "not null"
         boolean is_revoked "default false not null"

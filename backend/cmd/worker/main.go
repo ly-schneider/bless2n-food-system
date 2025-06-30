@@ -1,34 +1,20 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/hibiken/asynq"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 
 	"backend/internal/config"
+	"backend/internal/jobs"
 	"backend/internal/logger"
+	"backend/internal/repository"
+	"backend/internal/service"
 )
-
-type productCreatedPayload struct {
-	ProductID uint `json:"product_id"`
-}
-
-func handleProductCreated(ctx context.Context, t *asynq.Task) error {
-	var p productCreatedPayload
-	if err := json.Unmarshal(t.Payload(), &p); err != nil {
-		logger.L.Errorw("Failed to unmarshal product created payload", "error", err, "payload", string(t.Payload()))
-		return asynq.SkipRetry
-	}
-
-	logger.L.Infow("Processing product created event", "product_id", p.ProductID, "task_id", t.ResultWriter().TaskID())
-
-	logger.L.Infow("Product created event processed successfully", "product_id", p.ProductID)
-	return nil
-}
 
 func main() {
 	cfg := config.Load()
@@ -40,6 +26,19 @@ func main() {
 
 	logger.L.Infow("Starting worker", "env", cfg.App.AppEnv)
 
+	// Initialize database connection
+	db, err := gorm.Open(postgres.Open(cfg.DB.GetDSN()), &gorm.Config{})
+	if err != nil {
+		logger.L.Fatalw("Failed to connect to database", "error", err)
+	}
+
+	// Initialize repositories
+	verificationTokenRepo := repository.NewVerificationTokenRepository(db)
+
+	// Initialize services
+	emailService := service.NewEmailService(cfg.Mailgun)
+	verificationService := service.NewVerificationService(verificationTokenRepo, emailService)
+
 	srv := asynq.NewServer(
 		asynq.RedisClientOpt{
 			Addr:     cfg.Redis.GetRedisAddr(),
@@ -48,14 +47,24 @@ func main() {
 		},
 		asynq.Config{
 			Concurrency: 10,
-			Queues:      map[string]int{"default": 1},
+			Queues: map[string]int{
+				"critical": 6,
+				"default":  3,
+				"low":      1,
+			},
 		},
 	)
 
-	mux := asynq.NewServeMux()
-	mux.HandleFunc("product:created", handleProductCreated)
+	handlers := jobs.NewJobHandlers(logger.GetLogger(), verificationService)
 
-	logger.L.Infow("Registered task handlers", "handlers", []string{"product:created"})
+	mux := asynq.NewServeMux()
+	mux.HandleFunc(jobs.TypeProductCreated, handlers.HandleProductCreated)
+	mux.HandleFunc(jobs.TypeEmailVerification, handlers.HandleEmailVerification)
+
+	logger.L.Infow("Registered task handlers", "handlers", []string{
+		jobs.TypeProductCreated,
+		jobs.TypeEmailVerification,
+	})
 
 	go func() {
 		logger.L.Info("Worker server starting...")
@@ -70,6 +79,6 @@ func main() {
 	<-sigCh
 
 	logger.L.Info("Shutdown signal received, stopping worker...")
-	srv.Shutdown() // drains in-flight tasks
+	srv.Shutdown()
 	logger.L.Info("Worker stopped gracefully")
 }

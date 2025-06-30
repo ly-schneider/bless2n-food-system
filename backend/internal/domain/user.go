@@ -13,7 +13,7 @@ type User struct {
 	FirstName      string         `gorm:"not null"         json:"first_name" validate:"required"`
 	LastName       string         `gorm:"not null"         json:"last_name"  validate:"required"`
 	Email          string         `gorm:"unique;not null"  json:"email"      validate:"required,email"`
-	PasswordHash   string         `gorm:"type:bcrypt_hash;not null" json:"-"`
+	PasswordHash   string         `gorm:"type:argon2_hash;not null" json:"-"`
 	IsVerified     bool           `gorm:"default:false" json:"is_verified"`
 	IsDisabled     bool           `gorm:"default:false" json:"is_disabled"`
 	DisabledReason *string        `json:"disabled_reason,omitempty"`

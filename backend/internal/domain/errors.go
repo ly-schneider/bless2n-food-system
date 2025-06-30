@@ -13,6 +13,10 @@ var (
 	ErrRefreshTokenRevoked  = errors.New("refresh token is revoked")
 	ErrRefreshTokenExpired  = errors.New("refresh token has expired")
 
+	// Verification‑token‑related
+	ErrVerificationTokenNotFound = errors.New("verification token not found")
+	ErrVerificationTokenExpired  = errors.New("verification token has expired")
+
 	// Generic helpers
 	ErrParseBody                = errors.New("unable to parse request body")
 	ErrNotFound                 = errors.New("resource not found")

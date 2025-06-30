@@ -3,6 +3,7 @@ package repository
 import (
 	"backend/internal/domain"
 	"backend/internal/logger"
+	"backend/internal/utils"
 	"context"
 	"fmt"
 	"time"
@@ -12,6 +13,7 @@ import (
 
 type RefreshTokenRepository interface {
 	GetByHash(ctx context.Context, tokenHash string) (*domain.RefreshToken, error)
+	GetValidTokenForUser(ctx context.Context, plainToken string) (*domain.RefreshToken, error)
 	Create(ctx context.Context, rt *domain.RefreshToken) error
 	RevokeByHash(ctx context.Context, tokenHash string) error
 }
@@ -48,6 +50,24 @@ func (r *refreshTokenRepo) Create(ctx context.Context, rt *domain.RefreshToken) 
 		return fmt.Errorf("create refresh token: %w", err)
 	}
 	return nil
+}
+
+func (r *refreshTokenRepo) GetValidTokenForUser(ctx context.Context, plainToken string) (*domain.RefreshToken, error) {
+	var tokens []domain.RefreshToken
+	if err := r.db.WithContext(ctx).
+		Where("is_revoked = ? AND expires_at > ?", false, time.Now()).
+		Find(&tokens).Error; err != nil {
+		return nil, fmt.Errorf("failed to get active tokens: %w", err)
+	}
+
+	// Verify the plain token against each stored hash
+	for _, token := range tokens {
+		if utils.VerifyToken(plainToken, token.TokenHash) {
+			return &token, nil
+		}
+	}
+
+	return nil, domain.ErrRefreshTokenNotFound
 }
 
 func (r *refreshTokenRepo) RevokeByHash(ctx context.Context, tokenHash string) error {

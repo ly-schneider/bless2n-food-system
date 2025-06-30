@@ -8,7 +8,8 @@ import (
 )
 
 var (
-	L *zap.SugaredLogger
+	L      *zap.SugaredLogger
+	logger *zap.Logger
 )
 
 func Init(cfg config.LoggerConfig) error {
@@ -30,7 +31,7 @@ func Init(cfg config.LoggerConfig) error {
 	}
 	config.Level = zap.NewAtomicLevelAt(level)
 
-	logger, err := config.Build()
+	logger, err = config.Build()
 	if err != nil {
 		return err
 	}
@@ -54,6 +55,11 @@ func InitDefault() error {
 
 	L = logger.Sugar()
 	return nil
+}
+
+// GetLogger returns the underlying zap.Logger
+func GetLogger() *zap.Logger {
+	return logger
 }
 
 // Sync flushes any buffered log entries

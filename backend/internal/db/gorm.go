@@ -65,5 +65,10 @@ func New(cfg config.DBConfig) (*gorm.DB, error) {
 	std.SetMaxOpenConns(int(pc.MaxConns))
 	std.SetConnMaxIdleTime(pc.MaxConnIdleTime)
 
-	return gorm.Open(postgres.New(postgres.Config{Conn: std}), &gorm.Config{})
+	db, err := gorm.Open(postgres.New(postgres.Config{Conn: std}), &gorm.Config{})
+	if err != nil {
+		return nil, fmt.Errorf("gorm open: %w", err)
+	}
+
+	return db, nil
 }
