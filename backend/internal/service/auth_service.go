@@ -107,6 +107,7 @@ func (s *authService) Register(ctx context.Context, req *RegisterRequest) (*Regi
 	}
 	user.PasswordHash = passwordHash
 
+
 	if err := s.userRepo.Create(ctx, &user); err != nil {
 		logger.L.Errorw("error creating user", "email", req.Email, "error", err)
 		return nil, apperrors.FromStatus(http.StatusInternalServerError, "there was an internal error", errCreateUserFailed)
@@ -156,16 +157,36 @@ func (s *authService) Login(ctx context.Context, req *LoginRequest) (*BrowserLog
 		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to retrieve user", err)
 	}
 
-	logger.L.Infow("User found for login", "email", req.Email, "user_id", user.ID, "password_hash", user.PasswordHash)
+	logger.L.Infow("User found for login", "user", user)
 
-	if !utils.VerifyPassword(req.Password, user.PasswordHash) {
+	passwordValid := utils.VerifyPassword(req.Password, user.PasswordHash)
+
+	if !passwordValid {
 		return nil, nil, apperrors.Unauthorized("email or password is incorrect")
 	}
 
 	// Issue access-token (15min) + refresh-token (30d)
+	var roleName string
+	if user.Role != nil {
+		roleName = user.Role.Name
+	} else {
+		// Fallback: load role if not preloaded
+		logger.L.Warnw("Role not preloaded, loading role by ID", "user_id", user.ID, "role_id", user.RoleID)
+		// Map role ID to role name
+		switch user.RoleID {
+		case 1:
+			roleName = "admin"
+		case 2:
+			roleName = "user"
+		default:
+			logger.L.Errorw("Unknown role ID", "user_id", user.ID, "role_id", user.RoleID)
+			return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "invalid user role", errors.New("unknown role"))
+		}
+	}
+	
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub":  user.ID,
-		"role": user.Role.Name,
+		"role": roleName,
 		"iat":  time.Now().Unix(),
 		"exp":  time.Now().Add(15 * time.Minute).Unix(),
 	})
@@ -373,4 +394,3 @@ func randomString(n int) string {
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
 }
-

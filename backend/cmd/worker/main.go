@@ -34,10 +34,11 @@ func main() {
 
 	// Initialize repositories
 	verificationTokenRepo := repository.NewVerificationTokenRepository(db)
+	userRepo := repository.NewUserRepository(db)
 
 	// Initialize services
-	emailService := service.NewEmailService(cfg.Mailgun)
-	verificationService := service.NewVerificationService(verificationTokenRepo, emailService)
+	emailService := service.NewEmailService(cfg.Mailgun, logger.GetLogger())
+	verificationService := service.NewVerificationService(verificationTokenRepo, userRepo, emailService, logger.GetLogger())
 
 	srv := asynq.NewServer(
 		asynq.RedisClientOpt{
@@ -58,11 +59,9 @@ func main() {
 	handlers := jobs.NewJobHandlers(logger.GetLogger(), verificationService)
 
 	mux := asynq.NewServeMux()
-	mux.HandleFunc(jobs.TypeProductCreated, handlers.HandleProductCreated)
 	mux.HandleFunc(jobs.TypeEmailVerification, handlers.HandleEmailVerification)
 
 	logger.L.Infow("Registered task handlers", "handlers", []string{
-		jobs.TypeProductCreated,
 		jobs.TypeEmailVerification,
 	})
 

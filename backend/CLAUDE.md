@@ -50,7 +50,7 @@ This Go backend follows **Clean Architecture** with clear layer separation:
 
 **Dependency Injection**: Uses Uber FX throughout. New services must be registered in `internal/app/` provider functions.
 
-**Background Jobs**: Asynq-based system with API enqueuing jobs and separate Worker service processing them. Current jobs: `product:created`.
+**Background Jobs**: Asynq-based system with API enqueuing jobs and separate Worker service processing them.
 
 **Authentication**: JWT access tokens (15 minutes) + Argon2 hashed refresh tokens (30 days) with mobile/browser detection.
 

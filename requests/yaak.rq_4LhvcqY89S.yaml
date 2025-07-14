@@ -1,0 +1,35 @@
+type: http_request
+model: http_request
+id: rq_4LhvcqY89S
+createdAt: 2025-06-30T21:01:21.364755
+updatedAt: 2025-07-01T12:54:07.149633
+workspaceId: wk_wnN8iaCncF
+folderId: fl_AxXSj5YeMR
+authentication:
+  disabled: true
+authenticationType: basic
+body:
+  text: |-
+    {
+      "code": "875123"
+    }
+bodyType: application/json
+description: ''
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: aDEd3NeZja
+- enabled: true
+  name: Authorization
+  value: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTEzNzQwNzYsImlhdCI6MTc1MTM3MzE3Niwicm9sZSI6InVzZXIiLCJzdWIiOiJlNm5pb216b3oyZzhqcyJ9.g1oPcpTGk6RI2Qr294QbYisAnUh_2zJWCEXngSs95Ug
+  id: tR4nDx02fp
+- enabled: true
+  name: ''
+  value: ''
+  id: TnbaxtcMdU
+method: POST
+name: Verify Email
+sortPriority: 2500.0
+url: ${[ API_URL ]}/auth/verify-email
+urlParameters: []

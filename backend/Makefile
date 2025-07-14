@@ -11,6 +11,7 @@ help:
 	@echo "  dev              - Start API server with live-reload (development)"
 	@echo "  docker-up        - Start all services with Docker Compose"
 	@echo "  docker-down      - Stop all Docker Compose services"
+	@echo "  docker-restart   - Restart all Docker Compose services"
 	@echo "  docker-build     - Build Docker images"
 	@echo "  flyway-migrate   - Run Flyway migrations"
 	@echo "  flyway-info      - Get Flyway migration info"
@@ -30,6 +31,11 @@ docker-up:
 docker-down:
 	@echo "Stopping docker Compose services..."
 	docker compose down --volumes --remove-orphans
+
+docker-restart:
+	@echo "Restarting docker Compose services..."
+	make docker-down
+	make docker-up
 
 docker-build:
 	@echo "Building docker images..."

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/mailgun/mailgun-go/v5"
+	"go.uber.org/zap"
 )
 
 type EmailService interface {
@@ -17,15 +18,19 @@ type emailService struct {
 	domain    string
 	fromEmail string
 	fromName  string
+	logger    *zap.Logger
 }
 
-func NewEmailService(cfg config.MailgunConfig) EmailService {
+func NewEmailService(cfg config.MailgunConfig, logger *zap.Logger) EmailService {
 	mg := mailgun.NewMailgun(cfg.APIKey)
+	mg.SetAPIBase(mailgun.APIBaseEU)
+
 	return &emailService{
 		mg:        mg,
 		domain:    cfg.Domain,
 		fromEmail: cfg.FromEmail,
 		fromName:  cfg.FromName,
+		logger:    logger,
 	}
 }
 

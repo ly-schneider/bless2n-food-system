@@ -9,54 +9,61 @@ import (
 	"fmt"
 	"math/rand"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 type VerificationService interface {
-	SendVerificationCode(ctx context.Context, userID model.NanoID14, email, name string) error
+	SendVerificationCode(ctx context.Context, userID model.NanoID14) error
 	VerifyCode(ctx context.Context, userID model.NanoID14, code string) error
 }
 
 type verificationService struct {
 	verificationTokenRepo repository.VerificationTokenRepository
+	userRepo              repository.UserRepository
 	emailService          EmailService
+	logger                *zap.Logger
 }
 
 func NewVerificationService(
 	verificationTokenRepo repository.VerificationTokenRepository,
+	userRepo repository.UserRepository,
 	emailService EmailService,
+	logger *zap.Logger,
 ) VerificationService {
 	return &verificationService{
 		verificationTokenRepo: verificationTokenRepo,
+		userRepo:              userRepo,
 		emailService:          emailService,
+		logger:                logger,
 	}
 }
 
-func (s *verificationService) SendVerificationCode(ctx context.Context, userID model.NanoID14, email, name string) error {
-	// Delete any existing verification tokens for this user
+func (s *verificationService) SendVerificationCode(ctx context.Context, userID model.NanoID14) error {
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("failed to get user by ID: %w", err)
+	}
+
 	if err := s.verificationTokenRepo.DeleteByUserID(ctx, userID); err != nil {
 		return fmt.Errorf("failed to delete existing verification tokens: %w", err)
 	}
 
-	// Generate 6-digit code
 	code := s.generateSixDigitCode()
 
-	// Hash the code before storing
-	codeHashString, err := utils.HashOTP(code)
+	codeHash, err := utils.HashOTP(code)
 	if err != nil {
 		return fmt.Errorf("failed to hash verification code: %w", err)
 	}
-	codeHash := []byte(codeHashString)
 
-	// Set expiration to 15 minutes from now
 	expiresAt := time.Now().Add(15 * time.Minute)
 
-	// Store the hashed code
 	if err := s.verificationTokenRepo.Create(ctx, userID, codeHash, expiresAt); err != nil {
 		return fmt.Errorf("failed to create verification token: %w", err)
 	}
 
 	// Send email with the plain code
-	if err := s.emailService.SendVerificationEmail(ctx, email, name, code); err != nil {
+	if err := s.emailService.SendVerificationEmail(ctx, user.Email, user.FirstName, code); err != nil {
 		// If email sending fails, clean up the token
 		_ = s.verificationTokenRepo.DeleteByUserID(ctx, userID)
 		return fmt.Errorf("failed to send verification email: %w", err)
@@ -66,7 +73,6 @@ func (s *verificationService) SendVerificationCode(ctx context.Context, userID m
 }
 
 func (s *verificationService) VerifyCode(ctx context.Context, userID model.NanoID14, code string) error {
-	// Find the verification token
 	token, err := s.verificationTokenRepo.FindByUserID(ctx, userID)
 	if err != nil {
 		if err == domain.ErrVerificationTokenNotFound {
@@ -82,12 +88,21 @@ func (s *verificationService) VerifyCode(ctx context.Context, userID model.NanoI
 		return domain.ErrVerificationTokenExpired
 	}
 
-	// Verify the provided code against the stored hash
 	if !utils.VerifyOTP(code, string(token.TokenHash)) {
 		return fmt.Errorf("invalid verification code")
 	}
 
-	// Delete the token after successful verification
+	// Get the user and update is_verified to true
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("failed to get user: %w", err)
+	}
+
+	user.IsVerified = true
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return fmt.Errorf("failed to update user verification status: %w", err)
+	}
+
 	if err := s.verificationTokenRepo.DeleteByUserID(ctx, userID); err != nil {
 		return fmt.Errorf("failed to delete verification token: %w", err)
 	}
@@ -96,8 +111,6 @@ func (s *verificationService) VerifyCode(ctx context.Context, userID model.NanoI
 }
 
 func (s *verificationService) generateSixDigitCode() string {
-	// Generate a random 6-digit code
-	code := rand.Intn(900000) + 100000 // Ensures 6 digits (100000-999999)
+	code := rand.Intn(900000) + 100000
 	return fmt.Sprintf("%06d", code)
 }
-

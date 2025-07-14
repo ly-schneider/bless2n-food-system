@@ -1,19 +1,15 @@
 type: http_request
 model: http_request
-id: rq_XfiUyKzL9o
-createdAt: 2025-06-04T22:12:22.972922
-updatedAt: 2025-07-01T10:13:21.976112
+id: rq_YSFWwnQXn8
+createdAt: 2025-07-01T12:54:09.505735
+updatedAt: 2025-07-01T12:57:15.982699
 workspaceId: wk_wnN8iaCncF
 folderId: fl_AxXSj5YeMR
 authentication:
   disabled: true
 authenticationType: basic
 body:
-  text: |-
-    {
-      "email": "lyschneider@icloud.com",
-      "password": "Test1234!"
-    }
+  text: ''
 bodyType: application/json
 description: ''
 headers:
@@ -22,11 +18,15 @@ headers:
   value: application/json
   id: aDEd3NeZja
 - enabled: true
+  name: Authorization
+  value: ${[ AccessToken ]}
+  id: tR4nDx02fp
+- enabled: true
   name: ''
   value: ''
-  id: VcdaIwgSjA
+  id: xnsSe6CqKj
 method: POST
-name: Login (Browser)
-sortPriority: 2000.0
-url: ${[ API_URL ]}/auth/login
+name: Resend Verification
+sortPriority: 2500.001
+url: ${[ API_URL ]}/auth/resend-verification
 urlParameters: []

@@ -2,10 +2,11 @@ type: http_request
 model: http_request
 id: rq_MXsfHwiwFb
 createdAt: 2025-05-28T09:31:45.324145
-updatedAt: 2025-06-29T18:09:35.877859
+updatedAt: 2025-07-01T12:29:11.799910
 workspaceId: wk_wnN8iaCncF
 folderId: fl_AxXSj5YeMR
-authentication: {}
+authentication:
+  disabled: true
 authenticationType: basic
 body:
   text: |-

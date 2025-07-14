@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
@@ -57,25 +56,7 @@ func (h *JobHandlers) HandleEmailVerification(ctx context.Context, t *asynq.Task
 	return nil
 }
 
-func (h *JobHandlers) HandleProductCreated(ctx context.Context, t *asynq.Task) error {
-	h.logger.Info("processing product created job",
-		zap.String("task_id", t.ResultWriter().TaskID()),
-		zap.ByteString("payload", t.Payload()))
-
-	time.Sleep(2 * time.Second)
-
-	h.logger.Info("product created job completed successfully",
-		zap.String("task_id", t.ResultWriter().TaskID()))
-
-	return nil
-}
-
 func (h *JobHandlers) sendVerificationEmail(payload EmailVerificationPayload) error {
-	h.logger.Info("sending verification email",
-		zap.String("to", payload.Email),
-		zap.String("first_name", payload.FirstName),
-		zap.String("user_id", payload.UserID))
-
 	// Convert string UserID to NanoID14
 	userID := model.NanoID14(payload.UserID)
 

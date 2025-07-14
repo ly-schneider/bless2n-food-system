@@ -10,6 +10,7 @@ import (
 
 	"backend/internal/apperrors"
 	"backend/internal/domain"
+	"backend/internal/http/middleware"
 	"backend/internal/http/respond"
 	"backend/internal/logger"
 	"backend/internal/model"
@@ -165,61 +166,71 @@ func (h AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 
 func (h AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		UserID string `json:"user_id" validate:"required"`
-		Code   string `json:"code" validate:"required,len=6"`
+		Code string `json:"code" validate:"required,len=6"`
 	}
-	
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		respond.NewWriter(w).WriteError(apperrors.BadRequest("bad_json", domain.ErrParseBody.Error(), err))
 		return
 	}
-	
+
 	if err := h.vldt.Struct(req); err != nil {
 		respond.NewWriter(w).WriteError(apperrors.BadRequest("validation_error", domain.ErrInvalidBody.Error(), err))
 		return
 	}
 
-	// Convert string to NanoID14
-	userID := model.NanoID14(req.UserID)
-	
-	err := h.verificationService.VerifyCode(r.Context(), userID, req.Code)
-	if err != nil {
-		if err == domain.ErrVerificationTokenNotFound {
-			respond.NewWriter(w).WriteError(apperrors.BadRequest("invalid_code", "Invalid or expired verification code", err))
+	userID := middleware.ExtractUserIDFromContext(r.Context())
+	if userID == nil || *userID == "" {
+		respond.NewWriter(w).WriteError(apperrors.Unauthorized("User ID is required for verification"))
+		return
+	}
+
+	userIDNano := model.NanoID14(*userID)
+
+	verifyErr := h.verificationService.VerifyCode(r.Context(), userIDNano, req.Code)
+	if verifyErr != nil {
+		if verifyErr == domain.ErrVerificationTokenNotFound {
+			respond.NewWriter(w).WriteError(apperrors.BadRequest("invalid_code", "Invalid or expired verification code", verifyErr))
 			return
 		}
-		if err == domain.ErrVerificationTokenExpired {
-			respond.NewWriter(w).WriteError(apperrors.BadRequest("expired_code", "Verification code has expired", err))
+		if verifyErr == domain.ErrVerificationTokenExpired {
+			respond.NewWriter(w).WriteError(apperrors.BadRequest("expired_code", "Verification code has expired", verifyErr))
 			return
 		}
-		respond.NewWriter(w).WriteError(apperrors.FromStatus(http.StatusInternalServerError, "Failed to verify code", err))
+		respond.NewWriter(w).WriteError(apperrors.FromStatus(http.StatusInternalServerError, "Failed to verify code", verifyErr))
+		return
+	}
+
+	respond.JSON(w, http.StatusOK, map[string]string{
+		"message": "email verified successfully",
+	})
+}
+
+func (h AuthHandler) ResendVerification(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.ExtractUserIDFromContext(r.Context())
+	if userID == nil || *userID == "" {
+		respond.NewWriter(w).WriteError(apperrors.Unauthorized("User ID is required for verification"))
+		return
+	}
+
+	userIDNano := model.NanoID14(*userID)
+
+	verifyErr := h.verificationService.SendVerificationCode(r.Context(), userIDNano)
+	if verifyErr != nil {
+		if verifyErr == domain.ErrVerificationTokenNotFound {
+			respond.NewWriter(w).WriteError(apperrors.BadRequest("invalid_code", "Invalid or expired verification code", verifyErr))
+			return
+		}
+		if verifyErr == domain.ErrVerificationTokenExpired {
+			respond.NewWriter(w).WriteError(apperrors.BadRequest("expired_code", "Verification code has expired", verifyErr))
+			return
+		}
+		respond.NewWriter(w).WriteError(apperrors.FromStatus(http.StatusInternalServerError, "Failed to verify code", verifyErr))
 		return
 	}
 
 	respond.JSON(w, http.StatusOK, map[string]string{
 		"message": "Email verified successfully",
-	})
-}
-
-func (h AuthHandler) ResendVerification(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Email string `json:"email" validate:"required,email"`
-	}
-	
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respond.NewWriter(w).WriteError(apperrors.BadRequest("bad_json", domain.ErrParseBody.Error(), err))
-		return
-	}
-	
-	if err := h.vldt.Struct(req); err != nil {
-		respond.NewWriter(w).WriteError(apperrors.BadRequest("validation_error", domain.ErrInvalidBody.Error(), err))
-		return
-	}
-
-	// This would require getting the user by email first
-	// For now, we'll just return success to prevent email enumeration attacks
-	respond.JSON(w, http.StatusOK, map[string]string{
-		"message": "If a user with this email exists, a verification email has been sent",
 	})
 }
 

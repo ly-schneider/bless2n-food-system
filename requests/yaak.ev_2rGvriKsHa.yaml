@@ -3,7 +3,7 @@ model: environment
 id: ev_2rGvriKsHa
 workspaceId: wk_wnN8iaCncF
 createdAt: 2025-05-07T09:39:43.744401
-updatedAt: 2025-06-20T15:23:33.311854
+updatedAt: 2025-07-01T12:57:04.017621
 name: Global Variables
 public: true
 base: true
@@ -16,4 +16,8 @@ variables:
   name: API_URL
   value: ${[ BASE_URL ]}/v1
   id: URKSHc0ueV
+- enabled: true
+  name: AccessToken
+  value: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NTEzNzU0NTgsImlhdCI6MTc1MTM3NDU1OCwicm9sZSI6InVzZXIiLCJzdWIiOiJpdTNyMXkzc2hiYWR0YyJ9.4QwOB3lBuXR2pAZJ5IQ0X5GoZ4Coev5iEreXA6GYMlE
+  id: TGYuPyRs36
 color: null

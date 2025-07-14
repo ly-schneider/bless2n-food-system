@@ -52,31 +52,3 @@ func (s *JobService) EnqueueEmailVerification(ctx context.Context, payload *Emai
 
 	return nil
 }
-
-
-func (s *JobService) EnqueueProductCreated(ctx context.Context, payload interface{}, delay time.Duration) error {
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("marshal payload: %w", err)
-	}
-
-	task := asynq.NewTask(TypeProductCreated, data)
-	opts := []asynq.Option{
-		asynq.ProcessIn(delay),
-		asynq.MaxRetry(3),
-		asynq.Retention(24 * time.Hour),
-	}
-
-	info, err := s.client.EnqueueContext(ctx, task, opts...)
-	if err != nil {
-		s.logger.Error("failed to enqueue product created job",
-			zap.Error(err))
-		return fmt.Errorf("enqueue product created: %w", err)
-	}
-
-	s.logger.Info("product created job enqueued successfully",
-		zap.String("task_id", info.ID),
-		zap.Duration("delay", delay))
-
-	return nil
-}

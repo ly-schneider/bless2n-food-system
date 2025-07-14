@@ -1,7 +1,6 @@
 package jobs
 
 const (
-	TypeProductCreated    = "product:created"
 	TypeEmailVerification = "email:verification"
 )
 

@@ -5,6 +5,7 @@ import (
 	"backend/internal/service"
 
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 )
 
 func NewServices() fx.Option {
@@ -17,6 +18,6 @@ func NewServices() fx.Option {
 	)
 }
 
-func NewEmailService(cfg config.Config) service.EmailService {
-	return service.NewEmailService(cfg.Mailgun)
+func NewEmailService(cfg config.Config, logger *zap.Logger) service.EmailService {
+	return service.NewEmailService(cfg.Mailgun, logger)
 }

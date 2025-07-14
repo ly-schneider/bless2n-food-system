@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_aKDEQeS9aW
 createdAt: 2025-06-04T22:06:36.343077
-updatedAt: 2025-06-29T18:09:35.881699
+updatedAt: 2025-07-01T12:54:56.099527
 workspaceId: wk_wnN8iaCncF
 folderId: fl_AxXSj5YeMR
 authentication: {}
@@ -10,7 +10,7 @@ authenticationType: basic
 body:
   text: |-
     {
-      "refresh_token": "01de173b9a8db7610783075aa4fabe93fe0ecad88e4002c27ea7a89adbce15eb08f2dfcd0c593c62bebb8517f53152d0f781fff1573d2265a8b363dd81889e15"
+      "refresh_token": "52bb3f28f38cdbe08d025d290cc6d59d3f0ad451331577b1e0e21f40d80e049ce9501731f7229e757de459acfe4f39cddfeabb618b06e5f8fed2835e520f44b1"
     }
 bodyType: application/json
 description: ''
