@@ -1,4 +1,4 @@
-package ch.leys.rentro
+package ch.leys.bless2n
 
 import org.junit.Test
 

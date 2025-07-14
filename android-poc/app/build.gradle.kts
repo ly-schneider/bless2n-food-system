@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "ch.leys.rentro"
+    namespace = "ch.leys.bless2n"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "ch.leys.rentro"
+        applicationId = "ch.leys.bless2n"
         minSdk = 34
         targetSdk = 35
         versionCode = 1
@@ -50,6 +50,8 @@ android {
 dependencies {
     implementation("com.sumup:merchant-sdk:5.0.3")
     implementation("com.github.DantSu:ESCPOS-ThermalPrinter-Android:3.3.0")
+    implementation("com.google.zxing:core:3.5.2")
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

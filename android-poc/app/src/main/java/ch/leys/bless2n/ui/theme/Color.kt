@@ -1,4 +1,4 @@
-package ch.leys.rentro.ui.theme
+package ch.leys.bless2n.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

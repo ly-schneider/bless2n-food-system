@@ -1,4 +1,4 @@
-package ch.leys.rentro
+package ch.leys.bless2n
 
 import android.app.Application
 import com.sumup.merchant.reader.api.SumUpState
