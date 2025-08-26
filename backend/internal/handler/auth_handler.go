@@ -8,12 +8,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
 
-	"backend/internal/apperrors"
-	"backend/internal/domain"
 	"backend/internal/http/middleware"
 	"backend/internal/http/respond"
 	"backend/internal/logger"
-	"backend/internal/model"
 	"backend/internal/service"
 	"backend/internal/utils"
 )
@@ -46,11 +43,11 @@ func (h AuthHandler) Routes() chi.Router {
 func (h AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req service.RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respond.NewWriter(w).WriteError(apperrors.BadRequest("bad_json", domain.ErrParseBody.Error(), err))
+		// Respond with bad request error
 		return
 	}
 	if err := h.vldt.Struct(req); err != nil {
-		respond.NewWriter(w).WriteError(apperrors.BadRequest("validation_error", domain.ErrInvalidBody.Error(), err))
+		// Respond with bad request / validation error
 		return
 	}
 
@@ -66,12 +63,12 @@ func (h AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 func (h AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req service.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respond.NewWriter(w).WriteError(apperrors.BadRequest("bad_json", domain.ErrParseBody.Error(), err))
+		// Respond with bad request error
 		return
 	}
 
 	if err := h.vldt.Struct(req); err != nil {
-		respond.NewWriter(w).WriteError(apperrors.BadRequest("validation_error", domain.ErrInvalidBody.Error(), err))
+		// Respond with bad request / validation error
 		return
 	}
 
@@ -101,7 +98,7 @@ func (h AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 			Refresh string `json:"refresh_token"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			respond.NewWriter(w).WriteError(apperrors.BadRequest("bad_json", domain.ErrParseBody.Error(), err))
+			// Respond with bad request error
 			return
 		}
 		defer r.Body.Close()
@@ -109,11 +106,11 @@ func (h AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if plainRefreshToken == "" {
-		respond.NewWriter(w).WriteError(apperrors.BadRequest("missing_refresh_token", "refresh token is required", nil))
+		// Respond with bad request error
 		return
 	}
 
-	browserLoginResp, mobileLoginResp, err := h.svc.Refresh(r.Context(), plainRefreshToken)
+	loginResponse, err := h.svc.Refresh(r.Context(), plainRefreshToken)
 	if err != nil {
 		logger.L.Error(r.Context(), "failed to refresh token: ", err)
 		logger.L.Infow("status code from error", "status_code", err.Status)
@@ -121,15 +118,8 @@ func (h AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ua := r.UserAgent()
-
-	if utils.IsMobile(&ua) {
-		respond.JSON(w, http.StatusOK, mobileLoginResp)
-		return
-	}
-
-	setSharedCookie(w, browserLoginResp.RefreshToken)
-	respond.JSON(w, http.StatusOK, browserLoginResp)
+	setSharedCookie(w, loginResponse.RefreshToken)
+	respond.JSON(w, http.StatusOK, loginResponse)
 }
 
 func (h AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
@@ -141,7 +131,7 @@ func (h AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 			Refresh string `json:"refresh_token"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			respond.NewWriter(w).WriteError(apperrors.BadRequest("bad_json", domain.ErrParseBody.Error(), err))
+			// Respond with bad request error
 			return
 		}
 		defer r.Body.Close()
@@ -149,7 +139,7 @@ func (h AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if plainRefreshToken == "" {
-		respond.NewWriter(w).WriteError(apperrors.BadRequest("missing_refresh_token", "refresh token is required", nil))
+		// Respond with bad request error
 		return
 	}
 
@@ -170,18 +160,18 @@ func (h AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		respond.NewWriter(w).WriteError(apperrors.BadRequest("bad_json", domain.ErrParseBody.Error(), err))
+		// Respond with bad request error
 		return
 	}
 
 	if err := h.vldt.Struct(req); err != nil {
-		respond.NewWriter(w).WriteError(apperrors.BadRequest("validation_error", domain.ErrInvalidBody.Error(), err))
+		// Respond with bad request / validation error
 		return
 	}
 
 	userID := middleware.ExtractUserIDFromContext(r.Context())
 	if userID == nil || *userID == "" {
-		respond.NewWriter(w).WriteError(apperrors.Unauthorized("User ID is required for verification"))
+		// Respond with unauthorized error
 		return
 	}
 
@@ -190,14 +180,14 @@ func (h AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 	verifyErr := h.verificationService.VerifyCode(r.Context(), userIDNano, req.Code)
 	if verifyErr != nil {
 		if verifyErr == domain.ErrVerificationTokenNotFound {
-			respond.NewWriter(w).WriteError(apperrors.BadRequest("invalid_code", "Invalid or expired verification code", verifyErr))
+			// Respond with not found error
 			return
 		}
 		if verifyErr == domain.ErrVerificationTokenExpired {
-			respond.NewWriter(w).WriteError(apperrors.BadRequest("expired_code", "Verification code has expired", verifyErr))
+			// Respond with expired error
 			return
 		}
-		respond.NewWriter(w).WriteError(apperrors.FromStatus(http.StatusInternalServerError, "Failed to verify code", verifyErr))
+		// Respond with failed to verify code error
 		return
 	}
 
@@ -209,7 +199,7 @@ func (h AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) {
 func (h AuthHandler) ResendVerification(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.ExtractUserIDFromContext(r.Context())
 	if userID == nil || *userID == "" {
-		respond.NewWriter(w).WriteError(apperrors.Unauthorized("User ID is required for verification"))
+		// Respond with unauthorized error
 		return
 	}
 
@@ -218,14 +208,14 @@ func (h AuthHandler) ResendVerification(w http.ResponseWriter, r *http.Request) 
 	verifyErr := h.verificationService.SendVerificationCode(r.Context(), userIDNano)
 	if verifyErr != nil {
 		if verifyErr == domain.ErrVerificationTokenNotFound {
-			respond.NewWriter(w).WriteError(apperrors.BadRequest("invalid_code", "Invalid or expired verification code", verifyErr))
+			// Respond with not found error
 			return
 		}
 		if verifyErr == domain.ErrVerificationTokenExpired {
-			respond.NewWriter(w).WriteError(apperrors.BadRequest("expired_code", "Verification code has expired", verifyErr))
+			// Respond with expired error
 			return
 		}
-		respond.NewWriter(w).WriteError(apperrors.FromStatus(http.StatusInternalServerError, "Failed to verify code", verifyErr))
+		// Respond with failed to send verification code error
 		return
 	}
 
@@ -238,8 +228,8 @@ func setSharedCookie(w http.ResponseWriter, value string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "refresh_token",
 		Value:    value,
-		Domain:   ".rentro.ch",
-		Path:     "/v1/auth/refresh",
+		Domain:   ".blessthun.ch",
+		Path:     "/auth/refresh",
 		Expires:  time.Now().Add(30 * 24 * time.Hour),
 		HttpOnly: true,
 		Secure:   true,

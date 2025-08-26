@@ -14,7 +14,6 @@ import (
 	"backend/internal/http/middleware"
 	"backend/internal/jobs"
 	"backend/internal/logger"
-	"backend/internal/repository"
 	"backend/internal/utils"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -22,8 +21,8 @@ import (
 
 type AuthService interface {
 	Register(ctx context.Context, req *RegisterRequest) (*RegisterResponse, *apperrors.APIError)
-	Login(ctx context.Context, req *LoginRequest) (*BrowserLoginResp, *MobileLoginResp, *apperrors.APIError)
-	Refresh(ctx context.Context, refreshToken string) (*BrowserLoginResp, *MobileLoginResp, *apperrors.APIError)
+	Login(ctx context.Context, req *LoginRequest) (*LoginResponse, *apperrors.APIError)
+	Refresh(ctx context.Context, refreshToken string) (*LoginResponse, *apperrors.APIError)
 	Logout(ctx context.Context, refreshToken string) *apperrors.APIError
 }
 
@@ -44,16 +43,10 @@ type RegisterResponse struct {
 	Message string      `json:"message"`
 }
 
-type BrowserLoginResp struct {
+type LoginResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"-"`
 	TokenType    string `json:"token_type"`
-	ExpiresIn    int64  `json:"expires_in"`
-}
-
-type MobileLoginResp struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
 	ExpiresIn    int64  `json:"expires_in"`
 }
 
@@ -107,7 +100,6 @@ func (s *authService) Register(ctx context.Context, req *RegisterRequest) (*Regi
 	}
 	user.PasswordHash = passwordHash
 
-
 	if err := s.userRepo.Create(ctx, &user); err != nil {
 		logger.L.Errorw("error creating user", "email", req.Email, "error", err)
 		return nil, apperrors.FromStatus(http.StatusInternalServerError, "there was an internal error", errCreateUserFailed)
@@ -143,18 +135,18 @@ func (s *authService) Register(ctx context.Context, req *RegisterRequest) (*Regi
 	}, nil
 }
 
-func (s *authService) Login(ctx context.Context, req *LoginRequest) (*BrowserLoginResp, *MobileLoginResp, *apperrors.APIError) {
+func (s *authService) Login(ctx context.Context, req *LoginRequest) (*LoginResponse, *apperrors.APIError) {
 	if req.Email == "" || req.Password == "" {
 		logger.L.Error("missing required fields in login request", "request", req)
-		return nil, nil, apperrors.BadRequest("invalid_body", "missing required fields", domain.ErrInvalidBodyMissingFields)
+		return nil, apperrors.BadRequest("invalid_body", "missing required fields", domain.ErrInvalidBodyMissingFields)
 	}
 
 	user, err := s.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {
-			return nil, nil, apperrors.Unauthorized("email or password is incorrect")
+			return nil, apperrors.Unauthorized("email or password is incorrect")
 		}
-		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to retrieve user", err)
+		return nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to retrieve user", err)
 	}
 
 	logger.L.Infow("User found for login", "user", user)
@@ -162,7 +154,7 @@ func (s *authService) Login(ctx context.Context, req *LoginRequest) (*BrowserLog
 	passwordValid := utils.VerifyPassword(req.Password, user.PasswordHash)
 
 	if !passwordValid {
-		return nil, nil, apperrors.Unauthorized("email or password is incorrect")
+		return nil, apperrors.Unauthorized("email or password is incorrect")
 	}
 
 	// Issue access-token (15min) + refresh-token (30d)
@@ -180,10 +172,10 @@ func (s *authService) Login(ctx context.Context, req *LoginRequest) (*BrowserLog
 			roleName = "user"
 		default:
 			logger.L.Errorw("Unknown role ID", "user_id", user.ID, "role_id", user.RoleID)
-			return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "invalid user role", errors.New("unknown role"))
+			return nil, apperrors.FromStatus(http.StatusInternalServerError, "invalid user role", errors.New("unknown role"))
 		}
 	}
-	
+
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub":  user.ID,
 		"role": roleName,
@@ -194,7 +186,7 @@ func (s *authService) Login(ctx context.Context, req *LoginRequest) (*BrowserLog
 	accessTokenString, err := accessToken.SignedString([]byte(config.Load().App.JWTSecretKey))
 	if err != nil {
 		logger.L.Errorw("error signing access token", "email", req.Email, "error", err)
-		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to sign access token", err)
+		return nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to sign access token", err)
 	}
 
 	// Generate refresh token and store the hash
@@ -202,7 +194,7 @@ func (s *authService) Login(ctx context.Context, req *LoginRequest) (*BrowserLog
 	tokenHash, err := utils.HashToken(plainRefreshToken)
 	if err != nil {
 		logger.L.Errorw("error hashing refresh token", "email", req.Email, "error", err)
-		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to create refresh token", err)
+		return nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to create refresh token", err)
 	}
 
 	refreshToken := &domain.RefreshToken{
@@ -213,7 +205,7 @@ func (s *authService) Login(ctx context.Context, req *LoginRequest) (*BrowserLog
 	}
 	if err := s.refreshTokenRepo.Create(ctx, refreshToken); err != nil {
 		logger.L.Errorw("error creating refresh token", "email", req.Email, "error", err)
-		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to create refresh token", err)
+		return nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to create refresh token", err)
 	}
 
 	logger.L.Infow("User logged in successfully", "email", req.Email, "user_id", user.ID)
@@ -225,55 +217,40 @@ func (s *authService) Login(ctx context.Context, req *LoginRequest) (*BrowserLog
 	}
 	if err := s.auditLogRepo.Create(ctx, &auditLog); err != nil {
 		logger.L.Errorw("error creating audit log for user login", "user_id", user.ID, "email", req.Email, "error", err)
-		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to log user login", err)
+		return nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to log user login", err)
 	}
 
-	// Extract user agent and check if it's mobile
-	userAgent := middleware.ExtractUAFromContext(ctx)
-	isMobile := false
-	if userAgent != nil {
-		isMobile = utils.IsMobile(userAgent)
-	}
-
-	if isMobile {
-		return nil, &MobileLoginResp{
-			AccessToken:  accessTokenString,
-			RefreshToken: plainRefreshToken,
-			ExpiresIn:    30 * 24 * 60 * 60,
-		}, nil
-	}
-
-	return &BrowserLoginResp{
+	return &LoginResponse{
 		AccessToken:  accessTokenString,
 		RefreshToken: plainRefreshToken,
 		TokenType:    "Bearer",
 		ExpiresIn:    15 * 60,
-	}, nil, nil
+	}, nil
 }
 
 // Refresh generates a new access token and refresh token using the provided refresh token. Revokes the old refresh token.
-func (s *authService) Refresh(ctx context.Context, refreshToken string) (*BrowserLoginResp, *MobileLoginResp, *apperrors.APIError) {
+func (s *authService) Refresh(ctx context.Context, refreshToken string) (*LoginResponse, *apperrors.APIError) {
 	if refreshToken == "" {
 		logger.L.Error("missing refresh token in request")
-		return nil, nil, apperrors.BadRequest("invalid_body", "missing refresh token", domain.ErrInvalidBodyMissingFields)
+		return nil, apperrors.BadRequest("invalid_body", "missing refresh token", domain.ErrInvalidBodyMissingFields)
 	}
 
 	// Use new method to verify argon2 hashed tokens
 	rt, err := s.refreshTokenRepo.GetValidTokenForUser(ctx, refreshToken)
 	if err != nil {
 		if errors.Is(err, domain.ErrRefreshTokenNotFound) {
-			return nil, nil, apperrors.Unauthorized("invalid refresh token")
+			return nil, apperrors.Unauthorized("invalid refresh token")
 		} else if errors.Is(err, domain.ErrRefreshTokenRevoked) {
-			return nil, nil, apperrors.Unauthorized("refresh token has been revoked")
+			return nil, apperrors.Unauthorized("refresh token has been revoked")
 		} else if errors.Is(err, domain.ErrRefreshTokenExpired) {
-			return nil, nil, apperrors.Unauthorized("refresh token has expired")
+			return nil, apperrors.Unauthorized("refresh token has expired")
 		}
-		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to retrieve refresh token", err)
+		return nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to retrieve refresh token", err)
 	}
 
 	user, err := s.userRepo.GetByID(ctx, rt.UserID)
 	if err != nil {
-		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to retrieve user", err)
+		return nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to retrieve user", err)
 	}
 
 	newAccessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -286,14 +263,14 @@ func (s *authService) Refresh(ctx context.Context, refreshToken string) (*Browse
 	newAccessTokenString, err := newAccessToken.SignedString([]byte(config.Load().App.JWTSecretKey))
 	if err != nil {
 		logger.L.Errorw("error signing new access token", "user_id", user.ID, "error", err)
-		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to sign new access token", err)
+		return nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to sign new access token", err)
 	}
 
 	newPlainRefreshToken := randomString(64)
 	newTokenHash, err := utils.HashToken(newPlainRefreshToken)
 	if err != nil {
 		logger.L.Errorw("error hashing new refresh token", "user_id", user.ID, "error", err)
-		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to create new refresh token", err)
+		return nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to create new refresh token", err)
 	}
 
 	newRefreshToken := &domain.RefreshToken{
@@ -304,13 +281,13 @@ func (s *authService) Refresh(ctx context.Context, refreshToken string) (*Browse
 	}
 	if err := s.refreshTokenRepo.Create(ctx, newRefreshToken); err != nil {
 		logger.L.Errorw("error creating new refresh token", "user_id", user.ID, "error", err)
-		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to create new refresh token", err)
+		return nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to create new refresh token", err)
 	}
 
 	err = s.refreshTokenRepo.RevokeByHash(ctx, rt.TokenHash)
 	if err != nil {
 		logger.L.Errorw("error revoking old refresh token", "user_id", user.ID, "error", err)
-		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to revoke old refresh token", err)
+		return nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to revoke old refresh token", err)
 	}
 
 	logger.L.Infow("User refreshed tokens successfully", "user_id", user.ID)
@@ -322,28 +299,15 @@ func (s *authService) Refresh(ctx context.Context, refreshToken string) (*Browse
 	}
 	if err := s.auditLogRepo.Create(ctx, &auditLog); err != nil {
 		logger.L.Errorw("error creating audit log for token refresh", "user_id", user.ID, "error", err)
-		return nil, nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to log token refresh", err)
+		return nil, apperrors.FromStatus(http.StatusInternalServerError, "failed to log token refresh", err)
 	}
 
-	isMobile := false
-	userAgent := middleware.ExtractUAFromContext(ctx)
-	if userAgent != nil {
-		isMobile = utils.IsMobile(userAgent)
-	}
-
-	if isMobile {
-		return nil, &MobileLoginResp{
-			AccessToken:  newAccessTokenString,
-			RefreshToken: newPlainRefreshToken,
-			ExpiresIn:    30 * 24 * 60 * 60,
-		}, nil
-	}
-	return &BrowserLoginResp{
+	return &LoginResponse{
 		AccessToken:  newAccessTokenString,
 		RefreshToken: newPlainRefreshToken,
 		TokenType:    "Bearer",
 		ExpiresIn:    15 * 60,
-	}, nil, nil
+	}, nil
 }
 
 // Logout revokes the refresh token

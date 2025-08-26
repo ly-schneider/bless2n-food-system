@@ -1,84 +1,84 @@
-include .env
+# Use bash with safer defaults
+SHELL := bash
+.SHELLFLAGS := -eu -o pipefail -c
+
+# Load env files (don't error if missing)
+-include .env
 ifneq (,$(wildcard .env.$(APP_ENV)))
-    include .env.$(APP_ENV)
+  -include .env.$(APP_ENV)
 endif
 
-.PHONY: help dev docker-up docker-down docker-build flyway-migrate flyway-info flyway-validate clean
+# Export all vars from the Makefile to subcommands (AIR, docker, etc.)
+.EXPORT_ALL_VARIABLES:
+
+# Default to LOCAL for everything (e.g., `make dev`)
+MONGO_URI ?= $(MONGO_URI_LOCAL)
+
+# For compose-related targets with backend, override to DOCKER just for those recipes
+docker-up-backend docker-restart-backend: MONGO_URI := $(MONGO_URI_DOCKER)
 
 # Default target
+.DEFAULT_GOAL := help
+
+# Shortcuts
+DC  := docker compose
+AIR ?= ./bin/air
+
+.PHONY: help dev docker-up docker-up-backend docker-down docker-down-v docker-restart docker-restart-backend clean logs ps mongo-shell
+
 help:
 	@echo "Available commands:"
-	@echo "  dev              - Start API server with live-reload (development)"
-	@echo "  docker-up        - Start all services with Docker Compose"
-	@echo "  docker-down      - Stop all Docker Compose services"
-	@echo "  docker-restart   - Restart all Docker Compose services"
-	@echo "  docker-build     - Build Docker images"
-	@echo "  flyway-migrate   - Run Flyway migrations"
-	@echo "  flyway-info      - Get Flyway migration info"
-	@echo "  flyway-validate  - Validate Flyway migrations"
-	@echo "  clean            - Clean build artifacts"
+	@echo "  dev                    - Start API server with live-reload (AIR)"
+	@echo "  docker-up              - Start Mongo + Mongo Express"
+	@echo "  docker-up-backend      - Start Mongo + Mongo Express + backend (profile)"
+	@echo "  docker-down            - Stop services (keep volumes)"
+	@echo "  docker-down-v          - Stop services and REMOVE VOLUMES (DATA LOSS)"
+	@echo "  docker-restart         - Restart services (no backend)"
+	@echo "  docker-restart-backend - Restart services incl. backend"
+	@echo "  logs                   - Tail compose logs"
+	@echo "  ps                     - Show compose services"
+	@echo "  mongo-shell            - Open mongosh in the mongo container"
+	@echo "  clean                  - Remove build artifacts"
 
-# Development with live-reload
 dev:
 	@echo "Starting API server with live-reload..."
-	./bin/air -c .air.toml
+	$(AIR) -c .air.toml
 
-# Docker commands
 docker-up:
-	@echo "Starting services with docker Compose..."
-	docker compose up -d
+	@echo "Starting services (Mongo + Mongo Express)"
+	$(DC) up -d
+
+docker-up-backend:
+	@echo "Starting services including backend (profile: backend)"
+	$(DC) --profile backend up -d
 
 docker-down:
-	@echo "Stopping docker Compose services..."
-	docker compose down --volumes --remove-orphans
+	@echo "Stopping services (keeping volumes)..."
+	$(DC) down --remove-orphans
+
+docker-down-v:
+	@echo "Stopping services and removing volumes (DATA LOSS)..."
+	$(DC) down --volumes --remove-orphans
 
 docker-restart:
-	@echo "Restarting docker Compose services..."
-	make docker-down
-	make docker-up
+	@echo "Restarting services (no backend)"
+	$(MAKE) docker-down
+	$(MAKE) docker-up
 
-docker-build:
-	@echo "Building docker images..."
-	docker compose build
+docker-restart-backend:
+	@echo "Restarting services including backend"
+	$(MAKE) docker-down
+	$(MAKE) docker-up-backend
 
-# Flyway commands
-flyway-migrate:
-	@echo "Running Flyway migrations..."
-	docker run --rm \
-		--network rentro-backend_backend \
-		-v $(PWD)/db/migrations:/flyway/sql \
-		flyway/flyway:latest \
-		-url=jdbc:postgresql://postgres:5432/$(POSTGRES_DB) \
-		-user=$(POSTGRES_USER) \
-		-password=$(POSTGRES_PASSWORD) \
-		-locations=filesystem:/flyway/sql \
-		migrate
+logs:
+	$(DC) logs -f --tail=200
 
-flyway-info:
-	@echo "Getting Flyway migration info..."
-	docker run --rm \
-		--network rentro-backend_backend \
-		-v $(PWD)/db/migrations:/flyway/sql \
-		flyway/flyway:latest \
-		-url=jdbc:postgresql://postgres:5432/$(POSTGRES_DB) \
-		-user=$(POSTGRES_USER) \
-		-password=$(POSTGRES_PASSWORD) \
-		-locations=filesystem:/flyway/sql \
-		info
+ps:
+	$(DC) ps
 
-flyway-validate:
-	@echo "Validating Flyway migrations..."
-	docker run --rm \
-		--network rentro-backend_backend \
-		-v $(PWD)/db/migrations:/flyway/sql \
-		flyway/flyway:latest \
-		-url=jdbc:postgresql://postgres:5432/$(POSTGRES_DB) \
-		-user=$(POSTGRES_USER) \
-		-password=$(POSTGRES_PASSWORD) \
-		-locations=filesystem:/flyway/sql \
-		validate
-
-# Clean build artifacts
+mongo-shell:
+	$(DC) exec -it mongo mongosh -u $$MONGO_ROOT_USERNAME -p $$MONGO_ROOT_PASSWORD --authenticationDatabase admin
+	
 clean:
 	@echo "Cleaning build artifacts..."
 	rm -rf tmp/

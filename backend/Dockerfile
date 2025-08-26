@@ -1,0 +1,16 @@
+# syntax=docker/dockerfile:1
+FROM golang:1.24-alpine AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -o backend ./cmd/backend
+
+FROM alpine:3.22
+RUN addgroup -S app && adduser -S app -G app
+USER app
+WORKDIR /app
+COPY --from=build /src/backend .
+ENV DOCKER_CONTAINER=true
+EXPOSE 8080
+ENTRYPOINT ["./backend"]

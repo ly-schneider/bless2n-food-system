@@ -1,176 +1,158 @@
 erDiagram
-    roles {
-        integer id PK "not null"
-        text name UK "not null"
-        text display_name "not null"
-        text description
-        boolean is_default "default false not null"
-        boolean is_active  "default true not null"
-        timestamptz created_at "default now() not null"
-    }
+  users {
+    string id PK "NOT NULL"
+    string email UK "NOT NULL"
+    string firstname "NULL"
+    string lastname  "NULL"
+    string role "NOT NULL; enum: admin|customer"
+    boolean is_disabled "NOT NULL; default=false"
+    string disabled_reason "NULL"
+    datetime created_at "NOT NULL; default=now()"
+    datetime updated_at "NOT NULL; default=now()"
+  }
 
-    users {
-        nano_id id PK "not null"
-        text first_name "not null"
-        text last_name  "not null"
-        text email      UK "not null"
-        argon2_hash password_hash "not null --argon2"
-        boolean is_verified  "default false not null"
-        boolean is_disabled  "default false not null"
-        text disabled_reason
-        integer role_id FK "not null"
-        timestamptz created_at "default now() not null"
-        timestamptz updated_at
-    }
+  admin_invites {
+    string id PK "NOT NULL"
+    string invited_by FK "NOT NULL -> users.id"
+    string invitee_email "NOT NULL"
+    datetime expires_at "NOT NULL"
+  }
 
-    verification_tokens {
-        nano_id user_id FK   "not null"
-        argon2_hash token_hash "not null --argon2"
-        timestamptz expires_at "not null"
-    }
+  otp_tokens {
+    string id PK "NOT NULL"
+    string user_id FK "NOT NULL -> users.id"
+    string token_hash "NOT NULL (argon2)"
+    string type "NOT NULL; enum: login|password_reset"
+    datetime created_at "NOT NULL; default=now()"
+    datetime used_at "NULL"
+    int attempts "NOT NULL; default=0"
+    datetime expires_at "NOT NULL"
+  }
 
-    password_reset_tokens {
-        nano_id user_id FK   "not null"
-        argon2_hash token_hash "not null --argon2"
-        timestamptz expires_at "not null"
-    }
+  refresh_tokens {
+    string id PK "NOT NULL"
+    string user_id FK "NOT NULL -> users.id"
+    string client_id "NOT NULL"
+    string token_hash "NOT NULL (argon2)"
+    datetime issued_at "NOT NULL; default=now()"
+    datetime last_used_at "NOT NULL; default=now()"
+    datetime expires_at "NOT NULL"
+    boolean is_revoked "NOT NULL; default=false"
+    string revoked_reason "NULL"
+    string family_id "NOT NULL"
+  }
 
-    refresh_tokens {
-        nano_id user_id FK   "not null"
-        argon2_hash token_hash "not null --argon2"
-        timestamptz issued_at  "default now() not null"
-        timestamptz expires_at "not null"
-        boolean is_revoked "default false not null"
-    }
+  stations {
+    string id PK "NOT NULL"
+    string name "NOT NULL"
+  }
 
-    audit_logs {
-        integer id PK "not null"
-        nano_id user_id FK "not null"
-        inet public_ip      "not null"
-        text event   "not null"
-        timestamptz created_at "default now() not null"
-    }
+  devices {
+    string id PK "NOT NULL"
+    string station_id FK "NOT NULL -> stations.id"
+    string name "NOT NULL"
+    string model "NOT NULL"
+    string os "NOT NULL"
+    string version "NOT NULL"
+    boolean is_active "NOT NULL; default=true"
+  }
 
-    events {
-        nano_id id PK "not null"
-        nano_id owner_id FK  "not null"
-        text name           "not null"
-        integer checkout_spots "not null check (checkout_spots >= 0)"
-        text location       "not null"
-        boolean is_self_checkout "default false not null"
-        date start_date
-        date end_date
-        timestamptz created_at "default now() not null"
-        timestamptz updated_at
-    }
+  device_requests {
+    string id PK "NOT NULL"
+    string device_id FK "NOT NULL -> devices.id"
+    string approved_by FK "NULL -> users.id"
+    string status "NOT NULL; enum: pending|approved|rejected"
+    datetime created_at "NOT NULL; default=now()"
+    datetime decided_at "NULL"
+    datetime expires_at "NOT NULL"
+  }
 
-    event_roles {
-        integer id PK "not null"
-        text name         "not null"
-        text display_name "not null"
-        text description
-        boolean is_default "default false not null"
-        boolean is_active  "default true not null"
-        timestamptz created_at "default now() not null"
-    }
+  categories {
+    string id PK "NOT NULL"
+    string name "NOT NULL"
+    boolean is_active "NOT NULL; default=true"
+    datetime created_at "NOT NULL; default=now()"
+    datetime updated_at "NOT NULL; default=now()"
+  }
 
-    event_users {
-        nano_id event_id FK "not null"
-        nano_id user_id  FK "not null"
-        integer event_role_id FK "not null"
-        timestamptz invited_at "default now() not null"
-        timestamptz joined_at
-    }
+  products {
+    string id PK "NOT NULL"
+    string category_id FK "NOT NULL -> categories.id"
+    string type "NOT NULL; enum: simple|bundle"
+    string name "NOT NULL"
+    string image "NULL"
+    decimal price "NOT NULL; >= 0; e.g., numeric(8,2)"
+    boolean is_active "NOT NULL; default=true"
+    datetime created_at "NOT NULL; default=now()"
+    datetime updated_at "NOT NULL; default=now()"
+  }
 
-    event_invites {
-        nano_id id PK "not null"
-        nano_id event_id FK "not null"
-        integer event_role_id FK "not null"
-        text invitee_email "not null"
-        timestamptz expires_at "not null"
-    }
+  product_bundle_components {
+    string bundle_id FK "NOT NULL -> products.id (type=bundle)"
+    string component_product_id FK "NOT NULL -> products.id"
+    int qty "NOT NULL; > 0"
+    %% NOTE: UNIQUE(bundle_id, component_product_id)
+  }
 
-    devices {
-        nano_id id PK "not null"
-        text serial_number UK "not null"
-        text model "not null"
-        boolean is_active "default true not null"
-        timestamptz created_at "default now() not null"
-        timestamptz updated_at
-    }
+  station_products {
+    string station_id FK "NOT NULL -> stations.id"
+    string product_id FK "NOT NULL -> products.id"
+    %% NOTE: UNIQUE(station_id, product_id)
+  }
 
-    event_devices {
-        nano_id id PK "not null"
-        nano_id event_id FK  "not null"
-        nano_id device_id FK "not null"
-        timestamptz assigned_at "default now() not null"
-    }
+  orders {
+    string id PK "NOT NULL"
+    string customer_id FK "NULL -> users.id"
+    string contact_email "NULL (snapshot)"
+    decimal total "NOT NULL; >= 0; e.g., numeric(10,2)"
+    string status "NOT NULL; enum: pending|paid|cancelled|refunded"
+    datetime created_at "NOT NULL; default=now()"
+    datetime updated_at "NOT NULL; default=now()"
+  }
 
-    device_pairings {
-        nano_id id PK "not null"
-        nano_id event_device_id FK  "not null"
-        device_pairing_role_enum role "not null"
-        timestamptz created_at "default now() not null"
-        timestamptz updated_at
-    }
+  order_items {
+    string id PK "NOT NULL"
+    string order_id FK "NOT NULL -> orders.id"
+    string product_id FK "NOT NULL -> products.id"
+    string parent_item_id FK "NULL -> order_items.id (bundle parent)"
+    string type "NOT NULL; enum: simple|bundle|component"
+    string title "NOT NULL (snapshot)"
+    int quantity "NOT NULL; > 0"
+    decimal price_per_unit "NOT NULL; >= 0 (bundle parent carries price)"
+    boolean is_redeemed "NOT NULL; default=false"
+    datetime redeemed_at "NULL"
+    string redeemed_station_id FK "NULL -> stations.id"
+    string redeemed_device_id  FK "NULL -> devices.id"
+    %% CHECK: if is_redeemed=true then redeemed_at & redeemed_station_id NOT NULL
+  }
 
-    event_categories {
-        nano_id id PK "not null"
-        nano_id event_id FK "not null"
-        varchar(20) name  "not null"
-        text emoji "not null"
-        boolean is_active "default true not null"
-        timestamptz created_at "default now() not null"
-        timestamptz updated_at
-    }
+  inventory_ledger {
+    string id PK "NOT NULL"
+    string product_id FK "NOT NULL -> products.id"
+    int delta "NOT NULL; negative=sale, positive=restock/refund"
+    string reason "NOT NULL; enum: opening_balance|sale|refund|manual_adjust|correction"
+    datetime ts "NOT NULL; default=now()"
+  }
 
-    event_products {
-        nano_id id PK "not null"
-        nano_id event_id FK    "not null"
-        nano_id event_category_id FK "not null"
-        varchar(30) name   "not null"
-        text emoji  "not null"
-        numeric price "not null check (price > 0) -- numeric(6,2)"
-        boolean is_active "default true not null"
-        timestamptz created_at "default now() not null"
-        timestamptz updated_at
-    }
+  %% relationships
+  users     ||--o{ admin_invites    : "invited_by"
+  users     ||--o{ otp_tokens       : "has"
+  users     ||--o{ refresh_tokens   : "has"
+  users     ||--o{ device_requests  : "approved_by"
+  users     ||--o{ orders           : "customer"
 
-    customer_orders {
-        nano_id id PK "not null"
-        nano_id event_id  FK "not null"
-        nano_id event_device_id FK "not null"
-        numeric total "not null check (total >= 0) -- numeric(6,2)"
-        order_status status "not null"
-        timestamptz created_at "default now() not null"
-        timestamptz updated_at
-    }
+  stations  ||--o{ devices          : "owns"
+  stations  ||--o{ station_products : "lists"
+  stations  ||--o{ order_items      : "redeemed_here"
 
-    customer_order_items {
-        nano_id customer_order_id   FK "not null"
-        nano_id event_product_id FK "not null"
-        integer quantity "not null check (quantity > 0)"
-        numeric price_per_unit "not null check (price_per_unit > 0) -- numeric(6,2)"
-    }
+  devices   ||--o{ device_requests  : "requests"
+  devices   ||--o{ order_items      : "redeemed_by"
 
-    %% relationships
-    roles               ||--o{ users                 : has
-    users               ||--o{ verification_tokens   : issues
-    users               ||--o{ password_reset_tokens : issues
-    users               ||--o{ refresh_tokens        : issues
-    users               ||--o{ audit_logs            : generates
-    users               ||--o{ events                : owns
-    events              ||--o{ event_users           : contains
-    users               ||--o{ event_users           : participates_in
-    event_roles         ||--o{ event_users           : assigns
-    events              ||--o{ event_invites         : sends
-    event_roles         ||--o{ event_invites         : for_role
-    devices             ||--o{ event_devices         : is_assigned_in
-    events              ||--o{ event_devices         : uses
-    event_devices       ||--o{ device_pairings       : pairs
-    events              ||--o{ event_categories      : categorizes
-    event_categories    ||--o{ event_products        : includes
-    event_products      ||--o{ customer_order_items  : ordered_in
-    customer_orders     ||--o{ customer_order_items  : contains
-    events              ||--o{ customer_orders       : receives
-    event_devices       ||--o{ customer_orders       : processes
+  categories||--o{ products         : "categorizes"
+  products  ||--o{ product_bundle_components : "is_bundle"
+  products  ||--o{ station_products : "available_at"
+  products  ||--o{ order_items      : "sold_as"
+  products  ||--o{ inventory_ledger : "stock_moves"
+
+  orders    ||--o{ order_items      : "includes"
+  order_items ||--o{ order_items     : "bundle_children"
