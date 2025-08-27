@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_4LhvcqY89S
 createdAt: 2025-06-30T21:01:21.364755
-updatedAt: 2025-07-01T12:54:07.149633
+updatedAt: 2025-08-27T21:27:07.753665
 workspaceId: wk_wnN8iaCncF
 folderId: fl_AxXSj5YeMR
 authentication:
@@ -11,7 +11,8 @@ authenticationType: basic
 body:
   text: |-
     {
-      "code": "875123"
+      "email": "lyschneider@icloud.com",
+      "otp": "367724"
     }
 bodyType: application/json
 description: ''
@@ -29,7 +30,7 @@ headers:
   value: ''
   id: TnbaxtcMdU
 method: POST
-name: Verify Email
-sortPriority: 2500.0
-url: ${[ API_URL ]}/auth/verify-email
+name: Verify OTP
+sortPriority: 500.0
+url: ${[ API_URL ]}/auth/verify-otp
 urlParameters: []

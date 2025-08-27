@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_3gUQQL3ki4
 createdAt: 2025-06-20T15:22:38.476019
-updatedAt: 2025-06-20T15:24:38.484633
+updatedAt: 2025-08-27T10:08:54.595634
 workspaceId: wk_wnN8iaCncF
 folderId: fl_fC5LWSLWhi
 authentication: {}
@@ -12,7 +12,7 @@ bodyType: null
 description: ''
 headers: []
 method: GET
-name: Health
+name: Ping
 sortPriority: 0.0039
-url: ${[ BASE_URL ]}/healthz
+url: ${[ BASE_URL ]}/ping
 urlParameters: []

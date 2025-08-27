@@ -2,9 +2,12 @@ type: workspace
 model: workspace
 id: wk_wnN8iaCncF
 createdAt: 2025-05-07T09:39:42.988238
-updatedAt: 2025-05-28T09:31:14.152420
-name: rentro
+updatedAt: 2025-08-27T10:04:21.593023
+authentication: {}
+authenticationType: null
 description: ''
+headers: []
+name: bless2n-food-system
 encryptionKeyChallenge: null
 settingValidateCertificates: true
 settingFollowRedirects: true

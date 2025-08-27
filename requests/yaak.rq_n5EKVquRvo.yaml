@@ -1,0 +1,28 @@
+type: http_request
+model: http_request
+id: rq_n5EKVquRvo
+createdAt: 2025-08-27T21:46:45.957429
+updatedAt: 2025-08-27T21:50:51.404167
+workspaceId: wk_wnN8iaCncF
+folderId: fl_pvs6FTeznq
+authentication:
+  disabled: true
+authenticationType: basic
+body:
+  text: ''
+bodyType: application/json
+description: ''
+headers:
+- enabled: true
+  name: Authorization
+  value: Bearer eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYWRtaW4iLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjgwODAiLCJzdWIiOiI2OGFmNzgxY2RkMzI3ODk4MGJmODljZjAiLCJhdWQiOlsiYmxlc3N0aHVuLWZvb2QtYXBpIl0sImV4cCI6MTc1NjMzMjAyNSwibmJmIjoxNzU2MzMxNDI1LCJpYXQiOjE3NTYzMzE0MjUsImp0aSI6ImF0Xzg5MzVhYWNkMjNjNjMzMjNiNWIzNjA2OTVjYTY3ZWQ0In0.nSYCUsd784b9qZtjkEO8iz01ZF73y_UISssYZbMUD_OHNgLI9dA_cJPof_UBB2pRFrZpLhBA10vetL7YeD4gBw
+  id: V4p3QXd8BG
+- enabled: true
+  name: ''
+  value: ''
+  id: 4qpt3QF9FM
+method: GET
+name: Profile
+sortPriority: 0.0
+url: ${[ API_URL ]}/profile
+urlParameters: []

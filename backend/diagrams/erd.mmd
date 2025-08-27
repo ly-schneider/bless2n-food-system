@@ -1,3 +1,4 @@
+%% MONGODB ERD - Bless2n Food System
 erDiagram
   users {
     string id PK "NOT NULL"
@@ -5,11 +6,15 @@ erDiagram
     string firstname "NULL"
     string lastname  "NULL"
     string role "NOT NULL; enum: admin|customer"
+    boolean is_verified "NOT NULL; default=false"
     boolean is_disabled "NOT NULL; default=false"
     string disabled_reason "NULL"
     datetime created_at "NOT NULL; default=now()"
     datetime updated_at "NOT NULL; default=now()"
   }
+  %% INDEX PLAN — users
+  %% • email — Unique; Collation: locale=en, strength=2 (case-insensitive)
+  %% • (optional) created_at — Desc sort for recent lists
 
   admin_invites {
     string id PK "NOT NULL"
@@ -17,6 +22,9 @@ erDiagram
     string invitee_email "NOT NULL"
     datetime expires_at "NOT NULL"
   }
+  %% INDEX PLAN — admin_invites
+  %% • invitee_email — Non-unique
+  %% • expires_at — TTL; expireAfterSeconds=0 (auto-delete at timestamp)
 
   otp_tokens {
     string id PK "NOT NULL"
@@ -28,6 +36,10 @@ erDiagram
     int attempts "NOT NULL; default=0"
     datetime expires_at "NOT NULL"
   }
+  %% INDEX PLAN — otp_tokens
+  %% • (user_id, type, created_at desc) — Non-unique
+  %% • expires_at — TTL; expireAfterSeconds=0
+  %% • (user_id, type) — Partial: used_at = null (fast “unused & valid” lookups)
 
   refresh_tokens {
     string id PK "NOT NULL"
@@ -41,11 +53,19 @@ erDiagram
     string revoked_reason "NULL"
     string family_id "NOT NULL"
   }
+  %% INDEX PLAN — refresh_tokens
+  %% • token_hash — Unique (note: not a hashed-index type)
+  %% • (user_id, is_revoked, expires_at) — Non-unique
+  %% • family_id — Non-unique (reuse detection / family revocation)
+  %% • client_id — Non-unique (per-device management)
+  %% • expires_at — TTL; expireAfterSeconds=0 (optional auto-purge)
 
   stations {
     string id PK "NOT NULL"
     string name "NOT NULL"
   }
+  %% INDEX PLAN — stations
+  %% • name — Unique; Collation: locale=en, strength=2 (optional)
 
   devices {
     string id PK "NOT NULL"
@@ -56,6 +76,9 @@ erDiagram
     string version "NOT NULL"
     boolean is_active "NOT NULL; default=true"
   }
+  %% INDEX PLAN — devices
+  %% • station_id — Non-unique
+  %% • is_active — Non-unique
 
   device_requests {
     string id PK "NOT NULL"
@@ -66,6 +89,10 @@ erDiagram
     datetime decided_at "NULL"
     datetime expires_at "NOT NULL"
   }
+  %% INDEX PLAN — device_requests
+  %% • device_id — Non-unique
+  %% • (status, created_at desc) — Non-unique
+  %% • expires_at — TTL; expireAfterSeconds=0
 
   categories {
     string id PK "NOT NULL"
@@ -74,6 +101,8 @@ erDiagram
     datetime created_at "NOT NULL; default=now()"
     datetime updated_at "NOT NULL; default=now()"
   }
+  %% INDEX PLAN — categories
+  %% • name — Unique; Collation: locale=en, strength=2 (optional)
 
   products {
     string id PK "NOT NULL"
@@ -86,19 +115,27 @@ erDiagram
     datetime created_at "NOT NULL; default=now()"
     datetime updated_at "NOT NULL; default=now()"
   }
+  %% INDEX PLAN — products
+  %% • (category_id, is_active) — Non-unique
+  %% • type — Non-unique
+  %% • name — Text index (or Atlas Search) for simple search
 
   product_bundle_components {
     string bundle_id FK "NOT NULL -> products.id (type=bundle)"
     string component_product_id FK "NOT NULL -> products.id"
     int qty "NOT NULL; > 0"
-    %% NOTE: UNIQUE(bundle_id, component_product_id)
   }
+  %% INDEX PLAN — product_bundle_components
+  %% • (bundle_id, component_product_id) — Unique (no dup component per bundle)
+  %% • component_product_id — Non-unique (reverse lookup)
 
   station_products {
     string station_id FK "NOT NULL -> stations.id"
     string product_id FK "NOT NULL -> products.id"
-    %% NOTE: UNIQUE(station_id, product_id)
   }
+  %% INDEX PLAN — station_products
+  %% • (station_id, product_id) — Unique
+  %% • product_id — Non-unique (reverse lookup)
 
   orders {
     string id PK "NOT NULL"
@@ -109,6 +146,11 @@ erDiagram
     datetime created_at "NOT NULL; default=now()"
     datetime updated_at "NOT NULL; default=now()"
   }
+  %% INDEX PLAN — orders
+  %% • (customer_id, created_at desc) — Non-unique
+  %% • (status, created_at desc) — Non-unique
+  %% • (contact_email, created_at desc) — Non-unique; Collation: locale=en, strength=2
+  %% • created_at desc — Non-unique (recent orders)
 
   order_items {
     string id PK "NOT NULL"
@@ -123,8 +165,13 @@ erDiagram
     datetime redeemed_at "NULL"
     string redeemed_station_id FK "NULL -> stations.id"
     string redeemed_device_id  FK "NULL -> devices.id"
-    %% CHECK: if is_redeemed=true then redeemed_at & redeemed_station_id NOT NULL
   }
+  %% INDEX PLAN — order_items
+  %% • order_id — Partial: is_redeemed = false (device fetch: open lines)
+  %% • product_id — Partial: is_redeemed = false (station view)
+  %% • parent_item_id — Non-unique (bundle children)
+  %% • redeemed_station_id — Non-unique
+  %% • redeemed_device_id — Non-unique
 
   inventory_ledger {
     string id PK "NOT NULL"
@@ -133,6 +180,10 @@ erDiagram
     string reason "NOT NULL; enum: opening_balance|sale|refund|manual_adjust|correction"
     datetime ts "NOT NULL; default=now()"
   }
+  %% INDEX PLAN — inventory_ledger
+  %% • (product_id, ts desc) — Non-unique (recent stock movements per product)
+  %% • reason — Non-unique
+  %% • (optional) Time-Series collection: automatic compound index on (metaField, timeField) if used
 
   %% relationships
   users     ||--o{ admin_invites    : "invited_by"

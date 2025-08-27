@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_MXsfHwiwFb
 createdAt: 2025-05-28T09:31:45.324145
-updatedAt: 2025-07-01T12:29:11.799910
+updatedAt: 2025-08-27T22:06:27.828647
 workspaceId: wk_wnN8iaCncF
 folderId: fl_AxXSj5YeMR
 authentication:
@@ -11,10 +11,7 @@ authenticationType: basic
 body:
   text: |-
     {
-      "first_name": "Levyn",
-      "last_name": "Schneider",
-      "email": "lyschneider@icloud.com",
-      "password": "Test1234!"
+      "email": "lyschneider@icloud.com"
     }
 bodyType: application/json
 description: ''
@@ -28,7 +25,7 @@ headers:
   value: application/json
   id: aDEd3NeZja
 method: POST
-name: Register User
-sortPriority: 0.0
-url: ${[ API_URL ]}/auth/register
+name: Register Customer
+sortPriority: 250.0
+url: ${[ API_URL ]}/auth/register/customer
 urlParameters: []

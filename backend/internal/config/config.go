@@ -5,25 +5,30 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	App    AppConfig
-	Mongo  MongoConfig
-	Logger LoggerConfig
-	Smtp   SmtpConfig
+	App      AppConfig
+	Mongo    MongoConfig
+	Logger   LoggerConfig
+	Smtp     SmtpConfig
+	Security SecurityConfig
 }
 
 type AppConfig struct {
-	AppEnv       string
-	AppPort      string
-	JWTSecretKey string
+	AppEnv         string
+	AppPort        string
+	JWTIssuer      string
+	JWTPrivPEMPath string
+	JWTPubPEMPath  string
 }
 
 type MongoConfig struct {
-	URI string
+	URI      string
+	Database string
 }
 
 type LoggerConfig struct {
@@ -38,6 +43,12 @@ type SmtpConfig struct {
 	Password  string
 	From      string
 	TLSPolicy string
+}
+
+type SecurityConfig struct {
+	EnableHSTS     bool
+	EnableCSP      bool
+	TrustedOrigins []string
 }
 
 func Load() Config {
@@ -59,12 +70,15 @@ func Load() Config {
 
 	cfg := Config{
 		App: AppConfig{
-			AppEnv:       getEnv("APP_ENV"),
-			AppPort:      getEnv("APP_PORT"),
-			JWTSecretKey: getEnv("JWT_SECRET_KEY"),
+			AppEnv:         getEnv("APP_ENV"),
+			AppPort:        getEnv("APP_PORT"),
+			JWTIssuer:      getEnv("JWT_ISSUER"),
+			JWTPrivPEMPath: getEnv("JWT_PRIV_PEM_PATH"),
+			JWTPubPEMPath:  getEnv("JWT_PUB_PEM_PATH"),
 		},
 		Mongo: MongoConfig{
-			URI: getEnv("MONGO_URI"),
+			URI:      getEnv("MONGO_URI"),
+			Database: getEnv("MONGO_DATABASE"),
 		},
 		Logger: LoggerConfig{
 			Level:       getEnv("LOG_LEVEL"),
@@ -77,6 +91,11 @@ func Load() Config {
 			Password:  getEnv("SMTP_PASSWORD"),
 			From:      getEnv("SMTP_FROM"),
 			TLSPolicy: getEnv("SMTP_TLS_POLICY"),
+		},
+		Security: SecurityConfig{
+			EnableHSTS:     getEnvAsBool("SECURITY_ENABLE_HSTS"),
+			EnableCSP:      getEnvAsBool("SECURITY_ENABLE_CSP"),
+			TrustedOrigins: getTrustedOrigins("SECURITY_TRUSTED_ORIGINS"),
 		},
 	}
 
@@ -114,4 +133,22 @@ func getEnvAsBool(key string) bool {
 	}
 	log.Fatalf("config: environment variable %s is not set", key)
 	return false
+}
+
+// getTrustedOrigins parses comma-separated list of trusted origins from environment
+func getTrustedOrigins(key string) []string {
+	value := os.Getenv(key)
+	if value == "" {
+		log.Fatalf("config: environment variable %s is not set", key)
+		return make([]string, 0)
+	}
+
+	origins := strings.Split(value, ",")
+	var trimmedOrigins []string
+	for _, origin := range origins {
+		if trimmed := strings.TrimSpace(origin); trimmed != "" {
+			trimmedOrigins = append(trimmedOrigins, trimmed)
+		}
+	}
+	return trimmedOrigins
 }
