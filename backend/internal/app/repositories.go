@@ -2,6 +2,7 @@ package app
 
 import (
 	"backend/internal/repository"
+
 	"go.uber.org/fx"
 )
 
@@ -11,7 +12,6 @@ func NewRepositories() fx.Option {
 			repository.NewUserRepository,
 			repository.NewOTPTokenRepository,
 			repository.NewRefreshTokenRepository,
-			repository.NewAuditLogRepository,
 			repository.NewAdminInviteRepository,
 			repository.NewStationRepository,
 			repository.NewDeviceRepository,

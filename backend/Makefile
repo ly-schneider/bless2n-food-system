@@ -2,6 +2,8 @@
 SHELL := bash
 .SHELLFLAGS := -eu -o pipefail -c
 
+AIR ?= go tool air
+
 # Load env files (don't error if missing)
 -include .env
 ifneq (,$(wildcard .env.$(APP_ENV)))
@@ -28,10 +30,12 @@ docker-up-backend docker-restart-backend: SMTP_PORT := $(SMTP_PORT_DOCKER)
 DC  := docker compose
 AIR ?= ./bin/air
 
-.PHONY: help dev docker-up docker-up-backend docker-down docker-down-v docker-restart docker-restart-backend clean logs ps mongo-shell
+.PHONY: help tools swag dev docker-up docker-up-backend docker-down docker-down-v docker-restart docker-restart-backend clean logs ps mongo-shell
 
 help:
 	@echo "Available commands:"
+	@echo "  tools                  - Install/update required tools (air, swag)"
+	@echo "  swag                   - Create swagger documentation"
 	@echo "  dev                    - Start API server with live-reload (AIR)"
 	@echo "  docker-up              - Start Mongo + Mongo Express"
 	@echo "  docker-up-backend      - Start Mongo + Mongo Express + backend (profile)"
@@ -44,7 +48,17 @@ help:
 	@echo "  mongo-shell            - Open mongosh in the mongo container"
 	@echo "  clean                  - Remove build artifacts"
 
-dev:
+tools:
+	@echo "Installing/updating tools..."
+	go get -tool github.com/swaggo/swag/cmd/swag@latest
+	go get -tool github.com/air-verse/air@latest
+	go mod tidy
+
+swag:
+	@echo "Creating swagger documentation..."
+	go tool swag init -g cmd/backend/main.go --parseInternal --parseDependency --generatedTime=false
+
+dev: 
 	@echo "Starting API server with live-reload..."
 	$(AIR) -c .air.toml
 

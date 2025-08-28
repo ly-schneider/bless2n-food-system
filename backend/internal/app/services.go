@@ -7,7 +7,6 @@ import (
 	"backend/internal/service/auth"
 
 	"go.uber.org/fx"
-	"go.uber.org/zap"
 )
 
 func NewServices() fx.Option {
@@ -26,9 +25,8 @@ func NewAuthService(
 	userRepo repository.UserRepository,
 	otpService auth.OTPService,
 	tokenService auth.TokenService,
-	logger *zap.Logger,
 ) service.AuthService {
-	return auth.NewService(userRepo, otpService, tokenService, logger)
+	return auth.NewService(userRepo, otpService, tokenService)
 }
 
 func NewJWTService(cfg config.Config) service.JWTService {

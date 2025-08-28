@@ -19,13 +19,11 @@ const (
 
 type JWTMiddleware struct {
 	jwtService service.JWTService
-	logger     *zap.Logger
 }
 
-func NewJWTMiddleware(jwtService service.JWTService, logger *zap.Logger) *JWTMiddleware {
+func NewJWTMiddleware(jwtService service.JWTService) *JWTMiddleware {
 	return &JWTMiddleware{
 		jwtService: jwtService,
-		logger:     logger,
 	}
 }
 
@@ -39,7 +37,7 @@ func (m *JWTMiddleware) RequireAuth(next http.Handler) http.Handler {
 
 		claims, err := m.jwtService.ValidateAccessToken(token)
 		if err != nil {
-			m.logger.Debug("token validation failed", zap.Error(err))
+			zap.L().Debug("token validation failed", zap.Error(err))
 			m.writeErrorResponse(w, http.StatusUnauthorized, "Invalid or expired token")
 			return
 		}
@@ -76,7 +74,7 @@ func (m *JWTMiddleware) RequireRole(roles ...string) func(http.Handler) http.Han
 			hasRole := slices.Contains(roles, userRole)
 
 			if !hasRole {
-				m.logger.Warn("insufficient permissions",
+				zap.L().Warn("insufficient permissions",
 					zap.String("user_id", claims.Subject),
 					zap.String("user_role", userRole),
 					zap.Strings("required_roles", roles))

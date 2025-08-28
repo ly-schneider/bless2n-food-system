@@ -5,11 +5,12 @@ import (
 	"net/http"
 
 	"backend/internal/config"
+
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
 
-func StartHTTPServer(lc fx.Lifecycle, cfg config.Config, router http.Handler, logger *zap.Logger) {
+func StartHTTPServer(lc fx.Lifecycle, cfg config.Config, router http.Handler) {
 	server := &http.Server{
 		Addr:    ":" + cfg.App.AppPort,
 		Handler: router,
@@ -17,16 +18,16 @@ func StartHTTPServer(lc fx.Lifecycle, cfg config.Config, router http.Handler, lo
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			logger.Info("starting HTTP server", zap.String("port", cfg.App.AppPort))
+			zap.L().Info("starting HTTP server", zap.String("port", cfg.App.AppPort))
 			go func() {
 				if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-					logger.Fatal("failed to start HTTP server", zap.Error(err))
+					zap.L().Fatal("failed to start HTTP server", zap.Error(err))
 				}
 			}()
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			logger.Info("stopping HTTP server")
+			zap.L().Info("stopping HTTP server")
 			return server.Shutdown(ctx)
 		},
 	})

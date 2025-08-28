@@ -23,7 +23,7 @@ var (
 	ErrInvalidBodyMissingFields = errors.New("missing required fields")
 	ErrValidationFailed         = errors.New("validation failed")
 
-	// Verification errors  
+	// Verification errors
 	ErrVerificationTokenNotFound = errors.New("verification token not found")
 	ErrVerificationTokenExpired  = errors.New("verification token expired")
 )

@@ -6,6 +6,7 @@ import (
 
 	"backend/internal/database"
 	"backend/internal/domain"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -180,10 +181,10 @@ func (r *orderItemRepository) MarkAsRedeemed(ctx context.Context, id primitive.O
 	filter := bson.M{"_id": id}
 	update := bson.M{
 		"$set": bson.M{
-			"is_redeemed":           true,
-			"redeemed_at":           now,
-			"redeemed_station_id":   stationID,
-			"redeemed_device_id":    deviceID,
+			"is_redeemed":         true,
+			"redeemed_at":         now,
+			"redeemed_station_id": stationID,
+			"redeemed_device_id":  deviceID,
 		},
 	}
 

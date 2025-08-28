@@ -22,18 +22,15 @@ type OTPService interface {
 type otpService struct {
 	otpRepo      repository.OTPTokenRepository
 	emailService service.EmailService
-	logger       *zap.Logger
 }
 
 func NewOTPService(
 	otpRepo repository.OTPTokenRepository,
 	emailService service.EmailService,
-	logger *zap.Logger,
 ) OTPService {
 	return &otpService{
 		otpRepo:      otpRepo,
 		emailService: emailService,
-		logger:       logger,
 	}
 }
 
@@ -76,7 +73,7 @@ func (s *otpService) Verify(ctx context.Context, userID primitive.ObjectID, otp 
 	// Get latest OTP token for the user
 	otpToken, err := s.otpRepo.GetLatestByUserAndType(ctx, userID, tokenType)
 	if err != nil {
-		s.logger.Error("failed to get OTP token", zap.Error(err))
+		zap.L().Error("failed to get OTP token", zap.Error(err))
 		return fmt.Errorf("failed to get OTP token: %w", err)
 	}
 	if otpToken == nil {
@@ -99,14 +96,14 @@ func (s *otpService) Verify(ctx context.Context, userID primitive.ObjectID, otp 
 	if verr != nil || !ok {
 		// Increment attempts on any verification failure
 		if err := s.otpRepo.IncrementAttempts(ctx, otpToken.ID); err != nil {
-			s.logger.Error("failed to increment OTP attempts", zap.Error(err))
+			zap.L().Error("failed to increment OTP attempts", zap.Error(err))
 		}
 		return fmt.Errorf("invalid OTP code")
 	}
 
 	// Mark OTP as used
 	if err := s.otpRepo.MarkAsUsed(ctx, otpToken.ID); err != nil {
-		s.logger.Error("failed to mark OTP as used", zap.Error(err))
+		zap.L().Error("failed to mark OTP as used", zap.Error(err))
 		return fmt.Errorf("failed to mark OTP as used: %w", err)
 	}
 

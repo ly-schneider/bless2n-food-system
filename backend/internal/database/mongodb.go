@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"backend/internal/config"
+
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
@@ -15,27 +16,27 @@ type MongoDB struct {
 	Database *mongo.Database
 }
 
-func NewMongoDB(cfg config.Config, logger *zap.Logger) (*MongoDB, error) {
+func NewMongoDB(cfg config.Config) (*MongoDB, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	clientOptions := options.Client().ApplyURI(cfg.Mongo.URI)
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
-		logger.Error("failed to connect to MongoDB", zap.Error(err))
+		zap.L().Error("failed to connect to MongoDB", zap.Error(err))
 		return nil, err
 	}
 
 	// Ping the database to verify connection
 	if err := client.Ping(ctx, nil); err != nil {
-		logger.Error("failed to ping MongoDB", zap.Error(err))
+		zap.L().Error("failed to ping MongoDB", zap.Error(err))
 		return nil, err
 	}
 
 	// Use the configured database name
 	dbName := cfg.Mongo.Database
 	database := client.Database(dbName)
-	logger.Info("successfully connected to MongoDB", zap.String("database", dbName))
+	zap.L().Info("successfully connected to MongoDB", zap.String("database", dbName))
 
 	return &MongoDB{
 		Client:   client,
@@ -51,19 +52,18 @@ func (m *MongoDB) Close() error {
 
 // Collection names constants
 const (
-	UsersCollection                = "users"
-	AdminInvitesCollection         = "admin_invites"
-	OTPTokensCollection            = "otp_tokens"
-	RefreshTokensCollection        = "refresh_tokens"
-	AuditLogsCollection            = "audit_logs"
-	StationsCollection             = "stations"
-	DevicesCollection              = "devices"
-	DeviceRequestsCollection       = "device_requests"
-	CategoriesCollection           = "categories"
-	ProductsCollection             = "products"
+	UsersCollection                   = "users"
+	AdminInvitesCollection            = "admin_invites"
+	OTPTokensCollection               = "otp_tokens"
+	RefreshTokensCollection           = "refresh_tokens"
+	StationsCollection                = "stations"
+	DevicesCollection                 = "devices"
+	DeviceRequestsCollection          = "device_requests"
+	CategoriesCollection              = "categories"
+	ProductsCollection                = "products"
 	ProductBundleComponentsCollection = "product_bundle_components"
-	StationProductsCollection      = "station_products"
-	InventoryLedgerCollection      = "inventory_ledger"
-	OrdersCollection               = "orders"
-	OrderItemsCollection           = "order_items"
+	StationProductsCollection         = "station_products"
+	InventoryLedgerCollection         = "inventory_ledger"
+	OrdersCollection                  = "orders"
+	OrderItemsCollection              = "order_items"
 )

@@ -27,7 +27,6 @@ type TokenClaims struct {
 	jwt.RegisteredClaims
 }
 
-
 type JWTService interface {
 	GenerateAccessToken(user *domain.User) (string, error)
 	GenerateRefreshToken() (string, error)

@@ -23,7 +23,6 @@ A comprehensive Go-based HTTP backend service for the Bless2n Food System
 - **Product Catalog**: Product and category management with bundle support
 - **Device Management**: IoT device integration for food stations
 - **Inventory Tracking**: Real-time inventory ledger system
-- **Audit Logging**: Comprehensive audit trail for all operations
 
 ### Technical Features
 - **Dependency Injection**: Uber FX for clean dependency management

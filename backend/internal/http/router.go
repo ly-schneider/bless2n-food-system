@@ -8,12 +8,15 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 func NewRouter(
 	authHandler *handler.AuthHandler,
 	jwtMw *jwtMiddleware.JWTMiddleware,
 	securityMw *jwtMiddleware.SecurityMiddleware,
+	enableDocs bool,
 ) http.Handler {
 	r := chi.NewRouter()
 
@@ -28,6 +31,10 @@ func NewRouter(
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Heartbeat("/ping"))
+
+	if enableDocs {
+		r.Get("/swagger/*", httpSwagger.WrapHandler)
+	}
 
 	r.Route("/v1", func(v1 chi.Router) {
 		// Auth routes (public)

@@ -1,0 +1,371 @@
+basePath: /v1
+definitions:
+  backend_internal_domain.User:
+    properties:
+      created_at:
+        type: string
+      disabled_reason:
+        type: string
+      email:
+        type: string
+      first_name:
+        description: Only for admins
+        type: string
+      id:
+        type: string
+      is_disabled:
+        type: boolean
+      is_verified:
+        type: boolean
+      last_name:
+        description: Only for admins
+        type: string
+      role:
+        allOf:
+        - $ref: '#/definitions/backend_internal_domain.UserRole'
+        enum:
+        - admin
+        - customer
+      role_id:
+        description: For backward compatibility
+        type: integer
+      updated_at:
+        type: string
+    required:
+    - email
+    - role
+    type: object
+  backend_internal_domain.UserRole:
+    enum:
+    - admin
+    - customer
+    type: string
+    x-enum-varnames:
+    - UserRoleAdmin
+    - UserRoleCustomer
+  backend_internal_response.ErrorResponse:
+    properties:
+      error:
+        type: boolean
+      message:
+        type: string
+      status:
+        type: integer
+    type: object
+  backend_internal_service.LoginRequest:
+    properties:
+      client_id:
+        type: string
+      email:
+        type: string
+      otp:
+        type: string
+    required:
+    - client_id
+    - email
+    - otp
+    type: object
+  backend_internal_service.LoginResponse:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      refresh_token:
+        type: string
+      token_type:
+        type: string
+      user:
+        $ref: '#/definitions/backend_internal_domain.User'
+    type: object
+  backend_internal_service.LogoutRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  backend_internal_service.LogoutResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  backend_internal_service.RefreshTokenRequest:
+    properties:
+      client_id:
+        type: string
+      refresh_token:
+        type: string
+    required:
+    - client_id
+    - refresh_token
+    type: object
+  backend_internal_service.RefreshTokenResponse:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      refresh_token:
+        type: string
+      token_type:
+        type: string
+    type: object
+  backend_internal_service.RegisterCustomerRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  backend_internal_service.RegisterCustomerResponse:
+    properties:
+      message:
+        type: string
+      user_id:
+        type: string
+    type: object
+  backend_internal_service.RequestLoginOTPRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  backend_internal_service.RequestLoginOTPResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  backend_internal_service.ResendOTPRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  backend_internal_service.ResendOTPResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  backend_internal_service.VerifyOTPRequest:
+    properties:
+      email:
+        type: string
+      otp:
+        type: string
+    required:
+    - email
+    - otp
+    type: object
+  backend_internal_service.VerifyOTPResponse:
+    properties:
+      message:
+        type: string
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/backend_internal_domain.User'
+    type: object
+info:
+  contact: {}
+  description: Internal API for our backend
+  title: Backend API
+  version: "1.0"
+paths:
+  /v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Exchange a valid OTP for an access/refresh token pair
+      parameters:
+      - description: payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/backend_internal_service.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/backend_internal_service.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+      summary: Login with OTP
+      tags:
+      - auth
+  /v1/auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Revoke the provided refresh token
+      parameters:
+      - description: payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/backend_internal_service.LogoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/backend_internal_service.LogoutResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+      summary: Logout (invalidate refresh token)
+      tags:
+      - auth
+  /v1/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Exchange a valid refresh token for a new access/refresh token pair
+      parameters:
+      - description: payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/backend_internal_service.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/backend_internal_service.RefreshTokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+      summary: Refresh tokens
+      tags:
+      - auth
+  /v1/auth/register/customer:
+    post:
+      consumes:
+      - application/json
+      description: Register a new customer and send an OTP to email
+      parameters:
+      - description: payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/backend_internal_service.RegisterCustomerRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/backend_internal_service.RegisterCustomerResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+      summary: Register customer
+      tags:
+      - auth
+  /v1/auth/request-login-otp:
+    post:
+      consumes:
+      - application/json
+      description: Start passwordless login by requesting an OTP for the given email
+      parameters:
+      - description: payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/backend_internal_service.RequestLoginOTPRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/backend_internal_service.RequestLoginOTPResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+      summary: Request login OTP
+      tags:
+      - auth
+  /v1/auth/resend-otp:
+    post:
+      consumes:
+      - application/json
+      description: Resend a login/verification OTP to the user's email
+      parameters:
+      - description: payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/backend_internal_service.ResendOTPRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/backend_internal_service.ResendOTPResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+      summary: Resend OTP
+      tags:
+      - auth
+  /v1/auth/verify-otp:
+    post:
+      consumes:
+      - application/json
+      description: Verify a 6-digit OTP sent to the user's email
+      parameters:
+      - description: payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/backend_internal_service.VerifyOTPRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/backend_internal_service.VerifyOTPResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+      summary: Verify OTP
+      tags:
+      - auth
+schemes:
+- http
+- https
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

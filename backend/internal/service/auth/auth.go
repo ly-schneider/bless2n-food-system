@@ -12,25 +12,21 @@ import (
 	"backend/internal/service"
 )
 
-
 type authService struct {
 	userRepo     repository.UserRepository
 	otpService   OTPService
 	tokenService TokenService
-	logger       *zap.Logger
 }
 
 func NewService(
 	userRepo repository.UserRepository,
 	otpService OTPService,
 	tokenService TokenService,
-	logger *zap.Logger,
 ) service.AuthService {
 	return &authService{
 		userRepo:     userRepo,
 		otpService:   otpService,
 		tokenService: tokenService,
-		logger:       logger,
 	}
 }
 
@@ -38,7 +34,7 @@ func (s *authService) RegisterCustomer(ctx context.Context, req service.Register
 	// Check if user already exists
 	existingUser, err := s.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
-		s.logger.Error("failed to check existing user", zap.Error(err))
+		zap.L().Error("failed to check existing user", zap.Error(err))
 		return nil, fmt.Errorf("failed to check existing user: %w", err)
 	}
 
@@ -53,7 +49,7 @@ func (s *authService) RegisterCustomer(ctx context.Context, req service.Register
 		existingUser.UpdatedAt = time.Now()
 
 		if err := s.userRepo.Update(ctx, existingUser); err != nil {
-			s.logger.Error("failed to update existing user", zap.Error(err))
+			zap.L().Error("failed to update existing user", zap.Error(err))
 			return nil, fmt.Errorf("failed to update user: %w", err)
 		}
 		user = existingUser
@@ -69,18 +65,18 @@ func (s *authService) RegisterCustomer(ctx context.Context, req service.Register
 		}
 
 		if err := s.userRepo.Create(ctx, user); err != nil {
-			s.logger.Error("failed to create user", zap.Error(err))
+			zap.L().Error("failed to create user", zap.Error(err))
 			return nil, fmt.Errorf("failed to create user: %w", err)
 		}
 	}
 
 	// Generate and send OTP
 	if err := s.otpService.GenerateAndSend(ctx, user.ID, req.Email, domain.TokenTypeLogin); err != nil {
-		s.logger.Error("failed to generate and send OTP", zap.Error(err))
+		zap.L().Error("failed to generate and send OTP", zap.Error(err))
 		return nil, fmt.Errorf("failed to send verification email: %w", err)
 	}
 
-	s.logger.Info("customer registered successfully",
+	zap.L().Info("customer registered successfully",
 		zap.String("user_id", user.ID.Hex()),
 		zap.String("email", user.Email))
 
@@ -94,7 +90,7 @@ func (s *authService) VerifyOTP(ctx context.Context, req service.VerifyOTPReques
 	// Get user by email
 	user, err := s.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
-		s.logger.Error("failed to get user by email", zap.Error(err))
+		zap.L().Error("failed to get user by email", zap.Error(err))
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 	if user == nil {
@@ -110,11 +106,11 @@ func (s *authService) VerifyOTP(ctx context.Context, req service.VerifyOTPReques
 	user.IsVerified = true
 	user.UpdatedAt = time.Now()
 	if err := s.userRepo.Update(ctx, user); err != nil {
-		s.logger.Error("failed to mark user as verified", zap.Error(err))
+		zap.L().Error("failed to mark user as verified", zap.Error(err))
 		return nil, fmt.Errorf("failed to verify user: %w", err)
 	}
 
-	s.logger.Info("user verified successfully",
+	zap.L().Info("user verified successfully",
 		zap.String("user_id", user.ID.Hex()),
 		zap.String("email", user.Email))
 
@@ -128,7 +124,7 @@ func (s *authService) ResendOTP(ctx context.Context, req service.ResendOTPReques
 	// Get user by email
 	user, err := s.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
-		s.logger.Error("failed to get user by email", zap.Error(err))
+		zap.L().Error("failed to get user by email", zap.Error(err))
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
@@ -142,11 +138,11 @@ func (s *authService) ResendOTP(ctx context.Context, req service.ResendOTPReques
 
 	// Generate and send new OTP
 	if err := s.otpService.GenerateAndSend(ctx, user.ID, req.Email, domain.TokenTypeLogin); err != nil {
-		s.logger.Error("failed to generate and send OTP", zap.Error(err))
+		zap.L().Error("failed to generate and send OTP", zap.Error(err))
 		return nil, fmt.Errorf("failed to send verification email: %w", err)
 	}
 
-	s.logger.Info("OTP resent successfully",
+	zap.L().Info("OTP resent successfully",
 		zap.String("user_id", user.ID.Hex()),
 		zap.String("email", user.Email))
 
@@ -159,7 +155,7 @@ func (s *authService) RequestLoginOTP(ctx context.Context, req service.RequestLo
 	// Get user by email
 	user, err := s.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
-		s.logger.Error("failed to get user by email", zap.Error(err))
+		zap.L().Error("failed to get user by email", zap.Error(err))
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
@@ -177,11 +173,11 @@ func (s *authService) RequestLoginOTP(ctx context.Context, req service.RequestLo
 
 	// Generate and send new login OTP
 	if err := s.otpService.GenerateAndSend(ctx, user.ID, req.Email, domain.TokenTypeLogin); err != nil {
-		s.logger.Error("failed to generate and send login OTP", zap.Error(err))
+		zap.L().Error("failed to generate and send login OTP", zap.Error(err))
 		return nil, fmt.Errorf("failed to send login code: %w", err)
 	}
 
-	s.logger.Info("login OTP sent successfully",
+	zap.L().Info("login OTP sent successfully",
 		zap.String("user_id", user.ID.Hex()),
 		zap.String("email", user.Email))
 
@@ -194,7 +190,7 @@ func (s *authService) Login(ctx context.Context, req service.LoginRequest) (*ser
 	// Get user by email
 	user, err := s.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
-		s.logger.Error("failed to get user by email", zap.Error(err))
+		zap.L().Error("failed to get user by email", zap.Error(err))
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 	if user == nil {
@@ -220,7 +216,7 @@ func (s *authService) Login(ctx context.Context, req service.LoginRequest) (*ser
 		return nil, err
 	}
 
-	s.logger.Info("user logged in successfully",
+	zap.L().Info("user logged in successfully",
 		zap.String("user_id", user.ID.Hex()),
 		zap.String("email", user.Email),
 		zap.String("client_id", req.ClientID))

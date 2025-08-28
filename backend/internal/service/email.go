@@ -16,28 +16,26 @@ type EmailService interface {
 
 type emailService struct {
 	config config.SmtpConfig
-	logger *zap.Logger
 }
 
-func NewEmailService(cfg config.Config, logger *zap.Logger) EmailService {
+func NewEmailService(cfg config.Config) EmailService {
 	return &emailService{
 		config: cfg.Smtp,
-		logger: logger,
 	}
 }
 
 func (s *emailService) SendOTP(ctx context.Context, email, otp string) error {
-	subject := "Dein Blessthun Code"
+	subject := "Dein BlessThun Code"
 	body := fmt.Sprintf(`
 Hey,
 
-Dein Anmeldecode für Blessthun ist: %s
+Dein Anmeldecode für BlessThun ist: %s
 
 Dieser Code läuft in 10 Minuten ab.
 
 Wenn du diesen Code nicht angefordert hast, ignoriere bitte diese E-Mail.
 
-- Dein Blessthun Team
+- Dein BlessThun Team
 `, otp)
 
 	return s.sendEmail(email, subject, body)
@@ -57,14 +55,14 @@ func (s *emailService) sendEmail(to, subject, body string) error {
 	addr := fmt.Sprintf("%s:%s", s.config.Host, s.config.Port)
 	err := smtp.SendMail(addr, auth, from, []string{to}, msg)
 	if err != nil {
-		s.logger.Error("failed to send email",
+		zap.L().Error("failed to send email",
 			zap.String("to", to),
 			zap.String("subject", subject),
 			zap.Error(err))
 		return fmt.Errorf("failed to send email: %w", err)
 	}
 
-	s.logger.Info("email sent successfully",
+	zap.L().Info("email sent successfully",
 		zap.String("to", to),
 		zap.String("subject", subject))
 	return nil

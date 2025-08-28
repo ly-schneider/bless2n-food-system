@@ -8,6 +8,7 @@ import (
 
 	"backend/internal/database"
 	"backend/internal/domain"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -79,8 +80,8 @@ func (r *refreshTokenRepository) RevokeByFamilyID(ctx context.Context, familyID 
 	filter := bson.M{"family_id": familyID}
 	update := bson.M{
 		"$set": bson.M{
-			"is_revoked":      true,
-			"revoked_reason":  reason,
+			"is_revoked":     true,
+			"revoked_reason": reason,
 		},
 	}
 
@@ -143,7 +144,7 @@ func (r *refreshTokenRepository) GetActiveByUserID(ctx context.Context, userID p
 func (r *refreshTokenRepository) GetValidTokenForUser(ctx context.Context, plainToken string) (*domain.RefreshToken, error) {
 	// Hash the plain token to compare with stored hashes
 	tokenHash := hashRefreshToken(plainToken)
-	
+
 	filter := bson.M{
 		"token_hash": tokenHash,
 		"is_revoked": false,
