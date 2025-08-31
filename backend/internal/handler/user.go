@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	_ "backend/internal/domain"
 	"backend/internal/middleware"
 	"backend/internal/response"
 	"backend/internal/service"
@@ -22,6 +23,33 @@ func NewUserHandler(userService service.UserService) *UserHandler {
 		userService: userService,
 		validator:   validator.New(),
 	}
+}
+
+// GetProfile godoc
+// @Summary Get customer profile
+// @Description Get the customer's profile information
+// @Tags users
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} domain.User
+// @Failure 401 {object} response.ErrorResponse
+// @Router /v1/users/profile [get]
+func (h *UserHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
+	// Get user from JWT token
+	user, ok := middleware.GetUserFromContext(r.Context())
+	if !ok {
+		response.WriteError(w, http.StatusUnauthorized, "Authentication required")
+		return
+	}
+
+	profile, err := h.userService.GetProfile(r.Context(), user.Subject)
+	if err != nil {
+		zap.L().Error("failed to get profile", zap.Error(err))
+		response.WriteError(w, http.StatusInternalServerError, "Failed to get profile")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, profile)
 }
 
 // UpdateProfile godoc

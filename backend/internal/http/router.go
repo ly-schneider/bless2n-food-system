@@ -14,6 +14,9 @@ import (
 
 func NewRouter(
 	authHandler *handler.AuthHandler,
+	adminHandler *handler.AdminHandler,
+	userHandler *handler.UserHandler,
+	stationHandler *handler.StationHandler,
 	jwtMw *jwtMiddleware.JWTMiddleware,
 	securityMw *jwtMiddleware.SecurityMiddleware,
 	enableDocs bool,
@@ -52,23 +55,35 @@ func NewRouter(
 		v1.Group(func(protected chi.Router) {
 			protected.Use(jwtMw.RequireAuth)
 
-			// Example protected routes (add your application routes here)
-			protected.Get("/profile", func(w http.ResponseWriter, r *http.Request) {
-				// This is just an example - replace with actual profile handler
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(`{"message": "Protected route accessed successfully"}`))
+			// User routes
+			protected.Route("/users", func(user chi.Router) {
+				user.Get("/profile", userHandler.GetProfile)
+				user.Put("/profile", userHandler.UpdateProfile)
+			})
+
+			// Station routes (public access for viewing)
+			protected.Route("/stations", func(station chi.Router) {
+				station.Get("/", stationHandler.ListStations)
+				station.Get("/{id}", stationHandler.GetStation)
+				station.Get("/{id}/products", stationHandler.GetStationProducts)
 			})
 
 			// Admin-only routes
 			protected.Group(func(admin chi.Router) {
 				admin.Use(jwtMw.RequireRole("admin"))
 
-				// Example admin route
-				admin.Get("/admin/dashboard", func(w http.ResponseWriter, r *http.Request) {
-					w.Header().Set("Content-Type", "application/json")
-					w.WriteHeader(http.StatusOK)
-					w.Write([]byte(`{"message": "Admin dashboard accessed"}`))
+				admin.Route("/admin", func(adminRoutes chi.Router) {
+					// Customer management
+					adminRoutes.Get("/customers", adminHandler.ListCustomers)
+					adminRoutes.Put("/customers/{id}/ban", adminHandler.BanCustomer)
+					adminRoutes.Delete("/customers/{id}", adminHandler.DeleteCustomer)
+					adminRoutes.Post("/invites", adminHandler.InviteAdmin)
+
+					// Station management
+					adminRoutes.Post("/stations", stationHandler.CreateStation)
+					adminRoutes.Put("/stations/{id}/approve", stationHandler.ApproveStation)
+					adminRoutes.Post("/stations/{id}/products", stationHandler.AssignProductsToStation)
+					adminRoutes.Delete("/stations/{id}/products/{productId}", stationHandler.RemoveProductFromStation)
 				})
 			})
 		})

@@ -12,6 +12,9 @@ func NewHandlers() fx.Option {
 	return fx.Options(
 		fx.Provide(
 			handler.NewAuthHandler,
+			handler.NewAdminHandler,
+			handler.NewUserHandler,
+			handler.NewStationHandler,
 			middleware.NewJWTMiddleware,
 			NewSecurityMiddleware,
 		),

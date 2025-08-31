@@ -17,6 +17,9 @@ func NewServices() fx.Option {
 			auth.NewOTPService,
 			auth.NewTokenService,
 			NewAuthService,
+			service.NewAdminService,
+			service.NewUserService,
+			service.NewStationService,
 		),
 	)
 }

@@ -1,4 +1,20 @@
 definitions:
+  backend_internal_domain.StationApprovalRequest:
+    properties:
+      approve:
+        type: boolean
+      reason:
+        type: string
+    required:
+    - approve
+    type: object
+  backend_internal_domain.StationRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
   backend_internal_domain.User:
     properties:
       created_at:
@@ -50,6 +66,20 @@ definitions:
         type: string
       status:
         type: integer
+    type: object
+  backend_internal_service.ApprovalResponse:
+    properties:
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  backend_internal_service.AssignProductsResponse:
+    properties:
+      message:
+        type: string
+      success:
+        type: boolean
     type: object
   backend_internal_service.BanCustomerRequest:
     properties:
@@ -115,6 +145,15 @@ definitions:
       total:
         type: integer
     type: object
+  backend_internal_service.ListStationsResponse:
+    properties:
+      stations:
+        items:
+          $ref: '#/definitions/backend_internal_service.StationResponse'
+        type: array
+      total:
+        type: integer
+    type: object
   backend_internal_service.LoginRequest:
     properties:
       client_id:
@@ -152,6 +191,15 @@ definitions:
     properties:
       message:
         type: string
+    type: object
+  backend_internal_service.Product:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      price:
+        type: number
     type: object
   backend_internal_service.RefreshTokenRequest:
     properties:
@@ -210,6 +258,38 @@ definitions:
   backend_internal_service.ResendOTPResponse:
     properties:
       message:
+        type: string
+    type: object
+  backend_internal_service.StationProductsResponse:
+    properties:
+      products:
+        items:
+          $ref: '#/definitions/backend_internal_service.Product'
+        type: array
+      station_id:
+        type: string
+    type: object
+  backend_internal_service.StationResponse:
+    properties:
+      approved_at:
+        type: string
+      approved_by:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      rejected_at:
+        type: string
+      rejected_by:
+        type: string
+      rejection_reason:
+        type: string
+      status:
+        type: string
+      updated_at:
         type: string
     type: object
   backend_internal_service.UpdateProfileRequest:
@@ -406,6 +486,164 @@ paths:
       summary: Invite admin
       tags:
       - admin
+  /v1/admin/stations:
+    post:
+      consumes:
+      - application/json
+      description: Allow admins to create a new station
+      parameters:
+      - description: Station request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/backend_internal_domain.StationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/backend_internal_service.StationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new station (Admin only)
+      tags:
+      - admin
+  /v1/admin/stations/{id}/approve:
+    put:
+      consumes:
+      - application/json
+      description: Allow admins to approve or reject station requests
+      parameters:
+      - description: Station ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Approval request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/backend_internal_domain.StationApprovalRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/backend_internal_service.ApprovalResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Approve or reject a station request (Admin only)
+      tags:
+      - admin
+  /v1/admin/stations/{id}/products:
+    post:
+      consumes:
+      - application/json
+      description: Allow admins to assign products to approved stations
+      parameters:
+      - description: Station ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Product IDs to assign
+        in: body
+        name: productIds
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/backend_internal_service.AssignProductsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Assign products to a station (Admin only)
+      tags:
+      - admin
+  /v1/admin/stations/{id}/products/{productId}:
+    delete:
+      description: Allow admins to remove a product from a station
+      parameters:
+      - description: Station ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Product ID
+        in: path
+        name: productId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/backend_internal_service.AssignProductsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove product from station (Admin only)
+      tags:
+      - admin
   /v1/auth/login:
     post:
       consumes:
@@ -592,6 +830,109 @@ paths:
       summary: Verify OTP
       tags:
       - auth
+  /v1/stations:
+    get:
+      description: List all stations with optional filtering
+      parameters:
+      - description: Filter by status
+        enum:
+        - pending
+        - approved
+        - rejected
+        in: query
+        name: status
+        type: string
+      - default: 50
+        description: Limit size
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset
+        in: query
+        minimum: 0
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/backend_internal_service.ListStationsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all stations
+      tags:
+      - stations
+  /v1/stations/{id}:
+    get:
+      description: Get detailed information about a specific station
+      parameters:
+      - description: Station ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/backend_internal_service.StationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get station by ID
+      tags:
+      - stations
+  /v1/stations/{id}/products:
+    get:
+      description: Get list of products assigned to a specific station
+      parameters:
+      - description: Station ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/backend_internal_service.StationProductsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get products assigned to a station
+      tags:
+      - stations
   /v1/users/profile:
     delete:
       description: Allow customers to delete their own profile
@@ -609,6 +950,24 @@ paths:
       security:
       - Bearer: []
       summary: Delete customer profile
+      tags:
+      - users
+    get:
+      description: Get the customer's profile information
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/backend_internal_domain.User'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Get customer profile
       tags:
       - users
     put:

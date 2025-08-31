@@ -63,9 +63,18 @@ erDiagram
   stations {
     string id PK "NOT NULL"
     string name "NOT NULL"
+    string status "NOT NULL; enum: pending|approved|rejected"
+    string approved_by FK "NULL -> users.id"
+    datetime approved_at "NULL"
+    string rejected_by FK "NULL -> users.id"
+    datetime rejected_at "NULL"
+    string rejection_reason "NULL"
+    datetime created_at "NOT NULL; default=now()"
+    datetime updated_at "NOT NULL; default=now()"
   }
   %% INDEX PLAN — stations
   %% • name — Unique; Collation: locale=en, strength=2 (optional)
+  %% • (status, created_at desc) — Non-unique (for filtering by status)
 
   devices {
     string id PK "NOT NULL"
@@ -191,6 +200,8 @@ erDiagram
   users     ||--o{ refresh_tokens   : "has"
   users     ||--o{ device_requests  : "approved_by"
   users     ||--o{ orders           : "customer"
+  users     ||--o{ stations         : "approved_by"
+  users     ||--o{ stations         : "rejected_by"
 
   stations  ||--o{ devices          : "owns"
   stations  ||--o{ station_products : "lists"
