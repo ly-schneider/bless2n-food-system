@@ -2,7 +2,7 @@ type: folder
 model: folder
 id: fl_fC5LWSLWhi
 createdAt: 2025-06-20T15:22:35.261109
-updatedAt: 2025-06-20T15:22:35.261110
+updatedAt: 2025-08-28T18:05:48.365294
 workspaceId: wk_wnN8iaCncF
 folderId: null
 authentication: {}
@@ -10,4 +10,4 @@ authenticationType: null
 description: ''
 headers: []
 name: Generic
-sortPriority: -1750433000000.0
+sortPriority: 1000.0

@@ -10,6 +10,7 @@ import (
 
 func NewRouter(
 	auth handler.AuthHandler,
+	user handler.UserHandler,
 ) http.Handler {
 	r := chi.NewRouter()
 
@@ -23,6 +24,7 @@ func NewRouter(
 
 	r.Route("/v1", func(v1 chi.Router) {
 		v1.Mount("/auth", auth.Routes())
+		v1.Mount("/users", user.Routes())
 	})
 
 	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {

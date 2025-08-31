@@ -12,6 +12,13 @@ import (
 
 type EmailService interface {
 	SendOTP(ctx context.Context, email, otp string) error
+	SendEmail(ctx context.Context, req SendEmailRequest) error
+}
+
+type SendEmailRequest struct {
+	To      []string `json:"to" validate:"required"`
+	Subject string   `json:"subject" validate:"required"`
+	Body    string   `json:"body" validate:"required"`
 }
 
 type emailService struct {
@@ -39,6 +46,21 @@ Wenn du diesen Code nicht angefordert hast, ignoriere bitte diese E-Mail.
 `, otp)
 
 	return s.sendEmail(email, subject, body)
+}
+
+func (s *emailService) SendEmail(ctx context.Context, req SendEmailRequest) error {
+	if len(req.To) == 0 {
+		return fmt.Errorf("no recipients specified")
+	}
+
+	// Send email to each recipient
+	for _, recipient := range req.To {
+		if err := s.sendEmail(recipient, req.Subject, req.Body); err != nil {
+			return fmt.Errorf("failed to send email to %s: %w", recipient, err)
+		}
+	}
+
+	return nil
 }
 
 func (s *emailService) sendEmail(to, subject, body string) error {

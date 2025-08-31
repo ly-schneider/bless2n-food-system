@@ -1,10 +1,10 @@
 type: http_request
 model: http_request
-id: rq_29dHgKQdC3
-createdAt: 2025-08-27T21:49:17.715196
-updatedAt: 2025-08-28T18:05:54.328479
+id: rq_6RofDKf9XP
+createdAt: 2025-08-31T13:42:56.974556
+updatedAt: 2025-08-31T13:42:56.974556
 workspaceId: wk_wnN8iaCncF
-folderId: fl_XtBuEjqFx8
+folderId: fl_m2F7mzcEhv
 authentication:
   disabled: true
 authenticationType: basic

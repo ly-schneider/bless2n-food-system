@@ -9,5 +9,6 @@ import (
 func NewHandlers() fx.Option {
 	return fx.Options(
 		fx.Provide(handler.NewAuthHandler),
+		fx.Provide(handler.NewUserHandler),
 	)
 }

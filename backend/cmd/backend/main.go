@@ -1,7 +1,7 @@
 package main
 
 import (
-	docs "backend/docs"
+	_ "backend/docs"
 	"backend/internal/app"
 
 	"go.uber.org/fx"
@@ -9,10 +9,9 @@ import (
 	"go.uber.org/zap"
 )
 
-// @title Backend API
+// @title Bless2n Food System API
 // @version 1.0
-// @description Internal API for our backend
-// @BasePath /v1
+// @description Internal BlessThun Food System API
 // @schemes http https
 // @securityDefinitions.apikey BearerAuth
 // @in header
@@ -33,10 +32,6 @@ func main() {
 		app.NewRepositories(),
 		app.NewServices(),
 		app.NewHandlers(),
-
-		fx.Invoke(func() {
-			docs.SwaggerInfo.BasePath = "/v1"
-		}),
 
 		fx.Invoke(app.StartHTTPServer),
 	).Run()

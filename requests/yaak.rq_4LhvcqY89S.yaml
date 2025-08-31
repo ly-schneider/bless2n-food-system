@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_4LhvcqY89S
 createdAt: 2025-06-30T21:01:21.364755
-updatedAt: 2025-08-27T21:27:07.753665
+updatedAt: 2025-08-31T13:42:12.246491
 workspaceId: wk_wnN8iaCncF
 folderId: fl_AxXSj5YeMR
 authentication:
@@ -12,7 +12,7 @@ body:
   text: |-
     {
       "email": "lyschneider@icloud.com",
-      "otp": "367724"
+      "otp": "393336"
     }
 bodyType: application/json
 description: ''

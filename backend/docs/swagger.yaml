@@ -1,4 +1,3 @@
-basePath: /v1
 definitions:
   backend_internal_domain.User:
     properties:
@@ -50,6 +49,70 @@ definitions:
       message:
         type: string
       status:
+        type: integer
+    type: object
+  backend_internal_service.BanCustomerRequest:
+    properties:
+      reason:
+        type: string
+    required:
+    - reason
+    type: object
+  backend_internal_service.BanCustomerResponse:
+    properties:
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  backend_internal_service.Customer:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      is_disabled:
+        type: boolean
+      is_verified:
+        type: boolean
+    type: object
+  backend_internal_service.DeleteCustomerResponse:
+    properties:
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  backend_internal_service.DeleteProfileResponse:
+    properties:
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  backend_internal_service.InviteAdminRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  backend_internal_service.InviteAdminResponse:
+    properties:
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  backend_internal_service.ListCustomersResponse:
+    properties:
+      customers:
+        items:
+          $ref: '#/definitions/backend_internal_service.Customer'
+        type: array
+      total:
         type: integer
     type: object
   backend_internal_service.LoginRequest:
@@ -149,6 +212,20 @@ definitions:
       message:
         type: string
     type: object
+  backend_internal_service.UpdateProfileRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  backend_internal_service.UpdateProfileResponse:
+    properties:
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
   backend_internal_service.VerifyOTPRequest:
     properties:
       email:
@@ -170,10 +247,165 @@ definitions:
     type: object
 info:
   contact: {}
-  description: Internal API for our backend
-  title: Backend API
+  description: Internal BlessThun Food System API
+  title: Bless2n Food System API
   version: "1.0"
 paths:
+  /v1/admin/customers:
+    get:
+      description: Allow admins to list all customers
+      parameters:
+      - default: 50
+        description: Limit size
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset
+        in: query
+        minimum: 0
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/backend_internal_service.ListCustomersResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all customers
+      tags:
+      - admin
+  /v1/admin/customers/{customer_id}:
+    delete:
+      description: Allow admins to delete a customer
+      parameters:
+      - description: Customer ID
+        in: path
+        name: customer_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/backend_internal_service.DeleteCustomerResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Delete a customer
+      tags:
+      - admin
+  /v1/admin/customers/{customer_id}/ban:
+    post:
+      consumes:
+      - application/json
+      description: Allow admins to ban a customer with a reason
+      parameters:
+      - description: Customer ID
+        in: path
+        name: customer_id
+        required: true
+        type: string
+      - description: Ban reason payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/backend_internal_service.BanCustomerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/backend_internal_service.BanCustomerResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Ban a customer
+      tags:
+      - admin
+  /v1/admin/invites:
+    post:
+      consumes:
+      - application/json
+      description: Allow admins to invite emails to become admins
+      parameters:
+      - description: Admin invite payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/backend_internal_service.InviteAdminRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/backend_internal_service.InviteAdminResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Invite admin
+      tags:
+      - admin
   /v1/auth/login:
     post:
       consumes:
@@ -360,6 +592,56 @@ paths:
       summary: Verify OTP
       tags:
       - auth
+  /v1/users/profile:
+    delete:
+      description: Allow customers to delete their own profile
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/backend_internal_service.DeleteProfileResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Delete customer profile
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Allow customers to update their email address
+      parameters:
+      - description: Profile update payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/backend_internal_service.UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/backend_internal_service.UpdateProfileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Update customer profile
+      tags:
+      - users
 schemes:
 - http
 - https

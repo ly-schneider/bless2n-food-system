@@ -20,6 +20,8 @@ type UserRepository interface {
 	Update(ctx context.Context, user *domain.User) error
 	Delete(ctx context.Context, id primitive.ObjectID) error
 	List(ctx context.Context, limit, offset int) ([]*domain.User, error)
+	ListCustomers(ctx context.Context, limit, offset int) ([]*domain.User, error)
+	CountCustomers(ctx context.Context) (int, error)
 	Disable(ctx context.Context, id primitive.ObjectID, reason string) error
 	Enable(ctx context.Context, id primitive.ObjectID) error
 }
@@ -133,4 +135,38 @@ func (r *userRepository) Enable(ctx context.Context, id primitive.ObjectID) erro
 
 	_, err := r.collection.UpdateOne(ctx, filter, update)
 	return err
+}
+
+func (r *userRepository) ListCustomers(ctx context.Context, limit, offset int) ([]*domain.User, error) {
+	filter := bson.M{"role": domain.UserRoleCustomer}
+	opts := options.Find().
+		SetLimit(int64(limit)).
+		SetSkip(int64(offset)).
+		SetSort(bson.D{{Key: "created_at", Value: -1}})
+
+	cursor, err := r.collection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var users []*domain.User
+	for cursor.Next(ctx) {
+		var user domain.User
+		if err := cursor.Decode(&user); err != nil {
+			return nil, err
+		}
+		users = append(users, &user)
+	}
+
+	return users, cursor.Err()
+}
+
+func (r *userRepository) CountCustomers(ctx context.Context) (int, error) {
+	filter := bson.M{"role": domain.UserRoleCustomer}
+	count, err := r.collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
 }

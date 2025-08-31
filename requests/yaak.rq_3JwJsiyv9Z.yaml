@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_3JwJsiyv9Z
 createdAt: 2025-06-04T22:13:18.556890
-updatedAt: 2025-08-27T22:06:43.072780
+updatedAt: 2025-08-28T18:04:25.270114
 workspaceId: wk_wnN8iaCncF
 folderId: fl_AxXSj5YeMR
 authentication: {}
@@ -10,7 +10,7 @@ authenticationType: basic
 body:
   text: |-
     {
-      "refresh_token": "vhYsndbl4gnbvWhMKnOCJwz34BJKBMJM",
+      "refresh_token": "WKDmCC5TEZ688-tg-7k49ewtmvfFSaj_",
       "client_id": "my_id"
     }
 bodyType: application/json
