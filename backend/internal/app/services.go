@@ -20,6 +20,9 @@ func NewServices() fx.Option {
 			service.NewAdminService,
 			service.NewUserService,
 			service.NewStationService,
+			service.NewCategoryService,
+			service.NewProductService,
+			service.NewOrderService,
 		),
 	)
 }

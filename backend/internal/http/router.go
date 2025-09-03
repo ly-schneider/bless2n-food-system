@@ -17,6 +17,10 @@ func NewRouter(
 	adminHandler *handler.AdminHandler,
 	userHandler *handler.UserHandler,
 	stationHandler *handler.StationHandler,
+	categoryHandler *handler.CategoryHandler,
+	productHandler *handler.ProductHandler,
+	orderHandler *handler.OrderHandler,
+	redemptionHandler *handler.RedemptionHandler,
 	jwtMw *jwtMiddleware.JWTMiddleware,
 	securityMw *jwtMiddleware.SecurityMiddleware,
 	enableDocs bool,
@@ -51,6 +55,15 @@ func NewRouter(
 			auth.Post("/logout", authHandler.Logout)
 		})
 
+		// Public station request route
+		v1.Post("/stations/request", stationHandler.RequestStation)
+
+		// Public redemption routes (for station devices)
+		v1.Route("/redemption", func(redemption chi.Router) {
+			redemption.Get("/orders/{order_id}", redemptionHandler.GetOrderForRedemption)
+			redemption.Post("/redeem", redemptionHandler.RedeemOrderItems)
+		})
+
 		// Protected routes - require authentication
 		v1.Group(func(protected chi.Router) {
 			protected.Use(jwtMw.RequireAuth)
@@ -68,6 +81,16 @@ func NewRouter(
 				station.Get("/{id}/products", stationHandler.GetStationProducts)
 			})
 
+			// Order routes
+			protected.Route("/orders", func(order chi.Router) {
+				order.Post("/", orderHandler.CreateOrder)
+				order.Get("/", orderHandler.ListOrders)
+				order.Get("/my", orderHandler.GetMyOrders)
+				order.Get("/{id}", orderHandler.GetOrder)
+				order.Put("/{id}", orderHandler.UpdateOrder)
+				order.Delete("/{id}", orderHandler.DeleteOrder)
+			})
+
 			// Admin-only routes
 			protected.Group(func(admin chi.Router) {
 				admin.Use(jwtMw.RequireRole("admin"))
@@ -79,11 +102,36 @@ func NewRouter(
 					adminRoutes.Delete("/customers/{id}", adminHandler.DeleteCustomer)
 					adminRoutes.Post("/invites", adminHandler.InviteAdmin)
 
+					// Category management
+					adminRoutes.Post("/categories", categoryHandler.CreateCategory)
+					adminRoutes.Get("/categories", categoryHandler.ListCategories)
+					adminRoutes.Get("/categories/{id}", categoryHandler.GetCategory)
+					adminRoutes.Put("/categories/{id}", categoryHandler.UpdateCategory)
+					adminRoutes.Delete("/categories/{id}", categoryHandler.DeleteCategory)
+					adminRoutes.Put("/categories/{id}/status", categoryHandler.SetCategoryActive)
+
+					// Product management
+					adminRoutes.Post("/products", productHandler.CreateProduct)
+					adminRoutes.Get("/products", productHandler.ListProducts)
+					adminRoutes.Get("/products/{id}", productHandler.GetProduct)
+					adminRoutes.Put("/products/{id}", productHandler.UpdateProduct)
+					adminRoutes.Delete("/products/{id}", productHandler.DeleteProduct)
+					adminRoutes.Put("/products/{id}/status", productHandler.SetProductActive)
+					adminRoutes.Put("/products/{id}/stock", productHandler.UpdateProductStock)
+					adminRoutes.Post("/products/{id}/stations", productHandler.AssignProductToStations)
+
+					// Product bundle management (menus)
+					adminRoutes.Post("/products/bundles", productHandler.CreateProductBundle)
+					adminRoutes.Put("/products/bundles/{id}", productHandler.UpdateProductBundle)
+
 					// Station management
 					adminRoutes.Post("/stations", stationHandler.CreateStation)
 					adminRoutes.Put("/stations/{id}/approve", stationHandler.ApproveStation)
 					adminRoutes.Post("/stations/{id}/products", stationHandler.AssignProductsToStation)
 					adminRoutes.Delete("/stations/{id}/products/{productId}", stationHandler.RemoveProductFromStation)
+
+					// Order management
+					adminRoutes.Put("/orders/{id}/status", orderHandler.UpdateOrderStatus)
 				})
 			})
 		})

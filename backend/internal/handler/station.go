@@ -30,6 +30,40 @@ func NewStationHandler(stationService service.StationService, logger *zap.Logger
 	}
 }
 
+// RequestStation godoc
+// @Summary Request to become a station (Public)
+// @Description Allow anyone to request to become a station without authentication
+// @Tags stations
+// @Accept json
+// @Produce json
+// @Param request body domain.StationRequest true "Station request"
+// @Success 201 {object} service.StationResponse
+// @Failure 400 {object} response.ErrorResponse
+// @Router /v1/stations/request [post]
+func (h *StationHandler) RequestStation(w http.ResponseWriter, r *http.Request) {
+	var req domain.StationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.logger.Error("Failed to decode request body", zap.Error(err))
+		response.WriteError(w, http.StatusBadRequest, "Invalid request format")
+		return
+	}
+
+	if err := h.validator.Struct(&req); err != nil {
+		h.logger.Error("Validation failed", zap.Error(err))
+		response.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	stationResponse, err := h.stationService.CreateStation(r.Context(), &req)
+	if err != nil {
+		h.logger.Error("Failed to create station request", zap.Error(err))
+		response.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	response.WriteJSON(w, http.StatusCreated, stationResponse)
+}
+
 // CreateStation godoc
 // @Summary Create a new station (Admin only)
 // @Description Allow admins to create a new station

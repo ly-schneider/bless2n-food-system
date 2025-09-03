@@ -97,26 +97,43 @@ func (s *authService) VerifyOTP(ctx context.Context, req service.VerifyOTPReques
 		return nil, fmt.Errorf("user not found")
 	}
 
+	if user.IsDisabled {
+		return nil, fmt.Errorf("account is disabled: %s", *user.DisabledReason)
+	}
+
 	// Verify OTP
 	if err := s.otpService.Verify(ctx, user.ID, req.OTP, domain.TokenTypeLogin); err != nil {
 		return nil, err
 	}
 
-	// Mark user as verified
-	user.IsVerified = true
-	user.UpdatedAt = time.Now()
-	if err := s.userRepo.Update(ctx, user); err != nil {
-		zap.L().Error("failed to mark user as verified", zap.Error(err))
-		return nil, fmt.Errorf("failed to verify user: %w", err)
+	// Mark user as verified if not already verified
+	if !user.IsVerified {
+		user.IsVerified = true
+		user.UpdatedAt = time.Now()
+		if err := s.userRepo.Update(ctx, user); err != nil {
+			zap.L().Error("failed to mark user as verified", zap.Error(err))
+			return nil, fmt.Errorf("failed to verify user: %w", err)
+		}
 	}
 
-	zap.L().Info("user verified successfully",
+	// Generate token pair
+	tokenPair, err := s.tokenService.GenerateTokenPair(ctx, user, req.ClientID)
+	if err != nil {
+		return nil, err
+	}
+
+	zap.L().Info("user verified successfully with tokens",
 		zap.String("user_id", user.ID.Hex()),
-		zap.String("email", user.Email))
+		zap.String("email", user.Email),
+		zap.String("client_id", req.ClientID))
 
 	return &service.VerifyOTPResponse{
-		Message: "Email verification successful. Account is now active.",
-		User:    user,
+		Message:      "Email verification successful. Account is now active.",
+		User:         user,
+		AccessToken:  tokenPair.AccessToken,
+		RefreshToken: tokenPair.RefreshToken,
+		TokenType:    tokenPair.TokenType,
+		ExpiresIn:    tokenPair.ExpiresIn,
 	}, nil
 }
 
@@ -163,15 +180,11 @@ func (s *authService) RequestLoginOTP(ctx context.Context, req service.RequestLo
 		return nil, fmt.Errorf("user not found")
 	}
 
-	if !user.IsVerified {
-		return nil, fmt.Errorf("account not verified. Please complete registration first")
-	}
-
 	if user.IsDisabled {
 		return nil, fmt.Errorf("account is disabled: %s", *user.DisabledReason)
 	}
 
-	// Generate and send new login OTP
+	// Generate and send new login OTP (works for both verified and unverified users)
 	if err := s.otpService.GenerateAndSend(ctx, user.ID, req.Email, domain.TokenTypeLogin); err != nil {
 		zap.L().Error("failed to generate and send login OTP", zap.Error(err))
 		return nil, fmt.Errorf("failed to send login code: %w", err)
@@ -179,7 +192,8 @@ func (s *authService) RequestLoginOTP(ctx context.Context, req service.RequestLo
 
 	zap.L().Info("login OTP sent successfully",
 		zap.String("user_id", user.ID.Hex()),
-		zap.String("email", user.Email))
+		zap.String("email", user.Email),
+		zap.Bool("user_verified", user.IsVerified))
 
 	return &service.RequestLoginOTPResponse{
 		Message: "Login code sent to your email.",
@@ -197,10 +211,6 @@ func (s *authService) Login(ctx context.Context, req service.LoginRequest) (*ser
 		return nil, fmt.Errorf("invalid credentials")
 	}
 
-	if !user.IsVerified {
-		return nil, fmt.Errorf("account not verified. Please verify your email first")
-	}
-
 	if user.IsDisabled {
 		return nil, fmt.Errorf("account is disabled: %s", *user.DisabledReason)
 	}
@@ -208,6 +218,16 @@ func (s *authService) Login(ctx context.Context, req service.LoginRequest) (*ser
 	// Verify OTP
 	if err := s.otpService.Verify(ctx, user.ID, req.OTP, domain.TokenTypeLogin); err != nil {
 		return nil, err
+	}
+
+	// Mark user as verified if not already verified (first-time login verification)
+	if !user.IsVerified {
+		user.IsVerified = true
+		user.UpdatedAt = time.Now()
+		if err := s.userRepo.Update(ctx, user); err != nil {
+			zap.L().Error("failed to mark user as verified during login", zap.Error(err))
+			return nil, fmt.Errorf("failed to verify user: %w", err)
+		}
 	}
 
 	// Generate token pair
@@ -219,7 +239,8 @@ func (s *authService) Login(ctx context.Context, req service.LoginRequest) (*ser
 	zap.L().Info("user logged in successfully",
 		zap.String("user_id", user.ID.Hex()),
 		zap.String("email", user.Email),
-		zap.String("client_id", req.ClientID))
+		zap.String("client_id", req.ClientID),
+		zap.Bool("first_time_verification", !user.IsVerified))
 
 	return &service.LoginResponse{
 		AccessToken:  tokenPair.AccessToken,

@@ -29,14 +29,18 @@ type RegisterCustomerResponse struct {
 
 // Request/Response types for OTP Verification
 type VerifyOTPRequest struct {
-	Email string `json:"email" validate:"required,email"`
-	OTP   string `json:"otp" validate:"required,len=6"`
+	Email    string `json:"email" validate:"required,email"`
+	OTP      string `json:"otp" validate:"required,len=6"`
+	ClientID string `json:"client_id" validate:"required"`
 }
 
 type VerifyOTPResponse struct {
-	Message string       `json:"message"`
-	User    *domain.User `json:"user,omitempty"`
-	Token   string       `json:"token,omitempty"`
+	Message      string       `json:"message"`
+	User         *domain.User `json:"user,omitempty"`
+	AccessToken  string       `json:"access_token,omitempty"`
+	RefreshToken string       `json:"refresh_token,omitempty"`
+	TokenType    string       `json:"token_type,omitempty"`
+	ExpiresIn    int64        `json:"expires_in,omitempty"`
 }
 
 // Request/Response types for OTP Resend
