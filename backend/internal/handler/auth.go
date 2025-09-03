@@ -58,88 +58,18 @@ func (h *AuthHandler) RegisterCustomer(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusCreated, svcResp)
 }
 
-// VerifyOTP godoc
-// @Summary Verify OTP
-// @Description Verify a 6-digit OTP sent to the user's email
-// @Tags auth
-// @Accept json
-// @Produce json
-// @Param request body service.VerifyOTPRequest true "payload"
-// @Success 200 {object} service.VerifyOTPResponse
-// @Failure 400 {object} response.ErrorResponse
-// @Router /v1/auth/verify-otp [post]
-func (h *AuthHandler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
-	var req service.VerifyOTPRequest
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		zap.L().Error("failed to decode request body", zap.Error(err))
-		response.WriteError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	if err := h.validator.Struct(req); err != nil {
-		zap.L().Error("validation failed", zap.Error(err))
-		response.WriteError(w, http.StatusBadRequest, "Validation failed: "+err.Error())
-		return
-	}
-
-	svcResp, err := h.authService.VerifyOTP(r.Context(), req)
-	if err != nil {
-		zap.L().Error("failed to verify OTP", zap.Error(err))
-		response.WriteError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	response.WriteJSON(w, http.StatusOK, svcResp)
-}
-
-// ResendOTP godoc
-// @Summary Resend OTP
-// @Description Resend a login/verification OTP to the user's email
-// @Tags auth
-// @Accept json
-// @Produce json
-// @Param request body service.ResendOTPRequest true "payload"
-// @Success 200 {object} service.ResendOTPResponse
-// @Failure 400 {object} response.ErrorResponse
-// @Router /v1/auth/resend-otp [post]
-func (h *AuthHandler) ResendOTP(w http.ResponseWriter, r *http.Request) {
-	var req service.ResendOTPRequest
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		zap.L().Error("failed to decode request body", zap.Error(err))
-		response.WriteError(w, http.StatusBadRequest, "Invalid request body")
-		return
-	}
-
-	if err := h.validator.Struct(req); err != nil {
-		zap.L().Error("validation failed", zap.Error(err))
-		response.WriteError(w, http.StatusBadRequest, "Validation failed: "+err.Error())
-		return
-	}
-
-	svcResp, err := h.authService.ResendOTP(r.Context(), req)
-	if err != nil {
-		zap.L().Error("failed to resend OTP", zap.Error(err))
-		response.WriteError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	response.WriteJSON(w, http.StatusOK, svcResp)
-}
-
-// RequestLoginOTP godoc
+// RequestOTP godoc
 // @Summary Request login OTP
 // @Description Start passwordless login by requesting an OTP for the given email
 // @Tags auth
 // @Accept json
 // @Produce json
-// @Param request body service.RequestLoginOTPRequest true "payload"
-// @Success 200 {object} service.RequestLoginOTPResponse
+// @Param request body service.RequestOTPRequest true "payload"
+// @Success 200 {object} service.RequestOTPResponse
 // @Failure 400 {object} response.ErrorResponse
 // @Router /v1/auth/request-login-otp [post]
-func (h *AuthHandler) RequestLoginOTP(w http.ResponseWriter, r *http.Request) {
-	var req service.RequestLoginOTPRequest
+func (h *AuthHandler) RequestOTP(w http.ResponseWriter, r *http.Request) {
+	var req service.RequestOTPRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		zap.L().Error("failed to decode request body", zap.Error(err))
@@ -153,7 +83,7 @@ func (h *AuthHandler) RequestLoginOTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	svcResp, err := h.authService.RequestLoginOTP(r.Context(), req)
+	svcResp, err := h.authService.RequestOTP(r.Context(), req)
 	if err != nil {
 		zap.L().Error("failed to request login OTP", zap.Error(err))
 		response.WriteError(w, http.StatusBadRequest, err.Error())

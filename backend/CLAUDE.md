@@ -58,6 +58,22 @@ make docker-down
 make docker-down-v
 ```
 
+### Testing
+```bash
+# Run unit tests
+make test
+
+# Run end-to-end tests with test infrastructure
+make test-e2e
+
+# Run all tests with coverage (80% threshold)
+make test-coverage
+
+# Setup/teardown test infrastructure manually
+make test-setup
+make test-teardown
+```
+
 ### Build and Development
 ```bash
 # Manual build
@@ -89,6 +105,24 @@ make clean
 - **Dependency Injection**: Uber FX
 - **Live Reload**: Air (configured in .air.toml)
 - **Email Testing**: Mailpit for local SMTP testing
+
+## Testing Architecture
+
+Comprehensive end-to-end testing architecture with:
+
+- **Test Isolation**: Dedicated test database and services (MongoDB on port 27018, SMTP on 1026)
+- **Coverage Enforcement**: 80% minimum coverage threshold with automated verification
+- **Docker-based Infrastructure**: Consistent testing environment with `test/docker-compose.test.yml`
+- **Complete Auth Testing**: Registration, login, OTP verification, token refresh, logout flows
+- **CI/CD Integration**: GitHub Actions workflow with coverage reporting
+- **Test Structure**: Located in `test/` directory with helpers, fixtures, and e2e tests
+
+### Test Commands
+- `make test`: Unit tests only
+- `make test-e2e`: End-to-end tests with infrastructure
+- `make test-coverage`: All tests with 80% coverage verification
+
+See `test/README.md` for detailed testing documentation.
 
 ## Application Startup Flow
 

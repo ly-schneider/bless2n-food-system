@@ -1770,7 +1770,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/backend_internal_service.RequestLoginOTPRequest"
+                            "$ref": "#/definitions/backend_internal_service.RequestOTPRequest"
                         }
                     }
                 ],
@@ -1778,87 +1778,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/backend_internal_service.RequestLoginOTPResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/backend_internal_response.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/auth/resend-otp": {
-            "post": {
-                "description": "Resend a login/verification OTP to the user's email",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Resend OTP",
-                "parameters": [
-                    {
-                        "description": "payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/backend_internal_service.ResendOTPRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/backend_internal_service.ResendOTPResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/backend_internal_response.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/auth/verify-otp": {
-            "post": {
-                "description": "Verify a 6-digit OTP sent to the user's email",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Verify OTP",
-                "parameters": [
-                    {
-                        "description": "payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/backend_internal_service.VerifyOTPRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/backend_internal_service.VerifyOTPResponse"
+                            "$ref": "#/definitions/backend_internal_service.RequestOTPResponse"
                         }
                     },
                     "400": {
@@ -3501,7 +3421,7 @@
                 }
             }
         },
-        "backend_internal_service.RequestLoginOTPRequest": {
+        "backend_internal_service.RequestOTPRequest": {
             "type": "object",
             "required": [
                 "email"
@@ -3512,26 +3432,7 @@
                 }
             }
         },
-        "backend_internal_service.RequestLoginOTPResponse": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "backend_internal_service.ResendOTPRequest": {
-            "type": "object",
-            "required": [
-                "email"
-            ],
-            "properties": {
-                "email": {
-                    "type": "string"
-                }
-            }
-        },
-        "backend_internal_service.ResendOTPResponse": {
+        "backend_internal_service.RequestOTPResponse": {
             "type": "object",
             "properties": {
                 "message": {
@@ -3811,48 +3712,6 @@
                 },
                 "success": {
                     "type": "boolean"
-                }
-            }
-        },
-        "backend_internal_service.VerifyOTPRequest": {
-            "type": "object",
-            "required": [
-                "client_id",
-                "email",
-                "otp"
-            ],
-            "properties": {
-                "client_id": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "otp": {
-                    "type": "string"
-                }
-            }
-        },
-        "backend_internal_service.VerifyOTPResponse": {
-            "type": "object",
-            "properties": {
-                "access_token": {
-                    "type": "string"
-                },
-                "expires_in": {
-                    "type": "integer"
-                },
-                "message": {
-                    "type": "string"
-                },
-                "refresh_token": {
-                    "type": "string"
-                },
-                "token_type": {
-                    "type": "string"
-                },
-                "user": {
-                    "$ref": "#/definitions/backend_internal_domain.User"
                 }
             }
         }

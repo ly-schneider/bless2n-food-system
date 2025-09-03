@@ -43,11 +43,11 @@ type GetProductResponse struct {
 }
 
 type UpdateProductRequest struct {
-	CategoryID *string            `json:"category_id,omitempty"`
+	CategoryID *string             `json:"category_id,omitempty"`
 	Type       *domain.ProductType `json:"type,omitempty" validate:"omitempty,oneof=simple bundle"`
-	Name       *string            `json:"name,omitempty"`
-	Image      *string            `json:"image,omitempty"`
-	Price      *float64           `json:"price,omitempty" validate:"omitempty,gte=0"`
+	Name       *string             `json:"name,omitempty"`
+	Image      *string             `json:"image,omitempty"`
+	Price      *float64            `json:"price,omitempty" validate:"omitempty,gte=0"`
 }
 
 type UpdateProductResponse struct {
@@ -66,7 +66,6 @@ type ListProductsResponse struct {
 	Total    int          `json:"total"`
 }
 
-
 type SetProductActiveResponse struct {
 	Message string `json:"message"`
 	Success bool   `json:"success"`
@@ -83,18 +82,18 @@ type UpdateProductStockResponse struct {
 }
 
 type CreateProductBundleRequest struct {
-	CategoryID string                     `json:"category_id" validate:"required"`
-	Name       string                     `json:"name" validate:"required"`
-	Image      *string                    `json:"image,omitempty"`
-	Price      float64                    `json:"price" validate:"required,gte=0"`
+	CategoryID string                      `json:"category_id" validate:"required"`
+	Name       string                      `json:"name" validate:"required"`
+	Image      *string                     `json:"image,omitempty"`
+	Price      float64                     `json:"price" validate:"required,gte=0"`
 	Components []ProductBundleComponentDTO `json:"components" validate:"required,dive"`
 }
 
 type CreateProductBundleResponse struct {
-	Bundle     ProductDTO                   `json:"bundle"`
-	Components []ProductBundleComponentDTO  `json:"components"`
-	Message    string                       `json:"message"`
-	Success    bool                         `json:"success"`
+	Bundle     ProductDTO                  `json:"bundle"`
+	Components []ProductBundleComponentDTO `json:"components"`
+	Message    string                      `json:"message"`
+	Success    bool                        `json:"success"`
 }
 
 type UpdateProductBundleRequest struct {
@@ -106,10 +105,10 @@ type UpdateProductBundleRequest struct {
 }
 
 type UpdateProductBundleResponse struct {
-	Bundle     ProductDTO                   `json:"bundle"`
-	Components []ProductBundleComponentDTO  `json:"components"`
-	Message    string                       `json:"message"`
-	Success    bool                         `json:"success"`
+	Bundle     ProductDTO                  `json:"bundle"`
+	Components []ProductBundleComponentDTO `json:"components"`
+	Message    string                      `json:"message"`
+	Success    bool                        `json:"success"`
 }
 
 type ProductBundleComponentDTO struct {
@@ -135,10 +134,10 @@ type ProductDTO struct {
 }
 
 type productService struct {
-	productRepo          repository.ProductRepository
-	categoryRepo         repository.CategoryRepository
-	bundleComponentRepo  repository.ProductBundleComponentRepository
-	stationProductRepo   repository.StationProductRepository
+	productRepo         repository.ProductRepository
+	categoryRepo        repository.CategoryRepository
+	bundleComponentRepo repository.ProductBundleComponentRepository
+	stationProductRepo  repository.StationProductRepository
 }
 
 func NewProductService(
@@ -301,13 +300,18 @@ func (s *productService) ListProducts(ctx context.Context, categoryID *string, a
 			return nil, errors.New("invalid category ID format")
 		}
 		products, err = s.productRepo.GetByCategoryID(ctx, categoryObjID, activeOnly, limit, offset)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list products: %w", err)
+		}
 	} else {
 		// List all products regardless of type
-		simpleProducts, err := s.productRepo.GetByType(ctx, domain.ProductTypeSimple, limit, offset)
+		var simpleProducts []*domain.Product
+		simpleProducts, err = s.productRepo.GetByType(ctx, domain.ProductTypeSimple, limit, offset)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get simple products: %w", err)
 		}
-		bundleProducts, err := s.productRepo.GetByType(ctx, domain.ProductTypeBundle, limit, offset)
+		var bundleProducts []*domain.Product
+		bundleProducts, err = s.productRepo.GetByType(ctx, domain.ProductTypeBundle, limit, offset)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get bundle products: %w", err)
 		}
@@ -328,7 +332,6 @@ func (s *productService) ListProducts(ctx context.Context, categoryID *string, a
 		Total:    len(productDTOs),
 	}, nil
 }
-
 
 func (s *productService) SetProductActive(ctx context.Context, productID string, isActive bool) (*SetProductActiveResponse, error) {
 	objectID, err := primitive.ObjectIDFromHex(productID)
@@ -511,7 +514,6 @@ func (s *productService) UpdateProductBundle(ctx context.Context, bundleID strin
 		Success:    true,
 	}, nil
 }
-
 
 func (s *productService) AssignProductToStations(ctx context.Context, productID string, stationIDs []primitive.ObjectID) (*AssignProductToStationsResponse, error) {
 	objectID, err := primitive.ObjectIDFromHex(productID)

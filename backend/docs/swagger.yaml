@@ -580,26 +580,14 @@ definitions:
       user_id:
         type: string
     type: object
-  backend_internal_service.RequestLoginOTPRequest:
+  backend_internal_service.RequestOTPRequest:
     properties:
       email:
         type: string
     required:
     - email
     type: object
-  backend_internal_service.RequestLoginOTPResponse:
-    properties:
-      message:
-        type: string
-    type: object
-  backend_internal_service.ResendOTPRequest:
-    properties:
-      email:
-        type: string
-    required:
-    - email
-    type: object
-  backend_internal_service.ResendOTPResponse:
+  backend_internal_service.RequestOTPResponse:
     properties:
       message:
         type: string
@@ -781,34 +769,6 @@ definitions:
         type: string
       success:
         type: boolean
-    type: object
-  backend_internal_service.VerifyOTPRequest:
-    properties:
-      client_id:
-        type: string
-      email:
-        type: string
-      otp:
-        type: string
-    required:
-    - client_id
-    - email
-    - otp
-    type: object
-  backend_internal_service.VerifyOTPResponse:
-    properties:
-      access_token:
-        type: string
-      expires_in:
-        type: integer
-      message:
-        type: string
-      refresh_token:
-        type: string
-      token_type:
-        type: string
-      user:
-        $ref: '#/definitions/backend_internal_domain.User'
     type: object
 info:
   contact: {}
@@ -1951,71 +1911,19 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/backend_internal_service.RequestLoginOTPRequest'
+          $ref: '#/definitions/backend_internal_service.RequestOTPRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/backend_internal_service.RequestLoginOTPResponse'
+            $ref: '#/definitions/backend_internal_service.RequestOTPResponse'
         "400":
           description: Bad Request
           schema:
             $ref: '#/definitions/backend_internal_response.ErrorResponse'
       summary: Request login OTP
-      tags:
-      - auth
-  /v1/auth/resend-otp:
-    post:
-      consumes:
-      - application/json
-      description: Resend a login/verification OTP to the user's email
-      parameters:
-      - description: payload
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/backend_internal_service.ResendOTPRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/backend_internal_service.ResendOTPResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/backend_internal_response.ErrorResponse'
-      summary: Resend OTP
-      tags:
-      - auth
-  /v1/auth/verify-otp:
-    post:
-      consumes:
-      - application/json
-      description: Verify a 6-digit OTP sent to the user's email
-      parameters:
-      - description: payload
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/backend_internal_service.VerifyOTPRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/backend_internal_service.VerifyOTPResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/backend_internal_response.ErrorResponse'
-      summary: Verify OTP
       tags:
       - auth
   /v1/orders:

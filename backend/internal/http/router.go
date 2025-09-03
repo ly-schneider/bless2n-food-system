@@ -47,9 +47,7 @@ func NewRouter(
 		// Auth routes (public)
 		v1.Route("/auth", func(auth chi.Router) {
 			auth.Post("/register/customer", authHandler.RegisterCustomer)
-			auth.Post("/verify-otp", authHandler.VerifyOTP)
-			auth.Post("/resend-otp", authHandler.ResendOTP)
-			auth.Post("/request-login-otp", authHandler.RequestLoginOTP)
+			auth.Post("/request-otp", authHandler.RequestOTP)
 			auth.Post("/login", authHandler.Login)
 			auth.Post("/refresh", authHandler.RefreshToken)
 			auth.Post("/logout", authHandler.Logout)

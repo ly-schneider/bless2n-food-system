@@ -1,0 +1,45 @@
+services:
+  # Test MongoDB
+  mongo-test:
+    image: mongo:7
+    container_name: mongo-test
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: test_admin
+      MONGO_INITDB_ROOT_PASSWORD: test_password_123
+    volumes:
+      - mongo_test_data:/data/db
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # Test SMTP server (Mailpit for email testing)
+  mailpit-test:
+    image: axllent/mailpit:v1.21
+    container_name: mailpit-test
+    ports:
+      - "1026:1025"  # SMTP port for testing
+      - "8026:8025"  # Web UI port for testing
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8025"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  mongo_test_data:
+
+networks:
+  test-network:
+    driver: bridge

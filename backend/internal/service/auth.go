@@ -9,9 +9,7 @@ import (
 // AuthService defines the authentication service interface
 type AuthService interface {
 	RegisterCustomer(ctx context.Context, req RegisterCustomerRequest) (*RegisterCustomerResponse, error)
-	VerifyOTP(ctx context.Context, req VerifyOTPRequest) (*VerifyOTPResponse, error)
-	ResendOTP(ctx context.Context, req ResendOTPRequest) (*ResendOTPResponse, error)
-	RequestLoginOTP(ctx context.Context, req RequestLoginOTPRequest) (*RequestLoginOTPResponse, error)
+	RequestOTP(ctx context.Context, req RequestOTPRequest) (*RequestOTPResponse, error)
 	Login(ctx context.Context, req LoginRequest) (*LoginResponse, error)
 	RefreshToken(ctx context.Context, req RefreshTokenRequest) (*RefreshTokenResponse, error)
 	Logout(ctx context.Context, req LogoutRequest) (*LogoutResponse, error)
@@ -41,15 +39,6 @@ type VerifyOTPResponse struct {
 	RefreshToken string       `json:"refresh_token,omitempty"`
 	TokenType    string       `json:"token_type,omitempty"`
 	ExpiresIn    int64        `json:"expires_in,omitempty"`
-}
-
-// Request/Response types for OTP Resend
-type ResendOTPRequest struct {
-	Email string `json:"email" validate:"required,email"`
-}
-
-type ResendOTPResponse struct {
-	Message string `json:"message"`
 }
 
 // Request/Response types for Login
@@ -90,10 +79,10 @@ type LogoutResponse struct {
 }
 
 // Request/Response types for Login OTP Request
-type RequestLoginOTPRequest struct {
+type RequestOTPRequest struct {
 	Email string `json:"email" validate:"required,email"`
 }
 
-type RequestLoginOTPResponse struct {
+type RequestOTPResponse struct {
 	Message string `json:"message"`
 }
