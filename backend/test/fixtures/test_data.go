@@ -59,13 +59,65 @@ var ValidRefreshTokenRequest = map[string]any{
 	"client_id":     "test-client-123",
 }
 
+// TestStations contains predefined test stations for e2e testing
+var TestStations = struct {
+	PendingStation  *domain.Station
+	ApprovedStation *domain.Station
+	RejectedStation *domain.Station
+}{
+	PendingStation: &domain.Station{
+		ID:        primitive.NewObjectID(),
+		Name:      "Test Pending Station",
+		Status:    domain.StationStatusPending,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	},
+	ApprovedStation: &domain.Station{
+		ID:         primitive.NewObjectID(),
+		Name:       "Test Approved Station",
+		Status:     domain.StationStatusApproved,
+		ApprovedBy: &TestUsers.AdminUser.ID,
+		ApprovedAt: func() *time.Time { t := time.Now(); return &t }(),
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+	},
+	RejectedStation: &domain.Station{
+		ID:              primitive.NewObjectID(),
+		Name:            "Test Rejected Station",
+		Status:          domain.StationStatusRejected,
+		RejectedBy:      &TestUsers.AdminUser.ID,
+		RejectedAt:      func() *time.Time { t := time.Now(); return &t }(),
+		RejectionReason: func() *string { r := "Not meeting requirements"; return &r }(),
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+	},
+}
+
+// ValidStationRequest contains test data for station creation
+var ValidStationRequest = map[string]any{
+	"name": "New Test Station",
+}
+
+// ValidStationStatusApprovalRequest contains test data for station approval
+var ValidStationStatusApprovalRequest = map[string]any{
+	"approve": true,
+}
+
+// ValidStationStatusRejectionRequest contains test data for station rejection
+var ValidStationStatusRejectionRequest = map[string]any{
+	"approve": false,
+	"reason":  "Does not meet requirements",
+}
+
 // InvalidRequests contains various invalid request payloads for testing
 var InvalidRequests = struct {
-	InvalidEmail     map[string]any
-	MissingEmail     map[string]any
-	InvalidOTP       map[string]any
-	MissingOTP       map[string]any
-	MissingClientID  map[string]any
+	InvalidEmail        map[string]any
+	MissingEmail        map[string]any
+	InvalidOTP          map[string]any
+	MissingOTP          map[string]any
+	MissingClientID     map[string]any
+	InvalidStationName  map[string]any
+	MissingStationName  map[string]any
 }{
 	InvalidEmail: map[string]any{
 		"email": "invalid-email",
@@ -84,4 +136,8 @@ var InvalidRequests = struct {
 		"email": "customer@test.com",
 		"otp":   "123456",
 	},
+	InvalidStationName: map[string]any{
+		"name": "", // Empty name
+	},
+	MissingStationName: map[string]any{},
 }

@@ -7,7 +7,14 @@ definitions:
     x-enum-varnames:
     - ProductTypeSimple
     - ProductTypeBundle
-  backend_internal_domain.StationApprovalRequest:
+  backend_internal_domain.StationRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  backend_internal_domain.StationStatusRequest:
     properties:
       approve:
         type: boolean
@@ -15,13 +22,6 @@ definitions:
         type: string
     required:
     - approve
-    type: object
-  backend_internal_domain.StationRequest:
-    properties:
-      name:
-        type: string
-    required:
-    - name
     type: object
   backend_internal_domain.User:
     properties:
@@ -74,13 +74,6 @@ definitions:
         type: string
       status:
         type: integer
-    type: object
-  backend_internal_service.ApprovalResponse:
-    properties:
-      message:
-        type: string
-      success:
-        type: boolean
     type: object
   backend_internal_service.AssignProductToStationsResponse:
     properties:
@@ -637,6 +630,13 @@ definitions:
         type: string
       updated_at:
         type: string
+    type: object
+  backend_internal_service.StatusResponse:
+    properties:
+      message:
+        type: string
+      success:
+        type: boolean
     type: object
   backend_internal_service.UpdateCategoryRequest:
     properties:
@@ -1670,47 +1670,6 @@ paths:
       summary: Create a new station (Admin only)
       tags:
       - admin
-  /v1/admin/stations/{id}/approve:
-    put:
-      consumes:
-      - application/json
-      description: Allow admins to approve or reject station requests
-      parameters:
-      - description: Station ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Approval request
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/backend_internal_domain.StationApprovalRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/backend_internal_service.ApprovalResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/backend_internal_response.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/backend_internal_response.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/backend_internal_response.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Approve or reject a station request (Admin only)
-      tags:
-      - admin
   /v1/admin/stations/{id}/products:
     post:
       consumes:
@@ -1790,6 +1749,47 @@ paths:
       security:
       - BearerAuth: []
       summary: Remove product from station (Admin only)
+      tags:
+      - admin
+  /v1/admin/stations/{id}/status:
+    put:
+      consumes:
+      - application/json
+      description: Allow admins to approve or reject station requests
+      parameters:
+      - description: Station ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Station status request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/backend_internal_domain.StationStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/backend_internal_service.StatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update station status (approve or reject) (Admin only)
       tags:
       - admin
   /v1/auth/login:

@@ -16,8 +16,8 @@ type StationService interface {
 	ListStations(ctx context.Context, limit, offset int) (*ListStationsResponse, error)
 	ListStationsByStatus(ctx context.Context, status domain.StationStatus, limit, offset int) (*ListStationsResponse, error)
 	GetStation(ctx context.Context, stationID primitive.ObjectID) (*StationResponse, error)
-	ApproveStation(ctx context.Context, stationID, adminID primitive.ObjectID) (*ApprovalResponse, error)
-	RejectStation(ctx context.Context, stationID, adminID primitive.ObjectID, reason string) (*ApprovalResponse, error)
+	ApproveStation(ctx context.Context, stationID, adminID primitive.ObjectID) (*StatusResponse, error)
+	RejectStation(ctx context.Context, stationID, adminID primitive.ObjectID, reason string) (*StatusResponse, error)
 	AssignProductsToStation(ctx context.Context, stationID primitive.ObjectID, productIDs []primitive.ObjectID) (*AssignProductsResponse, error)
 	GetStationProducts(ctx context.Context, stationID primitive.ObjectID) (*StationProductsResponse, error)
 	RemoveProductFromStation(ctx context.Context, stationID, productID primitive.ObjectID) (*AssignProductsResponse, error)
@@ -41,7 +41,7 @@ type ListStationsResponse struct {
 	Total    int               `json:"total"`
 }
 
-type ApprovalResponse struct {
+type StatusResponse struct {
 	Message string `json:"message"`
 	Success bool   `json:"success"`
 }
@@ -153,11 +153,11 @@ func (s *stationService) GetStation(ctx context.Context, stationID primitive.Obj
 	return s.mapStationToResponse(station), nil
 }
 
-func (s *stationService) ApproveStation(ctx context.Context, stationID, adminID primitive.ObjectID) (*ApprovalResponse, error) {
+func (s *stationService) ApproveStation(ctx context.Context, stationID, adminID primitive.ObjectID) (*StatusResponse, error) {
 	err := s.stationRepo.ApproveStation(ctx, stationID, adminID)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return &ApprovalResponse{
+			return &StatusResponse{
 				Message: "Station not found or not pending approval",
 				Success: false,
 			}, nil
@@ -165,17 +165,17 @@ func (s *stationService) ApproveStation(ctx context.Context, stationID, adminID 
 		return nil, err
 	}
 
-	return &ApprovalResponse{
+	return &StatusResponse{
 		Message: "Station approved successfully",
 		Success: true,
 	}, nil
 }
 
-func (s *stationService) RejectStation(ctx context.Context, stationID, adminID primitive.ObjectID, reason string) (*ApprovalResponse, error) {
+func (s *stationService) RejectStation(ctx context.Context, stationID, adminID primitive.ObjectID, reason string) (*StatusResponse, error) {
 	err := s.stationRepo.RejectStation(ctx, stationID, adminID, reason)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return &ApprovalResponse{
+			return &StatusResponse{
 				Message: "Station not found or not pending approval",
 				Success: false,
 			}, nil
@@ -183,7 +183,7 @@ func (s *stationService) RejectStation(ctx context.Context, stationID, adminID p
 		return nil, err
 	}
 
-	return &ApprovalResponse{
+	return &StatusResponse{
 		Message: "Station rejected successfully",
 		Success: true,
 	}, nil

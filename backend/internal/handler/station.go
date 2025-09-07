@@ -173,7 +173,6 @@ func (h *StationHandler) ListStations(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, stationsResponse)
 }
 
-
 // GetStation godoc
 // @Summary Get station by ID
 // @Description Get detailed information about a specific station
@@ -205,21 +204,21 @@ func (h *StationHandler) GetStation(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, stationResponse)
 }
 
-// ApproveStation godoc
-// @Summary Approve or reject a station request (Admin only)
+// UpdateStationStatus godoc
+// @Summary Update station status (approve or reject) (Admin only)
 // @Description Allow admins to approve or reject station requests
 // @Tags admin
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Param id path string true "Station ID"
-// @Param request body domain.StationApprovalRequest true "Approval request"
-// @Success 200 {object} service.ApprovalResponse
+// @Param request body domain.StationStatusRequest true "Station status request"
+// @Success 200 {object} service.StatusResponse
 // @Failure 400 {object} response.ErrorResponse
 // @Failure 401 {object} response.ErrorResponse
 // @Failure 403 {object} response.ErrorResponse
-// @Router /v1/admin/stations/{id}/approve [put]
-func (h *StationHandler) ApproveStation(w http.ResponseWriter, r *http.Request) {
+// @Router /v1/admin/stations/{id}/status [put]
+func (h *StationHandler) UpdateStationStatus(w http.ResponseWriter, r *http.Request) {
 	userClaim, ok := middleware.GetUserFromContext(r.Context())
 	if !ok {
 		h.logger.Error("User claims not found in context")
@@ -248,7 +247,7 @@ func (h *StationHandler) ApproveStation(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	var req domain.StationApprovalRequest
+	var req domain.StationStatusRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.logger.Error("Failed to decode request body", zap.Error(err))
 		response.WriteError(w, http.StatusBadRequest, "Invalid request format")
@@ -261,29 +260,29 @@ func (h *StationHandler) ApproveStation(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	var approvalResponse *service.ApprovalResponse
-	if req.Approve {
-		approvalResponse, err = h.stationService.ApproveStation(r.Context(), stationID, adminID)
+	var statusResponse *service.StatusResponse
+	if req.Approve != nil && *req.Approve {
+		statusResponse, err = h.stationService.ApproveStation(r.Context(), stationID, adminID)
 	} else {
 		reason := ""
 		if req.Reason != nil {
 			reason = *req.Reason
 		}
-		approvalResponse, err = h.stationService.RejectStation(r.Context(), stationID, adminID, reason)
+		statusResponse, err = h.stationService.RejectStation(r.Context(), stationID, adminID, reason)
 	}
 
 	if err != nil {
-		h.logger.Error("Failed to process station approval", zap.Error(err))
-		response.WriteError(w, http.StatusInternalServerError, "Failed to process approval")
+		h.logger.Error("Failed to process station status update", zap.Error(err))
+		response.WriteError(w, http.StatusInternalServerError, "Failed to process status update")
 		return
 	}
 
 	status := http.StatusOK
-	if !approvalResponse.Success {
+	if !statusResponse.Success {
 		status = http.StatusBadRequest
 	}
 
-	response.WriteJSON(w, status, approvalResponse)
+	response.WriteJSON(w, status, statusResponse)
 }
 
 // AssignProductsToStation godoc

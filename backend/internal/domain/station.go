@@ -31,7 +31,7 @@ type StationRequest struct {
 	Name string `json:"name" validate:"required"`
 }
 
-type StationApprovalRequest struct {
-	Approve bool    `json:"approve" validate:"required"`
+type StationStatusRequest struct {
+	Approve *bool   `json:"approve" validate:"required"`
 	Reason  *string `json:"reason,omitempty"`
 }

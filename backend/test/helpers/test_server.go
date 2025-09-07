@@ -55,24 +55,25 @@ func NewTestServer() (*TestServer, error) {
 		return nil, fmt.Errorf("failed to load test environment from %s (wd: %s): %w", testEnvPath, wd, err)
 	}
 
-	// Generate test keys if they don't exist
-	if err := generateTestKeys(); err != nil {
-		return nil, fmt.Errorf("failed to generate test keys: %w", err)
-	}
-
-	// Find available port
+	// Find available port first
 	port, err := getFreePort()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get free port: %w", err)
 	}
 
-	// Override port in environment
+	// Override port and issuer in environment BEFORE generating keys and creating FX app
 	os.Setenv("APP_PORT", fmt.Sprintf("%d", port))
+	os.Setenv("JWT_ISSUER", fmt.Sprintf("http://localhost:%d", port))
+
+	// Generate test keys if they don't exist (after environment is set)
+	if err := generateTestKeys(); err != nil {
+		return nil, fmt.Errorf("failed to generate test keys: %w", err)
+	}
 
 	// Create mock email service
 	emailMock := mocks.NewMockEmailService()
 
-	// Create FX application with real dependencies but mocked email
+	// Create FX application with real dependencies but mocked email (after all env vars are set)
     var cfg config.Config
     var logger *zap.Logger
     var router http.Handler

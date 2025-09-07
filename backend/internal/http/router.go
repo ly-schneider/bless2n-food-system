@@ -124,7 +124,7 @@ func NewRouter(
 
 					// Station management
 					adminRoutes.Post("/stations", stationHandler.CreateStation)
-					adminRoutes.Put("/stations/{id}/approve", stationHandler.ApproveStation)
+					adminRoutes.Put("/stations/{id}/status", stationHandler.UpdateStationStatus)
 					adminRoutes.Post("/stations/{id}/products", stationHandler.AssignProductsToStation)
 					adminRoutes.Delete("/stations/{id}/products/{productId}", stationHandler.RemoveProductFromStation)
 

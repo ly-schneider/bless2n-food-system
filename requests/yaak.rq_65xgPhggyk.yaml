@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_65xgPhggyk
 createdAt: 2025-08-27T18:06:11.105127
-updatedAt: 2025-08-27T18:06:29.441989
+updatedAt: 2025-09-03T21:18:54.633591
 workspaceId: wk_wnN8iaCncF
 folderId: fl_AxXSj5YeMR
 authentication:
@@ -31,5 +31,5 @@ headers:
 method: POST
 name: Request OTP
 sortPriority: 500.0019999999999
-url: ${[ API_URL ]}/auth/request-login-otp
+url: ${[ API_URL ]}/auth/request-otp
 urlParameters: []

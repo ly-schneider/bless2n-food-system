@@ -9,7 +9,7 @@ TEST_DB_NAME := bless2n_test_db
 TEST_TIMEOUT := 300s
 COVERAGE_THRESHOLD := 80
 
-.PHONY: help test-setup test-teardown test-unit test-e2e test-all test-coverage test-clean
+.PHONY: help test-setup test-teardown test-unit test-e2e test-all test-coverage test-clean test-station test-run
 
 help:
 	@echo "Available test commands:"
@@ -17,9 +17,15 @@ help:
 	@echo "  test-teardown  - Stop test infrastructure"
 	@echo "  test-unit      - Run unit tests"
 	@echo "  test-e2e       - Run end-to-end tests"
+	@echo "  test-run       - Run specific test suite/method (use RUN=pattern)"
 	@echo "  test-all       - Run all tests with coverage"
 	@echo "  test-coverage  - Generate and view coverage report"
 	@echo "  test-clean     - Clean test artifacts and data"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make test-run RUN=TestStationTestSuite"
+	@echo "  make test-run RUN=TestAuthTestSuite"
+	@echo "  make test-run RUN=TestStationTestSuite/TestStationRequestFlow"
 
 test-setup:
 	@echo "Starting test infrastructure..."
@@ -53,8 +59,6 @@ test-e2e: test-setup
 		export MONGO_URI=$$MONGO_URI_LOCAL; \
 		export SMTP_HOST=$$SMTP_HOST_LOCAL; \
 		export SMTP_PORT=$$SMTP_PORT_LOCAL; \
-		export JWT_PRIV_PEM_PATH="../config/secrets/test/ed25519.pem"; \
-		export JWT_PUB_PEM_PATH="../config/secrets/test/ed25519.pub.pem"; \
 		set +a; \
 		go test -v -race -timeout $(TEST_TIMEOUT) -p 1 ./test/e2e/...'
 	@$(MAKE) test-teardown
@@ -67,8 +71,6 @@ test-all: test-setup
 		export MONGO_URI=$$MONGO_URI_LOCAL; \
 		export SMTP_HOST=$$SMTP_HOST_LOCAL; \
 		export SMTP_PORT=$$SMTP_PORT_LOCAL; \
-		export JWT_PRIV_PEM_PATH="../config/secrets/test/ed25519.pem"; \
-		export JWT_PUB_PEM_PATH="../config/secrets/test/ed25519.pub.pem"; \
 		set +a; \
 		go test -v -race -timeout $(TEST_TIMEOUT) -p 1 -coverprofile=coverage.out -covermode=atomic ./...'
 	@$(MAKE) test-teardown
@@ -96,6 +98,27 @@ test-clean:
 # Quick test commands
 quick-test: test-unit
 	@echo "Quick unit tests completed!"
+
+test-run: test-setup
+	@if [ -z "$(RUN)" ]; then \
+		echo "❌ Error: Please specify a test pattern with RUN=pattern"; \
+		echo "Examples:"; \
+		echo "  make test-run RUN=TestStationTestSuite"; \
+		echo "  make test-run RUN=TestAuthTestSuite"; \
+		echo "  make test-run RUN=TestStationTestSuite/TestStationRequestFlow"; \
+		$(MAKE) test-teardown; \
+		exit 1; \
+	fi
+	@echo "Running e2e tests matching pattern: $(RUN)"
+	@cd .. && bash -c 'set -a; \
+		source test/config/.env.test; \
+		export APP_ENV=test; \
+		export MONGO_URI=$$MONGO_URI_LOCAL; \
+		export SMTP_HOST=$$SMTP_HOST_LOCAL; \
+		export SMTP_PORT=$$SMTP_PORT_LOCAL; \
+		set +a; \
+		go test -v -race -timeout $(TEST_TIMEOUT) -p 1 -run "$(RUN)" ./test/e2e/'
+	@$(MAKE) test-teardown
 
 integration-test: test-e2e
 	@echo "Integration tests completed!"
