@@ -30,7 +30,7 @@ docker-up-backend docker-restart-backend: SMTP_PORT := $(SMTP_PORT_DOCKER)
 DC  := docker compose
 AIR ?= ./bin/air
 
-.PHONY: help tools swag dev docker-up docker-up-backend docker-down docker-down-v docker-restart docker-restart-backend clean logs ps mongo-shell test test-e2e test-coverage test-setup test-teardown
+.PHONY: help tools swag dev docker-up docker-up-backend docker-down docker-down-v docker-restart docker-restart-backend clean logs ps mongo-shell test test-coverage
 
 help:
 	@echo "Available commands:"
@@ -48,10 +48,7 @@ help:
 	@echo "  mongo-shell            - Open mongosh in the mongo container"
 	@echo "  clean                  - Remove build artifacts"
 	@echo "  test                   - Run unit tests"
-	@echo "  test-e2e               - Run end-to-end tests"
 	@echo "  test-coverage          - Run tests with coverage"
-	@echo "  test-setup             - Setup test infrastructure"
-	@echo "  test-teardown          - Teardown test infrastructure"
 
 tools:
 	@echo "Installing/updating tools..."
@@ -111,19 +108,16 @@ test:
 	@echo "Running unit tests..."
 	go test -v -race ./internal/...
 
-test-e2e:
-	@echo "Running end-to-end tests..."
-	$(MAKE) -C test test-e2e
-
 test-coverage:
 	@echo "Running tests with coverage..."
-	$(MAKE) -C test test-all
-	$(MAKE) -C test test-coverage
-
-test-setup:
-	@echo "Setting up test infrastructure..."
-	$(MAKE) -C test test-setup
-
-test-teardown:
-	@echo "Tearing down test infrastructure..."
-	$(MAKE) -C test test-teardown
+	go test -v -race -coverprofile=coverage.out -covermode=atomic ./internal/...
+	go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
+	@COVERAGE=$$(go tool cover -func=coverage.out | grep total | awk '{print substr($$3, 1, length($$3)-1)}'); \
+	echo "Total coverage: $$COVERAGE%"; \
+	if [ $$(echo "$$COVERAGE >= 80" | bc -l) -eq 1 ]; then \
+		echo "✅ Coverage threshold of 80% met!"; \
+	else \
+		echo "❌ Coverage threshold of 80% not met. Current: $$COVERAGE%"; \
+		exit 1; \
+	fi
