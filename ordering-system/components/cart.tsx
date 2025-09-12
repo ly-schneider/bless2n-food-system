@@ -17,6 +17,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import QrCodeCanvas from "@/components/qr-code-canvas";
 
 const bonConfigUI: Record<string, { bg: string; text: string; label: string }> =
   {
@@ -32,6 +33,8 @@ export function Cart() {
     useCart();
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
+  const [qrOpen, setQrOpen] = useState(false);
   const supabase = createClient();
 
   const handleCheckout = async () => {
@@ -67,10 +70,12 @@ export function Cart() {
           .from("order_items")
           .insert(orderItems);
         if (orderItemsError) throw orderItemsError;
+        setCreatedOrderId(orderId);
       }
       setCheckoutModalOpen(false);
       clearCart();
       toast.success("Bestellung abgeschlossen!", { duration: 1000 });
+      setQrOpen(true);
     } catch (error) {
       console.error("Error processing order:", error);
     } finally {
@@ -249,6 +254,29 @@ export function Cart() {
             >
               {isProcessing ? "Verarbeitung..." : "Abschliessen"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>QR-Code für Bestellung</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-3">
+            {createdOrderId ? (
+              <>
+                <div className="text-sm text-muted-foreground break-all font-mono">
+                  {createdOrderId}
+                </div>
+                <QrCodeCanvas value={createdOrderId} size={256} level="M" />
+              </>
+            ) : (
+              <div className="text-sm text-muted-foreground">Kein QR verfügbar</div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setQrOpen(false)}>Schliessen</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

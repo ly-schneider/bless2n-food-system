@@ -45,6 +45,9 @@ export default function AuthNavigation() {
     </div>
   ) : (
     <div className="flex gap-2">
+      <Button asChild size="sm" variant={"outline"}>
+        <Link href="/qr-codes">QR-Codes</Link>
+      </Button>
       <Button asChild size="sm" variant={"default"}>
         <Link href="/admin">Admin</Link>
       </Button>
