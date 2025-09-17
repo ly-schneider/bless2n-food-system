@@ -1,7 +1,8 @@
 import { Metadata } from "next"
+import Header from "@/components/layout/header"
+import MenuGrid from "@/components/menu/menu-grid"
 import ProductAPI from "@/lib/api/products"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import MenuGrid, { type MenuItem } from "@/components/menu/menu-grid"
+import { ListProductsResponse } from "@/types"
 
 export const metadata: Metadata = {
   title: "Menu - Bless2n Food System",
@@ -10,38 +11,22 @@ export const metadata: Metadata = {
 
 export default async function HomePage() {
   // Fetch products directly via products API
-  let products: MenuItem[] = []
+  let products: ListProductsResponse
   try {
     const res = await ProductAPI.listPublicProducts({ activeOnly: true, limit: 100 })
-    products = (res.products || []).map((p) => ({
-      id: p.id,
-      name: p.name,
-      description: p.description,
-      price: p.price,
-      isActive: p.isActive,
-    }))
+    products = res
   } catch {
-    products = []
+    products = { products: [], items: [], total: 0 }
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="mb-4 text-3xl font-bold">Our Menu</h1>
-        <p className="text-muted-foreground">
-          Fresh, delicious meals made with the finest ingredients. All dishes are prepared to order.
-        </p>
-      </div>
+    <div className="bg-background min-h-screen">
+      <Header />
 
-      <Tabs defaultValue="all" className="w-full">
-        <TabsList className="grid w-full grid-cols-1">
-          <TabsTrigger value="all">All Items</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="all" className="mt-6">
-          <MenuGrid items={products} />
-        </TabsContent>
-      </Tabs>
+      <main className="container mx-auto px-4 py-8">
+        <h2 className="text-2xl mb-2">Alle Produkte</h2>
+        <MenuGrid products={products} />
+      </main>
     </div>
   )
 }

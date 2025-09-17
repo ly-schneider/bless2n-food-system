@@ -1,17 +1,17 @@
+import { BaseEntity, MessageResponse } from './common'
+
 export enum Role {
   ADMIN = "admin",
   CUSTOMER = "customer",
+  STATION = "station",
 }
 
-export interface User {
-  id: string
+export interface User extends BaseEntity {
   email: string
   name: string
   role: Role
   isActive: boolean
   isEmailVerified: boolean
-  createdAt: string
-  updatedAt: string
 }
 
 export interface Session {
@@ -25,23 +25,13 @@ export interface Session {
   createdAt: Date
 }
 
-// Backend OTP-based auth requests/responses
 export interface RegisterCustomerRequest {
   email: string
   name: string
 }
 
-export interface RegisterCustomerResponse {
-  message: string
-  userId: string
-}
-
 export interface RequestOTPRequest {
   email: string
-}
-
-export interface RequestOTPResponse {
-  message: string
 }
 
 export interface LoginRequest {
@@ -68,9 +58,12 @@ export interface LogoutRequest {
   refreshToken: string
 }
 
-export interface LogoutResponse {
-  message: string
+export interface RegisterCustomerResponse extends MessageResponse {
+  userId: string
 }
+
+export type RequestOTPResponse = MessageResponse
+export type LogoutResponse = MessageResponse
 
 export interface AuthContext {
   user: User | null

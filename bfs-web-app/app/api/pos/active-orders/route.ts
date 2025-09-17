@@ -35,7 +35,7 @@ function toPOSOrder(o: RawOrder) {
 export async function GET() {
   try {
     const data = await OrderAPI.listOrders({ limit: 50 })
-    const orders = (data.orders || [])
+    const orders = (data.items || [])
       .filter((o: RawOrder) => o.status !== "completed")
       .map(toPOSOrder)
     return NextResponse.json({ orders })

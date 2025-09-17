@@ -1,10 +1,15 @@
-// Station authentication types - separate from main user auth
+import { MessageResponse } from './common'
 
 export enum StationStatus {
   PENDING = "pending",
-  APPROVED = "approved",
+  APPROVED = "approved", 
   REJECTED = "rejected",
   SUSPENDED = "suspended",
+}
+
+export interface StationPermission {
+  action: "redeem" | "view_products" | "view_orders"
+  resourceId?: string
 }
 
 export interface StationSession {
@@ -15,11 +20,6 @@ export interface StationSession {
   permissions: StationPermission[]
   isAuthenticated: boolean
   expiresAt: Date
-}
-
-export interface StationPermission {
-  action: "redeem" | "view_products" | "view_orders"
-  resourceId?: string
 }
 
 export interface StationRequestForm {
@@ -37,14 +37,13 @@ export interface StationLoginRequest {
   accessCode: string
 }
 
-export interface StationLoginResponse {
+export interface StationLoginResponse extends MessageResponse {
   stationId: string
   stationName: string
   location: string
   status: StationStatus
   accessToken: string
   permissions: StationPermission[]
-  message: string
 }
 
 export interface StationContext {

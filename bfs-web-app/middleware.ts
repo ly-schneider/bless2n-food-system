@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
+
+import { Role } from "@/types/auth"
+
 import { AuthService } from "./lib/auth"
-import { Permission, RBACService } from "./lib/rbac"
+import { verifyTokenFromRequest } from "./lib/jwt-verify"
+import { RBACService } from "./lib/rbac"
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -44,7 +48,11 @@ export async function middleware(request: NextRequest) {
   // Require authentication for protected routes
   if (!accessToken) {
     if (pathname.startsWith("/api/")) {
-      return new NextResponse(JSON.stringify({ error: "Authentication required" }), {
+      return new NextResponse(JSON.stringify({ 
+        error: true,
+        message: "Authentication required",
+        status: "UNAUTHORIZED"
+      }), {
         status: 401,
         headers: { "Content-Type": "application/json" },
       })
@@ -56,11 +64,31 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  // Try to get current user (will handle token refresh if needed)
-  const currentUser = await AuthService.getCurrentUser()
+  // Verify JWT token using JWKS (production-grade verification)
+  const jwtResult = await verifyTokenFromRequest(request)
+  let currentUser = null
+
+  if (jwtResult.valid && jwtResult.payload) {
+    // JWT is valid - use payload directly for better performance
+    currentUser = {
+      id: jwtResult.payload.sub,
+      role: jwtResult.payload.role === 'admin' ? Role.ADMIN : 
+            jwtResult.payload.role === 'station' ? Role.STATION : Role.CUSTOMER,
+      // Add other fields as needed
+    }
+  } else {
+    // Fallback to legacy token validation if JWKS is not available
+    console.warn('JWKS verification failed, falling back to legacy auth:', jwtResult.error)
+    currentUser = await AuthService.getCurrentUser()
+  }
+
   if (!currentUser) {
     if (pathname.startsWith("/api/")) {
-      return new NextResponse(JSON.stringify({ error: "Invalid or expired token" }), {
+      return new NextResponse(JSON.stringify({ 
+        error: true,
+        message: "Invalid or expired token",
+        status: "UNAUTHORIZED"
+      }), {
         status: 401,
         headers: { "Content-Type": "application/json" },
       })
@@ -87,11 +115,11 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Handle POS routes
-  if (pathname.startsWith("/pos") || pathname.startsWith("/api/pos/")) {
-    if (!RBACService.hasPermission(currentUser.role, Permission.POS_ACCESS)) {
+  // Handle Station routes
+  if (pathname.startsWith("/station") || pathname.startsWith("/api/station/")) {
+    if (!RBACService.canAccessStation(currentUser.role)) {
       const error = pathname.startsWith("/api/")
-        ? new NextResponse(JSON.stringify({ error: "POS access required" }), {
+        ? new NextResponse(JSON.stringify({ error: "Station access required" }), {
             status: 403,
             headers: { "Content-Type": "application/json" },
           })

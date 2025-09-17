@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import ProductAPI from "@/lib/api/products"
-import { CreateProductBundleRequest, Product, ProductBundle, UpdateProductBundleRequest } from "@/types/product"
+import { CreateProductBundleRequest, Product, ProductBundle, UpdateProductBundleRequest } from "@/types"
 
 export default function BundlesPage() {
   const [bundles, setBundles] = useState<ProductBundle[]>([])
@@ -39,6 +39,8 @@ export default function BundlesPage() {
       // Load products for bundle creation
       const productsResponse = await ProductAPI.listProducts({ limit: 100 })
       setProducts(productsResponse.products)
+
+      console.log(productsResponse)
 
       // TODO: Load existing bundles when backend endpoint is ready
       setBundles([])

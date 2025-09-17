@@ -33,7 +33,7 @@ type RawOrder = {
 
 async function loadRecentOrders(): Promise<RecentOrder[]> {
   const data = await OrderAPI.listOrders({ limit: 10 })
-  return (data.orders || []).map((o: RawOrder) => ({
+  return (data.items || []).map((o: RawOrder) => ({
     id: o.id,
     customer: o.customer?.name || o.contactEmail || "Customer",
     status: o.status || "pending",

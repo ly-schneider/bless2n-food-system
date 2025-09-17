@@ -1,4 +1,5 @@
-import { MenuItem, ModifierOption } from "./menu"
+import { BaseEntity } from './common'
+import { MenuItem, ModifierOption } from './menu'
 
 export interface CartItemModifier {
   modifierId: string
@@ -7,8 +8,7 @@ export interface CartItemModifier {
   totalPrice: number
 }
 
-export interface CartItem {
-  id: string
+export interface CartItem extends BaseEntity {
   menuItem: MenuItem
   quantity: number
   modifiers: CartItemModifier[]
@@ -18,8 +18,7 @@ export interface CartItem {
   addedAt: Date
 }
 
-export interface Cart {
-  id: string
+export interface Cart extends BaseEntity {
   userId?: string
   guestId?: string
   items: CartItem[]
@@ -28,8 +27,6 @@ export interface Cart {
   discount: number
   total: number
   estimatedPreparationTime: number
-  createdAt: Date
-  updatedAt: Date
 }
 
 export interface AddToCartRequest {

@@ -1,81 +1,7 @@
-// Order types matching backend API
+import { BaseEntity, ListResponse, MessageResponse } from './common'
 
 export type OrderStatus = "pending" | "paid" | "cancelled" | "refunded"
 
-export interface Order {
-  id: string
-  customerId?: string
-  contactEmail?: string
-  total: number
-  status: OrderStatus
-  createdAt: string
-  updatedAt: string
-}
-
-// Order API requests/responses
-export interface CreateOrderRequest {
-  items: OrderItem[]
-  contactEmail?: string
-  total: number
-}
-
-export interface CreateOrderResponse {
-  id: string
-  customerId?: string
-  contactEmail?: string
-  total: number
-  status: OrderStatus
-  createdAt: string
-  updatedAt: string
-}
-
-export interface UpdateOrderRequest {
-  status?: OrderStatus
-  contactEmail?: string
-}
-
-export interface UpdateOrderResponse {
-  id: string
-  customerId?: string
-  contactEmail?: string
-  total: number
-  status: OrderStatus
-  createdAt: string
-  updatedAt: string
-}
-
-export interface GetOrderResponse {
-  id: string
-  customerId?: string
-  contactEmail?: string
-  total: number
-  status: OrderStatus
-  createdAt: string
-  updatedAt: string
-}
-
-export interface ListOrdersResponse {
-  orders: Order[]
-  total: number
-  limit: number
-  offset: number
-}
-
-export interface DeleteOrderResponse {
-  message: string
-}
-
-export interface UpdateOrderStatusRequest {
-  status: OrderStatus
-}
-
-export interface UpdateOrderStatusResponse {
-  id: string
-  status: OrderStatus
-  message: string
-}
-
-// Order item for cart functionality
 export interface OrderItem {
   productId: string
   quantity: number
@@ -83,23 +9,41 @@ export interface OrderItem {
   name?: string
 }
 
-// Cart context types
-export interface CartItem extends OrderItem {
-  name: string
-  description?: string
-}
-
-export interface CartContext {
-  items: CartItem[]
+export interface Order extends BaseEntity {
+  customerId?: string
+  contactEmail?: string
   total: number
-  addItem: (item: CartItem) => void
-  removeItem: (productId: string) => void
-  updateQuantity: (productId: string, quantity: number) => void
-  clearCart: () => void
-  getItemCount: () => number
+  status: OrderStatus
 }
 
-// Redemption types (from backend analysis)
+export interface CreateOrderRequest {
+  items: OrderItem[]
+  contactEmail?: string
+  total: number
+}
+
+export interface UpdateOrderRequest {
+  status?: OrderStatus
+  contactEmail?: string
+}
+
+export interface UpdateOrderStatusRequest {
+  status: OrderStatus
+}
+
+// Response types
+export type CreateOrderResponse = Order
+export type UpdateOrderResponse = Order
+export type GetOrderResponse = Order
+export type ListOrdersResponse = ListResponse<Order>
+export type DeleteOrderResponse = MessageResponse
+
+export interface UpdateOrderStatusResponse extends MessageResponse {
+  id: string
+  status: OrderStatus
+}
+
+// Redemption types
 export interface RedemptionItem {
   productId: string
   quantity: number
@@ -110,7 +54,22 @@ export interface RedeemOrderItemsRequest {
   items: RedemptionItem[]
 }
 
-export interface RedeemOrderItemsResponse {
-  message: string
+export interface RedeemOrderItemsResponse extends MessageResponse {
   redeemedItems: RedemptionItem[]
+}
+
+// Cart context types for compatibility
+export interface OrderCartItem extends OrderItem {
+  name: string
+  description?: string
+}
+
+export interface CartContext {
+  items: OrderCartItem[]
+  total: number
+  addItem: (item: OrderCartItem) => void
+  removeItem: (productId: string) => void
+  updateQuantity: (productId: string, quantity: number) => void
+  clearCart: () => void
+  getItemCount: () => number
 }

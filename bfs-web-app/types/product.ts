@@ -1,50 +1,17 @@
-// Product and Category types matching backend API
+import { ActivatableNamedEntity, ListResponse, MessageResponse, StatusUpdateResponse } from './common'
 
-export interface Category {
-  id: string
-  name: string
-  description?: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
-}
+export type Category = ActivatableNamedEntity
 
-export interface Product {
-  id: string
-  name: string
-  description?: string
-  price: number
+export interface Product extends ActivatableNamedEntity {
   categoryId: string
-  isActive: boolean
-  stock: number
-  createdAt: string
-  updatedAt: string
-}
-
-export interface ProductBundle {
-  id: string
-  name: string
-  description?: string
+  type: string
+  image: string
   price: number
-  productIds: string[]
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
 }
 
-// Category API requests/responses
 export interface CreateCategoryRequest {
   name: string
   description?: string
-}
-
-export interface CreateCategoryResponse {
-  id: string
-  name: string
-  description?: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
 }
 
 export interface UpdateCategoryRequest {
@@ -52,60 +19,12 @@ export interface UpdateCategoryRequest {
   description?: string
 }
 
-export interface UpdateCategoryResponse {
-  id: string
-  name: string
-  description?: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
-}
-
-export interface GetCategoryResponse {
-  id: string
-  name: string
-  description?: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
-}
-
-export interface ListCategoriesResponse {
-  categories: Category[]
-  total: number
-  limit: number
-  offset: number
-}
-
-export interface DeleteCategoryResponse {
-  message: string
-}
-
-export interface SetCategoryActiveResponse {
-  id: string
-  isActive: boolean
-  message: string
-}
-
-// Product API requests/responses
 export interface CreateProductRequest {
   name: string
   description?: string
   price: number
   categoryId: string
   stock?: number
-}
-
-export interface CreateProductResponse {
-  id: string
-  name: string
-  description?: string
-  price: number
-  categoryId: string
-  isActive: boolean
-  stock: number
-  createdAt: string
-  updatedAt: string
 }
 
 export interface UpdateProductRequest {
@@ -116,82 +35,11 @@ export interface UpdateProductRequest {
   stock?: number
 }
 
-export interface UpdateProductResponse {
-  id: string
-  name: string
-  description?: string
-  price: number
-  categoryId: string
-  isActive: boolean
-  stock: number
-  createdAt: string
-  updatedAt: string
-}
-
-export interface GetProductResponse {
-  id: string
-  name: string
-  description?: string
-  price: number
-  categoryId: string
-  isActive: boolean
-  stock: number
-  createdAt: string
-  updatedAt: string
-}
-
-export interface ListProductsResponse {
-  products: Product[]
-  total: number
-  limit: number
-  offset: number
-}
-
-export interface DeleteProductResponse {
-  message: string
-}
-
-export interface SetProductActiveResponse {
-  id: string
-  isActive: boolean
-  message: string
-}
-
-export interface UpdateProductStockRequest {
-  stock: number
-}
-
-export interface UpdateProductStockResponse {
-  id: string
-  stock: number
-  message: string
-}
-
-export interface AssignProductToStationsRequest {
-  stationIds: string[]
-}
-
-export interface AssignProductToStationsResponse {
-  message: string
-}
-
-// Product Bundle API requests/responses
 export interface CreateProductBundleRequest {
   name: string
   description?: string
   price: number
   productIds: string[]
-}
-
-export interface CreateProductBundleResponse {
-  id: string
-  name: string
-  description?: string
-  price: number
-  productIds: string[]
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
 }
 
 export interface UpdateProductBundleRequest {
@@ -201,13 +49,41 @@ export interface UpdateProductBundleRequest {
   productIds?: string[]
 }
 
-export interface UpdateProductBundleResponse {
-  id: string
-  name: string
-  description?: string
-  price: number
-  productIds: string[]
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
+export interface UpdateProductStockRequest {
+  stock: number
 }
+
+export interface AssignProductToStationsRequest {
+  stationIds: string[]
+}
+
+// Response types - using common patterns
+export type CreateCategoryResponse = Category
+export type UpdateCategoryResponse = Category
+export type GetCategoryResponse = Category
+export interface ListCategoriesResponse extends ListResponse<Category> {
+  // Legacy compatibility field
+  categories: Category[]
+}
+export type DeleteCategoryResponse = MessageResponse
+export type SetCategoryActiveResponse = StatusUpdateResponse
+
+export type CreateProductResponse = Product
+export type UpdateProductResponse = Product
+export type GetProductResponse = Product
+export interface ListProductsResponse extends ListResponse<Product> {
+  // Legacy compatibility field
+  products: Product[]
+}
+export type DeleteProductResponse = MessageResponse
+export type SetProductActiveResponse = StatusUpdateResponse
+
+export interface UpdateProductStockResponse extends MessageResponse {
+  id: string
+  stock: number
+}
+
+export type AssignProductToStationsResponse = MessageResponse
+
+export type CreateProductBundleResponse = ProductBundle
+export type UpdateProductBundleResponse = ProductBundle

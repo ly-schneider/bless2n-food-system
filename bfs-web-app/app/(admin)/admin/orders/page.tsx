@@ -91,7 +91,7 @@ const typeConfig = {
 
 export default async function OrdersPage() {
   const data = await OrderAPI.listOrders({ limit: 50 })
-  const orders: UIOrder[] = ((data.orders as unknown) as UIOrder[]) || []
+  const orders: UIOrder[] = ((data.items as unknown) as UIOrder[]) || []
 
   const orderCounts = {
     all: orders.length,

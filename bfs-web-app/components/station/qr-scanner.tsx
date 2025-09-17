@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { StationAuthService } from "@/lib/station-auth"
-import { RedemptionItem } from "@/types/order"
+import { RedemptionItem } from "@/types"
 
 interface QRScannerProps {
   stationId: string

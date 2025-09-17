@@ -23,7 +23,7 @@ import {
   UpdateProductResponse,
   UpdateProductStockRequest,
   UpdateProductStockResponse,
-} from "../../types/product"
+} from "@/types"
 import { AuthService } from "../auth"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080"
@@ -40,12 +40,15 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
     },
   })
 
+  console.log(response)
+
   if (!response.ok) {
     const error = await response.text()
     throw new Error(error || `HTTP ${response.status}`)
   }
 
   const data = (await response.json()) as unknown
+  console.log(data)
   return data as T
 }
 
@@ -148,7 +151,6 @@ export async function listPublicProducts(params?: {
 }): Promise<ListProductsResponse> {
   const searchParams = new URLSearchParams()
   if (params?.categoryId) searchParams.set("category_id", params.categoryId)
-  if (params?.activeOnly) searchParams.set("active_only", "true")
   if (params?.limit) searchParams.set("limit", params.limit.toString())
   if (params?.offset) searchParams.set("offset", params.offset.toString())
 

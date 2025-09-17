@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { StationAuthService } from "@/lib/station-auth"
-import type { StationRequestForm as StationRequestFormData, StationSession } from "@/types/station-auth"
+import type { StationRequestForm as StationRequestFormData, StationSession } from "@/types"
 
 export default function StationPage() {
   const [station, setStation] = useState<StationSession | null>(null)

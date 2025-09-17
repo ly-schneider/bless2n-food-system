@@ -1,7 +1,9 @@
 import { Metadata } from "next"
+
+import MenuGrid from "@/components/menu/menu-grid"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import ProductAPI from "@/lib/api/products"
-import MenuGrid, { type MenuItem } from "@/components/menu/menu-grid"
+import { ListProductsResponse } from "@/types"
 
 export const metadata: Metadata = {
   title: "Menu - Bless2n Food System",
@@ -10,18 +12,12 @@ export const metadata: Metadata = {
 
 export default async function MenuPage() {
   // Fetch products directly via products API
-  let products: MenuItem[] = []
+  let products: ListProductsResponse = { products: [], items: [], total: 0 }
   try {
     const res = await ProductAPI.listPublicProducts({ activeOnly: true, limit: 100 })
-    products = (res.products || []).map((p) => ({
-      id: p.id,
-      name: p.name,
-      description: p.description,
-      price: p.price,
-      isActive: p.isActive,
-    }))
+    products = res
   } catch {
-    products = []
+    products = { products: [], items: [], total: 0 }
   }
 
   return (
@@ -39,7 +35,7 @@ export default async function MenuPage() {
         </TabsList>
 
         <TabsContent value="all" className="mt-6">
-          <MenuGrid items={products} />
+          <MenuGrid products={products} />
         </TabsContent>
       </Tabs>
     </div>

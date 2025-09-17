@@ -1,4 +1,5 @@
 import "styles/tailwind.css"
+import type { Metadata } from "next"
 import { Golos_Text } from "next/font/google"
 
 const golosText = Golos_Text({
@@ -6,6 +7,14 @@ const golosText = Golos_Text({
   subsets: ["latin"],
   variable: "--font-golos-text",
 })
+
+export const metadata: Metadata = {
+  other: {
+    "theme-color": "#E9E7E6",
+    "msapplication-TileColor": "#E9E7E6",
+    "apple-mobile-web-app-status-bar-style": "default",
+  },
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

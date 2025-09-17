@@ -1,13 +1,14 @@
 import { cookies } from "next/headers"
 import { NextRequest } from "next/server"
-import { RequestStationRequest, RequestStationResponse } from "../types/station"
 import {
+  RequestStationRequest,
+  RequestStationResponse,
   StationLoginRequest,
   StationLoginResponse,
   StationRequestForm,
   StationSession,
   StationStatus,
-} from "../types/station-auth"
+} from "@/types"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080"
 const STATION_TOKEN_COOKIE = "station_access_token"

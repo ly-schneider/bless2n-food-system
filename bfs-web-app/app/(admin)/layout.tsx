@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { AuthService } from "@/lib/auth"
-import { Permission, RBACService } from "@/lib/rbac"
+import { RBACService } from "@/lib/rbac"
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -20,7 +20,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
     redirect("/login?error=admin_required")
   }
 
-  if (!user || !RBACService.hasPermission(user.role, Permission.ADMIN_ANALYTICS)) {
+  if (!user || !RBACService.canAccessAdmin(user.role)) {
     redirect("/?error=unauthorized")
   }
 

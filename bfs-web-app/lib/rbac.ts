@@ -1,96 +1,60 @@
 import type { NextRequest } from "next/server"
+
+import { Role } from "@/types"
+import type { Session, User } from "@/types"
+
 import { AuthService } from "./auth"
-import { Role } from "../types/auth"
-import type { Session, User } from "../types/auth"
-
-export enum Permission {
-  // Menu permissions
-  MENU_READ = "menu:read",
-  MENU_WRITE = "menu:write",
-  MENU_DELETE = "menu:delete",
-
-  // Order permissions
-  ORDER_READ = "order:read",
-  ORDER_WRITE = "order:write",
-  ORDER_UPDATE_STATUS = "order:update_status",
-  ORDER_CANCEL = "order:cancel",
-
-  // User permissions
-  USER_READ = "user:read",
-  USER_WRITE = "user:write",
-  USER_DELETE = "user:delete",
-
-  // Admin permissions
-  ADMIN_ANALYTICS = "admin:analytics",
-  ADMIN_SETTINGS = "admin:settings",
-  ADMIN_AUDIT_LOGS = "admin:audit_logs",
-
-  // POS permissions
-  POS_ACCESS = "pos:access",
-  POS_PROCESS_ORDERS = "pos:process_orders",
-  POS_PRINT_RECEIPTS = "pos:print_receipts",
-
-  // Cart permissions
-  CART_READ = "cart:read",
-  CART_WRITE = "cart:write",
-}
-
-const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
-  [Role.ADMIN]: [
-    // All permissions for admin
-    Permission.MENU_READ,
-    Permission.MENU_WRITE,
-    Permission.MENU_DELETE,
-    Permission.ORDER_READ,
-    Permission.ORDER_WRITE,
-    Permission.ORDER_UPDATE_STATUS,
-    Permission.ORDER_CANCEL,
-    Permission.USER_READ,
-    Permission.USER_WRITE,
-    Permission.USER_DELETE,
-    Permission.ADMIN_ANALYTICS,
-    Permission.ADMIN_SETTINGS,
-    Permission.ADMIN_AUDIT_LOGS,
-    Permission.POS_ACCESS,
-    Permission.POS_PROCESS_ORDERS,
-    Permission.POS_PRINT_RECEIPTS,
-    Permission.CART_READ,
-    Permission.CART_WRITE,
-  ],
-  [Role.CUSTOMER]: [
-    // Limited permissions for customers
-    Permission.MENU_READ,
-    Permission.ORDER_READ, // Only their own orders
-    Permission.ORDER_WRITE, // Create orders
-    Permission.CART_READ,
-    Permission.CART_WRITE,
-  ],
-}
 
 export class RBACService {
-  static hasPermission(role: Role, permission: Permission): boolean {
-    const rolePermissions = ROLE_PERMISSIONS[role] || []
-    return rolePermissions.includes(permission)
+  static isAdmin(role: Role): boolean {
+    return role === Role.ADMIN
   }
 
-  static hasAnyPermission(role: Role, permissions: Permission[]): boolean {
-    return permissions.some((permission) => this.hasPermission(role, permission))
+  static isStation(role: Role): boolean {
+    return role === Role.STATION
   }
 
-  static hasAllPermissions(role: Role, permissions: Permission[]): boolean {
-    return permissions.every((permission) => this.hasPermission(role, permission))
+  static isCustomer(role: Role): boolean {
+    return role === Role.CUSTOMER
   }
 
-  static requirePermission(role: Role, permission: Permission): void {
-    if (!this.hasPermission(role, permission)) {
-      throw new Error(`Access denied. Required permission: ${permission}`)
-    }
+  static canAccessAdmin(role: Role): boolean {
+    return this.isAdmin(role)
+  }
+
+  static canAccessStation(role: Role): boolean {
+    return this.isAdmin(role) || this.isStation(role)
+  }
+
+  static canManageOrders(role: Role): boolean {
+    return this.isAdmin(role) || this.isStation(role)
+  }
+
+  static canManageMenu(role: Role): boolean {
+    return this.isAdmin(role)
+  }
+
+  static canManageUsers(role: Role): boolean {
+    return this.isAdmin(role)
+  }
+
+  static canViewAnalytics(role: Role): boolean {
+    return this.isAdmin(role)
+  }
+
+  static canPlaceOrders(_role: Role): boolean {
+    return true // All roles can place orders
+  }
+
+  static canViewMenu(_role: Role): boolean {
+    return true // All roles can view menu
   }
 
   static requireRole(requiredRole: Role, userRole: Role): void {
-    // Simple role hierarchy: ADMIN > CUSTOMER
+    // Simple role hierarchy: ADMIN > STATION > CUSTOMER
     const roleHierarchy = {
-      [Role.ADMIN]: 2,
+      [Role.ADMIN]: 3,
+      [Role.STATION]: 2,
       [Role.CUSTOMER]: 1,
     }
 
@@ -100,59 +64,23 @@ export class RBACService {
   }
 
   static canAccessRoute(role: Role, pathname: string): boolean {
-    // Public routes - accessible to all
-    const publicRoutes = ["/", "/menu", "/cart", "/checkout", "/login"]
+    // Public routes - accessible to all authenticated users
+    const publicRoutes = ["/", "/menu", "/cart", "/checkout", "/orders"]
     if (publicRoutes.some((route) => pathname === route || pathname.startsWith(route))) {
       return true
     }
 
     // Admin routes - admin only
     if (pathname.startsWith("/admin")) {
-      return this.hasPermission(role, Permission.ADMIN_ANALYTICS) // Basic admin permission check
+      return this.canAccessAdmin(role)
     }
 
-    // POS routes - admin only (since POS is admin functionality)
-    if (pathname.startsWith("/pos")) {
-      return this.hasPermission(role, Permission.POS_ACCESS)
+    // Station routes - admin and station only
+    if (pathname.startsWith("/station")) {
+      return this.canAccessStation(role)
     }
 
     return false
-  }
-
-  static getRoutePermissions(pathname: string): Permission[] {
-    if (pathname.startsWith("/admin/menu")) {
-      return [Permission.MENU_READ, Permission.MENU_WRITE]
-    }
-
-    if (pathname.startsWith("/admin/orders")) {
-      return [Permission.ORDER_READ, Permission.ORDER_UPDATE_STATUS]
-    }
-
-    if (pathname.startsWith("/admin/users")) {
-      return [Permission.USER_READ, Permission.USER_WRITE]
-    }
-
-    if (pathname.startsWith("/admin/analytics")) {
-      return [Permission.ADMIN_ANALYTICS]
-    }
-
-    if (pathname.startsWith("/admin/settings")) {
-      return [Permission.ADMIN_SETTINGS]
-    }
-
-    if (pathname.startsWith("/pos")) {
-      return [Permission.POS_ACCESS, Permission.POS_PROCESS_ORDERS]
-    }
-
-    if (pathname.startsWith("/api/admin")) {
-      return [Permission.ADMIN_ANALYTICS] // Basic admin API access
-    }
-
-    if (pathname.startsWith("/api/pos")) {
-      return [Permission.POS_ACCESS]
-    }
-
-    return []
   }
 }
 
@@ -201,8 +129,13 @@ export function withRoleProtection(requiredRole: Role) {
   }
 }
 
-// Higher-order function for permission-based protection
-export function withPermissionProtection(requiredPermissions: Permission[]) {
+// Higher-order function for admin-only protection
+export function withAdminProtection() {
+  return withRoleProtection(Role.ADMIN)
+}
+
+// Higher-order function for station+ protection (admin or station)
+export function withStationProtection() {
   return function (
     handler: (request: Request, context: { user: User; session: Session }) => Promise<Response> | Response
   ) {
@@ -232,8 +165,8 @@ export function withPermissionProtection(requiredPermissions: Permission[]) {
           })
         }
 
-        for (const permission of requiredPermissions) {
-          RBACService.requirePermission(user.role, permission)
+        if (!RBACService.canAccessStation(user.role)) {
+          throw new Error("Access denied. Admin or station role required")
         }
 
         return handler(request, { user, session })

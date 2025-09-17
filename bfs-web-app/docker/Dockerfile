@@ -1,29 +1,76 @@
-# ---- 1) Builder: Debian slim for compatibility
-FROM node:24-bookworm-slim AS builder
-ENV NODE_ENV=production
-WORKDIR /app
+# syntax=docker/dockerfile:1
 
+# ---- 1) Builder: Debian slim with security hardening
+FROM node:24-bookworm-slim AS builder
+
+# Install security updates
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for build
+RUN groupadd --gid 1001 --system nodejs && \
+    useradd --uid 1001 --system --gid nodejs --create-home nodejs
+
+# Set working directory and ownership
+WORKDIR /app
+RUN chown nodejs:nodejs /app
+
+# Switch to non-root user
+USER nodejs
+
+# Enable package manager
 RUN corepack enable
 
-COPY package.json pnpm-lock.yaml* yarn.lock* package-lock.json* ./
-RUN --mount=type=cache,target=/root/.npm \
-    --mount=type=cache,target=/root/.pnpm-store \
+# Copy package files with proper ownership
+COPY --chown=nodejs:nodejs package.json pnpm-lock.yaml* yarn.lock* package-lock.json* ./
+
+# Install dependencies with cache mounts (as non-root)
+RUN --mount=type=cache,target=/home/nodejs/.npm,uid=1001,gid=1001 \
+    --mount=type=cache,target=/home/nodejs/.pnpm-store,uid=1001,gid=1001 \
     if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; \
     elif [ -f yarn.lock ]; then yarn install --frozen-lockfile; \
     else npm ci; fi
 
-COPY . .
+# Copy source code
+COPY --chown=nodejs:nodejs . .
+
+# Set production environment and build
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build && npm prune --omit=dev
 
-# ---- 2) Runtime: Distroless (max security)
-FROM gcr.io/distroless/nodejs24-debian12 AS runtime
-ENV NODE_ENV=production
+# ---- 2) Runtime: Distroless with security hardening
+FROM gcr.io/distroless/nodejs24-debian12:nonroot AS runtime
+
+# Set secure environment variables
+ENV NODE_ENV=production \
+    NODE_OPTIONS="--max-old-space-size=2048 --no-deprecation" \
+    NEXT_TELEMETRY_DISABLED=1 \
+    PORT=3000
+
+# Set working directory
 WORKDIR /app
 
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
+# Copy built application with proper ownership
+COPY --from=builder --chown=nonroot:nonroot /app/.next/standalone ./
+COPY --from=builder --chown=nonroot:nonroot /app/.next/static ./.next/static
+COPY --from=builder --chown=nonroot:nonroot /app/public ./public
 
+# Health check for container orchestration
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+    CMD ["node", "--eval", "require('http').get('http://localhost:3000/healthz', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+
+# Use non-root user (uid 65532 - nonroot)
+USER nonroot:nonroot
+
+# Expose port (non-privileged)
 EXPOSE 3000
-CMD ["server.js"]  # or the entry point Next.js generated in standalone
+
+# Start the application
+CMD ["server.js"]

@@ -1,3 +1,21 @@
+export interface BaseEntity {
+  id: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ActivatableEntity extends BaseEntity {
+  isActive: boolean
+}
+
+export interface NamedEntity extends BaseEntity {
+  name: string
+}
+
+export interface ActivatableNamedEntity extends NamedEntity {
+  isActive: boolean
+}
+
 export interface ApiResponse<T = unknown> {
   success: boolean
   data?: T
@@ -11,6 +29,13 @@ export interface PaginatedResponse<T> {
   page: number
   limit: number
   totalPages: number
+}
+
+export interface ListResponse<T> {
+  items: T[]
+  total: number
+  limit?: number
+  offset?: number
 }
 
 export interface ApiError {
@@ -35,22 +60,19 @@ export interface ApiAuthError extends ApiError {
   code: "UNAUTHORIZED" | "FORBIDDEN" | "TOKEN_EXPIRED"
 }
 
+export interface MessageResponse {
+  message: string
+}
+
+export interface StatusUpdateResponse extends MessageResponse {
+  id: string
+  isActive: boolean
+}
+
 export interface WebSocketMessage<T = unknown> {
   type: string
   payload: T
   timestamp: string
-}
-
-export interface OrderUpdateMessage {
-  orderId: string
-  status: string
-  estimatedTime?: number
-}
-
-export interface CartSyncMessage {
-  cartId: string
-  items: unknown[]
-  total: number
 }
 
 export interface AuditLogEntry {

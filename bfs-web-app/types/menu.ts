@@ -1,11 +1,17 @@
-export interface MenuCategory {
-  id: string
+import { BaseEntity } from './common'
+
+export interface MenuCategory extends BaseEntity {
   name: string
   description: string
   sortOrder: number
   isActive: boolean
-  createdAt: Date
-  updatedAt: Date
+}
+
+export interface ModifierOption {
+  id: string
+  name: string
+  price: number
+  isAvailable: boolean
 }
 
 export interface MenuItemModifier {
@@ -17,15 +23,16 @@ export interface MenuItemModifier {
   options: ModifierOption[]
 }
 
-export interface ModifierOption {
-  id: string
-  name: string
-  price: number
-  isAvailable: boolean
+export interface NutritionInfo {
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+  fiber: number
+  sodium: number
 }
 
-export interface MenuItem {
-  id: string
+export interface MenuItem extends BaseEntity {
   categoryId: string
   name: string
   description: string
@@ -38,17 +45,6 @@ export interface MenuItem {
   isAvailable: boolean
   sortOrder: number
   preparationTime: number
-  createdAt: Date
-  updatedAt: Date
-}
-
-export interface NutritionInfo {
-  calories: number
-  protein: number
-  carbs: number
-  fat: number
-  fiber: number
-  sodium: number
 }
 
 export interface MenuWithCategories {

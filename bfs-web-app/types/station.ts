@@ -1,16 +1,10 @@
-// Station types matching backend API
+import { ActivatableNamedEntity, ListResponse, MessageResponse, StatusUpdateResponse } from './common'
+import { Product } from './product'
 
-export interface Station {
-  id: string
-  name: string
+export interface Station extends ActivatableNamedEntity {
   location: string
-  description?: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
 }
 
-// Station API requests/responses
 export interface RequestStationRequest {
   businessName: string
   contactEmail: string
@@ -19,78 +13,30 @@ export interface RequestStationRequest {
   description?: string
 }
 
-export interface RequestStationResponse {
-  message: string
-}
-
 export interface CreateStationRequest {
   name: string
   location: string
   description?: string
 }
 
-export interface CreateStationResponse {
-  id: string
-  name: string
-  location: string
-  description?: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
-}
-
-export interface GetStationResponse {
-  id: string
-  name: string
-  location: string
-  description?: string
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
-}
-
-export interface ListStationsResponse {
-  stations: Station[]
-  total: number
-  limit: number
-  offset: number
-}
-
 export interface UpdateStationStatusRequest {
   isActive: boolean
-}
-
-export interface UpdateStationStatusResponse {
-  id: string
-  isActive: boolean
-  message: string
 }
 
 export interface AssignProductsToStationRequest {
   productIds: string[]
 }
 
-export interface AssignProductsToStationResponse {
-  message: string
-}
+// Response types
+export type RequestStationResponse = MessageResponse
+export type CreateStationResponse = Station
+export type GetStationResponse = Station
+export type ListStationsResponse = ListResponse<Station>
+export type UpdateStationStatusResponse = StatusUpdateResponse
+export type AssignProductsToStationResponse = MessageResponse
+export type RemoveProductFromStationResponse = MessageResponse
 
-export interface RemoveProductFromStationResponse {
-  message: string
-}
+export type GetStationProductsResponse = ListResponse<Product>
 
-export interface GetStationProductsResponse {
-  products: StationProduct[]
-  total: number
-}
-
-export interface StationProduct {
-  id: string
-  name: string
-  description?: string
-  price: number
-  categoryId: string
-  isActive: boolean
-  stock: number
-  createdAt: string
-  updatedAt: string
-}
+// Station Product type (alias for compatibility)
+export type StationProduct = Product

@@ -4,7 +4,7 @@ import { Suspense } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { AuthService } from "@/lib/auth"
-import { Permission, RBACService } from "@/lib/rbac"
+import { RBACService } from "@/lib/rbac"
 
 interface POSLayoutProps {
   children: React.ReactNode
@@ -18,7 +18,7 @@ export default async function POSLayout({ children }: POSLayoutProps) {
     redirect("/login?error=pos_required")
   }
 
-  if (!user || !RBACService.hasPermission(user.role, Permission.POS_ACCESS)) {
+  if (!user || !RBACService.canAccessStation(user.role)) {
     redirect("/?error=unauthorized")
   }
 
