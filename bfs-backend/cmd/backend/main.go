@@ -23,6 +23,7 @@ func main() {
 			app.ProvideAppConfig,
 			app.NewLogger,
 			app.NewDB,
+			app.ProvideDatabase,
 			app.NewRouter,
 		),
 		fx.WithLogger(func(lc fx.Lifecycle, l *zap.Logger) fxevent.Logger {

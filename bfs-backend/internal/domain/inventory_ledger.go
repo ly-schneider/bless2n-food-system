@@ -17,9 +17,9 @@ const (
 )
 
 type InventoryLedger struct {
-	ID        primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	ProductID primitive.ObjectID `bson:"product_id" json:"product_id" validate:"required"`
-	Delta     int                `bson:"delta" json:"delta" validate:"required"`
-	Reason    InventoryReason    `bson:"reason" json:"reason" validate:"required,oneof=opening_balance sale refund manual_adjust correction"`
-	Timestamp time.Time          `bson:"ts" json:"ts"`
+	ID        primitive.ObjectID `bson:"_id"`
+	ProductID primitive.ObjectID `bson:"product_id" validate:"required"`
+	Delta     int                `bson:"delta" validate:"required"`
+	Reason    InventoryReason    `bson:"reason" validate:"required,oneof=opening_balance sale refund manual_adjust correction"`
+	CreatedAt time.Time          `bson:"created_at"`
 }

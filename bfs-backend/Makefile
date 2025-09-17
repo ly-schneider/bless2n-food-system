@@ -2,7 +2,14 @@
 SHELL := bash
 .SHELLFLAGS := -eu -o pipefail -c
 
-AIR ?= go tool air
+# --- Binaries dir + PATH ---
+BIN := $(CURDIR)/bin
+export PATH := $(BIN):$(PATH)
+
+# Tool versions (pin these)
+GOLANGCI_LINT_VERSION := v2.4.0
+SWAG_VERSION := v1.16.6
+AIR_VERSION := v1.63.0
 
 # Load env files (don't error if missing)
 -include .env
@@ -28,13 +35,15 @@ docker-up-backend docker-restart-backend: SMTP_PORT := $(SMTP_PORT_DOCKER)
 
 # Shortcuts
 DC  := docker compose
-AIR ?= ./bin/air
+AIR ?= $(BIN)/air
 
-.PHONY: help tools swag dev docker-up docker-up-backend docker-down docker-down-v docker-restart docker-restart-backend clean logs ps mongo-shell test test-coverage
+.PHONY: help tools lint lint-fix swag dev docker-up docker-up-backend docker-down docker-down-v docker-restart docker-restart-backend clean test db-seed db-reset
 
 help:
 	@echo "Available commands:"
-	@echo "  tools                  - Install/update required tools (air, swag)"
+	@echo "  tools                  - Install/update required tools (air, swag, golangci-lint)"
+	@echo "  lint                   - Run linters"
+	@echo "  lint-fix               - Run linters with auto-fix"
 	@echo "  swag                   - Create swagger documentation"
 	@echo "  dev                    - Start API server with live-reload (AIR)"
 	@echo "  docker-up              - Start Mongo + Mongo Express"
@@ -43,81 +52,83 @@ help:
 	@echo "  docker-down-v          - Stop services and REMOVE VOLUMES (DATA LOSS)"
 	@echo "  docker-restart         - Restart services (no backend)"
 	@echo "  docker-restart-backend - Restart services incl. backend"
-	@echo "  logs                   - Tail compose logs"
-	@echo "  ps                     - Show compose services"
-	@echo "  mongo-shell            - Open mongosh in the mongo container"
-	@echo "  clean                  - Remove build artifacts"
+	@echo "  clean                  - Clean build artifacts"
 	@echo "  test                   - Run unit tests"
-	@echo "  test-coverage          - Run tests with coverage"
+	@echo "  db-seed                - Seed MongoDB with development data"
+	@echo "  db-reset               - Reset and seed MongoDB with development data"
 
-tools:
-	@echo "Installing/updating tools..."
-	go get -tool github.com/swaggo/swag/cmd/swag@latest
-	go get -tool github.com/air-verse/air@latest
-	go mod tidy
+tools: $(BIN)/golangci-lint $(BIN)/swag $(BIN)/air
+	@echo "Installing/updating tools... done."
 
-swag:
+$(BIN)/golangci-lint:
+	@mkdir -p $(BIN)
+	@echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION) → $(BIN)"
+	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh \
+	| sh -s -- -b $(BIN) $(GOLANGCI_LINT_VERSION)
+
+$(BIN)/swag:
+	@mkdir -p $(BIN)
+	@echo "Installing swag $(SWAG_VERSION) → $(BIN)"
+	@GOBIN=$(BIN) go install github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION)
+
+$(BIN)/air:
+	@mkdir -p $(BIN)
+	@echo "Installing air $(AIR_VERSION) → $(BIN)"
+	@GOBIN=$(BIN) go install github.com/air-verse/air@$(AIR_VERSION)
+
+lint: $(BIN)/golangci-lint
+	@echo "Running linters..."
+	@GOWORK=off $(BIN)/golangci-lint run ./...
+
+lint-fix: $(BIN)/golangci-lint
+	@echo "Running linters with auto-fix..."
+	@GOWORK=off $(BIN)/golangci-lint run --fix ./...
+
+swag: $(BIN)/swag
 	@echo "Creating swagger documentation..."
-	go tool swag init -g cmd/backend/main.go --parseInternal --parseDependency --generatedTime=false
+	@$(BIN)/swag init -g cmd/backend/main.go --parseInternal --parseDependency --generatedTime=false
 
-dev: 
+dev: $(BIN)/air
 	@echo "Starting API server with live-reload..."
-	$(AIR) -c .air.toml
+	@$(AIR) -c .air.toml
 
 docker-up:
 	@echo "Starting services (Mongo + Mongo Express)"
-	$(DC) up -d
+	@$(DC) up -d
 
 docker-up-backend:
 	@echo "Starting services including backend (profile: backend)"
-	$(DC) --profile backend up -d
+	@$(DC) --profile backend up -d
 
 docker-down:
 	@echo "Stopping services (keeping volumes)..."
-	$(DC) down --remove-orphans
+	@$(DC) down --remove-orphans
 
 docker-down-v:
 	@echo "Stopping services and removing volumes (DATA LOSS)..."
-	$(DC) down --volumes --remove-orphans
+	@$(DC) down --volumes --remove-orphans
 
 docker-restart:
 	@echo "Restarting services (no backend)"
-	$(MAKE) docker-down
-	$(MAKE) docker-up
+	@$(MAKE) docker-down
+	@$(MAKE) docker-up
 
 docker-restart-backend:
 	@echo "Restarting services including backend"
-	$(MAKE) docker-down
-	$(MAKE) docker-up-backend
+	@$(MAKE) docker-down
+	@$(MAKE) docker-up-backend
 
-logs:
-	$(DC) logs -f --tail=200
-
-ps:
-	$(DC) ps
-
-mongo-shell:
-	$(DC) exec -it mongo mongosh -u $$MONGO_ROOT_USERNAME -p $$MONGO_ROOT_PASSWORD --authenticationDatabase admin
-	
 clean:
 	@echo "Cleaning build artifacts..."
-	rm -rf tmp/
-	rm -f build-errors.log
+	@rm -rf tmp/
+	@rm -f build-errors.log
 
 test:
 	@echo "Running unit tests..."
-	go test -v -race ./internal/...
+	@go test -v -race ./internal/...
 
-test-coverage:
-	@echo "Running tests with coverage..."
-	go test -v -race -coverprofile=coverage.out -covermode=atomic ./internal/...
-	go tool cover -html=coverage.out -o coverage.html
-	@echo "Coverage report generated: coverage.html"
-	@COVERAGE=$$(go tool cover -func=coverage.out | grep total | awk '{print substr($$3, 1, length($$3)-1)}'); \
-	echo "Total coverage: $$COVERAGE%"; \
-	if [ $$(echo "$$COVERAGE >= 80" | bc -l) -eq 1 ]; then \
-		echo "✅ Coverage threshold of 80% met!"; \
-	else \
-		echo "❌ Coverage threshold of 80% not met. Current: $$COVERAGE%"; \
-		exit 1; \
-	fi
+db-seed:
+	go run ./cmd/ctl
+
+db-reset:
+	go run ./cmd/ctl -reset

@@ -7,8 +7,11 @@ import (
 )
 
 type AdminInvite struct {
-	ID           primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	InvitedBy    primitive.ObjectID `bson:"invited_by" json:"invited_by" validate:"required"`
-	InviteeEmail string             `bson:"invitee_email" json:"invitee_email" validate:"required,email"`
-	ExpiresAt    time.Time          `bson:"expires_at" json:"expires_at" validate:"required"`
+	ID           primitive.ObjectID `bson:"_id" validate:"required"`
+	InvitedBy    primitive.ObjectID `bson:"invited_by" validate:"required"`
+	InviteeEmail string             `bson:"invitee_email" validate:"required,email"`
+	ExpiresAt    time.Time          `bson:"expires_at" validate:"required"`
+	Status       string             `bson:"status" validate:"required,oneof=pending accepted expired revoked"`
+	UsedAt       *time.Time         `bson:"used_at,omitempty"`
+	CreatedAt    time.Time          `bson:"created_at"`
 }

@@ -2,11 +2,10 @@ package app
 
 import (
 	"backend/internal/config"
-	"backend/internal/repository"
 	"backend/internal/service"
-	"backend/internal/service/auth"
 
 	"go.uber.org/fx"
+	"go.uber.org/zap"
 )
 
 func NewServices() fx.Option {
@@ -14,9 +13,7 @@ func NewServices() fx.Option {
 		fx.Provide(
 			service.NewEmailService,
 			NewJWTService,
-			auth.NewOTPService,
-			auth.NewTokenService,
-			NewAuthService,
+			service.NewAuthService,
 			service.NewAdminService,
 			service.NewUserService,
 			service.NewStationService,
@@ -27,14 +24,7 @@ func NewServices() fx.Option {
 	)
 }
 
-func NewAuthService(
-	userRepo repository.UserRepository,
-	otpService auth.OTPService,
-	tokenService auth.TokenService,
-) service.AuthService {
-	return auth.NewService(userRepo, otpService, tokenService)
-}
-
-func NewJWTService(cfg config.Config) service.JWTService {
+func NewJWTService(cfg config.Config, logger *zap.Logger) service.JWTService {
+	logger.Info("Using file-based JWT service")
 	return service.NewJWTService(cfg.App.JWTPrivPEMPath, cfg.App.JWTPubPEMPath, cfg.App.JWTIssuer)
 }

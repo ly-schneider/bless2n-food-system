@@ -20,7 +20,6 @@ func GetNonce(ctx context.Context) (string, bool) {
 	return nonce, ok
 }
 
-// --- middleware config ---
 type SecurityMiddleware struct {
 	enableHSTS     bool
 	enableCSP      bool
@@ -29,10 +28,10 @@ type SecurityMiddleware struct {
 }
 
 type SecurityConfig struct {
-	EnableHSTS     bool     `json:"enable_hsts"`
-	EnableCSP      bool     `json:"enable_csp"`
-	TrustedOrigins []string `json:"trusted_origins"`
-	AppEnv         string   `json:"app_env"`
+	EnableHSTS     bool     `json:"enableHSTS"`
+	EnableCSP      bool     `json:"enableCSP"`
+	TrustedOrigins []string `json:"trustedOrigins"`
+	AppEnv         string   `json:"appEnv"`
 }
 
 func NewSecurityMiddleware(cfg SecurityConfig) *SecurityMiddleware {
@@ -80,7 +79,6 @@ func (s *SecurityMiddleware) SecurityHeaders(next http.Handler) http.Handler {
 
 		// HSTS only when enabled AND over HTTPS (avoid on dev/http)
 		if s.enableHSTS && s.appEnv != "dev" && isHTTPS(r) {
-			// If ALL subdomains are HTTPS, includeSubDomains + preload are fine.
 			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
 		}
 

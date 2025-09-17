@@ -88,7 +88,6 @@ func (m *JWTMiddleware) RequireRole(roles ...string) func(http.Handler) http.Han
 }
 
 func (m *JWTMiddleware) extractToken(r *http.Request) string {
-	// Check Authorization header only
 	authHeader := r.Header.Get("Authorization")
 	if authHeader != "" {
 		parts := strings.SplitN(authHeader, " ", 2)
@@ -105,7 +104,7 @@ func (m *JWTMiddleware) writeErrorResponse(w http.ResponseWriter, status int, me
 	w.WriteHeader(status)
 	response := `{"error": true, "message": "` + message + `", "status": ` +
 		strings.TrimSpace(strings.Fields(http.StatusText(status))[0]) + `}`
-	w.Write([]byte(response))
+	_, _ = w.Write([]byte(response))
 }
 
 func GetUserFromContext(ctx context.Context) (*service.TokenClaims, bool) {

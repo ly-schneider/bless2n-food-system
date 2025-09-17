@@ -1,6 +1,6 @@
 %% MONGODB ERD - Bless2n Food System
 erDiagram
-  users {
+  user {
     string id PK "NOT NULL"
     string email UK "NOT NULL"
     string firstname "NULL"
@@ -12,38 +12,30 @@ erDiagram
     datetime created_at "NOT NULL; default=now()"
     datetime updated_at "NOT NULL; default=now()"
   }
-  %% INDEX PLAN — users
-  %% • email — Unique; Collation: locale=en, strength=2 (case-insensitive)
-  %% • (optional) created_at — Desc sort for recent lists
 
-  admin_invites {
+  admin_invite {
     string id PK "NOT NULL"
-    string invited_by FK "NOT NULL -> users.id"
+    string invited_by FK "NOT NULL -> user.id"
     string invitee_email "NOT NULL"
     datetime expires_at "NOT NULL"
+    string status "NOT NULL; enum: pending|accepted|revoked|expired"
+    datetime used_at "NULL"
+    datetime created_at "NOT NULL; default=now()"
   }
-  %% INDEX PLAN — admin_invites
-  %% • invitee_email — Non-unique
-  %% • expires_at — TTL; expireAfterSeconds=0 (auto-delete at timestamp)
 
-  otp_tokens {
+  otp_token {
     string id PK "NOT NULL"
-    string user_id FK "NOT NULL -> users.id"
+    string user_id FK "NOT NULL -> user.id"
     string token_hash "NOT NULL (argon2)"
-    string type "NOT NULL; enum: login|password_reset"
     datetime created_at "NOT NULL; default=now()"
     datetime used_at "NULL"
     int attempts "NOT NULL; default=0"
     datetime expires_at "NOT NULL"
   }
-  %% INDEX PLAN — otp_tokens
-  %% • (user_id, type, created_at desc) — Non-unique
-  %% • expires_at — TTL; expireAfterSeconds=0
-  %% • (user_id, type) — Partial: used_at = null (fast “unused & valid” lookups)
 
-  refresh_tokens {
+  refresh_token {
     string id PK "NOT NULL"
-    string user_id FK "NOT NULL -> users.id"
+    string user_id FK "NOT NULL -> user.id"
     string client_id "NOT NULL"
     string token_hash "NOT NULL (argon2)"
     datetime issued_at "NOT NULL; default=now()"
@@ -53,168 +45,116 @@ erDiagram
     string revoked_reason "NULL"
     string family_id "NOT NULL"
   }
-  %% INDEX PLAN — refresh_tokens
-  %% • token_hash — Unique (note: not a hashed-index type)
-  %% • (user_id, is_revoked, expires_at) — Non-unique
-  %% • family_id — Non-unique (reuse detection / family revocation)
-  %% • client_id — Non-unique (per-device management)
-  %% • expires_at — TTL; expireAfterSeconds=0 (optional auto-purge)
 
-  stations {
+  station {
     string id PK "NOT NULL"
     string name "NOT NULL"
-    string status "NOT NULL; enum: pending|approved|rejected"
-    string approved_by FK "NULL -> users.id"
-    datetime approved_at "NULL"
-    string rejected_by FK "NULL -> users.id"
-    datetime rejected_at "NULL"
-    string rejection_reason "NULL"
     datetime created_at "NOT NULL; default=now()"
     datetime updated_at "NOT NULL; default=now()"
   }
-  %% INDEX PLAN — stations
-  %% • name — Unique; Collation: locale=en, strength=2 (optional)
-  %% • (status, created_at desc) — Non-unique (for filtering by status)
 
-  devices {
+  station_request {
     string id PK "NOT NULL"
-    string station_id FK "NOT NULL -> stations.id"
     string name "NOT NULL"
     string model "NOT NULL"
     string os "NOT NULL"
-    string version "NOT NULL"
-    boolean is_active "NOT NULL; default=true"
-  }
-  %% INDEX PLAN — devices
-  %% • station_id — Non-unique
-  %% • is_active — Non-unique
-
-  device_requests {
-    string id PK "NOT NULL"
-    string device_id FK "NOT NULL -> devices.id"
-    string approved_by FK "NULL -> users.id"
     string status "NOT NULL; enum: pending|approved|rejected"
-    datetime created_at "NOT NULL; default=now()"
+    string decided_by FK "NULL -> user.id"
     datetime decided_at "NULL"
+    datetime created_at "NOT NULL; default=now()"
     datetime expires_at "NOT NULL"
   }
-  %% INDEX PLAN — device_requests
-  %% • device_id — Non-unique
-  %% • (status, created_at desc) — Non-unique
-  %% • expires_at — TTL; expireAfterSeconds=0
 
-  categories {
+  category {
     string id PK "NOT NULL"
     string name "NOT NULL"
     boolean is_active "NOT NULL; default=true"
     datetime created_at "NOT NULL; default=now()"
     datetime updated_at "NOT NULL; default=now()"
   }
-  %% INDEX PLAN — categories
-  %% • name — Unique; Collation: locale=en, strength=2 (optional)
 
-  products {
+  product {
     string id PK "NOT NULL"
-    string category_id FK "NOT NULL -> categories.id"
-    string type "NOT NULL; enum: simple|bundle"
+    string category_id FK "NOT NULL -> category.id"
+    string type "NOT NULL; enum: simple|menu"
     string name "NOT NULL"
     string image "NULL"
-    decimal price "NOT NULL; >= 0; e.g., numeric(8,2)"
+    int price_cents "NOT NULL; >= 0"
     boolean is_active "NOT NULL; default=true"
     datetime created_at "NOT NULL; default=now()"
     datetime updated_at "NOT NULL; default=now()"
   }
-  %% INDEX PLAN — products
-  %% • (category_id, is_active) — Non-unique
-  %% • type — Non-unique
-  %% • name — Text index (or Atlas Search) for simple search
 
-  product_bundle_components {
-    string bundle_id FK "NOT NULL -> products.id (type=bundle)"
-    string component_product_id FK "NOT NULL -> products.id"
-    int qty "NOT NULL; > 0"
-  }
-  %% INDEX PLAN — product_bundle_components
-  %% • (bundle_id, component_product_id) — Unique (no dup component per bundle)
-  %% • component_product_id — Non-unique (reverse lookup)
-
-  station_products {
-    string station_id FK "NOT NULL -> stations.id"
-    string product_id FK "NOT NULL -> products.id"
-  }
-  %% INDEX PLAN — station_products
-  %% • (station_id, product_id) — Unique
-  %% • product_id — Non-unique (reverse lookup)
-
-  orders {
+  menu_slot {
     string id PK "NOT NULL"
-    string customer_id FK "NULL -> users.id"
+    string product_id FK "NOT NULL -> product.id"
+    string name "NOT NULL"
+    int sequence "NOT NULL"
+  }
+
+  menu_slot_item {
+    string id PK "NOT NULL"
+    string menu_slot_id FK "NOT NULL -> menu_slot.id"
+    string product_id FK "NOT NULL -> product.id"
+  }
+
+  station_product {
+    string id PK "NOT NULL"
+    string station_id FK "NOT NULL -> station.id"
+    string product_id FK "NOT NULL -> product.id"
+  }
+
+  order {
+    string id PK "NOT NULL"
+    string customer_id FK "NULL -> user.id"
     string contact_email "NULL (snapshot)"
-    decimal total "NOT NULL; >= 0; e.g., numeric(10,2)"
+    int total_cents "NOT NULL; >= 0"
     string status "NOT NULL; enum: pending|paid|cancelled|refunded"
     datetime created_at "NOT NULL; default=now()"
     datetime updated_at "NOT NULL; default=now()"
   }
-  %% INDEX PLAN — orders
-  %% • (customer_id, created_at desc) — Non-unique
-  %% • (status, created_at desc) — Non-unique
-  %% • (contact_email, created_at desc) — Non-unique; Collation: locale=en, strength=2
-  %% • created_at desc — Non-unique (recent orders)
 
-  order_items {
+  order_item {
     string id PK "NOT NULL"
-    string order_id FK "NOT NULL -> orders.id"
-    string product_id FK "NOT NULL -> products.id"
-    string parent_item_id FK "NULL -> order_items.id (bundle parent)"
-    string type "NOT NULL; enum: simple|bundle|component"
+    string order_id FK "NOT NULL -> order.id"
+    string product_id FK "NOT NULL -> product.id"
     string title "NOT NULL (snapshot)"
     int quantity "NOT NULL; > 0"
-    decimal price_per_unit "NOT NULL; >= 0 (bundle parent carries price)"
+
+    int price_per_unit_cents "NOT NULL; >= 0"
+
+    string parent_item_id FK "NULL -> order_item.id"
+    string menu_slot_id  FK "NULL -> menu_slot.id"
+    string menu_slot_name "NULL (snapshot)"
+
     boolean is_redeemed "NOT NULL; default=false"
     datetime redeemed_at "NULL"
-    string redeemed_station_id FK "NULL -> stations.id"
-    string redeemed_device_id  FK "NULL -> devices.id"
   }
-  %% INDEX PLAN — order_items
-  %% • order_id — Partial: is_redeemed = false (device fetch: open lines)
-  %% • product_id — Partial: is_redeemed = false (station view)
-  %% • parent_item_id — Non-unique (bundle children)
-  %% • redeemed_station_id — Non-unique
-  %% • redeemed_device_id — Non-unique
 
   inventory_ledger {
     string id PK "NOT NULL"
-    string product_id FK "NOT NULL -> products.id"
+    string product_id FK "NOT NULL -> product.id"
     int delta "NOT NULL; negative=sale, positive=restock/refund"
     string reason "NOT NULL; enum: opening_balance|sale|refund|manual_adjust|correction"
-    datetime ts "NOT NULL; default=now()"
+    datetime created_at "NOT NULL; default=now()"
   }
-  %% INDEX PLAN — inventory_ledger
-  %% • (product_id, ts desc) — Non-unique (recent stock movements per product)
-  %% • reason — Non-unique
-  %% • (optional) Time-Series collection: automatic compound index on (metaField, timeField) if used
 
   %% relationships
-  users     ||--o{ admin_invites    : "invited_by"
-  users     ||--o{ otp_tokens       : "has"
-  users     ||--o{ refresh_tokens   : "has"
-  users     ||--o{ device_requests  : "approved_by"
-  users     ||--o{ orders           : "customer"
-  users     ||--o{ stations         : "approved_by"
-  users     ||--o{ stations         : "rejected_by"
+  user     ||--o{ admin_invite    : "invited_by"
+  user     ||--o{ otp_token       : "has"
+  user     ||--o{ refresh_token   : "has"
+  user     ||--o{ station_request : "decided_by"
+  user     ||--o{ order           : "customer"
 
-  stations  ||--o{ devices          : "owns"
-  stations  ||--o{ station_products : "lists"
-  stations  ||--o{ order_items      : "redeemed_here"
+  station  ||--o{ station_product : "can_redeem"
 
-  devices   ||--o{ device_requests  : "requests"
-  devices   ||--o{ order_items      : "redeemed_by"
+  category||--o{ product         : "categorizes"
+  product  ||--o{ menu_slot       : "has_slots"
+  menu_slot||--o{ menu_slot_item  : "allows"
+  menu_slot_item }o--|| product   : "simple_options"
+  product  ||--o{ station_product : "redeemable_at"
+  product  ||--o{ order_item      : "sold_as"
+  product  ||--o{ inventory_ledger : "stock_moves"
 
-  categories||--o{ products         : "categorizes"
-  products  ||--o{ product_bundle_components : "is_bundle"
-  products  ||--o{ station_products : "available_at"
-  products  ||--o{ order_items      : "sold_as"
-  products  ||--o{ inventory_ledger : "stock_moves"
-
-  orders    ||--o{ order_items      : "includes"
-  order_items ||--o{ order_items     : "bundle_children"
+  order    ||--o{ order_item      : "includes"
+  order_item ||--o{ order_item    : "bundle_children"

@@ -18,10 +18,12 @@ func NewRouter(
 	productHandler *handler.ProductHandler,
 	orderHandler *handler.OrderHandler,
 	redemptionHandler *handler.RedemptionHandler,
+	healthHandler *handler.HealthHandler,
+	jwksHandler *handler.JWKSHandler,
 	jwtMw *middleware.JWTMiddleware,
 	securityMw *middleware.SecurityMiddleware,
 	cfg config.Config,
 ) http.Handler {
 	enableDocs := cfg.App.AppEnv != "prod"
-	return httpRouter.NewRouter(authHandler, adminHandler, userHandler, stationHandler, categoryHandler, productHandler, orderHandler, redemptionHandler, jwtMw, securityMw, enableDocs)
+	return httpRouter.NewRouter(authHandler, adminHandler, userHandler, stationHandler, categoryHandler, productHandler, orderHandler, redemptionHandler, healthHandler, jwksHandler, jwtMw, securityMw, enableDocs)
 }

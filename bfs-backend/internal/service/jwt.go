@@ -32,13 +32,14 @@ type JWTService interface {
 	GenerateRefreshToken() (string, error)
 	ValidateAccessToken(tokenString string) (*TokenClaims, error)
 	GenerateTokenPair(user *domain.User, clientID string) (*TokenPairResponse, error)
+	GetPublicKey() ed25519.PublicKey
 }
 
 type TokenPairResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int64  `json:"expires_in"`
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+	TokenType    string `json:"tokenType"`
+	ExpiresIn    int64  `json:"expiresIn"`
 }
 
 type jwtService struct {
@@ -186,10 +187,51 @@ func (j *jwtService) GenerateTokenPair(user *domain.User, clientID string) (*Tok
 	}, nil
 }
 
+func (j *jwtService) GetPublicKey() ed25519.PublicKey {
+	return j.publicKey
+}
+
 func generateJTI() (string, error) {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("at_%x", b), nil
+}
+
+// ParseEd25519Keys parses Ed25519 keys from PEM data
+func ParseEd25519Keys(privPEM, pubPEM []byte) (ed25519.PrivateKey, ed25519.PublicKey, error) {
+	block, _ := pem.Decode(privPEM)
+	if block == nil || block.Type != "PRIVATE KEY" {
+		return nil, nil, fmt.Errorf("invalid private key PEM: got %v", block)
+	}
+	anyKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("parse PKCS#8 private key: %w", err)
+	}
+	priv, ok := anyKey.(ed25519.PrivateKey)
+	if !ok {
+		return nil, nil, fmt.Errorf("not an Ed25519 private key")
+	}
+	if l := len(priv); l != ed25519.PrivateKeySize {
+		return nil, nil, fmt.Errorf("bad ed25519 key length: %d", l)
+	}
+
+	pb, _ := pem.Decode(pubPEM)
+	if pb == nil || pb.Type != "PUBLIC KEY" {
+		return nil, nil, fmt.Errorf("invalid public key PEM: got %v", pb)
+	}
+	anyPub, err := x509.ParsePKIXPublicKey(pb.Bytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("parse PKIX public key: %w", err)
+	}
+	pub, ok2 := anyPub.(ed25519.PublicKey)
+	if !ok2 {
+		return nil, nil, fmt.Errorf("not an Ed25519 public key")
+	}
+	if l := len(pub); l != ed25519.PublicKeySize {
+		return nil, nil, fmt.Errorf("bad ed25519 key length: %d", l)
+	}
+
+	return priv, pub, nil
 }

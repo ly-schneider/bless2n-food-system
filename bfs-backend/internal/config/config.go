@@ -73,8 +73,8 @@ func Load() Config {
 			AppEnv:         getEnv("APP_ENV"),
 			AppPort:        getEnv("APP_PORT"),
 			JWTIssuer:      getEnv("JWT_ISSUER"),
-			JWTPrivPEMPath: getEnv("JWT_PRIV_PEM_PATH"),
-			JWTPubPEMPath:  getEnv("JWT_PUB_PEM_PATH"),
+			JWTPrivPEMPath: getEnvOptional("JWT_PRIV_PEM_PATH"),
+			JWTPubPEMPath:  getEnvOptional("JWT_PUB_PEM_PATH"),
 		},
 		Mongo: MongoConfig{
 			URI:      getEnv("MONGO_URI"),
@@ -151,4 +151,9 @@ func getTrustedOrigins(key string) []string {
 		}
 	}
 	return trimmedOrigins
+}
+
+// getEnvOptional gets an environment variable or returns empty string
+func getEnvOptional(key string) string {
+	return os.Getenv(key)
 }
