@@ -24,3 +24,8 @@ type Order struct {
 	CreatedAt    time.Time           `bson:"created_at"`
 	UpdatedAt    time.Time           `bson:"updated_at"`
 }
+
+type CreateOrderDTO struct {
+	ContactEmail *string              `json:"contactEmail,omitempty"`
+	OrderItems   []CreateOrderItemDTO `json:"orderItems" validate:"required,dive,required"`
+}

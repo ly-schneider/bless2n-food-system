@@ -53,9 +53,12 @@ func NewRouter(
 	}
 
 	r.Route("/v1", func(v1 chi.Router) {
-		// Public product listing routes
 		v1.Route("/products", func(product chi.Router) {
 			product.Get("/", productHandler.ListProducts)
+		})
+
+		v1.Route("/orders", func(orders chi.Router) {
+			orders.Post("/", orderHandler.CreateOrder)
 		})
 	})
 

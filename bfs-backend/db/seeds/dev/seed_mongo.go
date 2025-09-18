@@ -3,7 +3,6 @@ package dev
 import (
 	"context"
 	"fmt"
-	"math"
 	"os"
 	"strconv"
 	"time"
@@ -360,15 +359,12 @@ func generateAdmins(ctx context.Context, db *mongo.Database, logger *zap.Logger)
 	return nil
 }
 
-// roundToHalf rounds a price to the nearest 0.5
-func roundToHalf(price float64) float64 {
-	return math.Round(price*2) / 2
-}
+
 
 func generateCategories(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {
 	collection := db.Collection("categories")
 
-	categories := []string{"Beverages", "Snacks", "Meals", "Desserts", "Sides"}
+	categories := []string{"Menus", "Burgers", "Beilagen", "Getränke"}
 	var operations []mongo.WriteModel
 
 	for _, categoryName := range categories {
@@ -381,9 +377,19 @@ func generateCategories(ctx context.Context, db *mongo.Database, logger *zap.Log
 			"updated_at": now,
 		}
 
-		// Use upsert for idempotency - match by name
+		// Use upsert for idempotency - match by name and ensure is_active is true
 		filter := bson.D{{Key: "name", Value: categoryName}}
-		update := bson.D{{Key: "$setOnInsert", Value: category}}
+		update := bson.D{
+			{Key: "$setOnInsert", Value: bson.D{
+				{Key: "_id", Value: category["_id"]},
+				{Key: "created_at", Value: category["created_at"]},
+			}},
+			{Key: "$set", Value: bson.D{
+				{Key: "name", Value: categoryName},
+				{Key: "is_active", Value: true},
+				{Key: "updated_at", Value: now},
+			}},
+		}
 		operations = append(operations, mongo.NewUpdateOneModel().
 			SetFilter(filter).
 			SetUpdate(update).
@@ -429,44 +435,58 @@ func generateSimpleProducts(ctx context.Context, db *mongo.Database, logger *zap
 		return fmt.Errorf("no categories found - run generateCategories first")
 	}
 
-	productCount := 10
+	productCount := 8
 	var operations []mongo.WriteModel
 
-	// Product data with short descriptions
+	// Product data with actual available image URLs
 	productData := []struct {
-		name, description  string
-		priceMin, priceMax float64
+		name       string
+		image      string
+		priceCents int64
 	}{
-		{"Classic Burger", "Beef patty with lettuce and tomato", 8.0, 12.0},
-		{"Chicken Wings", "Crispy buffalo wings", 6.0, 10.0},
-		{"Caesar Salad", "Fresh romaine with caesar dressing", 7.0, 11.0},
-		{"Margherita Pizza", "Tomato, mozzarella, fresh basil", 12.0, 18.0},
-		{"Fish Tacos", "Grilled fish with cabbage slaw", 9.0, 13.0},
-		{"Chocolate Cake", "Rich chocolate layer cake", 5.0, 8.0},
-		{"Iced Coffee", "Cold brew with ice", 3.0, 5.0},
-		{"French Fries", "Crispy golden fries", 4.0, 6.0},
-		{"Nachos", "Tortilla chips with cheese", 6.0, 9.0},
-		{"Smoothie Bowl", "Mixed berries with granola", 8.0, 12.0},
+		{"Smash Burger", "/assets/images/products/bless2n-takeaway-smash-burger-16x9.png", 850},
+		{"Veggie Burger", "/assets/images/products/bless2n-takeaway-veggie-burger-16x9.png", 850},
+		{"Pommes", "/assets/images/products/bless2n-takeaway-pommes-16x9.png", 400},
+		{"Coca Cola", "/assets/images/products/bless2n-takeaway-coca-cola-16x9.png", 250},
+		{"Ice Tea Lemon", "/assets/images/products/bless2n-takeaway-ice-tea-lemon-16x9.png", 250},
+		{"Red Bull", "/assets/images/products/bless2n-takeaway-red-bull-16x9.png", 250},
+		{"El Tony Mate", "/assets/images/products/bless2n-takeaway-el-tony-mate-16x9.png", 250},
+		{"Wasser Prickelnd", "/assets/images/products/bless2n-takeaway-wasser-prickelnd-16x9.png", 250},
 	}
 
 	for i := 0; i < productCount; i++ {
 		now := time.Now()
 		data := productData[i%len(productData)]
-		categoryIndex := i % len(categories)
 
-		rawPrice := gofakeit.Float64Range(data.priceMin, data.priceMax)
-		roundedPrice := roundToHalf(rawPrice)
-		priceCents := int(roundedPrice * 100)
+		// Assign category based on product type
+		var categoryID primitive.ObjectID
+		for _, category := range categories {
+			switch data.name {
+			case "Smash Burger", "Veggie Burger":
+				if category.Name == "Burgers" {
+					categoryID = category.ID
+				}
+			case "Pommes":
+				if category.Name == "Beilagen" {
+					categoryID = category.ID
+				}
+			case "Coca Cola", "Ice Tea Lemon", "Red Bull", "El Tony Mate", "Wasser Prickelnd":
+				if category.Name == "Getränke" {
+					categoryID = category.ID
+				}
+			}
+		}
 
 		product := map[string]interface{}{
-			"_id":          primitive.NewObjectID(),
-			"category_id":  categories[categoryIndex].ID,
-			"type":         "simple",
-			"name":         data.name,
-			"price_cents":  priceCents,
-			"is_active":    gofakeit.Bool(),
-			"created_at":   now.Add(-time.Duration(gofakeit.Number(0, 180*24)) * time.Hour),
-			"updated_at":   now,
+			"_id":         primitive.NewObjectID(),
+			"category_id": categoryID,
+			"type":        "simple",
+			"name":        data.name,
+			"image":       data.image,
+			"price_cents": data.priceCents,
+			"is_active":   true,
+			"created_at":  now.Add(-time.Duration(gofakeit.Number(0, 180*24)) * time.Hour),
+			"updated_at":  now,
 		}
 
 		// Use upsert for idempotency
@@ -498,41 +518,42 @@ func generateMenuProducts(ctx context.Context, db *mongo.Database, logger *zap.L
 	productsCollection := db.Collection("products")
 	categoriesCollection := db.Collection("categories")
 
-	// Get Meals category for bundles
-	var mealsCategory struct {
+	// Get Menus category for bundles
+	var menusCategory struct {
 		ID primitive.ObjectID `bson:"_id"`
 	}
-	err := categoriesCollection.FindOne(ctx, bson.D{{Key: "name", Value: "Meals"}}).Decode(&mealsCategory)
+	err := categoriesCollection.FindOne(ctx, bson.D{{Key: "name", Value: "Menus"}}).Decode(&menusCategory)
 	if err != nil {
-		return fmt.Errorf("failed to find Meals category: %w", err)
+		return fmt.Errorf("failed to find Menus category: %w", err)
 	}
 
 	menuCount := 2
 	var operations []mongo.WriteModel
 
-	// Menu data with short descriptions
+	// Menu data with actual available image URLs
 	menuData := []struct {
-		name  string
-		price float64
+		name       string
+		image      string
+		priceCents int64
 	}{
-		{"Menu Big", 15.50},
-		{"Menu Small", 12.00},
+		{"Menu Gross", "/assets/images/products/bless2n-takeaway-menu-2-gross-16x9.png", 1400},
+		{"Menu Klein", "/assets/images/products/bless2n-takeaway-menu-1-klein-16x9.png", 1000},
 	}
 
 	for i := 0; i < menuCount; i++ {
 		now := time.Now()
 		data := menuData[i]
-		priceCents := int(data.price * 100)
 
 		menuProduct := map[string]interface{}{
-			"_id":          primitive.NewObjectID(),
-			"category_id":  mealsCategory.ID,
-			"type":         "menu",
-			"name":         data.name,
-			"price_cents":  priceCents,
-			"is_active":    true,
-			"created_at":   now.Add(-time.Duration(gofakeit.Number(0, 90*24)) * time.Hour),
-			"updated_at":   now,
+			"_id":         primitive.NewObjectID(),
+			"category_id": menusCategory.ID,
+			"type":        "menu",
+			"name":        data.name,
+			"image":       data.image,
+			"price_cents": data.priceCents,
+			"is_active":   true,
+			"created_at":  now.Add(-time.Duration(gofakeit.Number(0, 90*24)) * time.Hour),
+			"updated_at":  now,
 		}
 
 		// Use upsert for idempotency
@@ -621,10 +642,20 @@ func generateMenuSlots(ctx context.Context, db *mongo.Database, logger *zap.Logg
 	}
 
 	var operations []mongo.WriteModel
-	slotNames := []string{"Burger", "Fries", "Drink"}
 
-	// Create slots for each menu
+	// Create slots for each menu with different configurations
 	for _, menu := range menuProducts {
+		var slotNames []string
+
+		// Menu Gross has Burger, Fries, Drink
+		// Menu Klein has only Burger, Drink
+		switch menu.Name {
+		case "Menu Gross":
+			slotNames = []string{"Burger", "Fries", "Drink"}
+		case "Menu Klein":
+			slotNames = []string{"Burger", "Drink"}
+		}
+
 		for i, slotName := range slotNames {
 			menuSlot := map[string]interface{}{
 				"_id":        primitive.NewObjectID(),
@@ -651,7 +682,6 @@ func generateMenuSlots(ctx context.Context, db *mongo.Database, logger *zap.Logg
 
 		logger.Info("Generated menu slots",
 			zap.Int("menus", len(menuProducts)),
-			zap.Int("slots_per_menu", len(slotNames)),
 			zap.Int64("slots_inserted", result.InsertedCount),
 			zap.Int64("slots_upserted", result.UpsertedCount),
 		)
@@ -699,16 +729,47 @@ func generateMenuSlotItems(ctx context.Context, db *mongo.Database, logger *zap.
 		return fmt.Errorf("no simple products found to create menu slot items")
 	}
 
+	// Categorize products by type for easier assignment
+	var burgerProducts, friesProducts, drinkProducts []struct {
+		ID   primitive.ObjectID `bson:"_id"`
+		Name string             `bson:"name"`
+	}
+
+	for _, product := range simpleProducts {
+		switch product.Name {
+		case "Smash Burger", "Veggie Burger":
+			burgerProducts = append(burgerProducts, product)
+		case "Pommes":
+			friesProducts = append(friesProducts, product)
+		case "Coca Cola", "Ice Tea Lemon", "Red Bull", "El Tony Mate", "Wasser Prickelnd":
+			drinkProducts = append(drinkProducts, product)
+		}
+	}
+
 	var operations []mongo.WriteModel
 
-	// Add 2-3 simple products as options for each slot
+	// Add appropriate products to each slot based on slot name
 	for _, slot := range menuSlots {
-		optionsCount := 2 + (len(slot.ID.Hex()) % 2) // 2 or 3 options per slot
-		for i := 0; i < optionsCount && i < len(simpleProducts); i++ {
+		var relevantProducts []struct {
+			ID   primitive.ObjectID `bson:"_id"`
+			Name string             `bson:"name"`
+		}
+
+		switch slot.Name {
+		case "Burger":
+			relevantProducts = burgerProducts
+		case "Fries":
+			relevantProducts = friesProducts
+		case "Drink":
+			relevantProducts = drinkProducts
+		}
+
+		// Add all relevant products for this slot
+		for _, product := range relevantProducts {
 			slotItem := map[string]interface{}{
 				"_id":          primitive.NewObjectID(),
 				"menu_slot_id": slot.ID,
-				"product_id":   simpleProducts[i].ID,
+				"product_id":   product.ID,
 			}
 
 			// Use upsert for idempotency

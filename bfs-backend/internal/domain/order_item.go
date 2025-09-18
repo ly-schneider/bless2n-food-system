@@ -27,3 +27,9 @@ type OrderItem struct {
 	IsRedeemed        bool                `bson:"is_redeemed"`
 	RedeemedAt        *time.Time          `bson:"redeemed_at,omitempty"`
 }
+
+type CreateOrderItemDTO struct {
+	ProductID    primitive.ObjectID `json:"productId" validate:"required"`
+	Quantity     int                `json:"quantity" validate:"required,gt=0"`
+	MenuSlotItem *MenuSlotItemDTO   `json:"menuSlotItem,omitempty"`
+}

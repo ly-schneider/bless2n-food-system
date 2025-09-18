@@ -1,8 +1,8 @@
 package handler
 
 import (
+	"backend/internal/response"
 	"context"
-	"encoding/json"
 	"net/http"
 	"time"
 
@@ -29,17 +29,12 @@ func NewHealthHandler(logger *zap.Logger, db *mongo.Database, jwksClient interfa
 }
 
 func (h *HealthHandler) Healthz(w http.ResponseWriter, r *http.Request) {
-	response := HealthResponse{
+	healthResponse := HealthResponse{
 		Status:    "healthy",
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		h.logger.Error("Failed to encode health response", zap.Error(err))
-	}
+	response.WriteSuccess(w, http.StatusOK, healthResponse)
 }
 
 func (h *HealthHandler) Readyz(w http.ResponseWriter, r *http.Request) {
@@ -57,24 +52,29 @@ func (h *HealthHandler) Readyz(w http.ResponseWriter, r *http.Request) {
 		checks["database"] = "healthy"
 	}
 
-	status := "healthy"
-	statusCode := http.StatusOK
-
 	if !allHealthy {
-		status = "unhealthy"
-		statusCode = http.StatusServiceUnavailable
+		// Return RFC 9457 Problem Details for unhealthy service
+		problem := response.NewProblem(
+			http.StatusServiceUnavailable,
+			"Service Unavailable", 
+			"One or more health checks failed",
+		)
+		problem.Errors = []response.ValidationError{
+			{
+				Field:   "#/checks",
+				Message: "Database health check failed",
+				Value:   checks,
+			},
+		}
+		response.WriteProblem(w, problem)
+		return
 	}
 
-	response := HealthResponse{
-		Status:    status,
+	healthResponse := HealthResponse{
+		Status:    "healthy",
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
 		Checks:    checks,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		h.logger.Error("Failed to encode readiness response", zap.Error(err))
-	}
+	response.WriteSuccess(w, http.StatusOK, healthResponse)
 }

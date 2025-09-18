@@ -36,26 +36,30 @@ func (r *categoryRepository) GetByID(ctx context.Context, id primitive.ObjectID)
 	return &category, nil
 }
 
-func (r *categoryRepository) GetByIDs(ctx context.Context, ids []primitive.ObjectID) ([]*domain.Category, error) {
-	var categories []*domain.Category
+func (r *categoryRepository) GetByIDs(ctx context.Context, ids []primitive.ObjectID) (categories []*domain.Category, err error) {
+    cursor, err := r.collection.Find(ctx, primitive.M{"_id": primitive.M{"$in": ids}})
+    if err != nil {
+        return nil, err
+    }
+    defer func() {
+        if cerr := cursor.Close(ctx); err == nil && cerr != nil {
+            err = cerr
+        }
+    }()
 
-	cursor, err := r.collection.Find(ctx, primitive.M{"_id": primitive.M{"$in": ids}})
-	if err != nil {
-		return nil, err
-	}
-	defer cursor.Close(ctx)
+    for cursor.Next(ctx) {
+        var category domain.Category
+        if derr := cursor.Decode(&category); derr != nil {
+            err = derr
+            return nil, err
+        }
+        categories = append(categories, &category)
+    }
 
-	for cursor.Next(ctx) {
-		var category domain.Category
-		if err := cursor.Decode(&category); err != nil {
-			return nil, err
-		}
-		categories = append(categories, &category)
-	}
+    if derr := cursor.Err(); derr != nil {
+        err = derr
+        return nil, err
+    }
 
-	if err := cursor.Err(); err != nil {
-		return nil, err
-	}
-
-	return categories, nil
+    return categories, nil
 }

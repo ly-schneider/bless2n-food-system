@@ -1,8 +1,8 @@
 import { Metadata } from "next"
 import Header from "@/components/layout/header"
 import MenuGrid from "@/components/menu/menu-grid"
-import ProductAPI from "@/lib/api/products"
-import { ListProductsResponse } from "@/types"
+import { listProducts } from "@/lib/api/products"
+import { ListResponse, ProductDTO } from "@/types"
 
 export const metadata: Metadata = {
   title: "Menu - Bless2n Food System",
@@ -10,13 +10,12 @@ export const metadata: Metadata = {
 }
 
 export default async function HomePage() {
-  // Fetch products directly via products API
-  let products: ListProductsResponse
+  let products: ListResponse<ProductDTO>
   try {
-    const res = await ProductAPI.listPublicProducts({ activeOnly: true, limit: 100 })
-    products = res
-  } catch {
-    products = { products: [], items: [], total: 0 }
+    products = await listProducts()
+  } catch (error) {
+    console.error('Failed to fetch products:', error)
+    products = { items: [], count: 0 }
   }
 
   return (

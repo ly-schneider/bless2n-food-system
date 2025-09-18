@@ -81,14 +81,37 @@ definitions:
     x-enum-varnames:
     - ProductTypeSimple
     - ProductTypeMenu
-  backend_internal_response.ErrorResponse:
+  backend_internal_response.Ack:
     properties:
-      error:
-        type: boolean
       message:
+        type: string
+    type: object
+  backend_internal_response.ProblemDetails:
+    properties:
+      detail:
+        type: string
+      errors:
+        items:
+          $ref: '#/definitions/backend_internal_response.ValidationError'
+        type: array
+      instance:
         type: string
       status:
         type: integer
+      title:
+        type: string
+      type:
+        type: string
+    type: object
+  backend_internal_response.ValidationError:
+    properties:
+      field:
+        description: JSON Pointer (RFC 6901) to the failing field
+        type: string
+      message:
+        description: Human-readable error message
+        type: string
+      value: {}
     type: object
 info:
   contact: {}
@@ -96,6 +119,33 @@ info:
   title: Bless2n Food System API
   version: "1.0"
 paths:
+  /v1/orders:
+    post:
+      consumes:
+      - application/json
+      description: Create a new order with the provided details
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/backend_internal_response.Ack'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/backend_internal_response.ProblemDetails'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/backend_internal_response.ProblemDetails'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/backend_internal_response.ProblemDetails'
+      summary: Create a new order
+      tags:
+      - orders
   /v1/products:
     get:
       description: List all products with optional category filtering
@@ -127,15 +177,15 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/backend_internal_response.ProblemDetails'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/backend_internal_response.ProblemDetails'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/backend_internal_response.ErrorResponse'
+            $ref: '#/definitions/backend_internal_response.ProblemDetails'
       summary: List products
       tags:
       - products

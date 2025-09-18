@@ -1,12 +1,11 @@
 package middleware
 
 import (
+	"backend/internal/service"
 	"context"
 	"net/http"
 	"slices"
 	"strings"
-
-	"backend/internal/service"
 
 	"go.uber.org/zap"
 )

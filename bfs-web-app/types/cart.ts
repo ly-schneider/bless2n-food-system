@@ -1,57 +1,29 @@
-import { BaseEntity } from './common'
-import { MenuItem, ModifierOption } from './menu'
+import type { Cents } from './common';
+import type { ProductDTO } from './index';
 
-export interface CartItemModifier {
-  modifierId: string
-  name: string
-  selectedOptions: ModifierOption[]
-  totalPrice: number
+export interface CartItemConfiguration {
+  [slotId: string]: string; // slotId -> selected productId
 }
 
-export interface CartItem extends BaseEntity {
-  menuItem: MenuItem
-  quantity: number
-  modifiers: CartItemModifier[]
-  specialInstructions?: string
-  unitPrice: number
-  totalPrice: number
-  addedAt: Date
+export interface CartItem {
+  id: string;
+  product: ProductDTO;
+  quantity: number;
+  configuration?: CartItemConfiguration;
+  totalPriceCents: Cents;
 }
 
-export interface Cart extends BaseEntity {
-  userId?: string
-  guestId?: string
-  items: CartItem[]
-  subtotal: number
-  tax: number
-  discount: number
-  total: number
-  estimatedPreparationTime: number
+export interface Cart {
+  items: CartItem[];
+  totalCents: Cents;
 }
 
-export interface AddToCartRequest {
-  menuItemId: string
-  quantity: number
-  modifiers: {
-    modifierId: string
-    selectedOptionIds: string[]
-  }[]
-  specialInstructions?: string
-}
-
-export interface UpdateCartItemRequest {
-  cartItemId: string
-  quantity: number
-  modifiers?: {
-    modifierId: string
-    selectedOptionIds: string[]
-  }[]
-  specialInstructions?: string
-}
-
-export interface CartSummary {
-  itemCount: number
-  subtotal: number
-  tax: number
-  total: number
+export interface CartContextType {
+  cart: Cart;
+  addToCart: (product: ProductDTO, configuration?: CartItemConfiguration) => void;
+  removeFromCart: (itemId: string) => void;
+  updateQuantity: (itemId: string, quantity: number) => void;
+  clearCart: () => void;
+  getItemQuantity: (productId: string, configuration?: CartItemConfiguration) => number;
+  getTotalProductQuantity: (productId: string) => number;
 }

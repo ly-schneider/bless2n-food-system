@@ -1,8 +1,8 @@
 type: http_request
 model: http_request
-id: rq_3gUQQL3ki4
-createdAt: 2025-06-20T15:22:38.476019
-updatedAt: 2025-09-18T18:14:43.339093
+id: rq_7GWYDArEJU
+createdAt: 2025-09-18T18:14:44.971416
+updatedAt: 2025-09-18T18:14:59.604026
 workspaceId: wk_wnN8iaCncF
 folderId: fl_fC5LWSLWhi
 authentication: {}
@@ -12,7 +12,7 @@ bodyType: null
 description: ''
 headers: []
 method: GET
-name: Healthz
-sortPriority: 0.0039
-url: ${[ BASE_URL ]}/healthz
+name: Readyz
+sortPriority: 0.0049
+url: ${[ BASE_URL ]}/readyz
 urlParameters: []

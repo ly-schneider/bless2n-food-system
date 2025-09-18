@@ -23,26 +23,30 @@ func NewMenuSlotItemRepository(db *database.MongoDB) MenuSlotItemRepository {
 	}
 }
 
-func (r *menuSlotItemRepository) FindByMenuSlotIDs(ctx context.Context, menuSlotIDs []primitive.ObjectID) ([]*domain.MenuSlotItem, error) {
-	var menuSlotItems []*domain.MenuSlotItem
+func (r *menuSlotItemRepository) FindByMenuSlotIDs(ctx context.Context, menuSlotIDs []primitive.ObjectID) (menuSlotItems []*domain.MenuSlotItem, err error) {
+    cursor, err := r.collection.Find(ctx, primitive.M{"menu_slot_id": primitive.M{"$in": menuSlotIDs}})
+    if err != nil {
+        return nil, err
+    }
+    defer func() {
+        if cerr := cursor.Close(ctx); err == nil && cerr != nil {
+            err = cerr
+        }
+    }()
 
-	cursor, err := r.collection.Find(ctx, primitive.M{"menu_slot_id": primitive.M{"$in": menuSlotIDs}})
-	if err != nil {
-		return nil, err
-	}
-	defer cursor.Close(ctx)
+    for cursor.Next(ctx) {
+        var menuSlotItem domain.MenuSlotItem
+        if derr := cursor.Decode(&menuSlotItem); derr != nil {
+            err = derr
+            return nil, err
+        }
+        menuSlotItems = append(menuSlotItems, &menuSlotItem)
+    }
 
-	for cursor.Next(ctx) {
-		var menuSlotItem domain.MenuSlotItem
-		if err := cursor.Decode(&menuSlotItem); err != nil {
-			return nil, err
-		}
-		menuSlotItems = append(menuSlotItems, &menuSlotItem)
-	}
+    if derr := cursor.Err(); derr != nil {
+        err = derr
+        return nil, err
+    }
 
-	if err := cursor.Err(); err != nil {
-		return nil, err
-	}
-
-	return menuSlotItems, nil
+    return menuSlotItems, nil
 }

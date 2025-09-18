@@ -11,3 +11,8 @@ type MenuSlotItem struct {
 }
 
 type MenuSlotItemDTO = ProductSummaryDTO
+
+type CreateMenuSlotItemDTO struct {
+	MenuSlotID primitive.ObjectID `json:"menuSlotId" validate:"required"`
+	ProductID  primitive.ObjectID `json:"productId" validate:"required"`
+}

@@ -35,9 +35,9 @@ func NewProductHandler(productService service.ProductService, logger *zap.Logger
 // @Param limit query int false "Limit size" minimum(1) maximum(100) default(50)
 // @Param offset query int false "Offset" minimum(0) default(0)
 // @Success 200 {object} domain.ListResponse[domain.ProductDTO]
-// @Failure 400 {object} response.ErrorResponse
-// @Failure 401 {object} response.ErrorResponse
-// @Failure 403 {object} response.ErrorResponse
+// @Failure 400 {object} response.ProblemDetails
+// @Failure 401 {object} response.ProblemDetails
+// @Failure 403 {object} response.ProblemDetails
 // @Router /v1/products [get]
 func (h *ProductHandler) ListProducts(w http.ResponseWriter, r *http.Request) {
 	categoryIDStr := r.URL.Query().Get("category_id")

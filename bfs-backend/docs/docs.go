@@ -15,6 +15,47 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/v1/orders": {
+            "post": {
+                "description": "Create a new order with the provided details",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "orders"
+                ],
+                "summary": "Create a new order",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/backend_internal_response.Ack"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/backend_internal_response.ProblemDetails"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/backend_internal_response.ProblemDetails"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/backend_internal_response.ProblemDetails"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/products": {
             "get": {
                 "description": "List all products with optional category filtering",
@@ -60,19 +101,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/backend_internal_response.ProblemDetails"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/backend_internal_response.ProblemDetails"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/backend_internal_response.ErrorResponse"
+                            "$ref": "#/definitions/backend_internal_response.ProblemDetails"
                         }
                     }
                 }
@@ -205,18 +246,52 @@ const docTemplate = `{
                 "ProductTypeMenu"
             ]
         },
-        "backend_internal_response.ErrorResponse": {
+        "backend_internal_response.Ack": {
             "type": "object",
             "properties": {
-                "error": {
-                    "type": "boolean"
-                },
                 "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "backend_internal_response.ProblemDetails": {
+            "type": "object",
+            "properties": {
+                "detail": {
+                    "type": "string"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/backend_internal_response.ValidationError"
+                    }
+                },
+                "instance": {
                     "type": "string"
                 },
                 "status": {
                     "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
                 }
+            }
+        },
+        "backend_internal_response.ValidationError": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "description": "JSON Pointer (RFC 6901) to the failing field",
+                    "type": "string"
+                },
+                "message": {
+                    "description": "Human-readable error message",
+                    "type": "string"
+                },
+                "value": {}
             }
         }
     },

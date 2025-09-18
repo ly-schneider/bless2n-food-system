@@ -161,7 +161,7 @@ func (s *productService) ListProducts(
 
 	catDTOByID := make(map[primitive.ObjectID]domain.CategoryDTO, len(catByID))
 	for id, c := range catByID {
-		catDTOByID[id] = domain.CategoryDTO{ID: c.ID.Hex(), Name: c.Name}
+		catDTOByID[id] = domain.CategoryDTO{ID: c.ID.Hex(), Name: c.Name, IsActive: c.IsActive}
 	}
 
 	out := make([]domain.ProductDTO, 0, len(products))
@@ -170,7 +170,7 @@ func (s *productService) ListProducts(
 		if dto, ok := catDTOByID[id]; ok {
 			return dto
 		}
-		return domain.CategoryDTO{ID: id.Hex(), Name: ""}
+		return domain.CategoryDTO{ID: id.Hex(), Name: "", IsActive: false}
 	}
 
 	for _, p := range products {
