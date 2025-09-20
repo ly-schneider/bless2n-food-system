@@ -7,6 +7,11 @@ variable "tags" {
   default = { project = "bfs" }
 }
 
+variable "alert_emails" {
+  type    = list(string)
+  default = []
+}
+
 variable "images" {
   type = map(string)
   default = {

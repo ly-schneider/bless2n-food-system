@@ -7,10 +7,22 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { ListResponse, ProductDTO } from "@/types"
 
 export function MenuGrid({ products }: { products: ListResponse<ProductDTO> }) {
-  console.log(products)
+  const categoryOrder = {
+    'Menus': 1,
+    'Burgers': 2,
+    'Beilagen': 3,
+    'Getränke': 4
+  }
+
+  const sortedProducts = [...products.items].sort((a, b) => {
+    const orderA = categoryOrder[a.category.name as keyof typeof categoryOrder] || 999
+    const orderB = categoryOrder[b.category.name as keyof typeof categoryOrder] || 999
+    return orderA - orderB
+  })
+
   return (
     <div className="grid gap-6 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {products.items.map((product) => (
+      {sortedProducts.map((product) => (
         <MenuProductCard key={product.id} product={product} />
       ))}
     </div>

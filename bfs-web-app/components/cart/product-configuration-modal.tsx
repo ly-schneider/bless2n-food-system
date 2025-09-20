@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -18,11 +18,12 @@ interface ProductConfigurationModalProps {
   product: ProductDTO;
   isOpen: boolean;
   onClose: () => void;
+  initialConfiguration?: CartItemConfiguration;
 }
 
-export function ProductConfigurationModal({ product, isOpen, onClose }: ProductConfigurationModalProps) {
+export function ProductConfigurationModal({ product, isOpen, onClose, initialConfiguration }: ProductConfigurationModalProps) {
   const { addToCart } = useCart();
-  const [selectedConfiguration, setSelectedConfiguration] = useState<CartItemConfiguration>({});
+  const [selectedConfiguration, setSelectedConfiguration] = useState<CartItemConfiguration>(initialConfiguration || {});
   
   const handleSlotSelection = (slotId: string, productId: string) => {
     setSelectedConfiguration(prev => ({
@@ -33,9 +34,16 @@ export function ProductConfigurationModal({ product, isOpen, onClose }: ProductC
   
   const handleAddToCart = () => {
     addToCart(product, selectedConfiguration);
-    setSelectedConfiguration({});
+    setSelectedConfiguration(initialConfiguration || {});
     onClose();
   };
+
+  // Reset configuration when modal opens/closes
+  React.useEffect(() => {
+    if (isOpen) {
+      setSelectedConfiguration(initialConfiguration || {});
+    }
+  }, [isOpen, initialConfiguration]);
   
   const isConfigurationComplete = () => {
     if (!product.menu?.slots) return true;

@@ -359,8 +359,6 @@ func generateAdmins(ctx context.Context, db *mongo.Database, logger *zap.Logger)
 	return nil
 }
 
-
-
 func generateCategories(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {
 	collection := db.Collection("categories")
 
@@ -647,13 +645,13 @@ func generateMenuSlots(ctx context.Context, db *mongo.Database, logger *zap.Logg
 	for _, menu := range menuProducts {
 		var slotNames []string
 
-		// Menu Gross has Burger, Fries, Drink
-		// Menu Klein has only Burger, Drink
+		// Menu Gross has Burger, Beilage, Getränk
+		// Menu Klein has only Burger, Getränk
 		switch menu.Name {
 		case "Menu Gross":
-			slotNames = []string{"Burger", "Fries", "Drink"}
+			slotNames = []string{"Burger", "Beilage", "Getränk"}
 		case "Menu Klein":
-			slotNames = []string{"Burger", "Drink"}
+			slotNames = []string{"Burger", "Getränk"}
 		}
 
 		for i, slotName := range slotNames {

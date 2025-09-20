@@ -1,6 +1,7 @@
 import { Metadata } from "next"
 import Header from "@/components/layout/header"
 import MenuGrid from "@/components/menu/menu-grid"
+import { FloatingBottomNav } from "@/components/cart/floating-bottom-nav"
 import { listProducts } from "@/lib/api/products"
 import { ListResponse, ProductDTO } from "@/types"
 
@@ -22,10 +23,12 @@ export default async function HomePage() {
     <div className="bg-background min-h-screen">
       <Header />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 pb-24">
         <h2 className="text-2xl mb-2">Alle Produkte</h2>
         <MenuGrid products={products} />
       </main>
+
+      <FloatingBottomNav />
     </div>
   )
 }
