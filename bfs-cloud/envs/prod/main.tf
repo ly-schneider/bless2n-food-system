@@ -8,20 +8,22 @@ module "bfs_infrastructure" {
   alert_emails  = var.alert_emails
 
   config = {
-    rg_name                = "bfs-prod-rg"
-    vnet_name              = "bfs-prod-vnet"
-    subnet_name            = "container-apps-subnet"
-    vnet_cidr              = "10.0.0.0/16"
-    subnet_cidr            = "10.0.0.0/21"
-    env_name               = "bfs-prod-env"
-    law_name               = "bfs-logs-workspace"
-    appi_name              = "bfs-prod-insights"
-    enable_app_insights    = true
-    retention_days         = 30
-    cosmos_name            = "bfs-prod-cosmos"
-    database_throughput    = 400
-    enable_alerts          = true
-    requests_5xx_threshold = 10
+    rg_name                      = "bfs-prod-rg"
+    vnet_name                    = "bfs-prod-vnet"
+    subnet_name                  = "container-apps-subnet"
+    vnet_cidr                    = "10.0.0.0/16"
+    subnet_cidr                  = "10.0.0.0/21"
+    env_name                     = "bfs-prod-env"
+    law_name                     = "bfs-logs-workspace"
+    appi_name                    = "bfs-prod-insights"
+    enable_app_insights          = true
+    retention_days               = 30
+    cosmos_name                  = "bfs-prod-cosmos"
+    database_throughput          = 400
+    enable_alerts                = true
+    requests_5xx_threshold       = 10
+    enable_security_features     = true
+    key_vault_name               = "bfs-prod-kv"
     
     apps = {
       frontend = {

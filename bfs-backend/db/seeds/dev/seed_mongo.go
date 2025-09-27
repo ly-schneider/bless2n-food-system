@@ -756,9 +756,9 @@ func generateMenuSlotItems(ctx context.Context, db *mongo.Database, logger *zap.
 		switch slot.Name {
 		case "Burger":
 			relevantProducts = burgerProducts
-		case "Fries":
+		case "Beilage":
 			relevantProducts = friesProducts
-		case "Drink":
+		case "Getränk":
 			relevantProducts = drinkProducts
 		}
 

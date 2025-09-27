@@ -23,6 +23,11 @@ export interface CartContextType {
   addToCart: (product: ProductDTO, configuration?: CartItemConfiguration) => void;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
+  updateItemConfiguration: (
+    oldItemId: string,
+    product: ProductDTO,
+    configuration?: CartItemConfiguration
+  ) => void;
   clearCart: () => void;
   getItemQuantity: (productId: string, configuration?: CartItemConfiguration) => number;
   getTotalProductQuantity: (productId: string) => number;

@@ -105,7 +105,7 @@ export function CartButtons({ product, configuration, onConfigureProduct }: Cart
         <Minus className="size-4" />
       </Button>
       
-      <span className="min-w-8 text-center font-medium">
+      <span className="min-w-6 sm:min-w-8 text-center font-medium">
         {quantity}
       </span>
       

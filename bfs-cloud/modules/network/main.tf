@@ -22,4 +22,12 @@ resource "azurerm_subnet" "aca" {
       ]
     }
   }
+
+  service_endpoints = [
+    "Microsoft.KeyVault",
+    "Microsoft.AzureCosmosDB",
+    "Microsoft.Storage"
+  ]
 }
+
+# WAF and Private Endpoint subnets removed for cost optimization

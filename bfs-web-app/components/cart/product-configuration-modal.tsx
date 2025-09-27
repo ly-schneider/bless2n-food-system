@@ -19,10 +19,11 @@ interface ProductConfigurationModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialConfiguration?: CartItemConfiguration;
+  editingItemId?: string; // when provided, modal acts in edit mode
 }
 
-export function ProductConfigurationModal({ product, isOpen, onClose, initialConfiguration }: ProductConfigurationModalProps) {
-  const { addToCart } = useCart();
+export function ProductConfigurationModal({ product, isOpen, onClose, initialConfiguration, editingItemId }: ProductConfigurationModalProps) {
+  const { addToCart, updateItemConfiguration } = useCart();
   const [selectedConfiguration, setSelectedConfiguration] = useState<CartItemConfiguration>(initialConfiguration || {});
   
   const handleSlotSelection = (slotId: string, productId: string) => {
@@ -32,8 +33,12 @@ export function ProductConfigurationModal({ product, isOpen, onClose, initialCon
     }));
   };
   
-  const handleAddToCart = () => {
-    addToCart(product, selectedConfiguration);
+  const handleSave = () => {
+    if (editingItemId) {
+      updateItemConfiguration(editingItemId, product, selectedConfiguration);
+    } else {
+      addToCart(product, selectedConfiguration);
+    }
     setSelectedConfiguration(initialConfiguration || {});
     onClose();
   };
@@ -61,12 +66,9 @@ export function ProductConfigurationModal({ product, isOpen, onClose, initialCon
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl font-family-secondary">
-            {product.name} konfigurieren
+          <DialogTitle className="text-xl font-family-primary">
+            Konfigurieren
           </DialogTitle>
-          <DialogDescription>
-            Wählen Sie Ihre gewünschten Optionen aus.
-          </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-6">
@@ -90,11 +92,11 @@ export function ProductConfigurationModal({ product, isOpen, onClose, initialCon
               Abbrechen
             </Button>
             <Button
-              onClick={handleAddToCart}
+              onClick={handleSave}
               disabled={!isConfigurationComplete()}
               className="flex-1"
             >
-              Zum Warenkorb hinzufügen
+              {editingItemId ? 'Im Warenkorb aktualisieren' : 'Zum Warenkorb hinzufügen'}
             </Button>
           </div>
         </DialogFooter>

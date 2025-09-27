@@ -94,3 +94,46 @@ variable "custom_scale_rules" {
   description = "Custom scale rules configuration"
   default     = []
 }
+
+variable "key_vault_secrets" {
+  type        = map(string)
+  description = "Key Vault secrets to inject as environment variables"
+  default     = {}
+}
+
+variable "health_check_path" {
+  type        = string
+  description = "Health check path for liveness and readiness probes"
+  default     = "/health"
+}
+
+variable "read_only_filesystem" {
+  type        = bool
+  description = "Use read-only root filesystem for security"
+  default     = true
+}
+
+variable "required_capabilities" {
+  type        = list(string)
+  description = "Required Linux capabilities"
+  default     = []
+}
+
+variable "volume_mounts" {
+  type = list(object({
+    name = string
+    path = string
+  }))
+  description = "Volume mounts for the container"
+  default     = []
+}
+
+variable "volumes" {
+  type = list(object({
+    name         = string
+    storage_type = string
+    storage_name = string
+  }))
+  description = "Volumes for the container app"
+  default     = []
+}

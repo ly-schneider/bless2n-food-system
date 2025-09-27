@@ -5,6 +5,7 @@ import { CartButtons } from "@/components/cart/cart-buttons"
 import { ProductConfigurationModal } from "@/components/cart/product-configuration-modal"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { ListResponse, ProductDTO } from "@/types"
+import { formatChf } from "@/lib/utils"
 
 export function MenuGrid({ products }: { products: ListResponse<ProductDTO> }) {
   const categoryOrder = {
@@ -21,7 +22,7 @@ export function MenuGrid({ products }: { products: ListResponse<ProductDTO> }) {
   })
 
   return (
-    <div className="grid gap-6 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid gap-3 md:gap-5 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {sortedProducts.map((product) => (
         <MenuProductCard key={product.id} product={product} />
       ))}
@@ -59,7 +60,7 @@ function MenuProductCard({ product }: { product: ProductDTO }) {
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
               <h3 className="text-lg font-family-secondary">{product.name}</h3>
-              <p className="text-base font-family-secondary">CHF {(product.priceCents / 100).toFixed(2)}</p>
+              <p className="text-base font-family-secondary">{formatChf(product.priceCents)}</p>
             </div>
             <div className="flex items-center">
               <CartButtons 

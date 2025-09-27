@@ -30,6 +30,7 @@ type CartAction =
   | { type: 'ADD_TO_CART'; product: ProductDTO; configuration?: CartItemConfiguration }
   | { type: 'REMOVE_FROM_CART'; itemId: string }
   | { type: 'UPDATE_QUANTITY'; itemId: string; quantity: number }
+  | { type: 'REPLACE_ITEM'; oldItemId: string; product: ProductDTO; configuration?: CartItemConfiguration }
   | { type: 'CLEAR_CART' }
   | { type: 'LOAD_FROM_STORAGE'; cart: Cart };
 
@@ -127,7 +128,51 @@ function cartReducer(state: Cart, action: CartAction): Cart {
       
       break;
     }
-    
+
+    case 'REPLACE_ITEM': {
+      const oldIndex = state.items.findIndex((i) => i.id === action.oldItemId);
+      if (oldIndex === -1) {
+        // If old item not found, fallback to add behavior
+        return cartReducer(state, { type: 'ADD_TO_CART', product: action.product, configuration: action.configuration });
+      }
+
+      const oldItem = state.items[oldIndex];
+      const newItemId = generateCartItemId(action.product, action.configuration);
+
+      // Remove old item first
+      const itemsWithoutOld = state.items.filter((_, idx) => idx !== oldIndex);
+
+      // Check if new item already exists to merge quantities
+      const existingNewIndex = itemsWithoutOld.findIndex((i) => i.id === newItemId);
+      let updatedItems: CartItem[];
+
+      if (existingNewIndex >= 0) {
+        // Merge quantities into existing new item
+        updatedItems = itemsWithoutOld.map((it, idx) =>
+          idx === existingNewIndex ? { ...it, quantity: it.quantity + oldItem.quantity } : it
+        );
+      } else {
+        const newItem: CartItem = {
+          id: newItemId,
+          product: action.product,
+          configuration: action.configuration,
+          quantity: oldItem.quantity,
+          totalPriceCents: calculateItemPrice(action.product),
+        };
+        updatedItems = [...itemsWithoutOld, newItem];
+      }
+
+      const totalCents = updatedItems.reduce((sum, item) => sum + item.totalPriceCents * item.quantity, 0);
+
+      newState = {
+        ...state,
+        items: updatedItems,
+        totalCents,
+      };
+
+      break;
+    }
+
     case 'CLEAR_CART': {
       newState = {
         items: [],
@@ -175,6 +220,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const addToCart = (product: ProductDTO, configuration?: CartItemConfiguration) => {
     dispatch({ type: 'ADD_TO_CART', product, configuration });
   };
+
+  const updateItemConfiguration = (
+    oldItemId: string,
+    product: ProductDTO,
+    configuration?: CartItemConfiguration
+  ) => {
+    dispatch({ type: 'REPLACE_ITEM', oldItemId, product, configuration });
+  };
   
   const removeFromCart = (itemId: string) => {
     dispatch({ type: 'REMOVE_FROM_CART', itemId });
@@ -203,6 +256,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const contextValue: CartContextType = {
     cart,
     addToCart,
+    updateItemConfiguration,
     removeFromCart,
     updateQuantity,
     clearCart,

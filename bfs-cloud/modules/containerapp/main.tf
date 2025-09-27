@@ -7,9 +7,10 @@ resource "azurerm_container_app" "this" {
   revision_mode = "Single"
 
   ingress {
-    external_enabled = true
-    target_port      = var.target_port
-    transport        = "auto"
+    external_enabled           = true
+    target_port               = var.target_port
+    transport                 = "auto"
+    allow_insecure_connections = false
 
     traffic_weight {
       latest_revision = true
@@ -35,6 +36,44 @@ resource "azurerm_container_app" "this" {
           value = env.value
         }
       }
+
+      dynamic "env" {
+        for_each = var.key_vault_secrets
+        content {
+          name        = env.key
+          secret_name = env.value
+        }
+      }
+
+
+      liveness_probe {
+        path      = var.health_check_path
+        port      = var.target_port
+        transport = "HTTP"
+      }
+
+      readiness_probe {
+        path      = var.health_check_path
+        port      = var.target_port
+        transport = "HTTP"
+      }
+
+      dynamic "volume_mounts" {
+        for_each = var.volume_mounts
+        content {
+          name = volume_mounts.value.name
+          path = volume_mounts.value.path
+        }
+      }
+    }
+
+    dynamic "volume" {
+      for_each = var.volumes
+      content {
+        name         = volume.value.name
+        storage_type = volume.value.storage_type
+        storage_name = volume.value.storage_name
+      }
     }
 
     dynamic "http_scale_rule" {
@@ -59,19 +98,27 @@ resource "azurerm_container_app" "this" {
       }
     }
 
-    dynamic "cpu_scale_rule" {
+    dynamic "custom_scale_rule" {
       for_each = var.cpu_scale_rule != null ? [var.cpu_scale_rule] : []
       content {
-        name                = cpu_scale_rule.value.name
-        cpu_percentage      = cpu_scale_rule.value.cpu_percentage
+        name             = cpu_scale_rule.value.name
+        custom_rule_type = "cpu"
+        metadata = {
+          type = "Utilization"
+          value = tostring(cpu_scale_rule.value.cpu_percentage)
+        }
       }
     }
 
-    dynamic "memory_scale_rule" {
+    dynamic "custom_scale_rule" {
       for_each = var.memory_scale_rule != null ? [var.memory_scale_rule] : []
       content {
-        name               = memory_scale_rule.value.name
-        memory_percentage  = memory_scale_rule.value.memory_percentage
+        name             = memory_scale_rule.value.name
+        custom_rule_type = "memory"
+        metadata = {
+          type = "Utilization"
+          value = tostring(memory_scale_rule.value.memory_percentage)
+        }
       }
     }
 
@@ -99,7 +146,6 @@ resource "azurerm_container_app" "this" {
 }
 
 module "diag" {
-  count                       = var.log_analytics_workspace_id == null ? 0 : 1
   source                      = "../diagnostic_setting"
   target_resource_id          = azurerm_container_app.this.id
   name                        = "${var.name}-diag"

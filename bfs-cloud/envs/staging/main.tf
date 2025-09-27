@@ -8,20 +8,22 @@ module "bfs_infrastructure" {
   alert_emails  = var.alert_emails
 
   config = {
-    rg_name                = "bfs-staging-rg"
-    vnet_name              = "bfs-staging-vnet"
-    subnet_name            = "container-apps-subnet"
-    vnet_cidr              = "10.1.0.0/16"
-    subnet_cidr            = "10.1.0.0/21"
-    env_name               = "bfs-staging-env"
-    law_name               = "bfs-logs-workspace"
-    appi_name              = "bfs-staging-insights"
-    enable_app_insights    = false
-    retention_days         = 14
-    cosmos_name            = "bfs-staging-cosmos"
-    database_throughput    = 400
-    enable_alerts          = false
-    requests_5xx_threshold = 10
+    rg_name                      = "bfs-staging-rg"
+    vnet_name                    = "bfs-staging-vnet"
+    subnet_name                  = "container-apps-subnet"
+    vnet_cidr                    = "10.1.0.0/16"
+    subnet_cidr                  = "10.1.0.0/21"
+    env_name                     = "bfs-staging-env"
+    law_name                     = "bfs-logs-workspace"
+    appi_name                    = "bfs-staging-insights"
+    enable_app_insights          = false
+    retention_days               = 14
+    cosmos_name                  = "bfs-staging-cosmos"
+    database_throughput          = 400
+    enable_alerts                = false
+    requests_5xx_threshold       = 10
+    enable_security_features     = true
+    key_vault_name               = "bfs-staging-kv"
     
     apps = {
       frontend = {
