@@ -31,7 +31,7 @@ type PaymentService interface {
     CreateTWINTCheckoutSession(ctx context.Context, p CreateCheckoutSessionParams) (*stripe.CheckoutSession, error)
     PrepareAndCreateOrder(ctx context.Context, in CreateCheckoutInput, userID *string) (*CheckoutPreparation, error)
     CreateStripeCheckoutForOrder(ctx context.Context, prep *CheckoutPreparation, successURL, cancelURL string) (*stripe.CheckoutSession, error)
-    MarkOrderPaid(ctx context.Context, clientReferenceID string) error
+    MarkOrderPaid(ctx context.Context, clientReferenceID string, contactEmail *string) error
 }
 
 type paymentService struct {
@@ -304,9 +304,9 @@ func (s *paymentService) CreateStripeCheckoutForOrder(ctx context.Context, prep 
     return sess, nil
 }
 
-func (s *paymentService) MarkOrderPaid(ctx context.Context, clientReferenceID string) error {
+func (s *paymentService) MarkOrderPaid(ctx context.Context, clientReferenceID string, contactEmail *string) error {
     if clientReferenceID == "" { return fmt.Errorf("missing client_reference_id") }
     oid, err := primitive.ObjectIDFromHex(clientReferenceID)
     if err != nil { return fmt.Errorf("invalid order id in client_reference_id") }
-    return s.orderRepo.UpdateStatus(ctx, oid, domain.OrderStatusPaid)
+    return s.orderRepo.UpdateStatusAndContact(ctx, oid, domain.OrderStatusPaid, contactEmail)
 }

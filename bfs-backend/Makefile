@@ -42,7 +42,7 @@ WEBHOOK_URL ?= http://localhost:$(APP_PORT)/v1/payments/webhook
 
 .PHONY: help tools lint lint-fix swag dev docker-up docker-up-backend docker-down docker-down-v docker-restart docker-restart-backend clean test db-seed db-reset stripe-listen
 
-	help:
+help:
 	@echo "Available commands:"
 	@echo "  tools                  - Install/update required tools (air, swag, golangci-lint)"
 	@echo "  lint                   - Run linters"

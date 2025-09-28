@@ -104,7 +104,12 @@ func (h *PaymentHandler) Webhook(w http.ResponseWriter, r *http.Request) {
             w.WriteHeader(http.StatusBadRequest)
             return
         }
-        if err := h.payments.MarkOrderPaid(r.Context(), cs.ClientReferenceID); err != nil {
+        var emailPtr *string
+        if cs.CustomerDetails != nil && cs.CustomerDetails.Email != "" {
+            e := cs.CustomerDetails.Email
+            emailPtr = &e
+        }
+        if err := h.payments.MarkOrderPaid(r.Context(), cs.ClientReferenceID, emailPtr); err != nil {
             h.logger.Error("failed to mark order paid", zap.Error(err))
         } else {
             h.logger.Info("checkout session completed", zap.String("session_id", cs.ID))

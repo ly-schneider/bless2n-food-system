@@ -15,7 +15,7 @@ import (
 type OrderRepository interface {
     Create(ctx context.Context, o *domain.Order) (primitive.ObjectID, error)
     SetStripeSession(ctx context.Context, id primitive.ObjectID, sessionID string) error
-    UpdateStatus(ctx context.Context, id primitive.ObjectID, status domain.OrderStatus) error
+    UpdateStatusAndContact(ctx context.Context, id primitive.ObjectID, status domain.OrderStatus, contactEmail *string) error
     FindByID(ctx context.Context, id primitive.ObjectID) (*domain.Order, error)
 }
 
@@ -53,13 +53,15 @@ func (r *orderRepository) SetStripeSession(ctx context.Context, id primitive.Obj
     return err
 }
 
-func (r *orderRepository) UpdateStatus(ctx context.Context, id primitive.ObjectID, status domain.OrderStatus) error {
-    _, err := r.collection.UpdateByID(ctx, id, bson.M{
-        "$set": bson.M{
-            "status":     status,
-            "updated_at": time.Now().UTC(),
-        },
-    })
+func (r *orderRepository) UpdateStatusAndContact(ctx context.Context, id primitive.ObjectID, status domain.OrderStatus, contactEmail *string) error {
+    set := bson.M{
+        "status":     status,
+        "updated_at": time.Now().UTC(),
+    }
+    if contactEmail != nil && *contactEmail != "" {
+        set["contact_email"] = *contactEmail
+    }
+    _, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": set})
     return err
 }
 
