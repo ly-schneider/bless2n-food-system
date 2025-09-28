@@ -2,6 +2,7 @@ import "styles/tailwind.css"
 import type { Metadata } from "next"
 import { Golos_Text } from "next/font/google"
 import { CartProvider } from "@/contexts/cart-context"
+import Header from "@/components/layout/header"
 
 const golosText = Golos_Text({
   weight: ["500"],
@@ -20,8 +21,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${golosText.variable}`}>
-        <CartProvider>{children}</CartProvider>
+      <body className={`${golosText.variable} min-h-screen overflow-x-hidden`}>
+        <CartProvider>
+          <Header />
+          {children}
+        </CartProvider>
       </body>
     </html>
   )

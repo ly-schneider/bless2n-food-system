@@ -9,19 +9,20 @@ import (
 )
 
 func NewServices() fx.Option {
-	return fx.Options(
-		fx.Provide(
-			service.NewEmailService,
-			NewJWTService,
-			service.NewAuthService,
-			service.NewAdminService,
-			service.NewUserService,
-			service.NewStationService,
-			service.NewCategoryService,
-			service.NewProductService,
-			service.NewOrderService,
-		),
-	)
+    return fx.Options(
+        fx.Provide(
+            service.NewEmailService,
+            NewJWTService,
+            service.NewAuthService,
+            service.NewAdminService,
+            service.NewUserService,
+            service.NewStationService,
+            service.NewCategoryService,
+            service.NewProductService,
+            service.NewOrderService,
+            service.NewPaymentService,
+        ),
+    )
 }
 
 func NewJWTService(cfg config.Config, logger *zap.Logger) service.JWTService {

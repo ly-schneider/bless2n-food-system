@@ -11,19 +11,21 @@ import (
 )
 
 type Config struct {
-	App      AppConfig
-	Mongo    MongoConfig
-	Logger   LoggerConfig
-	Smtp     SmtpConfig
-	Security SecurityConfig
+    App      AppConfig
+    Mongo    MongoConfig
+    Logger   LoggerConfig
+    Smtp     SmtpConfig
+    Security SecurityConfig
+    Stripe   StripeConfig
 }
 
 type AppConfig struct {
-	AppEnv         string
-	AppPort        string
-	JWTIssuer      string
-	JWTPrivPEMPath string
-	JWTPubPEMPath  string
+    AppEnv         string
+    AppPort        string
+    JWTIssuer      string
+    JWTPrivPEMPath string
+    JWTPubPEMPath  string
+    PublicBaseURL  string
 }
 
 type MongoConfig struct {
@@ -46,9 +48,14 @@ type SmtpConfig struct {
 }
 
 type SecurityConfig struct {
-	EnableHSTS     bool
-	EnableCSP      bool
-	TrustedOrigins []string
+    EnableHSTS     bool
+    EnableCSP      bool
+    TrustedOrigins []string
+}
+
+type StripeConfig struct {
+    SecretKey     string
+    WebhookSecret string
 }
 
 func Load() Config {
@@ -68,14 +75,15 @@ func Load() Config {
 		}
 	}
 
-	cfg := Config{
-		App: AppConfig{
-			AppEnv:         getEnv("APP_ENV"),
-			AppPort:        getEnv("APP_PORT"),
-			JWTIssuer:      getEnv("JWT_ISSUER"),
-			JWTPrivPEMPath: getEnvOptional("JWT_PRIV_PEM_PATH"),
-			JWTPubPEMPath:  getEnvOptional("JWT_PUB_PEM_PATH"),
-		},
+    cfg := Config{
+        App: AppConfig{
+            AppEnv:         getEnv("APP_ENV"),
+            AppPort:        getEnv("APP_PORT"),
+            JWTIssuer:      getEnv("JWT_ISSUER"),
+            JWTPrivPEMPath: getEnvOptional("JWT_PRIV_PEM_PATH"),
+            JWTPubPEMPath:  getEnvOptional("JWT_PUB_PEM_PATH"),
+            PublicBaseURL:  getEnv("PUBLIC_BASE_URL"),
+        },
 		Mongo: MongoConfig{
 			URI:      getEnv("MONGO_URI"),
 			Database: getEnv("MONGO_DATABASE"),
@@ -92,12 +100,16 @@ func Load() Config {
 			From:      getEnv("SMTP_FROM"),
 			TLSPolicy: getEnv("SMTP_TLS_POLICY"),
 		},
-		Security: SecurityConfig{
-			EnableHSTS:     getEnvAsBool("SECURITY_ENABLE_HSTS"),
-			EnableCSP:      getEnvAsBool("SECURITY_ENABLE_CSP"),
-			TrustedOrigins: getTrustedOrigins("SECURITY_TRUSTED_ORIGINS"),
-		},
-	}
+        Security: SecurityConfig{
+            EnableHSTS:     getEnvAsBool("SECURITY_ENABLE_HSTS"),
+            EnableCSP:      getEnvAsBool("SECURITY_ENABLE_CSP"),
+            TrustedOrigins: getTrustedOrigins("SECURITY_TRUSTED_ORIGINS"),
+        },
+        Stripe: StripeConfig{
+            SecretKey:     getEnv("STRIPE_SECRET_KEY"),
+            WebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET"),
+        },
+    }
 
 	return cfg
 }

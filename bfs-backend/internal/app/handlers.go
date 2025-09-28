@@ -11,22 +11,22 @@ import (
 )
 
 func NewHandlers() fx.Option {
-	return fx.Options(
-		fx.Provide(
-			handler.NewAuthHandler,
-			handler.NewAdminHandler,
-			handler.NewUserHandler,
-			handler.NewStationHandler,
-			handler.NewCategoryHandler,
-			handler.NewProductHandler,
-			handler.NewOrderHandler,
-			handler.NewRedemptionHandler,
-			NewHealthHandler,
-			handler.NewJWKSHandler,
-			middleware.NewJWTMiddleware,
-			NewSecurityMiddleware,
-		),
-	)
+    return fx.Options(
+        fx.Provide(
+            handler.NewAuthHandler,
+            handler.NewAdminHandler,
+            handler.NewUserHandler,
+            handler.NewStationHandler,
+            handler.NewCategoryHandler,
+            handler.NewProductHandler,
+            handler.NewPaymentHandler,
+            handler.NewRedemptionHandler,
+            NewHealthHandler,
+            handler.NewJWKSHandler,
+            middleware.NewJWTMiddleware,
+            NewSecurityMiddleware,
+        ),
+    )
 }
 
 func NewHealthHandler(logger *zap.Logger, db *mongo.Database) *handler.HealthHandler {

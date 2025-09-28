@@ -136,7 +136,7 @@ function cartReducer(state: Cart, action: CartAction): Cart {
         return cartReducer(state, { type: 'ADD_TO_CART', product: action.product, configuration: action.configuration });
       }
 
-      const oldItem = state.items[oldIndex];
+      const oldItem = state.items[oldIndex]!; // exists because oldIndex !== -1
       const newItemId = generateCartItemId(action.product, action.configuration);
 
       // Remove old item first

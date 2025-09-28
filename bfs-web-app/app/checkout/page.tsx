@@ -1,24 +1,44 @@
 "use client"
 
-import { useState } from "react"
+import { ArrowLeft, ShoppingCart } from "lucide-react"
 import { useRouter } from "next/navigation"
-import Header from "@/components/layout/header"
-import { useCart } from "@/contexts/cart-context"
-import { CartItem } from "@/types/cart"
+import { useState } from "react"
 import { CartItemDisplay } from "@/components/cart/cart-item-display"
 import { ProductConfigurationModal } from "@/components/cart/product-configuration-modal"
 import { Button } from "@/components/ui/button"
-import { ShoppingCart, ArrowLeft } from "lucide-react"
+import { useCart } from "@/contexts/cart-context"
 import { formatChf } from "@/lib/utils"
+import { CartItem } from "@/types/cart"
+import { createCheckoutSession } from "@/lib/api/payments"
 
 export default function CheckoutPage() {
   const { cart, updateQuantity, removeFromCart } = useCart()
   const [editingItem, setEditingItem] = useState<CartItem | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+
+  const handlePay = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const items = cart.items.map((i) => ({
+        productId: i.product.id,
+        quantity: i.quantity,
+        configuration: i.configuration,
+      }))
+      const res = await createCheckoutSession({ items })
+      window.location.href = res.url
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Fehler beim Starten der Zahlung"
+      setError(message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen">
-      <Header />
 
       <main className="container mx-auto px-4 pb-28 pt-4">
         <h2 className="text-2xl mb-4">Warenkorb</h2>
@@ -69,11 +89,13 @@ export default function CheckoutPage() {
 
               <Button
                 className="rounded-pill h-12 text-base font-medium flex-1 md:flex-none md:min-w-64"
-                onClick={() => router.push("/checkout/payment")}
+                onClick={handlePay}
+                disabled={loading}
               >
-                Mit TWINT bezahlen
+                {loading ? "Weiterleiten…" : "Mit TWINT bezahlen"}
               </Button>
             </div>
+            {error && <p className="text-red-600 text-sm">{error}</p>}
           </div>
         </div>
       )}

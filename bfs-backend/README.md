@@ -133,6 +133,32 @@ When services are running:
 - **Mailpit**: http://localhost:8025 (Email testing UI)
 - **MongoDB**: localhost:27017 (Direct connection)
 
+### Payments (Stripe + TWINT)
+
+This service integrates Stripe Checkout with TWINT (Switzerland) as the only payment method.
+
+- Enable TWINT in your Stripe Dashboard (Settings → Payment methods).
+- Configure environment variables in `.env` or your runtime:
+
+```
+PUBLIC_BASE_URL=http://localhost:3000           # bfs-web-app base URL for success/cancel redirects
+STRIPE_SECRET_KEY=sk_test_xxx                   # Stripe secret key
+STRIPE_WEBHOOK_SECRET=whsec_xxx                 # Webhook signing secret
+```
+
+Endpoints:
+
+- `POST /v1/payments/checkout` – creates a Stripe Checkout Session with TWINT only.
+  Request body:
+  `{ "items": [{"name":"Item name","amountCents":1000,"quantity":1}], "customerEmail":"optional@example.com" }`
+  Response: `{ "url": "https://checkout.stripe.com/...", "sessionId": "cs_test_..." }`
+
+- `POST /v1/payments/webhook` – Stripe webhook receiver for events like `checkout.session.completed`.
+
+Notes:
+- Currency is `CHF` and a TWINT single transaction must not exceed 5,000.00 CHF.
+- Desktop checkout shows a QR code; mobile users are redirected to the TWINT app.
+
 ## 📝 Available Commands
 
 Run `make` or `make help` to see all available commands with descriptions.

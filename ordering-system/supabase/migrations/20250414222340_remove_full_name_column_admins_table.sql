@@ -1,1 +1,0 @@
-ALTER TABLE IF EXISTS public.admins DROP COLUMN IF EXISTS full_name;

@@ -37,9 +37,12 @@ docker-up-backend docker-restart-backend: SMTP_PORT := $(SMTP_PORT_DOCKER)
 DC  := docker compose
 AIR ?= $(BIN)/air
 
-.PHONY: help tools lint lint-fix swag dev docker-up docker-up-backend docker-down docker-down-v docker-restart docker-restart-backend clean test db-seed db-reset
+# Stripe
+WEBHOOK_URL ?= http://localhost:$(APP_PORT)/v1/payments/webhook
 
-help:
+.PHONY: help tools lint lint-fix swag dev docker-up docker-up-backend docker-down docker-down-v docker-restart docker-restart-backend clean test db-seed db-reset stripe-listen
+
+	help:
 	@echo "Available commands:"
 	@echo "  tools                  - Install/update required tools (air, swag, golangci-lint)"
 	@echo "  lint                   - Run linters"
@@ -56,6 +59,7 @@ help:
 	@echo "  test                   - Run unit tests"
 	@echo "  db-seed                - Seed MongoDB with development data"
 	@echo "  db-reset               - Reset and seed MongoDB with development data"
+	@echo "  stripe-listen          - Start Stripe CLI and forward events to local webhook"
 
 tools: $(BIN)/golangci-lint $(BIN)/swag $(BIN)/air
 	@echo "Installing/updating tools... done."
@@ -132,3 +136,10 @@ db-seed:
 
 db-reset:
 	go run ./cmd/ctl -reset
+
+stripe-listen:
+	@command -v stripe >/dev/null 2>&1 || { \
+	  echo "Stripe CLI not found. Install: https://stripe.com/docs/stripe-cli"; exit 1; }
+	@echo "Starting Stripe webhook listener → $(WEBHOOK_URL)"
+	@echo "Note: Copy the signing secret into STRIPE_WEBHOOK_SECRET in .env"
+	@stripe listen --forward-to $(WEBHOOK_URL)

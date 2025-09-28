@@ -2,8 +2,8 @@
 
 import { Minus, Pen, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { CartItem } from "@/types/cart"
 import { formatChf } from "@/lib/utils"
+import { CartItem } from "@/types/cart"
 
 export interface CartItemDisplayProps {
   item: CartItem

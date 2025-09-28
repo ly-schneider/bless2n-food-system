@@ -4,8 +4,8 @@ import { useState } from "react"
 import { CartButtons } from "@/components/cart/cart-buttons"
 import { ProductConfigurationModal } from "@/components/cart/product-configuration-modal"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { ListResponse, ProductDTO } from "@/types"
 import { formatChf } from "@/lib/utils"
+import { ListResponse, ProductDTO } from "@/types"
 
 export function MenuGrid({ products }: { products: ListResponse<ProductDTO> }) {
   const categoryOrder = {

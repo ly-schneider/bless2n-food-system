@@ -1,8 +1,13 @@
+"use client"
+
 import { QrCode } from "lucide-react"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { IconLink } from "@/components/ui/icon-button"
 
 export default function Header() {
+  const pathname = usePathname()
+  const showQRButton = pathname === "/"
   return (
     <header className="w-full my-2">
       <div className="container mx-auto px-4">
@@ -17,10 +22,14 @@ export default function Header() {
           {/* Center: Title - Absolutely centered */}
           <h1 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-3xl font-bold">FOOD</h1>
 
-          {/* Right: Orders Button */}
-          <IconLink href="/orders" variant="secondary" size="xl" shape="circle" className="sm:w-16 sm:h-16 w-12 h-12">
-            <QrCode className="sm:h-8 sm:w-8 h-6 w-6" />
-          </IconLink>
+          {/* Right: Orders Button (only on homepage) */}
+          {showQRButton ? (
+            <IconLink href="/orders" variant="secondary" size="xl" shape="circle" className="sm:w-16 sm:h-16 w-12 h-12">
+              <QrCode className="sm:h-8 sm:w-8 h-6 w-6" />
+            </IconLink>
+          ) : (
+            <span className="sm:w-16 sm:h-16 w-12 h-12 inline-block" />
+          )}
         </div>
       </div>
     </header>

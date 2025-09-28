@@ -1,1 +1,0 @@
-ALTER TABLE IF EXISTS public.products DROP COLUMN IF EXISTS description;

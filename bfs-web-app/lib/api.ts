@@ -28,10 +28,10 @@ export async function apiRequest<T>(
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({})) as { message?: string };
+    const errorData = await response.json().catch(() => ({})) as { message?: string; detail?: string };
     const error = createApiError(
       response.status,
-      errorData.message || `HTTP ${response.status}: ${response.statusText}`
+      errorData.message || errorData.detail || `HTTP ${response.status}: ${response.statusText}`
     );
     throw error;
   }

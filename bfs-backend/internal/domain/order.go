@@ -16,13 +16,14 @@ const (
 )
 
 type Order struct {
-	ID           primitive.ObjectID  `bson:"_id"`
-	CustomerID   *primitive.ObjectID `bson:"customer_id,omitempty"`
-	ContactEmail *string             `bson:"contact_email,omitempty"`
-	TotalCents   Cents               `bson:"total_cents" validate:"required,gte=0"`
-	Status       OrderStatus         `bson:"status" validate:"required,oneof=pending paid cancelled refunded"`
-	CreatedAt    time.Time           `bson:"created_at"`
-	UpdatedAt    time.Time           `bson:"updated_at"`
+    ID           primitive.ObjectID  `bson:"_id"`
+    CustomerID   *primitive.ObjectID `bson:"customer_id,omitempty"`
+    ContactEmail *string             `bson:"contact_email,omitempty"`
+    TotalCents   Cents               `bson:"total_cents" validate:"required,gte=0"`
+    Status       OrderStatus         `bson:"status" validate:"required,oneof=pending paid cancelled refunded"`
+    StripeSessionID *string          `bson:"stripe_session_id,omitempty"`
+    CreatedAt    time.Time           `bson:"created_at"`
+    UpdatedAt    time.Time           `bson:"updated_at"`
 }
 
 type CreateOrderDTO struct {

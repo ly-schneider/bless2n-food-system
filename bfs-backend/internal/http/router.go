@@ -13,19 +13,19 @@ import (
 )
 
 func NewRouter(
-	authHandler *handler.AuthHandler,
-	adminHandler *handler.AdminHandler,
-	userHandler *handler.UserHandler,
-	stationHandler *handler.StationHandler,
-	categoryHandler *handler.CategoryHandler,
-	productHandler *handler.ProductHandler,
-	orderHandler *handler.OrderHandler,
-	redemptionHandler *handler.RedemptionHandler,
-	healthHandler *handler.HealthHandler,
-	jwksHandler *handler.JWKSHandler,
-	jwtMw *jwtMiddleware.JWTMiddleware,
-	securityMw *jwtMiddleware.SecurityMiddleware,
-	enableDocs bool,
+    authHandler *handler.AuthHandler,
+    adminHandler *handler.AdminHandler,
+    userHandler *handler.UserHandler,
+    stationHandler *handler.StationHandler,
+    categoryHandler *handler.CategoryHandler,
+    productHandler *handler.ProductHandler,
+    paymentHandler *handler.PaymentHandler,
+    redemptionHandler *handler.RedemptionHandler,
+    healthHandler *handler.HealthHandler,
+    jwksHandler *handler.JWKSHandler,
+    jwtMw *jwtMiddleware.JWTMiddleware,
+    securityMw *jwtMiddleware.SecurityMiddleware,
+    enableDocs bool,
 ) http.Handler {
 	r := chi.NewRouter()
 
@@ -52,15 +52,20 @@ func NewRouter(
 		r.Get("/swagger/*", httpSwagger.WrapHandler)
 	}
 
-	r.Route("/v1", func(v1 chi.Router) {
-		v1.Route("/products", func(product chi.Router) {
-			product.Get("/", productHandler.ListProducts)
-		})
+    r.Route("/v1", func(v1 chi.Router) {
+        v1.Route("/products", func(product chi.Router) {
+            product.Get("/", productHandler.ListProducts)
+        })
 
-		v1.Route("/orders", func(orders chi.Router) {
-			orders.Post("/", orderHandler.CreateOrder)
-		})
-	})
+        // future: orders read endpoints
 
-	return r
+        v1.Route("/payments", func(pay chi.Router) {
+            // Allow optional auth so we can attach user to order if logged in
+            pay.Use(jwtMw.OptionalAuth)
+            pay.Post("/checkout", paymentHandler.CreateCheckout)
+            pay.Post("/webhook", paymentHandler.Webhook)
+        })
+    })
+
+    return r
 }

@@ -1,17 +1,17 @@
 "use client"
 
+import { Minus, Pen, Plus, ShoppingCart, Trash2 } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { ShoppingCart, Trash2, Pen, Minus, Plus } from "lucide-react"
+import { CartItemDisplay } from "@/components/cart/cart-item-display"
 import { Button } from "@/components/ui/button"
-import { Drawer, DrawerClose, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet"
+import { Drawer, DrawerClose, DrawerContent, DrawerFooter, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
+import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { useCart } from "@/contexts/cart-context"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { formatChf } from "@/lib/utils"
 import { CartItem } from "@/types/cart"
 import { ProductConfigurationModal } from "./product-configuration-modal"
-import { formatChf } from "@/lib/utils"
-import { useIsMobile } from "@/hooks/use-mobile"
-import { useRouter } from "next/navigation"
-import { CartItemDisplay } from "@/components/cart/cart-item-display"
 
 export function FloatingBottomNav() {
   const { cart, updateQuantity, removeFromCart } = useCart()

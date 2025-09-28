@@ -19,14 +19,23 @@ export async function middleware(request: NextRequest) {
   response.headers.set("X-Content-Type-Options", "nosniff")
   response.headers.set("Referrer-Policy", "origin-when-cross-origin")
 
-  // CSP optimized for WebView
+  // CSP optimized for WebView, allow backend API origin in connect-src
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL
+  let apiOrigin = ''
+  try {
+    apiOrigin = apiBase ? new URL(apiBase).origin : ''
+  } catch {}
+
+  const connectSrc = ["'self'", 'ws:', 'wss:']
+  if (apiOrigin) connectSrc.push(apiOrigin)
+
   const csp = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // WebView may require unsafe-inline
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
-    "connect-src 'self' ws: wss:",
+    `connect-src ${connectSrc.join(' ')}`,
     "frame-src 'none'",
     "object-src 'none'",
     "base-uri 'self'",
