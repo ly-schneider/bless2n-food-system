@@ -25,6 +25,8 @@ type CreateCheckoutSessionParams struct {
     CancelURL   string
     ClientRefID *string
     CustomerEmail *string
+    // Optional metadata to attach to the underlying PaymentIntent
+    PaymentIntentMetadata map[string]string
 }
 
 type PaymentService interface {
@@ -32,6 +34,8 @@ type PaymentService interface {
     PrepareAndCreateOrder(ctx context.Context, in CreateCheckoutInput, userID *string) (*CheckoutPreparation, error)
     CreateStripeCheckoutForOrder(ctx context.Context, prep *CheckoutPreparation, successURL, cancelURL string) (*stripe.CheckoutSession, error)
     MarkOrderPaid(ctx context.Context, clientReferenceID string, contactEmail *string) error
+    CleanupPendingOrderByID(ctx context.Context, clientReferenceID string) error
+    CleanupPendingOrderBySessionID(ctx context.Context, sessionID string) error
 }
 
 type paymentService struct {
@@ -87,6 +91,14 @@ func (s *paymentService) CreateTWINTCheckoutSession(ctx context.Context, p Creat
             stripe.String("twint"),
         },
         LineItems: lineItems,
+    }
+    // Attach PaymentIntent metadata so we can correlate payment_intent events
+    if len(p.PaymentIntentMetadata) > 0 {
+        params.PaymentIntentData = &stripe.CheckoutSessionPaymentIntentDataParams{}
+        // populate metadata map
+        for k, v := range p.PaymentIntentMetadata {
+            params.PaymentIntentData.AddMetadata(k, v)
+        }
     }
     if p.ClientRefID != nil && *p.ClientRefID != "" {
         params.ClientReferenceID = stripe.String(*p.ClientRefID)
@@ -298,6 +310,7 @@ func (s *paymentService) CreateStripeCheckoutForOrder(ctx context.Context, prep 
         CancelURL:     cancelURL,
         ClientRefID:   &idHex,
         CustomerEmail: prep.CustomerEmail,
+        PaymentIntentMetadata: map[string]string{"order_id": idHex},
     })
     if err != nil { return nil, err }
     _ = s.orderRepo.SetStripeSession(ctx, prep.OrderID, sess.ID)
@@ -309,4 +322,29 @@ func (s *paymentService) MarkOrderPaid(ctx context.Context, clientReferenceID st
     oid, err := primitive.ObjectIDFromHex(clientReferenceID)
     if err != nil { return fmt.Errorf("invalid order id in client_reference_id") }
     return s.orderRepo.UpdateStatusAndContact(ctx, oid, domain.OrderStatusPaid, contactEmail)
+}
+
+// CleanupPendingOrderByID deletes a pending order and its items by order ID (hex string).
+func (s *paymentService) CleanupPendingOrderByID(ctx context.Context, clientReferenceID string) error {
+    if clientReferenceID == "" { return fmt.Errorf("missing order id") }
+    oid, err := primitive.ObjectIDFromHex(clientReferenceID)
+    if err != nil { return fmt.Errorf("invalid order id: %w", err) }
+    deleted, err := s.orderRepo.DeleteIfPending(ctx, oid)
+    if err != nil { return err }
+    if deleted {
+        // best-effort cleanup of items
+        _ = s.orderItemRepo.DeleteByOrderID(ctx, oid)
+    }
+    return nil
+}
+
+// CleanupPendingOrderBySessionID deletes a pending order matched by stripe_session_id.
+func (s *paymentService) CleanupPendingOrderBySessionID(ctx context.Context, sessionID string) error {
+    if sessionID == "" { return fmt.Errorf("missing session id") }
+    o, err := s.orderRepo.FindPendingByStripeSessionID(ctx, sessionID)
+    if err != nil { return nil } // nothing to do if not found
+    // delete items first, then order
+    _ = s.orderItemRepo.DeleteByOrderID(ctx, o.ID)
+    _, _ = s.orderRepo.DeleteIfPending(ctx, o.ID)
+    return nil
 }

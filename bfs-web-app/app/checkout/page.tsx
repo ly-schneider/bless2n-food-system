@@ -1,7 +1,7 @@
 "use client"
 
 import { ArrowLeft, ShoppingCart } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
 import { CartItemDisplay } from "@/components/cart/cart-item-display"
 import { ProductConfigurationModal } from "@/components/cart/product-configuration-modal"
@@ -10,6 +10,8 @@ import { useCart } from "@/contexts/cart-context"
 import { formatChf } from "@/lib/utils"
 import { CartItem } from "@/types/cart"
 import { createCheckoutSession } from "@/lib/api/payments"
+import { useBestMenuSuggestion } from "@/components/cart/use-best-menu-suggestion"
+import { InlineMenuGroup } from "@/components/cart/inline-menu-group"
 
 export default function CheckoutPage() {
   const { cart, updateQuantity, removeFromCart } = useCart()
@@ -17,6 +19,8 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+  const sp = useSearchParams()
+  const from = sp.get("from")
 
   const handlePay = async () => {
     setLoading(true)
@@ -37,49 +41,100 @@ export default function CheckoutPage() {
     }
   }
 
-  return (
-    <div className="min-h-screen">
+  const { suggestion, contiguous, startIndex, endIndex } = useBestMenuSuggestion()
 
-      <main className="container mx-auto px-4 pb-28 pt-4">
+  return (
+    <div className="flex flex-1 flex-col">
+
+      <main className="container mx-auto flex-1 overflow-y-auto px-4 pb-28 pt-4">
         <h2 className="text-2xl mb-4">Warenkorb</h2>
 
-        <div className="flex-1 overflow-y-auto">
+        <div>
           {cart.items.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <ShoppingCart className="text-muted-foreground mb-4 size-12" />
-              <p className="text-muted-foreground text-lg">Ihr Warenkorb ist leer</p>
-              <p className="text-muted-foreground mt-1 text-sm">Fügen Sie Produkte hinzu, um zu beginnen</p>
+              <ShoppingCart className="text-muted-foreground mb-4 size-10" />
+              <p className="text-muted-foreground text-lg font-semibold">Warenkorb ist leer</p>
             </div>
           ) : (
-            <div className="divide-border -my-5 flex max-h-[60vh] flex-col divide-y overflow-y-auto [&>*]:py-5">
-              {cart.items.map((item) => (
-                <CartItemDisplay
-                  key={item.id}
-                  item={item}
-                  onUpdateQuantity={(quantity) => updateQuantity(item.id, quantity)}
-                  onRemove={() => removeFromCart(item.id)}
-                  onEdit={() => setEditingItem(item)}
-                />
-              ))}
+            <div className="mt-4 -mb-5 flex flex-col divide-y divide-border [&>*]:py-5">
+              {(() => {
+                const rows: React.ReactNode[] = []
+                if (suggestion && contiguous && startIndex >= 0 && endIndex >= startIndex) {
+                  for (let i = 0; i < startIndex; i++) {
+                    const item = cart.items[i]!
+                    rows.push(
+                      <CartItemDisplay
+                        key={item.id}
+                        item={item}
+                        onUpdateQuantity={(q) => updateQuantity(item.id, q)}
+                        onRemove={() => removeFromCart(item.id)}
+                        onEdit={() => setEditingItem(item)}
+                      />
+                    )
+                  }
+                  const grouped = cart.items.slice(startIndex, endIndex + 1)
+                  rows.push(
+                    <InlineMenuGroup
+                      key={`group-${grouped.map((g) => g.id).join('-')}`}
+                      suggestion={suggestion}
+                      items={grouped}
+                      onEditItem={(it) => setEditingItem(it)}
+                    />
+                  )
+                  for (let i = endIndex + 1; i < cart.items.length; i++) {
+                    const item = cart.items[i]!
+                    rows.push(
+                      <CartItemDisplay
+                        key={item.id}
+                        item={item}
+                        onUpdateQuantity={(q) => updateQuantity(item.id, q)}
+                        onRemove={() => removeFromCart(item.id)}
+                        onEdit={() => setEditingItem(item)}
+                      />
+                    )
+                  }
+                } else {
+                  for (const item of cart.items) {
+                    rows.push(
+                      <CartItemDisplay
+                        key={item.id}
+                        item={item}
+                        onUpdateQuantity={(q) => updateQuantity(item.id, q)}
+                        onRemove={() => removeFromCart(item.id)}
+                        onEdit={() => setEditingItem(item)}
+                      />
+                    )
+                  }
+                }
+                return rows
+              })()}
             </div>
           )}
         </div>
       </main>
 
-      {cart.items.length > 0 && (
-        <div className="border-border fixed right-0 bottom-0 left-0 z-50 border-t p-4 shadow-lg">
-          <div className="container mx-auto flex flex-col gap-3">
-            <div className="flex items-center justify-between py-4">
+      <div className="fixed right-0 bottom-0 left-0 z-50 p-4 bg-background">
+        <div className="container mx-auto flex flex-col gap-3">
+          {cart.items.length > 0 && (
+            <div className="flex items-center justify-between py-2">
               <div className="flex flex-col">
                 <p className="text-lg font-semibold">Total</p>
                 <span className="text-muted-foreground text-sm">{cart.items.length} Produkte</span>
               </div>
               <p className="text-lg font-semibold">{formatChf(cart.totalCents)}</p>
             </div>
+          )}
 
+          {cart.items.length > 0 ? (
             <div className="flex items-center justify-between gap-3">
               <Button
-                onClick={() => router.back()}
+                onClick={() => {
+                  if (from === "cancel") {
+                    router.push("/")
+                  } else {
+                    router.back()
+                  }
+                }}
                 size="icon"
                 variant="outline"
                 className="rounded-full bg-white text-black size-12 shrink-0"
@@ -95,10 +150,28 @@ export default function CheckoutPage() {
                 {loading ? "Weiterleiten…" : "Mit TWINT bezahlen"}
               </Button>
             </div>
-            {error && <p className="text-red-600 text-sm">{error}</p>}
-          </div>
+          ) : (
+            <div>
+              <Button
+                variant="outline"
+                className="rounded-pill h-12 w-full bg-white text-black text-base font-medium"
+                onClick={() => {
+                  if (from === "cancel") {
+                    router.push("/")
+                  } else {
+                    router.back()
+                  }
+                }}
+              >
+                <ArrowLeft className="mr-2 size-5" />
+                Zurück
+              </Button>
+            </div>
+          )}
+
+          {cart.items.length > 0 && error && <p className="text-red-600 text-sm">{error}</p>}
         </div>
-      )}
+      </div>
 
       {editingItem && (
         <ProductConfigurationModal
@@ -109,6 +182,7 @@ export default function CheckoutPage() {
           editingItemId={editingItem.id}
         />
       )}
+      
     </div>
   )
 }

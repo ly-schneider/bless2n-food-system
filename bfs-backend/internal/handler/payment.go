@@ -114,16 +114,70 @@ func (h *PaymentHandler) Webhook(w http.ResponseWriter, r *http.Request) {
         } else {
             h.logger.Info("checkout session completed", zap.String("session_id", cs.ID))
         }
-	case "payment_intent.succeeded":
-		h.logger.Info("payment intent succeeded")
-	case "payment_intent.payment_failed":
-		h.logger.Warn("payment intent failed")
-	case "charge.refunded":
-		h.logger.Info("charge refunded")
-	default:
-		// Unexpected event type
-		h.logger.Info("unhandled event type", zap.String("type", string(event.Type)))
-	}
+    case "checkout.session.expired":
+        var cs stripe.CheckoutSession
+        if err := json.Unmarshal(event.Data.Raw, &cs); err != nil {
+            h.logger.Error("failed to parse checkout.session", zap.Error(err))
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+        if cs.ClientReferenceID != "" {
+            if err := h.payments.CleanupPendingOrderByID(r.Context(), cs.ClientReferenceID); err != nil {
+                h.logger.Error("cleanup pending order by id failed", zap.Error(err))
+            } else {
+                h.logger.Info("cleaned up pending order (expired)", zap.String("order_id", cs.ClientReferenceID), zap.String("session_id", cs.ID))
+            }
+        } else if cs.ID != "" {
+            if err := h.payments.CleanupPendingOrderBySessionID(r.Context(), cs.ID); err != nil {
+                h.logger.Error("cleanup pending order by session failed", zap.Error(err))
+            } else {
+                h.logger.Info("cleaned up pending order by session (expired)", zap.String("session_id", cs.ID))
+            }
+        }
+    case "checkout.session.async_payment_failed":
+        var cs stripe.CheckoutSession
+        if err := json.Unmarshal(event.Data.Raw, &cs); err != nil {
+            h.logger.Error("failed to parse checkout.session", zap.Error(err))
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+        if cs.ClientReferenceID != "" {
+            if err := h.payments.CleanupPendingOrderByID(r.Context(), cs.ClientReferenceID); err != nil {
+                h.logger.Error("cleanup pending order by id failed", zap.Error(err))
+            } else {
+                h.logger.Info("cleaned up pending order (async_failed)", zap.String("order_id", cs.ClientReferenceID), zap.String("session_id", cs.ID))
+            }
+        } else if cs.ID != "" {
+            if err := h.payments.CleanupPendingOrderBySessionID(r.Context(), cs.ID); err != nil {
+                h.logger.Error("cleanup pending order by session failed", zap.Error(err))
+            } else {
+                h.logger.Info("cleaned up pending order by session (async_failed)", zap.String("session_id", cs.ID))
+            }
+        }
+    case "payment_intent.succeeded":
+        h.logger.Info("payment intent succeeded")
+    case "payment_intent.payment_failed":
+        // Prefer metadata.order_id to correlate directly
+        var pi stripe.PaymentIntent
+        if err := json.Unmarshal(event.Data.Raw, &pi); err == nil {
+            if oid, ok := pi.Metadata["order_id"]; ok && oid != "" {
+                if err := h.payments.CleanupPendingOrderByID(r.Context(), oid); err != nil {
+                    h.logger.Error("cleanup pending order (PI) failed", zap.Error(err), zap.String("order_id", oid), zap.String("pi", pi.ID))
+                } else {
+                    h.logger.Warn("payment intent failed; pending order removed", zap.String("order_id", oid), zap.String("pi", pi.ID))
+                }
+            } else {
+                h.logger.Warn("payment intent failed without order_id metadata", zap.String("pi", pi.ID))
+            }
+        } else {
+            h.logger.Warn("payment intent failed (parse error)")
+        }
+    case "charge.refunded":
+        h.logger.Info("charge refunded")
+    default:
+        // Unexpected event type
+        h.logger.Info("unhandled event type", zap.String("type", string(event.Type)))
+    }
 
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("ok"))

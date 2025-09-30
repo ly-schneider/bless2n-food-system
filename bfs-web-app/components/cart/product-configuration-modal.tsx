@@ -85,16 +85,9 @@ export function ProductConfigurationModal({ product, isOpen, onClose, initialCon
         <DialogFooter className="flex-col gap-4 sm:flex-col">
           <div className="flex gap-2 w-full">
             <Button
-              variant="outline"
-              onClick={onClose}
-              className="flex-1"
-            >
-              Abbrechen
-            </Button>
-            <Button
               onClick={handleSave}
               disabled={!isConfigurationComplete()}
-              className="flex-1"
+              className="flex-1 rounded-pill h-12 text-base font-medium"
             >
               {editingItemId ? 'Im Warenkorb aktualisieren' : 'Zum Warenkorb hinzufügen'}
             </Button>

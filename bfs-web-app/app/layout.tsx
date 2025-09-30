@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${golosText.variable} min-h-screen overflow-x-hidden`}>
+      <body className={`${golosText.variable} min-h-screen overflow-x-hidden flex flex-col`}>
         <CartProvider>
           <Header />
           {children}

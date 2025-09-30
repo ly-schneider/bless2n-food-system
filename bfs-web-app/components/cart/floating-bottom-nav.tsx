@@ -11,6 +11,8 @@ import { useCart } from "@/contexts/cart-context"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { formatChf } from "@/lib/utils"
 import { CartItem } from "@/types/cart"
+import { useBestMenuSuggestion } from "@/components/cart/use-best-menu-suggestion"
+import { InlineMenuGroup } from "@/components/cart/inline-menu-group"
 import { ProductConfigurationModal } from "./product-configuration-modal"
 
 export function FloatingBottomNav() {
@@ -19,13 +21,14 @@ export function FloatingBottomNav() {
   const [editingItem, setEditingItem] = useState<CartItem | null>(null)
   const isMobile = useIsMobile()
   const router = useRouter()
+  const { suggestion, contiguous, startIndex, endIndex } = useBestMenuSuggestion()
 
   const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0)
 
   return (
     totalItems > 0 && (
       <>
-        <div className="border-border fixed right-0 bottom-0 left-0 z-50 border-t bg-white p-4 shadow-lg">
+        <div className="fixed right-0 bottom-0 left-0 z-50 p-4">
           <div className="container mx-auto flex items-center justify-center gap-3">
             <Button
               className="rounded-pill h-12 text-base font-medium flex-1 lg:flex-none lg:max-w-xs px-6 md:px-8 lg:px-10 xl:px-12"
@@ -60,23 +63,65 @@ export function FloatingBottomNav() {
                     <p className="text-muted-foreground mt-1 text-sm">Fügen Sie Produkte hinzu, um zu beginnen</p>
                   </div>
                 ) : (
-                  <div className="divide-border -my-5 flex flex-col divide-y [&>*]:py-5">
-                    {cart.items.map((item) => (
-                      <CartItemDisplay
-                        key={item.id}
-                        item={item}
-                        onUpdateQuantity={(quantity) => updateQuantity(item.id, quantity)}
-                        onRemove={() => removeFromCart(item.id)}
-                        onEdit={() => setEditingItem(item)}
-                      />
-                    ))}
+                  <div className="mt-3 -mb-5 flex flex-col divide-y divide-border [&>*]:py-5">
+                    {(() => {
+                      const rows: React.ReactNode[] = []
+                      if (suggestion && contiguous && startIndex >= 0 && endIndex >= startIndex) {
+                        for (let i = 0; i < startIndex; i++) {
+                          const item = cart.items[i]!
+                          rows.push(
+                            <CartItemDisplay
+                              key={item.id}
+                              item={item}
+                              onUpdateQuantity={(q) => updateQuantity(item.id, q)}
+                              onRemove={() => removeFromCart(item.id)}
+                              onEdit={() => setEditingItem(item)}
+                            />
+                          )
+                        }
+                        const grouped = cart.items.slice(startIndex, endIndex + 1)
+                        rows.push(
+                          <InlineMenuGroup
+                            key={`group-${grouped.map((g) => g.id).join('-')}`}
+                            suggestion={suggestion}
+                            items={grouped}
+                            onEditItem={(it) => setEditingItem(it)}
+                          />
+                        )
+                        for (let i = endIndex + 1; i < cart.items.length; i++) {
+                          const item = cart.items[i]!
+                          rows.push(
+                            <CartItemDisplay
+                              key={item.id}
+                              item={item}
+                              onUpdateQuantity={(q) => updateQuantity(item.id, q)}
+                              onRemove={() => removeFromCart(item.id)}
+                              onEdit={() => setEditingItem(item)}
+                            />
+                          )
+                        }
+                      } else {
+                        for (const item of cart.items) {
+                          rows.push(
+                            <CartItemDisplay
+                              key={item.id}
+                              item={item}
+                              onUpdateQuantity={(q) => updateQuantity(item.id, q)}
+                              onRemove={() => removeFromCart(item.id)}
+                              onEdit={() => setEditingItem(item)}
+                            />
+                          )
+                        }
+                      }
+                      return rows
+                    })()}
                   </div>
                 )}
               </div>
 
               {cart.items.length > 0 && (
                 <DrawerFooter>
-                  <div className="border-border mt-12 flex flex-col gap-3 border-t pt-4">
+                  <div className="border-border flex flex-col gap-3 border-t pt-4">
                     <div className="flex items-center justify-between pb-2">
                       <div className="flex flex-col">
                         <p className="text-lg font-semibold">Total</p>
@@ -84,7 +129,7 @@ export function FloatingBottomNav() {
                       </div>
                       <p className="text-lg font-semibold">{formatChf(cart.totalCents)}</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2">
                       <Button
                         className="rounded-pill h-12 flex-1 text-base font-medium lg:max-w-xs"
                         onClick={() => {
@@ -115,23 +160,65 @@ export function FloatingBottomNav() {
                     <p className="text-muted-foreground mt-1 text-sm">Fügen Sie Produkte hinzu, um zu beginnen</p>
                   </div>
                 ) : (
-                  <div className="divide-border -my-5 flex flex-col divide-y [&>*]:py-5">
-                    {cart.items.map((item) => (
-                      <CartItemDisplay
-                        key={item.id}
-                        item={item}
-                        onUpdateQuantity={(quantity) => updateQuantity(item.id, quantity)}
-                        onRemove={() => removeFromCart(item.id)}
-                        onEdit={() => setEditingItem(item)}
-                      />
-                    ))}
+                  <div className="mt-3 -mb-5 flex flex-col divide-y divide-border [&>*]:py-5">
+                    {(() => {
+                      const rows: React.ReactNode[] = []
+                      if (suggestion && contiguous && startIndex >= 0 && endIndex >= startIndex) {
+                        for (let i = 0; i < startIndex; i++) {
+                          const item = cart.items[i]!
+                          rows.push(
+                            <CartItemDisplay
+                              key={item.id}
+                              item={item}
+                              onUpdateQuantity={(q) => updateQuantity(item.id, q)}
+                              onRemove={() => removeFromCart(item.id)}
+                              onEdit={() => setEditingItem(item)}
+                            />
+                          )
+                        }
+                        const grouped = cart.items.slice(startIndex, endIndex + 1)
+                        rows.push(
+                          <InlineMenuGroup
+                            key={`group-${grouped.map((g) => g.id).join('-')}`}
+                            suggestion={suggestion}
+                            items={grouped}
+                            onEditItem={(it) => setEditingItem(it)}
+                          />
+                        )
+                        for (let i = endIndex + 1; i < cart.items.length; i++) {
+                          const item = cart.items[i]!
+                          rows.push(
+                            <CartItemDisplay
+                              key={item.id}
+                              item={item}
+                              onUpdateQuantity={(q) => updateQuantity(item.id, q)}
+                              onRemove={() => removeFromCart(item.id)}
+                              onEdit={() => setEditingItem(item)}
+                            />
+                          )
+                        }
+                      } else {
+                        for (const item of cart.items) {
+                          rows.push(
+                            <CartItemDisplay
+                              key={item.id}
+                              item={item}
+                              onUpdateQuantity={(q) => updateQuantity(item.id, q)}
+                              onRemove={() => removeFromCart(item.id)}
+                              onEdit={() => setEditingItem(item)}
+                            />
+                          )
+                        }
+                      }
+                      return rows
+                    })()}
                   </div>
                 )}
               </div>
 
               {cart.items.length > 0 && (
                 <SheetFooter>
-                  <div className="border-border mt-12 flex w-full flex-col gap-3 border-t pt-4">
+                  <div className="border-border flex w-full flex-col gap-3 border-t pt-4">
                     <div className="flex items-center justify-between pb-2">
                       <div className="flex flex-col">
                         <p className="text-lg font-semibold">Total</p>
@@ -139,7 +226,7 @@ export function FloatingBottomNav() {
                       </div>
                       <p className="text-lg font-semibold">{formatChf(cart.totalCents)}</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex w-full flex-col gap-2">
                       <Button
                         className="rounded-pill h-12 w-full text-base font-medium"
                         onClick={() => {
@@ -166,6 +253,7 @@ export function FloatingBottomNav() {
             editingItemId={editingItem.id}
           />
         )}
+        
       </>
     )
   )

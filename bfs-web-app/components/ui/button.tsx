@@ -9,14 +9,14 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-background rounded-[7px] hover:bg-primary/90",
-        primary: "bg-primary text-primary-foreground rounded-[9999px] hover:bg-primary/90",
-        destructive: "bg-destructive text-white rounded-[7px] hover:bg-destructive/90",
+        default: "bg-primary text-primary-background rounded-[7px] hover:bg-primary-hover",
+        primary: "bg-primary text-primary-foreground rounded-[9999px] hover:bg-primary-hover",
+        destructive: "bg-destructive text-white rounded-[7px] hover:bg-destructive-hover",
         outline:
-          "border border-border bg-card text-card-foreground rounded-[7px] hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground rounded-[7px] hover:bg-secondary/80",
-        selected: "bg-[#353535] text-primary-foreground rounded-[7px] hover:bg-[#353535]/90",
-        ghost: "hover:bg-accent hover:text-accent-foreground rounded-[7px]",
+          "border border-border bg-card text-card-foreground rounded-[7px] hover:bg-accent-hover hover:text-accent-foreground",
+        secondary: "bg-secondary text-secondary-foreground rounded-[7px] hover:bg-secondary-hover",
+        selected: "bg-selected text-primary-foreground rounded-[7px] hover:bg-selected-hover",
+        ghost: "hover:bg-accent-hover hover:text-accent-foreground rounded-[7px]",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {

@@ -17,6 +17,8 @@ type OrderRepository interface {
     SetStripeSession(ctx context.Context, id primitive.ObjectID, sessionID string) error
     UpdateStatusAndContact(ctx context.Context, id primitive.ObjectID, status domain.OrderStatus, contactEmail *string) error
     FindByID(ctx context.Context, id primitive.ObjectID) (*domain.Order, error)
+    DeleteIfPending(ctx context.Context, id primitive.ObjectID) (bool, error)
+    FindPendingByStripeSessionID(ctx context.Context, sessionID string) (*domain.Order, error)
 }
 
 type orderRepository struct {
@@ -68,6 +70,23 @@ func (r *orderRepository) UpdateStatusAndContact(ctx context.Context, id primiti
 func (r *orderRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*domain.Order, error) {
     var o domain.Order
     err := r.collection.FindOne(ctx, bson.M{"_id": id}, options.FindOne()).Decode(&o)
+    if err != nil {
+        return nil, err
+    }
+    return &o, nil
+}
+
+func (r *orderRepository) DeleteIfPending(ctx context.Context, id primitive.ObjectID) (bool, error) {
+    res, err := r.collection.DeleteOne(ctx, bson.M{"_id": id, "status": domain.OrderStatusPending})
+    if err != nil {
+        return false, err
+    }
+    return res.DeletedCount > 0, nil
+}
+
+func (r *orderRepository) FindPendingByStripeSessionID(ctx context.Context, sessionID string) (*domain.Order, error) {
+    var o domain.Order
+    err := r.collection.FindOne(ctx, bson.M{"stripe_session_id": sessionID, "status": domain.OrderStatusPending}).Decode(&o)
     if err != nil {
         return nil, err
     }

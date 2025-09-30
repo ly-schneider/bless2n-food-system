@@ -1,11 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { CartButtons } from "@/components/cart/cart-buttons"
 import { ProductConfigurationModal } from "@/components/cart/product-configuration-modal"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { formatChf } from "@/lib/utils"
 import { ListResponse, ProductDTO } from "@/types"
+import { Info } from "lucide-react"
 
 export function MenuGrid({ products }: { products: ListResponse<ProductDTO> }) {
   const categoryOrder = {
@@ -32,6 +34,17 @@ export function MenuGrid({ products }: { products: ListResponse<ProductDTO> }) {
 
 function MenuProductCard({ product }: { product: ProductDTO }) {
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const composition = useMemo(() => {
+    if (product.type !== 'menu' || !product.menu?.slots || product.menu.slots.length === 0) return null
+    const counts = new Map<string, number>()
+    for (const slot of product.menu.slots) {
+      const name = slot.name?.trim() || 'Slot'
+      counts.set(name, (counts.get(name) || 0) + 1)
+    }
+    // Build minimal description like: "Burger + Beilage + 2× Getränk"
+    const parts = Array.from(counts.entries()).map(([name, count]) => (count > 1 ? `${count}× ${name}` : name))
+    return parts.join(' + ')
+  }, [product])
   
   const handleConfigureProduct = () => {
     setIsConfigModalOpen(true);
@@ -52,6 +65,22 @@ function MenuProductCard({ product }: { product: ProductDTO }) {
               <div className="absolute inset-0 flex items-center justify-center text-zinc-500">
                 Kein Bild
               </div>
+            )}
+            {composition && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Menüinhalt anzeigen"
+                    className="absolute top-1 right-1 z-10 inline-flex size-7 items-center justify-center rounded-full bg-white text-black shadow-sm ring-1 ring-black/10 hover:bg-white/90"
+                  >
+                    <Info className="size-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="left" align="start" sideOffset={6} className="bg-white text-black rounded-full px-3 py-1">
+                  {composition}
+                </TooltipContent>
+              </Tooltip>
             )}
           </div>
         </CardHeader>

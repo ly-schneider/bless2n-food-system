@@ -5,11 +5,14 @@ import (
     "backend/internal/domain"
     "context"
 
+    "go.mongodb.org/mongo-driver/bson"
+    "go.mongodb.org/mongo-driver/bson/primitive"
     "go.mongodb.org/mongo-driver/mongo"
 )
 
 type OrderItemRepository interface {
     InsertMany(ctx context.Context, items []*domain.OrderItem) error
+    DeleteByOrderID(ctx context.Context, id primitive.ObjectID) error
 }
 
 type orderItemRepository struct {
@@ -31,5 +34,10 @@ func (r *orderItemRepository) InsertMany(ctx context.Context, items []*domain.Or
         return nil
     }
     _, err := r.collection.InsertMany(ctx, docs)
+    return err
+}
+
+func (r *orderItemRepository) DeleteByOrderID(ctx context.Context, id primitive.ObjectID) error {
+    _, err := r.collection.DeleteMany(ctx, bson.M{"order_id": id})
     return err
 }

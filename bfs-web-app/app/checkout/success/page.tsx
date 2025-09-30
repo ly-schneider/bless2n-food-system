@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/contexts/cart-context"
+import { addOrder } from "@/lib/orders-storage"
 
 export default function CheckoutSuccessPage() {
   const sp = useSearchParams()
@@ -19,6 +20,13 @@ export default function CheckoutSuccessPage() {
       clearCart()
     }
   }, [clearCart])
+
+  // Persist order id for anonymous users
+  useEffect(() => {
+    if (orderId) {
+      addOrder(orderId)
+    }
+  }, [orderId])
 
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center gap-10 px-4 pb-28">
@@ -36,7 +44,7 @@ export default function CheckoutSuccessPage() {
       <div className="fixed inset-x-0 bottom-0 p-4">
         <Button
           className="rounded-pill w-full h-12 text-base font-medium"
-          onClick={() => router.push(orderId ? `/checkout/qr?order_id=${orderId}` : "/")}
+          onClick={() => router.push(orderId ? `/checkout/qr?order_id=${orderId}&from=success` : "/")}
         >
           Weiter
         </Button>
