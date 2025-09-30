@@ -1,12 +1,12 @@
 "use client"
 
+import Image from "next/image";
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -130,10 +130,13 @@ function MenuSlotSelector({ slot, selectedProductId, onSelect }: MenuSlotSelecto
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   {item.image && (
-                    <div className="w-12 h-12 bg-gray-200 rounded-lg overflow-hidden">
-                      <img
+                    <div className="w-12 h-12 bg-gray-200 rounded-lg overflow-hidden relative">
+                      <Image
                         src={item.image}
                         alt={item.name}
+                        fill
+                        sizes="48px"
+                        quality={90}
                         className="w-full h-full object-cover"
                       />
                     </div>

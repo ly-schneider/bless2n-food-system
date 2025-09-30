@@ -1,5 +1,7 @@
 "use client"
 
+import { Info } from "lucide-react"
+import Image from "next/image"
 import { useMemo, useState } from "react"
 import { CartButtons } from "@/components/cart/cart-buttons"
 import { ProductConfigurationModal } from "@/components/cart/product-configuration-modal"
@@ -7,7 +9,6 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { formatChf } from "@/lib/utils"
 import { ListResponse, ProductDTO } from "@/types"
-import { Info } from "lucide-react"
 
 export function MenuGrid({ products }: { products: ListResponse<ProductDTO> }) {
   const categoryOrder = {
@@ -56,9 +57,12 @@ function MenuProductCard({ product }: { product: ProductDTO }) {
         <CardHeader className="p-2">
           <div className="relative aspect-video rounded-t-lg bg-[#cec9c6] rounded-[11px]">
             {product.image ? (
-              <img
+              <Image
                 src={product.image}
                 alt={"Produktbild von " + product.name}
+                fill
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                quality={90}
                 className="w-full h-full object-cover rounded-[11px]"
               />
             ) : (

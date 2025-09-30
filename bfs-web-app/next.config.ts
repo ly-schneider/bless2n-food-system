@@ -13,6 +13,15 @@ const config: NextConfig = {
       fullUrl: true,
     },
   },
+  images: {
+    formats: ["image/avif", "image/webp"],
+    remotePatterns: [
+      { protocol: "http", hostname: "localhost", port: "8080", pathname: "/**" },
+      { protocol: "http", hostname: "127.0.0.1", port: "8080", pathname: "/**" },
+      // Allow any https source (CDNs, object storage) used by the API
+      { protocol: "https", hostname: "**", pathname: "/**" },
+    ],
+  },
   rewrites: async () => [
     { source: "/healthz", destination: `${API_BASE}/ping` },
     { source: "/api/healthz", destination: `${API_BASE}/ping` },

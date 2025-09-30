@@ -1,8 +1,8 @@
 import "styles/tailwind.css"
 import type { Metadata } from "next"
 import { Golos_Text } from "next/font/google"
-import { CartProvider } from "@/contexts/cart-context"
 import Header from "@/components/layout/header"
+import { CartProvider } from "@/contexts/cart-context"
 
 const golosText = Golos_Text({
   weight: ["500"],

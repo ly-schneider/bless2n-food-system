@@ -1,6 +1,7 @@
 "use client"
 
 import { Minus, Pen, Plus, Trash2 } from "lucide-react"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { formatChf } from "@/lib/utils"
 import { CartItem } from "@/types/cart"
@@ -19,10 +20,13 @@ export function CartItemDisplay({ item, onUpdateQuantity, onRemove, onEdit }: Ca
   return (
     <div className="flex items-center gap-3">
       {item.product.image && (
-        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[11px] bg-[#cec9c6]">
-          <img
+        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[11px] bg-[#cec9c6] relative">
+          <Image
             src={item.product.image}
             alt={"Produktbild von " + item.product.name}
+            fill
+            sizes="80px"
+            quality={90}
             className="h-full w-full rounded-[11px] object-cover"
           />
         </div>

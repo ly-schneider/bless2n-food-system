@@ -4,14 +4,14 @@ import { ArrowLeft, ShoppingCart } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
 import { CartItemDisplay } from "@/components/cart/cart-item-display"
+import { InlineMenuGroup } from "@/components/cart/inline-menu-group"
 import { ProductConfigurationModal } from "@/components/cart/product-configuration-modal"
+import { useBestMenuSuggestion } from "@/components/cart/use-best-menu-suggestion"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/contexts/cart-context"
+import { createCheckoutSession } from "@/lib/api/payments"
 import { formatChf } from "@/lib/utils"
 import { CartItem } from "@/types/cart"
-import { createCheckoutSession } from "@/lib/api/payments"
-import { useBestMenuSuggestion } from "@/components/cart/use-best-menu-suggestion"
-import { InlineMenuGroup } from "@/components/cart/inline-menu-group"
 
 export default function CheckoutPage() {
   const { cart, updateQuantity, removeFromCart } = useCart()

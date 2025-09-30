@@ -1,11 +1,11 @@
 "use client"
 
+import { ArrowLeft, ArrowRight, LayoutList, QrCode } from "lucide-react"
 import Link from "next/link"
-import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getOrders, type StoredOrder } from "@/lib/orders-storage"
-import { QrCode, ArrowRight, ArrowLeft, LayoutList } from "lucide-react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
+import { getOrders, type StoredOrder } from "@/lib/orders-storage"
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<StoredOrder[]>([])

@@ -1,7 +1,8 @@
 "use client"
 
+import Image from "next/image"
 import { toDataURL } from "qrcode"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 
 type Props = { value: string; size?: number; className?: string }
 
@@ -32,5 +33,14 @@ export default function QRCode({ value, size = 220, className }: Props) {
   }, [value, size])
 
   if (!src) return null
-  return <img src={src} alt="QR Code" width={size} height={size} className={className} />
+  return (
+    <Image
+      src={src}
+      alt="QR Code"
+      width={size}
+      height={size}
+      className={className}
+      unoptimized
+    />
+  )
 }

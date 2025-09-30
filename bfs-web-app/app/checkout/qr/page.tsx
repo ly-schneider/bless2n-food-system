@@ -1,12 +1,12 @@
 "use client"
 
-import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
-import QRCode from "@/components/qrcode"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useRef } from "react"
-import { addOrder } from "@/lib/orders-storage"
+import QRCode from "@/components/qrcode"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/contexts/cart-context"
+import { addOrder } from "@/lib/orders-storage"
 
 export default function CheckoutQRPage() {
   const sp = useSearchParams()

@@ -1,5 +1,7 @@
 "use client"
 
+import { EllipsisVertical, LayoutList } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
@@ -9,7 +11,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { EllipsisVertical, LayoutList } from "lucide-react"
 
 export default function Header() {
   return (
@@ -19,7 +20,7 @@ export default function Header() {
           {/* Left: Logo */}
           <Link href="/" className="flex items-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-full">
-              <img src="/assets/images/blessthun.png" alt="BlessThun Logo" className="h-12 w-12" />
+              <Image src="/assets/images/blessthun.png" alt="BlessThun Logo" width={48} height={48} className="h-12 w-12" />
             </div>
           </Link>
 
