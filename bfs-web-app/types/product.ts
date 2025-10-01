@@ -24,6 +24,9 @@ export interface ProductSummaryDTO {
   image: string | null;
   priceCents: Cents;
   isActive: boolean;
+  availableQuantity?: number | null;
+  isAvailable?: boolean;
+  isLowStock?: boolean;
 }
 
 export interface ProductDTO extends ProductSummaryDTO {

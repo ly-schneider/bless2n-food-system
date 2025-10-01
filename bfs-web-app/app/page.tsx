@@ -5,7 +5,7 @@ import { listProducts } from "@/lib/api/products"
 import { ListResponse, ProductDTO } from "@/types"
 
 export const metadata: Metadata = {
-  title: "Menu - Bless2n Food System",
+  title: "Menu - BlessThun Food",
   description: "Explore our delicious menu of fresh, carefully prepared meals.",
 }
 

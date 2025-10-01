@@ -59,12 +59,13 @@ type paymentService struct {
     menuSlotRepo  repository.MenuSlotRepository
     menuSlotItemRepo repository.MenuSlotItemRepository
     userRepo      repository.UserRepository
+    inventoryRepo repository.InventoryLedgerRepository
 }
 
-func NewPaymentService(cfg config.Config, orderRepo repository.OrderRepository, orderItemRepo repository.OrderItemRepository, productRepo repository.ProductRepository, menuSlotRepo repository.MenuSlotRepository, menuSlotItemRepo repository.MenuSlotItemRepository, userRepo repository.UserRepository) PaymentService {
+func NewPaymentService(cfg config.Config, orderRepo repository.OrderRepository, orderItemRepo repository.OrderItemRepository, productRepo repository.ProductRepository, menuSlotRepo repository.MenuSlotRepository, menuSlotItemRepo repository.MenuSlotItemRepository, userRepo repository.UserRepository, inventoryRepo repository.InventoryLedgerRepository) PaymentService {
     // Set global Stripe key for SDK
     stripe.Key = cfg.Stripe.SecretKey
-    return &paymentService{cfg: cfg, orderRepo: orderRepo, orderItemRepo: orderItemRepo, productRepo: productRepo, menuSlotRepo: menuSlotRepo, menuSlotItemRepo: menuSlotItemRepo, userRepo: userRepo}
+    return &paymentService{cfg: cfg, orderRepo: orderRepo, orderItemRepo: orderItemRepo, productRepo: productRepo, menuSlotRepo: menuSlotRepo, menuSlotItemRepo: menuSlotItemRepo, userRepo: userRepo, inventoryRepo: inventoryRepo}
 }
 
 func (s *paymentService) CreateTWINTCheckoutSession(ctx context.Context, p CreateCheckoutSessionParams) (*stripe.CheckoutSession, error) {
@@ -310,6 +311,35 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
         return nil, fmt.Errorf("insert order items: %w", err)
     }
 
+    // Consume inventory immediately on pending order creation
+    // For parent simple products: consume; for menu parents: skip; for children: always consume
+    // Build consumption entries from created items
+    entries := make([]*domain.InventoryLedger, 0)
+    for _, oi := range oitems {
+        if oi.ProductID.IsZero() { continue }
+        consume := false
+        if oi.ParentItemID == nil {
+            // parent item: check product type
+            if p := pm[oi.ProductID]; p != nil && p.Type == domain.ProductTypeSimple {
+                consume = true
+            }
+        } else {
+            // child item (menu component) always consumes
+            consume = true
+        }
+        if consume && oi.Quantity > 0 {
+            entries = append(entries, &domain.InventoryLedger{
+                ProductID: oi.ProductID,
+                Delta:     -oi.Quantity,
+                Reason:    domain.InventoryReasonSale,
+            })
+        }
+    }
+    // Best-effort append; if this fails, return error to avoid placing order without reservation
+    if err := s.inventoryRepo.AppendMany(ctx, entries); err != nil {
+        return nil, fmt.Errorf("reserve inventory: %w", err)
+    }
+
     // Prepare Stripe line items (only priced parent items)
     lis := make([]CheckoutItem, 0)
     for _, oi := range oitems {
@@ -542,12 +572,42 @@ func (s *paymentService) CleanupPendingOrderByID(ctx context.Context, clientRefe
     if clientReferenceID == "" { return fmt.Errorf("missing order id") }
     oid, err := primitive.ObjectIDFromHex(clientReferenceID)
     if err != nil { return fmt.Errorf("invalid order id: %w", err) }
-    deleted, err := s.orderRepo.DeleteIfPending(ctx, oid)
+    // Check order status; only act on pending
+    ord, err := s.orderRepo.FindByID(ctx, oid)
     if err != nil { return err }
-    if deleted {
-        // best-effort cleanup of items
-        _ = s.orderItemRepo.DeleteByOrderID(ctx, oid)
+    if ord.Status != domain.OrderStatusPending { return nil }
+    // Load items to release inventory
+    items, _ := s.orderItemRepo.FindByOrderID(ctx, oid)
+    if len(items) > 0 {
+        // Load product types to discriminate menu vs simple
+        pidSet := map[primitive.ObjectID]struct{}{}
+        for _, it := range items { if !it.ProductID.IsZero() { pidSet[it.ProductID] = struct{}{} } }
+        pids := make([]primitive.ObjectID, 0, len(pidSet))
+        for id := range pidSet { pids = append(pids, id) }
+        pmap := map[primitive.ObjectID]*domain.Product{}
+        if len(pids) > 0 {
+            if prods, err := s.productRepo.GetByIDs(ctx, pids); err == nil {
+                for _, p := range prods { pmap[p.ID] = p }
+            }
+        }
+        rel := make([]*domain.InventoryLedger, 0)
+        for _, it := range items {
+            if it.ProductID.IsZero() || it.Quantity <= 0 { continue }
+            if it.ParentItemID == nil {
+                // parent: release only if simple (consumed earlier)
+                if p := pmap[it.ProductID]; p != nil && p.Type == domain.ProductTypeSimple {
+                    rel = append(rel, &domain.InventoryLedger{ ProductID: it.ProductID, Delta: it.Quantity, Reason: domain.InventoryReasonCorrection })
+                }
+            } else {
+                // child always release
+                rel = append(rel, &domain.InventoryLedger{ ProductID: it.ProductID, Delta: it.Quantity, Reason: domain.InventoryReasonCorrection })
+            }
+        }
+        _ = s.inventoryRepo.AppendMany(ctx, rel)
     }
+    // delete items first, then order
+    _ = s.orderItemRepo.DeleteByOrderID(ctx, oid)
+    _, _ = s.orderRepo.DeleteIfPending(ctx, oid)
     return nil
 }
 
@@ -556,6 +616,33 @@ func (s *paymentService) CleanupPendingOrderBySessionID(ctx context.Context, ses
     if sessionID == "" { return fmt.Errorf("missing session id") }
     o, err := s.orderRepo.FindPendingByStripeSessionID(ctx, sessionID)
     if err != nil { return nil } // nothing to do if not found
+    // release inventory best-effort
+    items, _ := s.orderItemRepo.FindByOrderID(ctx, o.ID)
+    if len(items) > 0 {
+        // load product types
+        pidSet := map[primitive.ObjectID]struct{}{}
+        for _, it := range items { if !it.ProductID.IsZero() { pidSet[it.ProductID] = struct{}{} } }
+        pids := make([]primitive.ObjectID, 0, len(pidSet))
+        for id := range pidSet { pids = append(pids, id) }
+        pmap := map[primitive.ObjectID]*domain.Product{}
+        if len(pids) > 0 {
+            if prods, err := s.productRepo.GetByIDs(ctx, pids); err == nil {
+                for _, p := range prods { pmap[p.ID] = p }
+            }
+        }
+        rel := make([]*domain.InventoryLedger, 0)
+        for _, it := range items {
+            if it.ProductID.IsZero() || it.Quantity <= 0 { continue }
+            if it.ParentItemID == nil {
+                if p := pmap[it.ProductID]; p != nil && p.Type == domain.ProductTypeSimple {
+                    rel = append(rel, &domain.InventoryLedger{ ProductID: it.ProductID, Delta: it.Quantity, Reason: domain.InventoryReasonCorrection })
+                }
+            } else {
+                rel = append(rel, &domain.InventoryLedger{ ProductID: it.ProductID, Delta: it.Quantity, Reason: domain.InventoryReasonCorrection })
+            }
+        }
+        _ = s.inventoryRepo.AppendMany(ctx, rel)
+    }
     // delete items first, then order
     _ = s.orderItemRepo.DeleteByOrderID(ctx, o.ID)
     _, _ = s.orderRepo.DeleteIfPending(ctx, o.ID)

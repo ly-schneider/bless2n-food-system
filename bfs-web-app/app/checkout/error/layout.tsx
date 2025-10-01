@@ -1,11 +1,11 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Bezahlung fehlgeschlagen - Bless2n Food System",
+  title: "Bezahlung fehlgeschlagen - BlessThun Food",
   description: "Die Zahlung ist fehlgeschlagen. Bitte versuche es erneut oder kehre zum Warenkorb zurück.",
   alternates: { canonical: "/checkout/error" },
   openGraph: {
-    title: "Bezahlung fehlgeschlagen | Bless2n Food System",
+    title: "Bezahlung fehlgeschlagen | BlessThun Food",
     description: "Zahlung fehlgeschlagen – zurück zum Warenkorb oder erneut versuchen.",
     url: "/checkout/error",
     type: "website",

@@ -204,6 +204,11 @@ func ensureIndexes(ctx context.Context, db *mongo.Database, logger *zap.Logger) 
 		return fmt.Errorf("failed to create station_products indexes: %w", err)
 	}
 
+	// Inventory ledger indexes
+	if err := ensureInventoryIndexes(ctx, db, logger); err != nil {
+		return err
+	}
+
 	logger.Info("Indexes ensured successfully")
 	return nil
 }
@@ -263,10 +268,57 @@ func generateBulkData(ctx context.Context, db *mongo.Database, logger *zap.Logge
 		return fmt.Errorf("failed to generate station products: %w", err)
 	}
 
+	// Seed inventory opening balance: +50 for each simple product
+	if err := seedInventoryOpeningBalance(ctx, db, logger, 50); err != nil {
+		return fmt.Errorf("failed to seed inventory opening balance: %w", err)
+	}
+
 	// Skip orders generation (0 orders as specified)
 	logger.Info("Skipping orders generation as requested (0 orders)")
 
 	return nil
+}
+
+// Additional indexes for inventory ledger
+func ensureInventoryIndexes(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {
+    coll := db.Collection("inventory_ledger")
+    idx := []mongo.IndexModel{
+        { Keys: bson.D{{Key: "product_id", Value: 1}} },
+        { Keys: bson.D{{Key: "created_at", Value: 1}} },
+        { Keys: bson.D{{Key: "product_id", Value: 1}, {Key: "created_at", Value: -1}} },
+    }
+    if _, err := coll.Indexes().CreateMany(ctx, idx); err != nil {
+        return fmt.Errorf("failed to create inventory_ledger indexes: %w", err)
+    }
+    return nil
+}
+
+func seedInventoryOpeningBalance(ctx context.Context, db *mongo.Database, logger *zap.Logger, qty int) error {
+    if qty <= 0 { return nil }
+    products := db.Collection("products")
+    ledger := db.Collection("inventory_ledger")
+    cur, err := products.Find(ctx, bson.M{"type": "simple"})
+    if err != nil { return err }
+    defer func() { _ = cur.Close(ctx) }()
+    type prod struct { ID primitive.ObjectID `bson:"_id"` }
+    entries := make([]interface{}, 0)
+    now := time.Now().UTC()
+    for cur.Next(ctx) {
+        var p prod
+        if err := cur.Decode(&p); err != nil { return err }
+        entries = append(entries, bson.M{
+            "_id":        primitive.NewObjectID(),
+            "product_id": p.ID,
+            "delta":      qty,
+            "reason":     "opening_balance",
+            "created_at": now,
+        })
+    }
+    if err := cur.Err(); err != nil { return err }
+    if len(entries) == 0 { return nil }
+    if _, err := ledger.InsertMany(ctx, entries); err != nil { return err }
+    logger.Info("Seeded inventory opening balance", zap.Int("entries", len(entries)), zap.Int("qty", qty))
+    return nil
 }
 
 func generateCustomers(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {

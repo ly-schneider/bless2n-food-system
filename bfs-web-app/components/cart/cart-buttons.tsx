@@ -9,9 +9,10 @@ interface CartButtonsProps {
   product: ProductDTO;
   configuration?: CartItemConfiguration;
   onConfigureProduct?: () => void;
+  disabled?: boolean;
 }
 
-export function CartButtons({ product, configuration, onConfigureProduct }: CartButtonsProps) {
+export function CartButtons({ product, configuration, onConfigureProduct, disabled }: CartButtonsProps) {
   const { addToCart, updateQuantity, getItemQuantity, getTotalProductQuantity, cart } = useCart();
   
   // For menu products without specific configuration, show total quantity across all configurations
@@ -21,7 +22,11 @@ export function CartButtons({ product, configuration, onConfigureProduct }: Cart
       ? getTotalProductQuantity(product.id)
       : getItemQuantity(product.id, configuration);
   
+  const maxQty = typeof product.availableQuantity === 'number' ? product.availableQuantity : undefined;
+  const reachedMax = typeof maxQty === 'number' && quantity >= maxQty;
+
   const handleAdd = () => {
+    if (disabled || reachedMax) return;
     if (product.type === "menu" && !configuration && onConfigureProduct) {
       onConfigureProduct();
     } else {
@@ -59,6 +64,7 @@ export function CartButtons({ product, configuration, onConfigureProduct }: Cart
   };
   
   const handleIncrease = () => {
+    if (disabled || reachedMax) return;
     if (configuration) {
       // For specific configuration, update that item
       const itemId = `${product.id}-${JSON.stringify(configuration)}`;
@@ -87,7 +93,8 @@ export function CartButtons({ product, configuration, onConfigureProduct }: Cart
         onClick={handleAdd}
         size="icon"
         variant="ghost"
-        className="rounded-full bg-foreground text-background hover:bg-foreground hover:text-background size-8 cursor-pointer"
+        disabled={disabled || reachedMax}
+        className="rounded-full bg-foreground text-background hover:bg-foreground hover:text-background size-8 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <Plus className="size-4" />
       </Button>
@@ -113,7 +120,8 @@ export function CartButtons({ product, configuration, onConfigureProduct }: Cart
         onClick={handleIncrease}
         size="icon"
         variant="ghost"
-        className="rounded-full bg-foreground text-background hover:bg-foreground hover:text-background size-8 cursor-pointer"
+        disabled={disabled || reachedMax}
+        className="rounded-full bg-foreground text-background hover:bg-foreground hover:text-background size-8 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <Plus className="size-4" />
       </Button>

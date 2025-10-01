@@ -1,11 +1,11 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Zahlung - Bless2n Food System",
+  title: "Zahlung - BlessThun Food",
   description: "Mit TWINT via Stripe Payment Element bezahlen.",
   alternates: { canonical: "/checkout/payment" },
   openGraph: {
-    title: "Zahlung | Bless2n Food System",
+    title: "Zahlung | BlessThun Food",
     description: "TWINT Zahlung über Stripe Payment Element starten.",
     url: "/checkout/payment",
     type: "website",

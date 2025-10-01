@@ -1,7 +1,7 @@
 import { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Station Portal - Bless2n Food System",
+  title: "Station Portal - BlessThun Food",
   description: "Station access and management portal",
 }
 

@@ -13,28 +13,31 @@ import (
 )
 
 type ProductService interface {
-	ListProducts(ctx context.Context, categoryID *string, limit int, offset int) (*domain.ListResponse[domain.ProductDTO], error)
+    ListProducts(ctx context.Context, categoryID *string, limit int, offset int) (*domain.ListResponse[domain.ProductDTO], error)
 }
 
 type productService struct {
-	productRepo      repository.ProductRepository
-	categoryRepo     repository.CategoryRepository
-	menuSlotRepo     repository.MenuSlotRepository
-	menuSlotItemRepo repository.MenuSlotItemRepository
+    productRepo      repository.ProductRepository
+    categoryRepo     repository.CategoryRepository
+    menuSlotRepo     repository.MenuSlotRepository
+    menuSlotItemRepo repository.MenuSlotItemRepository
+    inventoryRepo    repository.InventoryLedgerRepository
 }
 
 func NewProductService(
-	productRepo repository.ProductRepository,
-	categoryRepo repository.CategoryRepository,
-	menuSlotRepo repository.MenuSlotRepository,
-	menuSlotItemRepo repository.MenuSlotItemRepository,
+    productRepo repository.ProductRepository,
+    categoryRepo repository.CategoryRepository,
+    menuSlotRepo repository.MenuSlotRepository,
+    menuSlotItemRepo repository.MenuSlotItemRepository,
+    inventoryRepo repository.InventoryLedgerRepository,
 ) ProductService {
-	return &productService{
-		productRepo:      productRepo,
-		categoryRepo:     categoryRepo,
-		menuSlotRepo:     menuSlotRepo,
-		menuSlotItemRepo: menuSlotItemRepo,
-	}
+    return &productService{
+        productRepo:      productRepo,
+        categoryRepo:     categoryRepo,
+        menuSlotRepo:     menuSlotRepo,
+        menuSlotItemRepo: menuSlotItemRepo,
+        inventoryRepo:    inventoryRepo,
+    }
 }
 
 func (s *productService) ListProducts(
@@ -123,22 +126,36 @@ func (s *productService) ListProducts(
 		}
 	}
 
-	optionProductsByID := make(map[primitive.ObjectID]*domain.Product, len(optionProdIDs))
-	optionCatIDs := make(map[primitive.ObjectID]struct{}, len(optionProdIDs))
-	if len(optionProdIDs) > 0 {
-		ids := make([]primitive.ObjectID, 0, len(optionProdIDs))
-		for id := range optionProdIDs {
-			ids = append(ids, id)
-		}
-		optProducts, err := s.productRepo.GetByIDs(ctx, ids)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load option products: %w", err)
-		}
-		for _, op := range optProducts {
-			optionProductsByID[op.ID] = op
-			optionCatIDs[op.CategoryID] = struct{}{}
-		}
-	}
+    optionProductsByID := make(map[primitive.ObjectID]*domain.Product, len(optionProdIDs))
+    optionCatIDs := make(map[primitive.ObjectID]struct{}, len(optionProdIDs))
+    if len(optionProdIDs) > 0 {
+        ids := make([]primitive.ObjectID, 0, len(optionProdIDs))
+        for id := range optionProdIDs {
+            ids = append(ids, id)
+        }
+        optProducts, err := s.productRepo.GetByIDs(ctx, ids)
+        if err != nil {
+            return nil, fmt.Errorf("failed to load option products: %w", err)
+        }
+        for _, op := range optProducts {
+            optionProductsByID[op.ID] = op
+            optionCatIDs[op.CategoryID] = struct{}{}
+        }
+    }
+
+    // Compute availability for option products (simple items used in menus)
+    optionSimpleIDs := make([]primitive.ObjectID, 0)
+    for _, op := range optionProductsByID {
+        if op != nil && op.Type == domain.ProductTypeSimple {
+            optionSimpleIDs = append(optionSimpleIDs, op.ID)
+        }
+    }
+    optionStockByID := map[primitive.ObjectID]int64{}
+    if len(optionSimpleIDs) > 0 && s.inventoryRepo != nil {
+        if sums, err := s.inventoryRepo.SumByProductIDs(ctx, optionSimpleIDs); err == nil {
+            optionStockByID = sums
+        }
+    }
 
 	allCatIDs := make([]primitive.ObjectID, 0, len(baseCatIDs)+len(optionCatIDs))
 	for id := range baseCatIDs {
@@ -173,18 +190,42 @@ func (s *productService) ListProducts(
 		return domain.CategoryDTO{ID: id.Hex(), Name: "", IsActive: false}
 	}
 
-	for _, p := range products {
-		summary := domain.ProductSummaryDTO{
-			ID:         p.ID.Hex(),
-			Type:       domain.ProductType(p.Type),
-			Name:       p.Name,
-			Image:      p.Image,
-			PriceCents: domain.Cents(p.PriceCents),
-			IsActive:   p.IsActive,
-			Category:   toCatDTO(p.CategoryID),
-		}
+    // Precompute availability for simple products
+    simpleIDs := make([]primitive.ObjectID, 0)
+    for _, p := range products {
+        if p.Type == domain.ProductTypeSimple {
+            simpleIDs = append(simpleIDs, p.ID)
+        }
+    }
+    stockByID := map[primitive.ObjectID]int64{}
+    if len(simpleIDs) > 0 && s.inventoryRepo != nil {
+        if sums, err := s.inventoryRepo.SumByProductIDs(ctx, simpleIDs); err == nil {
+            stockByID = sums
+        }
+    }
 
-		dto := domain.ProductDTO{ProductSummaryDTO: summary}
+    for _, p := range products {
+        summary := domain.ProductSummaryDTO{
+            ID:         p.ID.Hex(),
+            Type:       domain.ProductType(p.Type),
+            Name:       p.Name,
+            Image:      p.Image,
+            PriceCents: domain.Cents(p.PriceCents),
+            IsActive:   p.IsActive,
+            Category:   toCatDTO(p.CategoryID),
+        }
+        // Attach availability for simple products
+        if p.Type == domain.ProductTypeSimple {
+            qty64 := stockByID[p.ID]
+            qty := int(qty64)
+            available := qty > 0
+            low := available && qty <= 10
+            summary.AvailableQuantity = &qty
+            summary.IsAvailable = &available
+            summary.IsLowStock = &low
+        }
+
+        dto := domain.ProductDTO{ProductSummaryDTO: summary}
 
 		if p.Type == domain.ProductTypeMenu {
 			if slots := slotsByMenu[p.ID]; len(slots) > 0 {
@@ -198,27 +239,39 @@ func (s *productService) ListProducts(
 					if items := itemsBySlot[sl.ID]; len(items) > 0 {
 						slotDTO.MenuSlotItem = make([]domain.ProductSummaryDTO, 0, len(items))
 						for _, it := range items {
-							if op := optionProductsByID[it.ProductID]; op != nil {
-								slotDTO.MenuSlotItem = append(slotDTO.MenuSlotItem, domain.ProductSummaryDTO{
-									ID:         op.ID.Hex(),
-									Type:       domain.ProductType(op.Type),
-									Name:       op.Name,
-									Image:      op.Image,
-									PriceCents: domain.Cents(op.PriceCents),
-									IsActive:   op.IsActive,
-									Category:   toCatDTO(op.CategoryID),
-								})
-							}
-						}
-					}
-					menu.Slots = append(menu.Slots, slotDTO)
-				}
-				dto.Menu = &menu
+                    if op := optionProductsByID[it.ProductID]; op != nil {
+                        // Base summary
+                        sum := domain.ProductSummaryDTO{
+                            ID:         op.ID.Hex(),
+                            Type:       domain.ProductType(op.Type),
+                            Name:       op.Name,
+                            Image:      op.Image,
+                            PriceCents: domain.Cents(op.PriceCents),
+                            IsActive:   op.IsActive,
+                            Category:   toCatDTO(op.CategoryID),
+                        }
+                        // Attach stock for simple option products
+                        if op.Type == domain.ProductTypeSimple {
+                            qty64 := optionStockByID[op.ID]
+                            qty := int(qty64)
+                            available := qty > 0
+                            low := available && qty <= 10
+                            sum.AvailableQuantity = &qty
+                            sum.IsAvailable = &available
+                            sum.IsLowStock = &low
+                        }
+                        slotDTO.MenuSlotItem = append(slotDTO.MenuSlotItem, sum)
+                    }
+                }
+            }
+            menu.Slots = append(menu.Slots, slotDTO)
+        }
+        dto.Menu = &menu
 			}
 		}
 
-		out = append(out, dto)
-	}
+        out = append(out, dto)
+    }
 
 	return &domain.ListResponse[domain.ProductDTO]{Items: out, Count: len(out)}, nil
 }

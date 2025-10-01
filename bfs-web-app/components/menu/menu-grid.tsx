@@ -35,6 +35,10 @@ export function MenuGrid({ products }: { products: ListResponse<ProductDTO> }) {
 
 function MenuProductCard({ product }: { product: ProductDTO }) {
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const isAvailable = product.isAvailable !== false; // default true
+  const isLowStock = product.isLowStock === true;
+  const availableQty = product.availableQuantity ?? null;
+  const isActive = product.isActive !== false;
   const composition = useMemo(() => {
     if (product.type !== 'menu' || !product.menu?.slots || product.menu.slots.length === 0) return null
     const counts = new Map<string, number>()
@@ -70,6 +74,23 @@ function MenuProductCard({ product }: { product: ProductDTO }) {
                 Kein Bild
               </div>
             )}
+            {(!isAvailable) && (
+              <div className="absolute inset-0 z-10 grid place-items-center bg-black/55 rounded-[11px]">
+                <span className="px-3 py-1 text-sm font-medium text-white bg-red-400 rounded-full">Ausverkauft</span>
+              </div>
+            )}
+            {isAvailable && !isActive && (
+              <div className="absolute inset-0 z-10 grid place-items-center bg-black/55 rounded-[11px]">
+                <span className="px-3 py-1 text-sm font-medium text-white bg-zinc-700 rounded-full">Nicht verfügbar</span>
+              </div>
+            )}
+            {isLowStock && isAvailable && isActive && (
+              <div className="absolute top-1 left-2 z-10">
+                <span className="px-2 py-0.5 text-xs font-medium text-white bg-amber-600 rounded-full">
+                  {availableQty !== null ? `Nur ${availableQty} übrig` : 'Geringer Bestand'}
+                </span>
+              </div>
+            )}
             {composition && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -99,6 +120,7 @@ function MenuProductCard({ product }: { product: ProductDTO }) {
               <CartButtons 
                 product={product}
                 onConfigureProduct={handleConfigureProduct}
+                disabled={!isAvailable || !isActive}
               />
             </div>
           </div>
