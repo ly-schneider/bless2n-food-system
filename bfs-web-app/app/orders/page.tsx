@@ -5,16 +5,33 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/contexts/auth-context"
+import { listMyOrders } from "@/lib/api/orders"
 import { getOrders, type StoredOrder } from "@/lib/orders-storage"
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<StoredOrder[]>([])
   const router = useRouter()
+  const { accessToken } = useAuth()
 
   useEffect(() => {
-    // TODO: If account session exists, fetch orders from backend here.
-    setOrders(getOrders())
-  }, [])
+    async function load() {
+      // If authenticated, load orders from backend; otherwise fallback to local storage
+      if (accessToken) {
+        try {
+          const res = await listMyOrders(accessToken)
+          if (res.items?.length) {
+            setOrders(res.items.map(it => ({ id: it.id, createdAt: it.createdAt })))
+            return
+          }
+        } catch {
+          // ignore and fallback
+        }
+      }
+      setOrders(getOrders())
+    }
+    void load()
+  }, [accessToken])
 
   return (
     <div className="p-4 pb-28">

@@ -19,12 +19,13 @@ export interface CreateCheckoutResponse {
   sessionId: string
 }
 
-export async function createCheckoutSession(body: CreateCheckoutRequest) {
+export async function createCheckoutSession(body: CreateCheckoutRequest, accessToken?: string) {
   const res = await apiRequest<ApiEnvelope<CreateCheckoutResponse>>(
     "/v1/payments/checkout",
     {
       method: "POST",
       body: JSON.stringify(body),
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
     }
   )
   return res.data

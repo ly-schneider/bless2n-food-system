@@ -1,18 +1,21 @@
 "use client"
 
-import { EllipsisVertical, LayoutList } from "lucide-react"
+import { LayoutList, LogOut, Menu, User } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
+import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useAuth } from "@/contexts/auth-context"
 
 export default function Header() {
+  const { accessToken, signOut } = useAuth()
+  const router = useRouter()
   return (
     <header className="w-full my-2">
       <div className="container mx-auto px-4">
@@ -31,18 +34,45 @@ export default function Header() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="secondary" size="icon" className="h-12 w-12 rounded-full">
-                <EllipsisVertical className="h-5.5 w-5.5 size-5.5" />
+                <Menu className="h-5.5 w-5.5 size-5.5" />
                 <span className="sr-only">Menü öffnen</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-48 rounded-2xl">
-              <DropdownMenuLabel>Allgemein</DropdownMenuLabel>
               <DropdownMenuItem asChild>
                 <Link href="/orders" className="flex items-center gap-2">
                   <LayoutList className="h-4 w-4" />
                   <span>Bestellungen</span>
                 </Link>
               </DropdownMenuItem>
+
+              {/* Benutzer: routes based on auth state */}
+              <DropdownMenuItem asChild>
+                {accessToken ? (
+                  <Link href="/profile" className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    <span>Benutzer</span>
+                  </Link>
+                ) : (
+                  <Link href="/login" className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    <span>Benutzer</span>
+                  </Link>
+                )}
+              </DropdownMenuItem>
+
+              {accessToken && (
+                <DropdownMenuItem
+                  className="flex items-center gap-2"
+                  onClick={async () => {
+                    await signOut()
+                    router.push('/')
+                  }}
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Abmelden</span>
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

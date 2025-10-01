@@ -9,6 +9,7 @@ import (
 
     stripe "github.com/stripe/stripe-go/v82"
     "github.com/stripe/stripe-go/v82/checkout/session"
+    "github.com/stripe/stripe-go/v82/customer"
     "go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -25,6 +26,8 @@ type CreateCheckoutSessionParams struct {
     CancelURL   string
     ClientRefID *string
     CustomerEmail *string
+    // If provided, Stripe Checkout will use this customer and not show email input
+    CustomerID   *string
     // Optional metadata to attach to the underlying PaymentIntent
     PaymentIntentMetadata map[string]string
 }
@@ -103,7 +106,10 @@ func (s *paymentService) CreateTWINTCheckoutSession(ctx context.Context, p Creat
     if p.ClientRefID != nil && *p.ClientRefID != "" {
         params.ClientReferenceID = stripe.String(*p.ClientRefID)
     }
-    if p.CustomerEmail != nil {
+    // Prefer explicit Customer over email to suppress email field in Checkout
+    if p.CustomerID != nil && *p.CustomerID != "" {
+        params.Customer = stripe.String(*p.CustomerID)
+    } else if p.CustomerEmail != nil {
         params.CustomerEmail = stripe.String(*p.CustomerEmail)
     }
 
@@ -129,6 +135,8 @@ type CheckoutPreparation struct {
     OrderID      primitive.ObjectID
     LineItems    []CheckoutItem
     CustomerEmail *string
+    // If the order is associated to a logged-in user, store their ID for potential Stripe Customer usage
+    UserID       *primitive.ObjectID
 }
 
 func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateCheckoutInput, userID *string) (*CheckoutPreparation, error) {
@@ -143,7 +151,7 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
             customerOID = &oid
         }
     }
-    // If logged in and no email provided, fetch and set customer email to skip email collection
+    // If logged in and no email provided, fetch and set customer email to skip email collection (prefill)
     if customerOID != nil && in.CustomerEmail == nil {
         if u, err := s.userRepo.FindByID(ctx, *customerOID); err == nil {
             in.CustomerEmail = &u.Email
@@ -299,17 +307,41 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
         }
     }
 
-    return &CheckoutPreparation{ OrderID: id, LineItems: lis, CustomerEmail: in.CustomerEmail }, nil
+    return &CheckoutPreparation{ OrderID: id, LineItems: lis, CustomerEmail: in.CustomerEmail, UserID: customerOID }, nil
 }
 
 func (s *paymentService) CreateStripeCheckoutForOrder(ctx context.Context, prep *CheckoutPreparation, successURL, cancelURL string) (*stripe.CheckoutSession, error) {
     idHex := prep.OrderID.Hex()
+    var customerID *string
+    var customerEmail = prep.CustomerEmail
+    // If order has an associated user, prefer using a Stripe Customer to hide email input on Checkout
+    if prep.UserID != nil {
+        if u, err := s.userRepo.FindByID(ctx, *prep.UserID); err == nil && u != nil {
+            if u.StripeCustomerID != nil && *u.StripeCustomerID != "" {
+                customerID = u.StripeCustomerID
+            } else {
+                // Create a Stripe Customer for this user (best effort). If it fails, fall back to email.
+                c, cerr := customer.New(&stripe.CustomerParams{Email: stripe.String(u.Email)})
+                if cerr == nil && c != nil {
+                    // persist the mapping (best effort)
+                    _ = s.userRepo.UpdateStripeCustomerID(ctx, u.ID, c.ID)
+                    customerID = &c.ID
+                } else {
+                    // Fallback to using email
+                    ce := u.Email
+                    customerEmail = &ce
+                }
+            }
+        }
+    }
+
     sess, err := s.CreateTWINTCheckoutSession(ctx, CreateCheckoutSessionParams{
         Items:         prep.LineItems,
         SuccessURL:    successURL,
         CancelURL:     cancelURL,
         ClientRefID:   &idHex,
-        CustomerEmail: prep.CustomerEmail,
+        CustomerEmail: customerEmail,
+        CustomerID:    customerID,
         PaymentIntentMetadata: map[string]string{"order_id": idHex},
     })
     if err != nil { return nil, err }

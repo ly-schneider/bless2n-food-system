@@ -11,6 +11,7 @@ func NewRepositories() fx.Option {
 		fx.Provide(
 			repository.NewUserRepository,
 			repository.NewOTPTokenRepository,
+			repository.NewEmailChangeTokenRepository,
 			repository.NewRefreshTokenRepository,
 			repository.NewAdminInviteRepository,
 			repository.NewStationRepository,

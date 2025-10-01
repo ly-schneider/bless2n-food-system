@@ -11,6 +11,22 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Auth guard: protect app routes by requiring refresh cookie
+  // Note: Checkout is intentionally NOT protected to allow guest checkout
+  const protectedPrefixes = ["/orders", "/profile", "/(admin)", "/(pos)", "/(station)"]
+  const isProtected = protectedPrefixes.some((p) => pathname.startsWith(p))
+  if (isProtected) {
+    const proto = (request.headers.get('x-forwarded-proto') || '').toLowerCase()
+    const rtName = proto === 'https' ? '__Host-rt' : 'rt'
+    const hasRefresh = request.cookies.get(rtName)?.value
+    if (!hasRefresh) {
+      const url = request.nextUrl.clone()
+      url.pathname = "/login"
+      url.searchParams.set("next", request.nextUrl.pathname)
+      return NextResponse.redirect(url)
+    }
+  }
+
   // Set security headers for all responses
   const response = NextResponse.next()
 

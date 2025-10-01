@@ -55,6 +55,7 @@ const (
 	UsersCollection           = "users"
 	AdminInvitesCollection    = "admin_invites"
 	OTPTokensCollection       = "otp_tokens"
+	EmailChangeTokensCollection = "email_change_tokens"
 	RefreshTokensCollection   = "refresh_tokens"
 	StationsCollection        = "stations"
 	StationRequestsCollection = "station_requests"

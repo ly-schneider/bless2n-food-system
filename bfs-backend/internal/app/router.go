@@ -11,8 +11,10 @@ import (
 
 func NewRouter(
     authHandler *handler.AuthHandler,
+    devHandler *handler.DevHandler,
     adminHandler *handler.AdminHandler,
     userHandler *handler.UserHandler,
+    orderHandler *handler.OrderHandler,
     stationHandler *handler.StationHandler,
     categoryHandler *handler.CategoryHandler,
     productHandler *handler.ProductHandler,
@@ -25,5 +27,5 @@ func NewRouter(
     cfg config.Config,
 ) http.Handler {
     enableDocs := cfg.App.AppEnv != "prod"
-    return httpRouter.NewRouter(authHandler, adminHandler, userHandler, stationHandler, categoryHandler, productHandler, paymentHandler, redemptionHandler, healthHandler, jwksHandler, jwtMw, securityMw, enableDocs)
+    return httpRouter.NewRouter(authHandler, devHandler, adminHandler, userHandler, orderHandler, stationHandler, categoryHandler, productHandler, paymentHandler, redemptionHandler, healthHandler, jwksHandler, jwtMw, securityMw, enableDocs)
 }

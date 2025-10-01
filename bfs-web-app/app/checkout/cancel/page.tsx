@@ -4,12 +4,14 @@ import { X } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/contexts/auth-context"
 import { useCart } from "@/contexts/cart-context"
 import { createCheckoutSession } from "@/lib/api/payments"
 
 export default function CheckoutCancelPage() {
   const router = useRouter()
   const { cart } = useCart()
+  const { accessToken } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -22,7 +24,7 @@ export default function CheckoutCancelPage() {
         quantity: i.quantity,
         configuration: i.configuration,
       }))
-      const res = await createCheckoutSession({ items })
+      const res = await createCheckoutSession({ items }, accessToken || undefined)
       window.location.href = res.url
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Fehler beim Starten der Zahlung"

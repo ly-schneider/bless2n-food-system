@@ -14,8 +14,10 @@ func NewHandlers() fx.Option {
     return fx.Options(
         fx.Provide(
             handler.NewAuthHandler,
+            handler.NewDevHandler,
             handler.NewAdminHandler,
             handler.NewUserHandler,
+            handler.NewOrderHandler,
             handler.NewStationHandler,
             handler.NewCategoryHandler,
             handler.NewProductHandler,

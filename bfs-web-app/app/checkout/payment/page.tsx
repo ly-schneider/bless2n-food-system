@@ -3,7 +3,9 @@
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import Header from "@/components/layout/header"
+import { AuthNudgeBanner } from "@/components/auth/auth-nudge"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/contexts/auth-context"
 import { useCart } from "@/contexts/cart-context"
 import { createCheckoutSession } from "@/lib/api/payments"
 import { formatChf } from "@/lib/utils"
@@ -13,6 +15,7 @@ export default function PaymentPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { accessToken } = useAuth()
 
   useEffect(() => {
     if (cart.items.length === 0) {
@@ -29,7 +32,7 @@ export default function PaymentPage() {
         quantity: i.quantity,
         configuration: i.configuration,
       }))
-      const res = await createCheckoutSession({ items })
+      const res = await createCheckoutSession({ items }, accessToken || undefined)
       window.location.href = res.url
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Fehler beim Starten der Zahlung"
@@ -45,6 +48,9 @@ export default function PaymentPage() {
       <main className="container mx-auto px-4 py-8">
         <h2 className="text-2xl mb-2">Mit TWINT bezahlen</h2>
         <p className="text-muted-foreground mb-6">Sie werden zu Stripe Checkout weitergeleitet.</p>
+
+        {/* Guest checkout info */}
+        <AuthNudgeBanner />
 
         <div className="border rounded-md p-4 mb-6">
           <div className="flex items-center justify-between">

@@ -3,11 +3,13 @@
 import { ArrowLeft, ShoppingCart } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
+import { AuthNudgeBanner } from "@/components/auth/auth-nudge"
 import { CartItemDisplay } from "@/components/cart/cart-item-display"
 import { InlineMenuGroup } from "@/components/cart/inline-menu-group"
 import { ProductConfigurationModal } from "@/components/cart/product-configuration-modal"
 import { useBestMenuSuggestion } from "@/components/cart/use-best-menu-suggestion"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/contexts/auth-context"
 import { useCart } from "@/contexts/cart-context"
 import { createCheckoutSession } from "@/lib/api/payments"
 import { formatChf } from "@/lib/utils"
@@ -21,6 +23,7 @@ export default function CheckoutPage() {
   const router = useRouter()
   const sp = useSearchParams()
   const from = sp.get("from")
+  const { accessToken } = useAuth()
 
   const handlePay = async () => {
     setLoading(true)
@@ -31,7 +34,7 @@ export default function CheckoutPage() {
         quantity: i.quantity,
         configuration: i.configuration,
       }))
-      const res = await createCheckoutSession({ items })
+      const res = await createCheckoutSession({ items }, accessToken || undefined)
       window.location.href = res.url
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Fehler beim Starten der Zahlung"
@@ -48,6 +51,9 @@ export default function CheckoutPage() {
 
       <main className="container mx-auto flex-1 overflow-y-auto px-4 pb-28 pt-4">
         <h2 className="text-2xl mb-4">Warenkorb</h2>
+
+        {/* Soft sign-in encouragement */}
+        <AuthNudgeBanner />
 
         <div>
           {cart.items.length === 0 ? (

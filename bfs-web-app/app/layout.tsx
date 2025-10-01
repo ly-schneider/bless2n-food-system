@@ -2,6 +2,7 @@ import "styles/tailwind.css"
 import type { Metadata } from "next"
 import { Golos_Text } from "next/font/google"
 import Header from "@/components/layout/header"
+import { AuthProvider } from "@/contexts/auth-context"
 import { CartProvider } from "@/contexts/cart-context"
 
 const golosText = Golos_Text({
@@ -22,10 +23,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className={`${golosText.variable} min-h-screen overflow-x-hidden flex flex-col`}>
-        <CartProvider>
-          <Header />
-          {children}
-        </CartProvider>
+        <AuthProvider>
+          <CartProvider>
+            <Header />
+            {children}
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   )
