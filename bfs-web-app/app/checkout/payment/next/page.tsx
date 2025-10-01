@@ -1,0 +1,89 @@
+"use client"
+
+import { useEffect, useRef } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { getPaymentStatus } from "@/lib/api/payments"
+import { useCart } from "@/contexts/cart-context"
+import { addOrder } from "@/lib/orders-storage"
+
+export default function PaymentNextPage() {
+  const sp = useSearchParams()
+  const router = useRouter()
+  const { cart, clearCart } = useCart()
+  const clearedRef = useRef(false)
+
+  useEffect(() => {
+    const redirectStatus = sp.get("redirect_status")
+    // If Stripe already indicates the outcome, route immediately
+    if (redirectStatus === "failed") {
+      router.replace("/checkout/error")
+      return
+    }
+    if (redirectStatus === "canceled") {
+      router.replace("/checkout/cancel")
+      return
+    }
+
+    const resolve = async () => {
+      // PI might be provided by Stripe or our own param `pi`
+      const pi = sp.get("payment_intent") || sp.get("pi")
+      if (!pi) {
+        // Fall back to session if present
+        try {
+          const raw = sessionStorage.getItem("bfs.pi.current")
+          if (raw) {
+            const parsed = JSON.parse(raw) as { pi?: string }
+            if (parsed?.pi) {
+              await handlePI(parsed.pi)
+              return
+            }
+          }
+        } catch {}
+        // No PI: go back to checkout
+        router.replace("/checkout")
+        return
+      }
+      await handlePI(pi)
+    }
+
+    const handlePI = async (pi: string) => {
+      try {
+        const s = await getPaymentStatus(pi)
+        if (s.status === "succeeded") {
+          const oid = s.metadata?.order_id || null
+          if (oid) {
+            // Persist a snapshot of the cart to the order before clearing
+            addOrder(oid, cart.items, cart.totalCents)
+          }
+          if (!clearedRef.current) {
+            clearedRef.current = true
+            clearCart()
+          }
+          try {
+            sessionStorage.removeItem("bfs.pi.current")
+          } catch {}
+          // Prefer explicit order id passthrough for success view
+          router.replace(oid ? `/checkout/success?order_id=${encodeURIComponent(oid)}` : "/checkout/success")
+        } else if (s.status === "canceled") {
+          router.replace("/checkout/cancel")
+        } else {
+          // requires_payment_method or any other non-success -> error
+          router.replace("/checkout/error")
+        }
+      } catch {
+        router.replace("/checkout/error")
+      }
+    }
+
+    void resolve()
+  // We intentionally depend only on search params and cart snapshot values
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sp])
+
+  return (
+    <div className="min-h-[70vh] flex items-center justify-center">
+      <p className="text-muted-foreground">Zahlungsstatus wird geprüft…</p>
+    </div>
+  )
+}
+

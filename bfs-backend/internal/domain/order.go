@@ -21,7 +21,14 @@ type Order struct {
     ContactEmail *string             `bson:"contact_email,omitempty"`
     TotalCents   Cents               `bson:"total_cents" validate:"required,gte=0"`
     Status       OrderStatus         `bson:"status" validate:"required,oneof=pending paid cancelled refunded"`
+    // Deprecated: previous Stripe Checkout session id
     StripeSessionID *string          `bson:"stripe_session_id,omitempty"`
+    // New: Payment Intents references
+    StripePaymentIntentID *string    `bson:"stripe_payment_intent_id,omitempty"`
+    StripeChargeID        *string    `bson:"stripe_charge_id,omitempty"`
+    StripeCustomerID      *string    `bson:"stripe_customer_id,omitempty"`
+    // Idempotency key from client to avoid duplicate orders/PI
+    PaymentAttemptID      *string    `bson:"payment_attempt_id,omitempty"`
     CreatedAt    time.Time           `bson:"created_at"`
     UpdatedAt    time.Time           `bson:"updated_at"`
 }

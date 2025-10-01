@@ -7,14 +7,14 @@ import { API_BASE_URL } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
-  AlertDialogTrigger,
+  AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
   AlertDialogDescription,
   AlertDialogFooter,
-  AlertDialogCancel,
-  AlertDialogAction,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
 type Session = {
@@ -89,7 +89,7 @@ export default function ProfilePage() {
     try {
       const token = getToken()
       if (!token) throw new Error("Not authenticated")
-      const payload: Record<string, any> = { email }
+      const payload: Record<string, unknown> = { email }
       if (user?.role === 'admin') {
         payload.firstName = firstName
         payload.lastName = lastName
@@ -103,7 +103,7 @@ export default function ProfilePage() {
         const t = await res.text()
         throw new Error(t || "Failed to update profile")
       }
-      const data = await res.json() as { user?: any, email_change_initiated?: boolean, message?: string }
+      const data = await res.json() as { user?: { email?: string; firstName?: string; lastName?: string }, email_change_initiated?: boolean, message?: string }
       setEmailChangeInitiated(Boolean(data.email_change_initiated))
       // Optimistically reflect updated names/email in local state; auth context will refresh on confirm
       if (data.user?.email) setEmail(data.user.email)

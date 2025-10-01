@@ -2,7 +2,7 @@
 
 import { ShoppingCart } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { CartItemDisplay } from "@/components/cart/cart-item-display"
 import { InlineMenuGroup } from "@/components/cart/inline-menu-group"
 import { useBestMenuSuggestion } from "@/components/cart/use-best-menu-suggestion"
@@ -25,10 +25,52 @@ export function FloatingBottomNav() {
 
   const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0)
 
+  // Measure the fixed action bar to add an in-flow spacer and avoid overlap
+  const barRef = useRef<HTMLDivElement>(null)
+  const [barHeight, setBarHeight] = useState(0)
+  const [appFooterHeight, setAppFooterHeight] = useState(0)
+
+  useEffect(() => {
+    const el = barRef.current
+    if (!el) return
+    const update = () => setBarHeight(el.offsetHeight || 0)
+    update()
+    let ro: ResizeObserver | null = null
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => update())
+      ro.observe(el)
+    }
+    const onResize = () => update()
+    window.addEventListener("resize", onResize)
+    return () => {
+      window.removeEventListener("resize", onResize)
+      if (ro) ro.disconnect()
+    }
+  }, [totalItems])
+
+  // Also track global app footer height to avoid double spacing
+  useEffect(() => {
+    const footerEl = document.getElementById("app-footer")
+    if (!footerEl) return
+    const update = () => setAppFooterHeight(footerEl.offsetHeight || 0)
+    update()
+    let ro: ResizeObserver | null = null
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => update())
+      ro.observe(footerEl)
+    }
+    const onResize = () => update()
+    window.addEventListener("resize", onResize)
+    return () => {
+      window.removeEventListener("resize", onResize)
+      if (ro) ro.disconnect()
+    }
+  }, [])
+
   return (
     totalItems > 0 && (
       <>
-        <div className="fixed right-0 bottom-0 left-0 z-50 p-4">
+        <div ref={barRef} className="fixed right-0 bottom-0 left-0 z-50 p-4">
           <div className="container mx-auto flex items-center justify-center gap-3">
             <Button
               className="rounded-pill h-12 text-base font-medium flex-1 lg:flex-none lg:max-w-xs px-6 md:px-8 lg:px-10 xl:px-12"
@@ -63,7 +105,7 @@ export function FloatingBottomNav() {
                     <p className="text-muted-foreground mt-1 text-sm">Fügen Sie Produkte hinzu, um zu beginnen</p>
                   </div>
                 ) : (
-                  <div className="mt-3 -mb-5 flex flex-col divide-y divide-border [&>*]:py-5">
+                  <div className="mt-3 -mb-5 flex flex-col divide-y divide-border [&>*]:py-5 [&>*:first-child]:pt-0">
                     {(() => {
                       const rows: React.ReactNode[] = []
                       if (suggestion && contiguous && startIndex >= 0 && endIndex >= startIndex) {
@@ -160,7 +202,7 @@ export function FloatingBottomNav() {
                     <p className="text-muted-foreground mt-1 text-sm">Fügen Sie Produkte hinzu, um zu beginnen</p>
                   </div>
                 ) : (
-                  <div className="mt-3 -mb-5 flex flex-col divide-y divide-border [&>*]:py-5">
+                  <div className="mt-3 -mb-5 flex flex-col divide-y divide-border [&>*]:py-5 [&>*:first-child]:pt-0">
                     {(() => {
                       const rows: React.ReactNode[] = []
                       if (suggestion && contiguous && startIndex >= 0 && endIndex >= startIndex) {

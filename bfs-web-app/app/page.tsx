@@ -21,7 +21,7 @@ export default async function HomePage() {
   return (
     <div className="bg-background min-h-screen">
 
-      <main className="container mx-auto p-4 pb-24">
+      <main className="container mx-auto p-4">
         <h2 className="text-2xl mb-2">Alle Produkte</h2>
         <MenuGrid products={products} />
       </main>

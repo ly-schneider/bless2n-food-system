@@ -8,25 +8,56 @@ export interface CheckoutItem {
   configuration?: Record<string, string>
 }
 
-export interface CreateCheckoutRequest {
+export interface CreateIntentRequest {
   items: CheckoutItem[]
   customerEmail?: string
-  clientReferenceId?: string
+  attemptId?: string
 }
 
-export interface CreateCheckoutResponse {
-  url: string
-  sessionId: string
+export interface CreateIntentResponse {
+  clientSecret: string
+  paymentIntentId: string
+  orderId: string
 }
 
-export async function createCheckoutSession(body: CreateCheckoutRequest, accessToken?: string) {
-  const res = await apiRequest<ApiEnvelope<CreateCheckoutResponse>>(
-    "/v1/payments/checkout",
+export async function createPaymentIntent(body: CreateIntentRequest, accessToken?: string) {
+  const res = await apiRequest<ApiEnvelope<CreateIntentResponse>>(
+    "/v1/payments/create-intent",
     {
       method: "POST",
       body: JSON.stringify(body),
       headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
     }
   )
+  return res.data
+}
+
+export async function attachReceiptEmail(paymentIntentId: string, email: string | null, accessToken?: string) {
+  const res = await apiRequest<ApiEnvelope<{ paymentIntentId: string; receiptEmail?: string | null }>>(
+    "/v1/payments/attach-email",
+    {
+      method: "PATCH",
+      body: JSON.stringify({ paymentIntentId, email }),
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+    }
+  )
+  return res.data
+}
+
+export interface PaymentStatusResponse {
+  id: string
+  status: string
+  amount: number
+  currency: string
+  chargeId?: string
+  customer?: string
+  receiptEmail?: string
+  metadata?: Record<string, string>
+}
+
+export async function getPaymentStatus(id: string) {
+  const res = await apiRequest<ApiEnvelope<PaymentStatusResponse>>(`/v1/payments/${id}`, {
+    method: "GET",
+  })
   return res.data
 }

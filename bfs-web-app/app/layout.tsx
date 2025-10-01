@@ -2,6 +2,7 @@ import "styles/tailwind.css"
 import type { Metadata } from "next"
 import { Golos_Text } from "next/font/google"
 import Header from "@/components/layout/header"
+import Footer from "@/components/layout/footer"
 import { AuthProvider } from "@/contexts/auth-context"
 import { CartProvider } from "@/contexts/cart-context"
 
@@ -26,7 +27,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <CartProvider>
             <Header />
-            {children}
+            <main className="flex-1">{children}</main>
+            <Footer />
           </CartProvider>
         </AuthProvider>
       </body>

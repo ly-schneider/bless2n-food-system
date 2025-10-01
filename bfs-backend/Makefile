@@ -126,6 +126,7 @@ clean:
 	@echo "Cleaning build artifacts..."
 	@rm -rf tmp/
 	@rm -f build-errors.log
+	@rm -rf docs/
 
 test:
 	@echo "Running unit tests..."

@@ -3,7 +3,7 @@
 import { ArrowLeft, ArrowRight, LayoutList, QrCode } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
 import { listMyOrders } from "@/lib/api/orders"
@@ -13,6 +13,9 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<StoredOrder[]>([])
   const router = useRouter()
   const { accessToken } = useAuth()
+  const footerRef = useRef<HTMLDivElement>(null)
+  const [buttonBarHeight, setButtonBarHeight] = useState(0)
+  const [appFooterHeight, setAppFooterHeight] = useState(0)
 
   useEffect(() => {
     async function load() {
@@ -33,8 +36,46 @@ export default function OrdersPage() {
     void load()
   }, [accessToken])
 
+  // Measure fixed bottom button height
+  useEffect(() => {
+    const el = footerRef.current
+    if (!el) return
+    const update = () => setButtonBarHeight(el.offsetHeight || 0)
+    update()
+    let ro: ResizeObserver | null = null
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => update())
+      ro.observe(el)
+    }
+    const onResize = () => update()
+    window.addEventListener("resize", onResize)
+    return () => {
+      window.removeEventListener("resize", onResize)
+      if (ro) ro.disconnect()
+    }
+  }, [])
+
+  // Measure global app footer to avoid double spacing
+  useEffect(() => {
+    const footerEl = document.getElementById("app-footer")
+    if (!footerEl) return
+    const update = () => setAppFooterHeight(footerEl.offsetHeight || 0)
+    update()
+    let ro: ResizeObserver | null = null
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => update())
+      ro.observe(footerEl)
+    }
+    const onResize = () => update()
+    window.addEventListener("resize", onResize)
+    return () => {
+      window.removeEventListener("resize", onResize)
+      if (ro) ro.disconnect()
+    }
+  }, [])
+
   return (
-    <div className="p-4 pb-28">
+    <div className="p-4" style={{ paddingBottom: (buttonBarHeight ? Math.max(buttonBarHeight - appFooterHeight, 0) : 0) + 16 }}>
       <h1 className="mb-2 text-2xl font-semibold">Bestellungen</h1>
       <p className="text-muted-foreground mb-6 text-sm">
         Tippe auf eine Bestellung, um den Abholungs QR-Code anzuzeigen.
@@ -74,7 +115,7 @@ export default function OrdersPage() {
         </ul>
       )}
 
-      <div className="fixed inset-x-0 bottom-0 z-50 p-4">
+      <div ref={footerRef} className="fixed inset-x-0 bottom-0 z-50 p-4">
         <Button
           variant="outline"
           className="rounded-pill h-12 w-full bg-white text-base font-medium text-black"

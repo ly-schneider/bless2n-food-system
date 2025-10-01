@@ -80,11 +80,13 @@ func NewRouter(
 			product.Get("/", productHandler.ListProducts)
 		})
 
-		// Orders (requires auth)
-		v1.Route("/orders", func(orders chi.Router) {
-			orders.Use(jwtMw.RequireAuth)
-			orders.Get("/", orderHandler.ListMyOrders)
-		})
+        // Orders: public details by id, and authenticated list
+        v1.Route("/orders", func(orders chi.Router) {
+            // Public access to order details by id (no auth)
+            orders.Get("/{id}", orderHandler.GetPublicByID)
+            // Authenticated list of own orders
+            orders.With(jwtMw.RequireAuth).Get("/", orderHandler.ListMyOrders)
+        })
 
 		// Example admin protected route
 		v1.Route("/admin", func(admin chi.Router) {
@@ -96,7 +98,11 @@ func NewRouter(
 		v1.Route("/payments", func(pay chi.Router) {
 			// Allow optional auth so we can attach user to order if logged in
 			pay.Use(jwtMw.OptionalAuth)
-			pay.Post("/checkout", paymentHandler.CreateCheckout)
+			// Payment Intents (TWINT via Payment Element)
+			pay.Post("/create-intent", paymentHandler.CreateIntent)
+			pay.Patch("/attach-email", paymentHandler.AttachEmail)
+			pay.Get("/{id}", paymentHandler.GetPayment)
+			// Stripe webhook receiver
 			pay.Post("/webhook", paymentHandler.Webhook)
 		})
 	})

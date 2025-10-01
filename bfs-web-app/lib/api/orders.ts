@@ -23,3 +23,27 @@ export async function listMyOrders(accessToken?: string) {
   )
 }
 
+export interface PublicOrderDetailsDTO {
+  id: string
+  status: OrderStatus
+  totalCents: number
+  createdAt: string
+  items: Array<{
+    id: string
+    orderId: string
+    productId: string
+    title: string
+    quantity: number
+    pricePerUnitCents: number
+    parentItemId?: string | null
+    menuSlotId?: string | null
+    menuSlotName?: string | null
+    productImage?: string | null
+  }>
+}
+
+export async function getOrderPublicById(orderId: string) {
+  return apiRequest<PublicOrderDetailsDTO>(`/v1/orders/${encodeURIComponent(orderId)}`, {
+    method: "GET",
+  })
+}

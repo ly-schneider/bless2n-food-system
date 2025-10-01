@@ -15,10 +15,15 @@ import (
 type OrderRepository interface {
     Create(ctx context.Context, o *domain.Order) (primitive.ObjectID, error)
     SetStripeSession(ctx context.Context, id primitive.ObjectID, sessionID string) error
+    SetStripePaymentIntent(ctx context.Context, id primitive.ObjectID, paymentIntentID string, customerID *string, receiptEmail *string) error
+    SetStripePaymentSuccess(ctx context.Context, id primitive.ObjectID, paymentIntentID string, chargeID *string, customerID *string, receiptEmail *string) error
+    SetPaymentAttemptID(ctx context.Context, id primitive.ObjectID, attemptID string) error
     UpdateStatusAndContact(ctx context.Context, id primitive.ObjectID, status domain.OrderStatus, contactEmail *string) error
     FindByID(ctx context.Context, id primitive.ObjectID) (*domain.Order, error)
     DeleteIfPending(ctx context.Context, id primitive.ObjectID) (bool, error)
     FindPendingByStripeSessionID(ctx context.Context, sessionID string) (*domain.Order, error)
+    FindPendingByAttemptID(ctx context.Context, attemptID string) (*domain.Order, error)
+    DeletePendingByAttemptIDExcept(ctx context.Context, attemptID string, except primitive.ObjectID) (int64, error)
     // ListByCustomerID returns orders for a given customer with pagination
     ListByCustomerID(ctx context.Context, customerID primitive.ObjectID, limit, offset int) ([]*domain.Order, int64, error)
 }
@@ -28,9 +33,17 @@ type orderRepository struct {
 }
 
 func NewOrderRepository(db *database.MongoDB) OrderRepository {
-    return &orderRepository{
-        collection: db.Database.Collection(database.OrdersCollection),
-    }
+    coll := db.Database.Collection(database.OrdersCollection)
+    // Ensure partial unique index on payment_attempt_id for pending orders to avoid duplicates
+    // db.orders.createIndex({ payment_attempt_id: 1 }, { unique: true, partialFilterExpression: { status: 'pending', payment_attempt_id: { $exists: true } } })
+    _, _ = coll.Indexes().CreateOne(context.Background(), mongo.IndexModel{
+        Keys: bson.D{{Key: "payment_attempt_id", Value: 1}},
+        Options: options.Index().SetUnique(true).SetPartialFilterExpression(bson.M{
+            "status":              domain.OrderStatusPending,
+            "payment_attempt_id": bson.M{"$exists": true},
+        }),
+    })
+    return &orderRepository{ collection: coll }
 }
 
 func (r *orderRepository) Create(ctx context.Context, o *domain.Order) (primitive.ObjectID, error) {
@@ -54,6 +67,50 @@ func (r *orderRepository) SetStripeSession(ctx context.Context, id primitive.Obj
             "updated_at":       time.Now().UTC(),
         },
     })
+    return err
+}
+
+func (r *orderRepository) SetStripePaymentIntent(ctx context.Context, id primitive.ObjectID, paymentIntentID string, customerID *string, receiptEmail *string) error {
+    set := bson.M{
+        "stripe_payment_intent_id": paymentIntentID,
+        "updated_at":               time.Now().UTC(),
+    }
+    if customerID != nil && *customerID != "" {
+        set["stripe_customer_id"] = *customerID
+    }
+    if receiptEmail != nil && *receiptEmail != "" {
+        set["contact_email"] = *receiptEmail
+    }
+    _, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": set})
+    return err
+}
+
+func (r *orderRepository) SetStripePaymentSuccess(ctx context.Context, id primitive.ObjectID, paymentIntentID string, chargeID *string, customerID *string, receiptEmail *string) error {
+    set := bson.M{
+        "status":                   domain.OrderStatusPaid,
+        "stripe_payment_intent_id": paymentIntentID,
+        "updated_at":               time.Now().UTC(),
+    }
+    if chargeID != nil && *chargeID != "" {
+        set["stripe_charge_id"] = *chargeID
+    }
+    if customerID != nil && *customerID != "" {
+        set["stripe_customer_id"] = *customerID
+    }
+    if receiptEmail != nil && *receiptEmail != "" {
+        set["contact_email"] = *receiptEmail
+    }
+    _, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": set})
+    return err
+}
+
+func (r *orderRepository) SetPaymentAttemptID(ctx context.Context, id primitive.ObjectID, attemptID string) error {
+    if attemptID == "" { return nil }
+    set := bson.M{
+        "payment_attempt_id": attemptID,
+        "updated_at":         time.Now().UTC(),
+    }
+    _, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": set})
     return err
 }
 
@@ -93,6 +150,26 @@ func (r *orderRepository) FindPendingByStripeSessionID(ctx context.Context, sess
         return nil, err
     }
     return &o, nil
+}
+
+func (r *orderRepository) FindPendingByAttemptID(ctx context.Context, attemptID string) (*domain.Order, error) {
+    var o domain.Order
+    err := r.collection.FindOne(ctx, bson.M{"payment_attempt_id": attemptID, "status": domain.OrderStatusPending}).Decode(&o)
+    if err != nil {
+        return nil, err
+    }
+    return &o, nil
+}
+
+func (r *orderRepository) DeletePendingByAttemptIDExcept(ctx context.Context, attemptID string, except primitive.ObjectID) (int64, error) {
+    if attemptID == "" { return 0, nil }
+    res, err := r.collection.DeleteMany(ctx, bson.M{
+        "payment_attempt_id": attemptID,
+        "status":             domain.OrderStatusPending,
+        "_id":                bson.M{"$ne": except},
+    })
+    if err != nil { return 0, err }
+    return res.DeletedCount, nil
 }
 
 func (r *orderRepository) ListByCustomerID(ctx context.Context, customerID primitive.ObjectID, limit, offset int) ([]*domain.Order, int64, error) {

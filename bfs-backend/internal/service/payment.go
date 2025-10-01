@@ -10,6 +10,7 @@ import (
     stripe "github.com/stripe/stripe-go/v82"
     "github.com/stripe/stripe-go/v82/checkout/session"
     "github.com/stripe/stripe-go/v82/customer"
+    "github.com/stripe/stripe-go/v82/paymentintent"
     "go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -34,9 +35,18 @@ type CreateCheckoutSessionParams struct {
 
 type PaymentService interface {
     CreateTWINTCheckoutSession(ctx context.Context, p CreateCheckoutSessionParams) (*stripe.CheckoutSession, error)
-    PrepareAndCreateOrder(ctx context.Context, in CreateCheckoutInput, userID *string) (*CheckoutPreparation, error)
+    PrepareAndCreateOrder(ctx context.Context, in CreateCheckoutInput, userID *string, attemptID *string) (*CheckoutPreparation, error)
     CreateStripeCheckoutForOrder(ctx context.Context, prep *CheckoutPreparation, successURL, cancelURL string) (*stripe.CheckoutSession, error)
+    // PaymentIntents flow
+    CreatePaymentIntentForOrder(ctx context.Context, prep *CheckoutPreparation, receiptEmail *string) (*stripe.PaymentIntent, error)
+    UpdatePaymentIntentReceiptEmail(ctx context.Context, paymentIntentID string, email *string) (*stripe.PaymentIntent, error)
+    GetPaymentIntent(ctx context.Context, paymentIntentID string) (*stripe.PaymentIntent, error)
     MarkOrderPaid(ctx context.Context, clientReferenceID string, contactEmail *string) error
+    PersistPaymentSuccessByOrderID(ctx context.Context, orderIDHex string, paymentIntentID string, chargeID *string, customerID *string, receiptEmail *string) error
+    FindPendingOrderByAttemptID(ctx context.Context, attemptID string) (*domain.Order, error)
+    SetOrderAttemptID(ctx context.Context, orderID primitive.ObjectID, attemptID string) error
+    CreatePaymentIntentForExistingPendingOrder(ctx context.Context, ord *domain.Order, userID *string, receiptEmail *string) (*stripe.PaymentIntent, error)
+    CleanupOtherPendingOrdersByAttemptID(ctx context.Context, attemptID string, keepOrderID primitive.ObjectID) (int64, error)
     CleanupPendingOrderByID(ctx context.Context, clientReferenceID string) error
     CleanupPendingOrderBySessionID(ctx context.Context, sessionID string) error
 }
@@ -139,7 +149,7 @@ type CheckoutPreparation struct {
     UserID       *primitive.ObjectID
 }
 
-func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateCheckoutInput, userID *string) (*CheckoutPreparation, error) {
+func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateCheckoutInput, userID *string, attemptID *string) (*CheckoutPreparation, error) {
     if len(in.Items) == 0 {
         return nil, fmt.Errorf("no items")
     }
@@ -239,6 +249,10 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
         TotalCents:   total,
         Status:       domain.OrderStatusPending,
     }
+    if attemptID != nil && *attemptID != "" {
+        aid := *attemptID
+        ord.PaymentAttemptID = &aid
+    }
     id, err := s.orderRepo.Create(ctx, ord)
     if err != nil { return nil, fmt.Errorf("create order: %w", err) }
 
@@ -246,7 +260,8 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
     oitems := make([]*domain.OrderItem, 0, len(dto.OrderItems))
     for idx, it := range in.Items {
         p := pm[dto.OrderItems[idx].ProductID]
-        oitems = append(oitems, &domain.OrderItem{
+        // Create the parent order item first
+        parentOrderItem := &domain.OrderItem{
             ID:                primitive.NewObjectID(),
             OrderID:           id,
             ProductID:         p.ID,
@@ -254,7 +269,8 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
             Quantity:          int(it.Quantity),
             PricePerUnitCents: p.PriceCents,
             IsRedeemed:        false,
-        })
+        }
+        oitems = append(oitems, parentOrderItem)
         // Add configuration children if menu product
         if p.Type == domain.ProductTypeMenu && len(it.Configuration) > 0 {
             // Ensure slot belongs to this product and child allowed
@@ -273,8 +289,8 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
                 childP := pm[childOID]
                 title := "Configured Item"
                 if childP != nil { title = childP.Name }
-                // Parent ID is the last inserted parent (we can reference via created OrderItem's ID)
-                parentID := oitems[len(oitems)-1].ID
+                // Parent ID must be the parent order item (not the previously appended child)
+                parentID := parentOrderItem.ID
                 oitems = append(oitems, &domain.OrderItem{
                     ID:                primitive.NewObjectID(),
                     OrderID:           id,
@@ -349,11 +365,176 @@ func (s *paymentService) CreateStripeCheckoutForOrder(ctx context.Context, prep 
     return sess, nil
 }
 
+// ---- Payment Intents (Payment Element) ----
+
+// CreatePaymentIntentForOrder creates a CHF PaymentIntent constrained to TWINT for the given prepared order.
+// Optionally attaches a receipt_email and links to a Stripe Customer when the user is logged in.
+func (s *paymentService) CreatePaymentIntentForOrder(ctx context.Context, prep *CheckoutPreparation, receiptEmail *string) (*stripe.PaymentIntent, error) {
+    idHex := prep.OrderID.Hex()
+
+    // Determine Stripe Customer to attach if user exists
+    var customerID *string
+    var fallbackEmail *string = receiptEmail
+    if prep.UserID != nil {
+        if u, err := s.userRepo.FindByID(ctx, *prep.UserID); err == nil && u != nil {
+            if u.StripeCustomerID != nil && *u.StripeCustomerID != "" {
+                customerID = u.StripeCustomerID
+            } else {
+                // Create Stripe Customer best-effort with account email
+                c, cerr := customer.New(&stripe.CustomerParams{Email: stripe.String(u.Email)})
+                if cerr == nil && c != nil {
+                    _ = s.userRepo.UpdateStripeCustomerID(ctx, u.ID, c.ID)
+                    customerID = &c.ID
+                } else {
+                    // default receipt to account email if none explicitly provided
+                    if fallbackEmail == nil || *fallbackEmail == "" {
+                        e := u.Email
+                        fallbackEmail = &e
+                    }
+                }
+            }
+        }
+    }
+
+    // Compute total amount from prepared line items
+    var total int64
+    for _, li := range prep.LineItems {
+        total += li.AmountCents * li.Quantity
+    }
+    if total <= 0 {
+        return nil, fmt.Errorf("invalid order total")
+    }
+
+    params := &stripe.PaymentIntentParams{
+        Amount:             stripe.Int64(total), // rappen
+        Currency:           stripe.String(string(stripe.CurrencyCHF)),
+        PaymentMethodTypes: stripe.StringSlice([]string{"twint"}),
+    }
+    // Attach metadata for correlation
+    params.AddMetadata("order_id", idHex)
+    if prep.UserID != nil {
+        params.AddMetadata("user_id", prep.UserID.Hex())
+    }
+    if customerID != nil {
+        params.Customer = stripe.String(*customerID)
+    }
+    // If we have an explicit or fallback email, attach as receipt_email
+    if fallbackEmail != nil && *fallbackEmail != "" {
+        params.ReceiptEmail = stripe.String(*fallbackEmail)
+    }
+    // Idempotency on order id to avoid duplicate PIs on retry
+    params.SetIdempotencyKey("create_pi:" + idHex)
+    pi, err := paymentintent.New(params)
+    if err != nil {
+        return nil, err
+    }
+    // Best effort: persist references on order
+    _ = s.orderRepo.SetStripePaymentIntent(ctx, prep.OrderID, pi.ID, customerID, params.ReceiptEmail)
+    return pi, nil
+}
+
+// UpdatePaymentIntentReceiptEmail sets or clears receipt_email on an existing PI.
+func (s *paymentService) UpdatePaymentIntentReceiptEmail(ctx context.Context, paymentIntentID string, email *string) (*stripe.PaymentIntent, error) {
+    if paymentIntentID == "" {
+        return nil, fmt.Errorf("missing paymentIntentId")
+    }
+    params := &stripe.PaymentIntentParams{}
+    if email != nil {
+        // Setting empty string is treated as clearing by Stripe API
+        params.ReceiptEmail = stripe.String(*email)
+    } else {
+        // Explicitly clear by setting to empty string
+        empty := ""
+        params.ReceiptEmail = &empty
+    }
+    params.SetIdempotencyKey("attach_email:" + paymentIntentID + ":" + safeStr(email))
+    return paymentintent.Update(paymentIntentID, params)
+}
+
+// GetPaymentIntent fetches a PI by id
+func (s *paymentService) GetPaymentIntent(ctx context.Context, paymentIntentID string) (*stripe.PaymentIntent, error) {
+    if paymentIntentID == "" {
+        return nil, fmt.Errorf("missing id")
+    }
+    return paymentintent.Get(paymentIntentID, nil)
+}
+
+func safeStr(p *string) string {
+    if p == nil { return "" }
+    return *p
+}
+
 func (s *paymentService) MarkOrderPaid(ctx context.Context, clientReferenceID string, contactEmail *string) error {
     if clientReferenceID == "" { return fmt.Errorf("missing client_reference_id") }
     oid, err := primitive.ObjectIDFromHex(clientReferenceID)
     if err != nil { return fmt.Errorf("invalid order id in client_reference_id") }
     return s.orderRepo.UpdateStatusAndContact(ctx, oid, domain.OrderStatusPaid, contactEmail)
+}
+
+func (s *paymentService) PersistPaymentSuccessByOrderID(ctx context.Context, orderIDHex string, paymentIntentID string, chargeID *string, customerID *string, receiptEmail *string) error {
+    if orderIDHex == "" { return fmt.Errorf("missing order id") }
+    oid, err := primitive.ObjectIDFromHex(orderIDHex)
+    if err != nil { return fmt.Errorf("invalid order id: %w", err) }
+    return s.orderRepo.SetStripePaymentSuccess(ctx, oid, paymentIntentID, chargeID, customerID, receiptEmail)
+}
+
+func (s *paymentService) FindPendingOrderByAttemptID(ctx context.Context, attemptID string) (*domain.Order, error) {
+    if attemptID == "" { return nil, fmt.Errorf("missing attempt id") }
+    return s.orderRepo.FindPendingByAttemptID(ctx, attemptID)
+}
+
+func (s *paymentService) SetOrderAttemptID(ctx context.Context, orderID primitive.ObjectID, attemptID string) error {
+    if orderID.IsZero() || attemptID == "" { return nil }
+    return s.orderRepo.SetPaymentAttemptID(ctx, orderID, attemptID)
+}
+
+// CreatePaymentIntentForExistingPendingOrder creates a PI for an already created pending order.
+func (s *paymentService) CreatePaymentIntentForExistingPendingOrder(ctx context.Context, ord *domain.Order, userID *string, receiptEmail *string) (*stripe.PaymentIntent, error) {
+    if ord == nil { return nil, fmt.Errorf("nil order") }
+    idHex := ord.ID.Hex()
+    // Determine Stripe Customer
+    var customerID *string
+    var fallbackEmail *string = receiptEmail
+    if userID != nil && *userID != "" {
+        if oid, err := primitive.ObjectIDFromHex(*userID); err == nil {
+            if u, err := s.userRepo.FindByID(ctx, oid); err == nil && u != nil {
+                if u.StripeCustomerID != nil && *u.StripeCustomerID != "" {
+                    customerID = u.StripeCustomerID
+                } else {
+                    c, cerr := customer.New(&stripe.CustomerParams{Email: stripe.String(u.Email)})
+                    if cerr == nil && c != nil {
+                        _ = s.userRepo.UpdateStripeCustomerID(ctx, u.ID, c.ID)
+                        customerID = &c.ID
+                    } else {
+                        if fallbackEmail == nil || *fallbackEmail == "" {
+                            e := u.Email
+                            fallbackEmail = &e
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // Create PI from order total
+    params := &stripe.PaymentIntentParams{
+        Amount:             stripe.Int64(int64(ord.TotalCents)),
+        Currency:           stripe.String(string(stripe.CurrencyCHF)),
+        PaymentMethodTypes: stripe.StringSlice([]string{"twint"}),
+    }
+    params.AddMetadata("order_id", idHex)
+    if userID != nil && *userID != "" { params.AddMetadata("user_id", *userID) }
+    if customerID != nil { params.Customer = stripe.String(*customerID) }
+    if fallbackEmail != nil && *fallbackEmail != "" { params.ReceiptEmail = stripe.String(*fallbackEmail) }
+    params.SetIdempotencyKey("create_pi_existing:" + idHex)
+    pi, err := paymentintent.New(params)
+    if err != nil { return nil, err }
+    _ = s.orderRepo.SetStripePaymentIntent(ctx, ord.ID, pi.ID, customerID, params.ReceiptEmail)
+    return pi, nil
+}
+
+func (s *paymentService) CleanupOtherPendingOrdersByAttemptID(ctx context.Context, attemptID string, keepOrderID primitive.ObjectID) (int64, error) {
+    if attemptID == "" || keepOrderID.IsZero() { return 0, nil }
+    return s.orderRepo.DeletePendingByAttemptIDExcept(ctx, attemptID, keepOrderID)
 }
 
 // CleanupPendingOrderByID deletes a pending order and its items by order ID (hex string).

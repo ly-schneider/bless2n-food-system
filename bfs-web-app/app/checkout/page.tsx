@@ -2,16 +2,15 @@
 
 import { ArrowLeft, ShoppingCart } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { AuthNudgeBanner } from "@/components/auth/auth-nudge"
 import { CartItemDisplay } from "@/components/cart/cart-item-display"
 import { InlineMenuGroup } from "@/components/cart/inline-menu-group"
 import { ProductConfigurationModal } from "@/components/cart/product-configuration-modal"
 import { useBestMenuSuggestion } from "@/components/cart/use-best-menu-suggestion"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/contexts/auth-context"
 import { useCart } from "@/contexts/cart-context"
-import { createCheckoutSession } from "@/lib/api/payments"
+import { useAuth } from "@/contexts/auth-context"
 import { formatChf } from "@/lib/utils"
 import { CartItem } from "@/types/cart"
 
@@ -23,19 +22,37 @@ export default function CheckoutPage() {
   const router = useRouter()
   const sp = useSearchParams()
   const from = sp.get("from")
-  const { accessToken } = useAuth()
+  const footerRef = useRef<HTMLDivElement>(null)
+  const [footerHeight, setFooterHeight] = useState(0)
+
+  // Measure footer height to ensure last cart item isn’t obscured
+  useEffect(() => {
+    const el = footerRef.current
+    if (!el) return
+
+    const update = () => setFooterHeight(el.offsetHeight || 0)
+    update()
+
+    let ro: ResizeObserver | null = null
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => update())
+      ro.observe(el)
+    }
+
+    const onResize = () => update()
+    window.addEventListener("resize", onResize)
+
+    return () => {
+      window.removeEventListener("resize", onResize)
+      if (ro) ro.disconnect()
+    }
+  }, [cart.items.length, loading, error])
 
   const handlePay = async () => {
     setLoading(true)
     setError(null)
     try {
-      const items = cart.items.map((i) => ({
-        productId: i.product.id,
-        quantity: i.quantity,
-        configuration: i.configuration,
-      }))
-      const res = await createCheckoutSession({ items }, accessToken || undefined)
-      window.location.href = res.url
+      router.push("/checkout/payment")
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Fehler beim Starten der Zahlung"
       setError(message)
@@ -49,7 +66,10 @@ export default function CheckoutPage() {
   return (
     <div className="flex flex-1 flex-col">
 
-      <main className="container mx-auto flex-1 overflow-y-auto px-4 pb-28 pt-4">
+      <main
+        className="container mx-auto flex-1 overflow-y-auto px-4 pt-4"
+        style={{ paddingBottom: footerHeight ? footerHeight + 16 : 16 }}
+      >
         <h2 className="text-2xl mb-4">Warenkorb</h2>
 
         {/* Soft sign-in encouragement */}
@@ -62,7 +82,7 @@ export default function CheckoutPage() {
               <p className="text-muted-foreground text-lg font-semibold">Warenkorb ist leer</p>
             </div>
           ) : (
-            <div className="mt-4 -mb-5 flex flex-col divide-y divide-border [&>*]:py-5">
+            <div className="mt-4 -mb-5 flex flex-col divide-y divide-border [&>*]:py-5 [&>*:first-child]:pt-0">
               {(() => {
                 const rows: React.ReactNode[] = []
                 if (suggestion && contiguous && startIndex >= 0 && endIndex >= startIndex) {
@@ -119,7 +139,7 @@ export default function CheckoutPage() {
         </div>
       </main>
 
-      <div className="fixed right-0 bottom-0 left-0 z-50 p-4 bg-background">
+      <div ref={footerRef} className="fixed right-0 bottom-0 left-0 z-50 p-4 bg-background">
         <div className="container mx-auto flex flex-col gap-3">
           {cart.items.length > 0 && (
             <div className="flex items-center justify-between py-2">

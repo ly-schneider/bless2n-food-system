@@ -12,8 +12,8 @@ export async function middleware(request: NextRequest) {
   }
 
   // Auth guard: protect app routes by requiring refresh cookie
-  // Note: Checkout is intentionally NOT protected to allow guest checkout
-  const protectedPrefixes = ["/orders", "/profile", "/(admin)", "/(pos)", "/(station)"]
+  // Note: Checkout and Orders are intentionally NOT protected to allow guest flows
+  const protectedPrefixes = ["/profile", "/(admin)", "/(pos)", "/(station)"]
   const isProtected = protectedPrefixes.some((p) => pathname.startsWith(p))
   if (isProtected) {
     const proto = (request.headers.get('x-forwarded-proto') || '').toLowerCase()
@@ -45,14 +45,20 @@ export async function middleware(request: NextRequest) {
   const connectSrc = ["'self'", 'ws:', 'wss:']
   if (apiOrigin) connectSrc.push(apiOrigin)
 
+  const stripeScript = "https://js.stripe.com"
+  const stripeConnect = ["https://api.stripe.com", "https://m.stripe.network", "https://r.stripe.com"]
+  const stripeFrame = ["https://js.stripe.com", "https://hooks.stripe.com", "https://m.stripe.network"]
+
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // WebView may require unsafe-inline
+    // Load Stripe.js from Stripe CDN
+    `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${stripeScript}`,
     "style-src 'self' 'unsafe-inline'",
+    // Stripe Elements iframes and assets
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
-    `connect-src ${connectSrc.join(' ')}`,
-    "frame-src 'none'",
+    `connect-src ${[...connectSrc, ...stripeConnect].join(' ')}`,
+    `frame-src ${stripeFrame.join(' ')}`,
     "object-src 'none'",
     "base-uri 'self'",
   ].join("; ")
