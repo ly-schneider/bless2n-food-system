@@ -281,44 +281,58 @@ func generateBulkData(ctx context.Context, db *mongo.Database, logger *zap.Logge
 
 // Additional indexes for inventory ledger
 func ensureInventoryIndexes(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {
-    coll := db.Collection("inventory_ledger")
-    idx := []mongo.IndexModel{
-        { Keys: bson.D{{Key: "product_id", Value: 1}} },
-        { Keys: bson.D{{Key: "created_at", Value: 1}} },
-        { Keys: bson.D{{Key: "product_id", Value: 1}, {Key: "created_at", Value: -1}} },
-    }
-    if _, err := coll.Indexes().CreateMany(ctx, idx); err != nil {
-        return fmt.Errorf("failed to create inventory_ledger indexes: %w", err)
-    }
-    return nil
+	coll := db.Collection("inventory_ledger")
+	idx := []mongo.IndexModel{
+		{Keys: bson.D{{Key: "product_id", Value: 1}}},
+		{Keys: bson.D{{Key: "created_at", Value: 1}}},
+		{Keys: bson.D{{Key: "product_id", Value: 1}, {Key: "created_at", Value: -1}}},
+	}
+	if _, err := coll.Indexes().CreateMany(ctx, idx); err != nil {
+		return fmt.Errorf("failed to create inventory_ledger indexes: %w", err)
+	}
+	return nil
 }
 
 func seedInventoryOpeningBalance(ctx context.Context, db *mongo.Database, logger *zap.Logger, qty int) error {
-    if qty <= 0 { return nil }
-    products := db.Collection("products")
-    ledger := db.Collection("inventory_ledger")
-    cur, err := products.Find(ctx, bson.M{"type": "simple"})
-    if err != nil { return err }
-    defer func() { _ = cur.Close(ctx) }()
-    type prod struct { ID primitive.ObjectID `bson:"_id"` }
-    entries := make([]interface{}, 0)
-    now := time.Now().UTC()
-    for cur.Next(ctx) {
-        var p prod
-        if err := cur.Decode(&p); err != nil { return err }
-        entries = append(entries, bson.M{
-            "_id":        primitive.NewObjectID(),
-            "product_id": p.ID,
-            "delta":      qty,
-            "reason":     "opening_balance",
-            "created_at": now,
-        })
-    }
-    if err := cur.Err(); err != nil { return err }
-    if len(entries) == 0 { return nil }
-    if _, err := ledger.InsertMany(ctx, entries); err != nil { return err }
-    logger.Info("Seeded inventory opening balance", zap.Int("entries", len(entries)), zap.Int("qty", qty))
-    return nil
+	if qty <= 0 {
+		return nil
+	}
+	products := db.Collection("products")
+	ledger := db.Collection("inventory_ledger")
+	cur, err := products.Find(ctx, bson.M{"type": "simple"})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = cur.Close(ctx) }()
+	type prod struct {
+		ID primitive.ObjectID `bson:"_id"`
+	}
+	entries := make([]interface{}, 0)
+	now := time.Now().UTC()
+	for cur.Next(ctx) {
+		var p prod
+		if err := cur.Decode(&p); err != nil {
+			return err
+		}
+		entries = append(entries, bson.M{
+			"_id":        primitive.NewObjectID(),
+			"product_id": p.ID,
+			"delta":      qty,
+			"reason":     "opening_balance",
+			"created_at": now,
+		})
+	}
+	if err := cur.Err(); err != nil {
+		return err
+	}
+	if len(entries) == 0 {
+		return nil
+	}
+	if _, err := ledger.InsertMany(ctx, entries); err != nil {
+		return err
+	}
+	logger.Info("Seeded inventory opening balance", zap.Int("entries", len(entries)), zap.Int("qty", qty))
+	return nil
 }
 
 func generateCustomers(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {
@@ -332,11 +346,8 @@ func generateCustomers(ctx context.Context, db *mongo.Database, logger *zap.Logg
 		customer := map[string]interface{}{
 			"_id":         primitive.NewObjectID(),
 			"email":       gofakeit.Email(),
-			"firstname":   gofakeit.FirstName(),
-			"lastname":    gofakeit.LastName(),
 			"role":        "customer",
 			"is_verified": gofakeit.Bool(),
-			"is_disabled": false,
 			"created_at":  now.Add(-time.Duration(gofakeit.Number(0, 365*24)) * time.Hour),
 			"updated_at":  now,
 		}
@@ -381,7 +392,6 @@ func generateAdmins(ctx context.Context, db *mongo.Database, logger *zap.Logger)
 			"lastname":    gofakeit.LastName(),
 			"role":        "admin",
 			"is_verified": true,
-			"is_disabled": false,
 			"created_at":  now.Add(-time.Duration(gofakeit.Number(0, 180*24)) * time.Hour),
 			"updated_at":  now,
 		}

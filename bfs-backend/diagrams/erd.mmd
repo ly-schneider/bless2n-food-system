@@ -7,8 +7,6 @@ erDiagram
     string lastname  "NULL"
     string role "NOT NULL; enum: admin|customer"
     boolean is_verified "NOT NULL; default=false"
-    boolean is_disabled "NOT NULL; default=false"
-    string disabled_reason "NULL"
     datetime created_at "NOT NULL; default=now()"
     datetime updated_at "NOT NULL; default=now()"
   }
