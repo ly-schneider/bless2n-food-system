@@ -20,12 +20,14 @@ import (
 
 type AuthHandler struct {
     authService service.AuthService
+    federatedService service.FederatedAuthService
     validator   *validator.Validate
 }
 
-func NewAuthHandler(authService service.AuthService) *AuthHandler {
+func NewAuthHandler(authService service.AuthService, federated service.FederatedAuthService) *AuthHandler {
     return &AuthHandler{
         authService: authService,
+        federatedService: federated,
         validator:   validator.New(),
     }
 }
@@ -100,6 +102,53 @@ func (h *AuthHandler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
     }
     _ = json.NewEncoder(w).Encode(resp)
 }
+
+// Federated: Google (Authorization Code + PKCE)
+type verifyGoogleCodeBody struct {
+    Code         string `json:"code"`
+    CodeVerifier string `json:"code_verifier"`
+    RedirectURI  string `json:"redirect_uri"`
+    Nonce        string `json:"nonce,omitempty"`
+}
+
+func (h *AuthHandler) GoogleCode(w http.ResponseWriter, r *http.Request) {
+    var body verifyGoogleCodeBody
+    if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Code == "" || body.CodeVerifier == "" {
+        http.Error(w, "Bad Request", http.StatusBadRequest)
+        return
+    }
+    clientID := clientIDFromRequest(r)
+    pair, user, err := h.federatedService.SignInWithGoogleCode(r.Context(), body.Code, body.CodeVerifier, body.RedirectURI, body.Nonce, clientID)
+    if err != nil { http.Error(w, "Unauthorized", http.StatusUnauthorized); return }
+    // Cookies
+    middleware.SetAuthCookie(w, r, utils.RefreshCookieName, pair.RefreshToken, int(7*24*3600))
+    csrf, _ := utils.GenerateCSRFToken()
+    csrfName := utils.CSRFCookieName
+    csrfSecure := middleware.IsHTTPS(r)
+    if csrfSecure { csrfName = "__Host-" + csrfName }
+    middleware.SetSecureCookie(w, middleware.SecureCookieOptions{
+        Name:     csrfName,
+        Value:    csrf,
+        Path:     "/",
+        MaxAge:   7*24*3600,
+        HttpOnly: false,
+        Secure:   csrfSecure,
+        SameSite: http.SameSiteLaxMode,
+    })
+    w.Header().Set("Content-Type", "application/json")
+    resp := map[string]any{
+        "access_token": pair.AccessToken,
+        "expires_in":   pair.ExpiresIn,
+        "token_type":   pair.TokenType,
+        "user":         toServiceUser(user),
+    }
+    if r.Header.Get("X-Internal-Call") == "1" {
+        resp["refresh_token"] = pair.RefreshToken
+    }
+    _ = json.NewEncoder(w).Encode(resp)
+}
+
+// (Apple implementation removed)
 
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
     // CSRF double-submit (supports both HTTPS and local HTTP cookie names)

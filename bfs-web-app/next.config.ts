@@ -1,8 +1,6 @@
 import withBundleAnalyzer from "@next/bundle-analyzer"
 import { type NextConfig } from "next"
 
-import { env } from "./env.mjs"
-
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080"
 
 const config: NextConfig = {
@@ -33,4 +31,5 @@ const config: NextConfig = {
   },
 }
 
-export default env.ANALYZE ? withBundleAnalyzer({ enabled: env.ANALYZE })(config) : config
+const analyze = process.env.ANALYZE === "true"
+export default analyze ? withBundleAnalyzer({ enabled: analyze })(config) : config

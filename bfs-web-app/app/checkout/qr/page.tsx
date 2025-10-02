@@ -38,8 +38,9 @@ export default function CheckoutQRPage() {
       try {
         const res = await getOrderPublicById(orderId)
         if (!cancelled) setServerOrder(res)
-      } catch (e: any) {
-        if (!cancelled) setApiError(e?.message || "Fehler beim Laden der Bestellung")
+      } catch (e: unknown) {
+        const msg = typeof e === 'object' && e && 'message' in e ? String((e as { message?: unknown }).message ?? '') : undefined
+        if (!cancelled) setApiError(msg || "Fehler beim Laden der Bestellung")
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -84,15 +85,15 @@ export default function CheckoutQRPage() {
 
   const groupedItems = useMemo(() => {
     if (!serverOrder?.items)
-      return [] as Array<{ parent: (typeof serverOrder.items)[number]; children: typeof serverOrder.items }>
+      return [] as Array<{ parent: PublicOrderDetailsDTO["items"][number]; children: PublicOrderDetailsDTO["items"] }>
 
     // Build quick lookup maps
-    const byId: Record<string, (typeof serverOrder.items)[number]> = {}
+    const byId: Record<string, PublicOrderDetailsDTO["items"][number]> = {}
     for (const it of serverOrder.items) byId[it.id] = it
 
     // Group children by their ultimate root parent (walk up until no parent)
-    const childrenByRoot: Record<string, typeof serverOrder.items> = {}
-    const roots: Array<(typeof serverOrder.items)[number]> = []
+    const childrenByRoot: Record<string, PublicOrderDetailsDTO["items"]> = {}
+    const roots: Array<PublicOrderDetailsDTO["items"][number]> = []
 
     for (const it of serverOrder.items) {
       const hasParent = typeof it.parentItemId === 'string' && it.parentItemId.length > 0
@@ -101,10 +102,16 @@ export default function CheckoutQRPage() {
         continue
       }
       // follow chain to root
-      let cur: typeof it | undefined = it
       let parentId = it.parentItemId as string
-      while (parentId && byId[parentId] && typeof byId[parentId].parentItemId === 'string' && (byId[parentId].parentItemId as string).length > 0) {
-        parentId = byId[parentId].parentItemId as string
+      while (parentId) {
+        const node = byId[parentId]
+        if (!node) break
+        const p = node.parentItemId
+        if (typeof p === 'string' && p.length > 0) {
+          parentId = p
+        } else {
+          break
+        }
       }
       const arr = childrenByRoot[parentId] || []
       arr.push(it)

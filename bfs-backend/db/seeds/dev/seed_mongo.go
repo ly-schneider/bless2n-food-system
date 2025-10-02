@@ -78,12 +78,12 @@ func SeedMongo(ctx context.Context, client *mongo.Client, cfg MongoConfig, logge
 }
 
 func resetCollections(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {
-	collections := []string{
-		"users", "admin_invites", "otp_tokens", "refresh_tokens",
-		"stations", "device_requests", "categories", "products",
-		"menu_slots", "menu_slot_items", "station_products",
-		"orders", "order_items", "inventory_ledger",
-	}
+    collections := []string{
+        "users", "admin_invites", "otp_tokens", "refresh_tokens", "identity_links",
+        "stations", "device_requests", "categories", "products",
+        "menu_slots", "menu_slot_items", "station_products",
+        "orders", "order_items", "inventory_ledger",
+    }
 
 	for _, coll := range collections {
 		collection := db.Collection(coll)
@@ -98,7 +98,7 @@ func resetCollections(ctx context.Context, db *mongo.Database, logger *zap.Logge
 }
 
 func ensureIndexes(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {
-	// Users collection indexes
+    // Users collection indexes
 	usersCollection := db.Collection("users")
 	userIndexes := []mongo.IndexModel{
 		{Keys: bson.D{{Key: "email", Value: 1}}, Options: options.Index().SetUnique(true)},
@@ -107,9 +107,20 @@ func ensureIndexes(ctx context.Context, db *mongo.Database, logger *zap.Logger) 
 		{Keys: bson.D{{Key: "created_at", Value: 1}}},
 	}
 
-	if _, err := usersCollection.Indexes().CreateMany(ctx, userIndexes); err != nil {
-		return fmt.Errorf("failed to create users indexes: %w", err)
-	}
+    if _, err := usersCollection.Indexes().CreateMany(ctx, userIndexes); err != nil {
+        return fmt.Errorf("failed to create users indexes: %w", err)
+    }
+
+    // Identity links collection indexes
+    identityLinks := db.Collection("identity_links")
+    identityIndexes := []mongo.IndexModel{
+        {Keys: bson.D{{Key: "provider", Value: 1}, {Key: "provider_user_id", Value: 1}}, Options: options.Index().SetUnique(true)},
+        {Keys: bson.D{{Key: "user_id", Value: 1}}},
+        {Keys: bson.D{{Key: "created_at", Value: 1}}},
+    }
+    if _, err := identityLinks.Indexes().CreateMany(ctx, identityIndexes); err != nil {
+        return fmt.Errorf("failed to create identity_links indexes: %w", err)
+    }
 
 	// Orders collection indexes
 	ordersCollection := db.Collection("orders")

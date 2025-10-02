@@ -157,7 +157,7 @@ func (h *OrderHandler) GetPublicByID(w http.ResponseWriter, r *http.Request) {
             s := it.MenuSlotID.Hex()
             msID = &s
         }
-        var msName *string = it.MenuSlotName
+        msName := it.MenuSlotName
         img := imgByID[it.ProductID]
         dtoItems = append(dtoItems, PublicOrderItemDTO{
             ID: it.ID.Hex(), OrderID: it.OrderID.Hex(), ProductID: it.ProductID.Hex(), Title: it.Title,

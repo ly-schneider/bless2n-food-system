@@ -62,6 +62,7 @@ func NewRouter(
 		v1.Route("/auth", func(a chi.Router) {
 			a.Post("/otp/request", authHandler.RequestOTP)
 			a.Post("/otp/verify", authHandler.VerifyOTP)
+            a.Post("/google/code", authHandler.GoogleCode)
 			a.Post("/refresh", authHandler.Refresh)
 			a.Post("/logout", authHandler.Logout)
 			a.With(jwtMw.RequireAuth).Get("/sessions", authHandler.Sessions)

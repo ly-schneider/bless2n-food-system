@@ -5,6 +5,8 @@ import Header from "@/components/layout/header"
 import Footer from "@/components/layout/footer"
 import { AuthProvider } from "@/contexts/auth-context"
 import { CartProvider } from "@/contexts/cart-context"
+import CookieBanner from "@/components/cookie-banner"
+import AnalyticsConsentGate from "@/components/google-analytics"
 
 const golosText = Golos_Text({
   weight: ["500"],
@@ -31,6 +33,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Footer />
           </CartProvider>
         </AuthProvider>
+        {/* Consent + Analytics */}
+        <AnalyticsConsentGate />
+        <CookieBanner />
       </body>
     </html>
   )

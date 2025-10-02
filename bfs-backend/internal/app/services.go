@@ -14,6 +14,7 @@ func NewServices() fx.Option {
             service.NewEmailService,
             NewJWTService,
             service.NewAuthService,
+            service.NewFederatedAuthService,
             service.NewAdminService,
             service.NewUserService,
             service.NewStationService,

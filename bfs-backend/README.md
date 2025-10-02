@@ -163,6 +163,17 @@ Notes:
 - Presentment currency is `CHF`; only `twint` is enabled on Payment Intents. No setup/subscription.
 - Desktop flows may show a QR; mobile users authorize in the TWINT app.
 
+### Federated Login (Google)
+
+This backend verifies Google identity tokens server-side and issues our own JWTs (access + refresh with rotation). The frontend uses Authorization Code + PKCE flow.
+
+- Provide `GOOGLE_CLIENT_ID` and (for web client exchange) `GOOGLE_CLIENT_SECRET` in `.env`.
+
+Endpoints (backend):
+- `POST /v1/auth/google/code` – body: `{ code, code_verifier, redirect_uri, nonce }`
+
+Data model adds `identity_links` collection with unique `provider + provider_user_id` and reference to local user. Existing refresh token rotation and revocation logic is reused.
+
 ## 📝 Available Commands
 
 Run `make` or `make help` to see all available commands with descriptions.

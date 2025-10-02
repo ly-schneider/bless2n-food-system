@@ -5,6 +5,7 @@ import eslintPluginNext from "@next/eslint-plugin-next"
 import eslintPluginImport from "eslint-plugin-import"
 import eslintPluginStorybook from "eslint-plugin-storybook"
 import typescriptEslint from "typescript-eslint"
+import eslintPluginReactHooks from "eslint-plugin-react-hooks"
 import * as fs from "fs"
 
 const eslintIgnore = [
@@ -31,6 +32,7 @@ const config = typescriptEslint.config(
   {
     plugins: {
       "@next/next": eslintPluginNext,
+      "react-hooks": eslintPluginReactHooks,
     },
     rules: {
       ...eslintPluginNext.configs.recommended.rules,

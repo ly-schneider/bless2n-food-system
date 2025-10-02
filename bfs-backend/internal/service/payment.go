@@ -404,7 +404,7 @@ func (s *paymentService) CreatePaymentIntentForOrder(ctx context.Context, prep *
 
     // Determine Stripe Customer to attach if user exists
     var customerID *string
-    var fallbackEmail *string = receiptEmail
+    fallbackEmail := receiptEmail
     if prep.UserID != nil {
         if u, err := s.userRepo.FindByID(ctx, *prep.UserID); err == nil && u != nil {
             if u.StripeCustomerID != nil && *u.StripeCustomerID != "" {
@@ -524,7 +524,7 @@ func (s *paymentService) CreatePaymentIntentForExistingPendingOrder(ctx context.
     idHex := ord.ID.Hex()
     // Determine Stripe Customer
     var customerID *string
-    var fallbackEmail *string = receiptEmail
+    fallbackEmail := receiptEmail
     if userID != nil && *userID != "" {
         if oid, err := primitive.ObjectIDFromHex(*userID); err == nil {
             if u, err := s.userRepo.FindByID(ctx, oid); err == nil && u != nil {

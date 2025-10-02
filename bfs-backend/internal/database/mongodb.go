@@ -57,6 +57,7 @@ const (
 	OTPTokensCollection       = "otp_tokens"
 	EmailChangeTokensCollection = "email_change_tokens"
 	RefreshTokensCollection   = "refresh_tokens"
+	IdentityLinksCollection   = "identity_links"
 	StationsCollection        = "stations"
 	StationRequestsCollection = "station_requests"
 	CategoriesCollection      = "categories"

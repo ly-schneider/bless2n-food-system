@@ -17,6 +17,7 @@ type Config struct {
     Smtp     SmtpConfig
     Security SecurityConfig
     Stripe   StripeConfig
+    OAuth    OAuthConfig
 }
 
 type AppConfig struct {
@@ -57,6 +58,16 @@ type StripeConfig struct {
     SecretKey     string
     WebhookSecret string
 }
+
+type OAuthConfig struct {
+    Google GoogleConfig
+}
+
+type GoogleConfig struct {
+    ClientID string
+    ClientSecret string // optional; recommended for web client exchange
+}
+
 
 func Load() Config {
 	// Load .env files only if not in Docker environment
@@ -108,6 +119,12 @@ func Load() Config {
         Stripe: StripeConfig{
             SecretKey:     getEnv("STRIPE_SECRET_KEY"),
             WebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET"),
+        },
+        OAuth: OAuthConfig{
+            Google: GoogleConfig{
+                ClientID: getEnv("GOOGLE_CLIENT_ID"),
+                ClientSecret: getEnvOptional("GOOGLE_CLIENT_SECRET"),
+            },
         },
     }
 
