@@ -1,0 +1,34 @@
+"use client"
+import { useEffect, useState } from "react"
+import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
+import { useRouter } from "next/navigation"
+
+export function AdminGuard({ children }: { children: React.ReactNode }) {
+  const fetchAuth = useAuthorizedFetch()
+  const router = useRouter()
+  const [ok, setOk] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/me`, { method: "GET" })
+        if (!res.ok) throw new Error("Unauthorized")
+        const me = await res.json() as { role?: string }
+        if (!cancelled) setOk(me?.role === 'admin')
+      } catch {
+        if (!cancelled) setOk(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [fetchAuth])
+
+  useEffect(() => {
+    if (ok === false) router.replace("/")
+  }, [ok, router])
+
+  if (ok === null) return <div className="text-sm text-gray-600">Checking access…</div>
+  if (!ok) return null
+  return <>{children}</>
+}
+

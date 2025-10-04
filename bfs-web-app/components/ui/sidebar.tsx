@@ -16,9 +16,10 @@ import { cn } from "@/lib/utils"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "16rem"
-const SIDEBAR_WIDTH_MOBILE = "18rem"
-const SIDEBAR_WIDTH_ICON = "3rem"
+// Match spec: 264px expanded, 296px drawer (mobile), 72px collapsed
+const SIDEBAR_WIDTH = "16.5rem" // 264px
+const SIDEBAR_WIDTH_MOBILE = "18.5rem" // 296px
+const SIDEBAR_WIDTH_ICON = "4.5rem" // 72px
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
 type SidebarContextProps = {

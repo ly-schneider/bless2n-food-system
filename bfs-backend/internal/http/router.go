@@ -1,36 +1,53 @@
 package http
 
 import (
-	"net/http"
+    "net/http"
 
-	"backend/internal/domain"
-	"backend/internal/handler"
-	jwtMiddleware "backend/internal/middleware"
+    "backend/internal/domain"
+    "backend/internal/handler"
+    jwtMiddleware "backend/internal/middleware"
+    "backend/internal/repository"
+    "backend/internal/service"
+    "go.mongodb.org/mongo-driver/bson/primitive"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+    "github.com/go-chi/chi/v5"
+    "github.com/go-chi/chi/v5/middleware"
 
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 func NewRouter(
-	authHandler *handler.AuthHandler,
-	devHandler *handler.DevHandler,
-	adminHandler *handler.AdminHandler,
-	userHandler *handler.UserHandler,
-	orderHandler *handler.OrderHandler,
-	stationHandler *handler.StationHandler,
-	categoryHandler *handler.CategoryHandler,
-	productHandler *handler.ProductHandler,
-	paymentHandler *handler.PaymentHandler,
-	redemptionHandler *handler.RedemptionHandler,
-	healthHandler *handler.HealthHandler,
-	jwksHandler *handler.JWKSHandler,
-	jwtMw *jwtMiddleware.JWTMiddleware,
-	securityMw *jwtMiddleware.SecurityMiddleware,
-	enableDocs bool,
+    authHandler *handler.AuthHandler,
+    devHandler *handler.DevHandler,
+    adminHandler *handler.AdminHandler,
+    userHandler *handler.UserHandler,
+    orderHandler *handler.OrderHandler,
+    stationHandler *handler.StationHandler,
+    categoryHandler *handler.CategoryHandler,
+    productHandler *handler.ProductHandler,
+    paymentHandler *handler.PaymentHandler,
+    redemptionHandler *handler.RedemptionHandler,
+    healthHandler *handler.HealthHandler,
+    jwksHandler *handler.JWKSHandler,
+    jwtMw *jwtMiddleware.JWTMiddleware,
+    securityMw *jwtMiddleware.SecurityMiddleware,
+    // repositories for admin handlers
+    productRepo repository.ProductRepository,
+    inventoryRepo repository.InventoryLedgerRepository,
+    auditRepo repository.AuditRepository,
+    orderRepo repository.OrderRepository,
+    userRepo repository.UserRepository,
+    menuSlotRepo repository.MenuSlotRepository,
+    menuSlotItemRepo repository.MenuSlotItemRepository,
+    categoryRepo repository.CategoryRepository,
+    adminInviteRepo repository.AdminInviteRepository,
+    refreshTokenRepo repository.RefreshTokenRepository,
+    emailSvc service.EmailService,
+    enableDocs bool,
 ) http.Handler {
-	r := chi.NewRouter()
+    r := chi.NewRouter()
+    // wire chi URLParam to admin handler helpers
+    handler.ChiURLParamFn = chi.URLParam
 
 	// Security middleware (applied first for all requests)
 	r.Use(securityMw.SecurityHeaders)
@@ -57,7 +74,7 @@ func NewRouter(
 		r.Get("/dev/email/preview/email-change", devHandler.PreviewEmailChangeEmail)
 	}
 
-	r.Route("/v1", func(v1 chi.Router) {
+    r.Route("/v1", func(v1 chi.Router) {
 		// Auth routes
 		v1.Route("/auth", func(a chi.Router) {
 			a.Post("/otp/request", authHandler.RequestOTP)
@@ -89,14 +106,83 @@ func NewRouter(
             orders.With(jwtMw.RequireAuth).Get("/", orderHandler.ListMyOrders)
         })
 
-		// Example admin protected route
-		v1.Route("/admin", func(admin chi.Router) {
-			admin.Use(jwtMw.RequireAuth)
-			admin.Use(jwtMw.RequireRole(string(domain.UserRoleAdmin)))
-			admin.Get("/ping", adminHandler.Ping)
-		})
+        // Admin routes
+        v1.Route("/admin", func(admin chi.Router) {
+            admin.Use(jwtMw.RequireAuth)
+            // Require admin role, but allow immediate effect on role changes by checking DB if token is not yet updated
+            admin.Use(func(next http.Handler) http.Handler {
+                return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+                    claims, ok := jwtMiddleware.GetUserFromContext(r.Context())
+                    if !ok || claims == nil { http.Error(w, "Unauthorized", http.StatusUnauthorized); return }
+                    if string(claims.Role) == string(domain.UserRoleAdmin) {
+                        next.ServeHTTP(w, r); return
+                    }
+                    // Fallback to DB role check for immediate RBAC change effect
+                    if userRepo != nil {
+                        if oid, err := primitive.ObjectIDFromHex(claims.Subject); err == nil {
+                            if u, err := userRepo.FindByID(r.Context(), oid); err == nil && u != nil && u.Role == domain.UserRoleAdmin {
+                                next.ServeHTTP(w, r); return
+                            }
+                        }
+                    }
+                    http.Error(w, "Forbidden", http.StatusForbidden)
+                })
+            })
+            // CSRF required on state changes
+            csrf := jwtMiddleware.NewCSRFMiddleware()
+            admin.Use(csrf.Require)
+            admin.Get("/ping", adminHandler.Ping)
 
-		v1.Route("/payments", func(pay chi.Router) {
+            // Products admin
+            ap := handler.NewAdminProductHandler(productRepo, inventoryRepo, auditRepo, menuSlotItemRepo, categoryRepo)
+            admin.Patch("/products/{id}/price", http.HandlerFunc(ap.PatchPrice))
+            admin.Patch("/products/{id}/active", http.HandlerFunc(ap.PatchActive))
+            admin.Post("/products/{id}/inventory-adjust", http.HandlerFunc(ap.AdjustInventory))
+            admin.Delete("/products/{id}", http.HandlerFunc(ap.DeleteHard))
+            admin.Patch("/products/{id}/category", http.HandlerFunc(ap.PatchCategory))
+            // Orders admin
+            ao := handler.NewAdminOrderHandler(orderRepo, auditRepo)
+            admin.Get("/orders", http.HandlerFunc(ao.List))
+            admin.Get("/orders/export.csv", http.HandlerFunc(ao.ExportCSV))
+            admin.Patch("/orders/{id}/status", http.HandlerFunc(ao.PatchStatus))
+            // Users admin
+            au := handler.NewAdminUserHandler(userRepo)
+            admin.Get("/users", http.HandlerFunc(au.List))
+            admin.Post("/users/{id}/promote", http.HandlerFunc(au.Promote))
+            // Sessions admin
+            as := handler.NewAdminSessionsHandler(refreshTokenRepo, userRepo)
+            admin.Get("/sessions", http.HandlerFunc(as.List))
+            admin.Post("/users/{id}/sessions/revoke", http.HandlerFunc(as.RevokeFamily))
+            admin.Post("/users/{id}/sessions/revoke-all", http.HandlerFunc(as.RevokeAll))
+            // Categories admin
+            ac := handler.NewAdminCategoryHandler(categoryRepo, auditRepo)
+            admin.Get("/categories", http.HandlerFunc(ac.List))
+            admin.Post("/categories", http.HandlerFunc(ac.Create))
+            admin.Patch("/categories/{id}", http.HandlerFunc(ac.Update))
+            admin.Delete("/categories/{id}", http.HandlerFunc(ac.Delete))
+            // Menus admin
+            am := handler.NewAdminMenuHandler(productRepo, categoryRepo, menuSlotRepo, menuSlotItemRepo, auditRepo)
+            admin.Get("/menus", http.HandlerFunc(am.List))
+            admin.Post("/menus", http.HandlerFunc(am.Create))
+            admin.Get("/menus/{id}", http.HandlerFunc(am.Get))
+            admin.Patch("/menus/{id}", http.HandlerFunc(am.Update)) // legacy generic update
+            admin.Patch("/menus/{id}/active", http.HandlerFunc(am.PatchActive))
+            admin.Delete("/menus/{id}", http.HandlerFunc(am.DeleteHard))
+            admin.Post("/menus/{id}/slots", http.HandlerFunc(am.CreateSlot))
+            admin.Patch("/menus/{id}/slots/{slotId}", http.HandlerFunc(am.RenameSlot))
+            admin.Patch("/menus/{id}/slots/reorder", http.HandlerFunc(am.ReorderSlots))
+            admin.Delete("/menus/{id}/slots/{slotId}", http.HandlerFunc(am.DeleteSlot))
+            admin.Post("/menus/{id}/slots/{slotId}/items", http.HandlerFunc(am.AttachItem))
+            admin.Delete("/menus/{id}/slots/{slotId}/items/{productId}", http.HandlerFunc(am.DetachItem))
+            // Admin invites (admin-only for creating new admins)
+            ai := handler.NewAdminInviteHandler(adminInviteRepo, userRepo, auditRepo, emailSvc)
+            admin.Get("/invites", http.HandlerFunc(ai.List))
+            admin.Post("/invites", http.HandlerFunc(ai.Create))
+            admin.Post("/invites/{id}/revoke", http.HandlerFunc(ai.Revoke))
+            admin.Post("/invites/{id}/resend", http.HandlerFunc(ai.Resend))
+        })
+
+        v1.Route("/payments", func(pay chi.Router) {
 			// Allow optional auth so we can attach user to order if logged in
 			pay.Use(jwtMw.OptionalAuth)
 			// Payment Intents (TWINT via Payment Element)
@@ -105,8 +191,11 @@ func NewRouter(
 			pay.Get("/{id}", paymentHandler.GetPayment)
 			// Stripe webhook receiver
 			pay.Post("/webhook", paymentHandler.Webhook)
-		})
-	})
+        })
+
+        // Public invite accept endpoint
+        v1.Post("/invites/accept", http.HandlerFunc(handler.NewAdminInviteHandler(adminInviteRepo, userRepo, auditRepo, emailSvc).Accept))
+    })
 
 	return r
 }

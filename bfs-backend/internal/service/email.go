@@ -17,6 +17,7 @@ type EmailService interface {
     PreviewLoginEmail(ctx context.Context, to, code, ip, ua string, codeTTL time.Duration) (subject, text, html string, err error)
     SendEmailChangeVerification(ctx context.Context, toNewEmail, code, ip, ua string, codeTTL time.Duration) error
     PreviewEmailChangeVerification(ctx context.Context, toNewEmail, code, ip, ua string, codeTTL time.Duration) (subject, text, html string, err error)
+    SendAdminInvite(ctx context.Context, to, token string, expiresAt time.Time) error
 }
 
 type emailService struct {
@@ -126,6 +127,26 @@ func (e *emailService) PreviewEmailChangeVerification(ctx context.Context, toNew
     if err := htmlT.Execute(&htmlBody, data); err != nil { return "","","", err }
     if err := textT.Execute(&textBody, data); err != nil { return "","","", err }
     return "E‑Mail Änderung bestätigen", textBody.String(), htmlBody.String(), nil
+}
+
+type inviteData struct {
+    Brand     string
+    AcceptURL string
+    TTL       string
+}
+
+func (e *emailService) SendAdminInvite(ctx context.Context, to, token string, expiresAt time.Time) error {
+    // Build accept URL; public landing page handles acceptance
+    base := strings.TrimRight(e.cfg.App.PublicBaseURL, "/")
+    acceptURL := base + "/invite/accept?token=" + token
+    ttl := time.Until(expiresAt)
+    data := inviteData{ Brand: "BlessThun", AcceptURL: acceptURL, TTL: friendlyTTL(ttl) }
+    htmlT := template.Must(template.New("invite_html").Parse(adminInviteHTML))
+    textT := template.Must(template.New("invite_text").Parse(adminInviteText))
+    var htmlBody, textBody strings.Builder
+    if err := htmlT.Execute(&htmlBody, data); err != nil { return err }
+    if err := textT.Execute(&textBody, data); err != nil { return err }
+    return e.send(ctx, to, "Einladung als Admin", textBody.String(), htmlBody.String())
 }
 
 func (e *emailService) send(ctx context.Context, to, subject, textBody, htmlBody string) error {

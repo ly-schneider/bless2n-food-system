@@ -67,5 +67,6 @@ const (
 	StationProductsCollection = "station_products"
 	InventoryLedgerCollection = "inventory_ledger"
 	OrdersCollection          = "orders"
-	OrderItemsCollection      = "order_items"
+    OrderItemsCollection      = "order_items"
+    AuditLogsCollection       = "audit_logs"
 )

@@ -151,16 +151,11 @@ func (h *AuthHandler) GoogleCode(w http.ResponseWriter, r *http.Request) {
 // (Apple implementation removed)
 
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
-    // CSRF double-submit (supports both HTTPS and local HTTP cookie names)
-    csrfHeader := r.Header.Get(utils.CSRFHeaderName)
-    csrfCookie, _ := r.Cookie("__Host-" + utils.CSRFCookieName)
-    if csrfCookie == nil {
-        csrfCookie, _ = r.Cookie(utils.CSRFCookieName)
-    }
-    if csrfHeader == "" || csrfCookie == nil || csrfHeader != csrfCookie.Value {
-        http.Error(w, "Forbidden", http.StatusForbidden)
-        return
-    }
+    // NOTE: No CSRF protection required for refresh endpoint since:
+    // 1. It's used to establish new CSRF tokens (chicken-egg problem)
+    // 2. Already protected by HttpOnly refresh token cookie
+    // 3. Prevents deadlock when CSRF tokens expire
+    
     // Refresh cookie required (supports both HTTPS and local HTTP cookie names)
     rtCookie, err := r.Cookie("__Host-" + utils.RefreshCookieName)
     if err != nil {

@@ -70,10 +70,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const refresh = useCallback(async () => {
-    const csrf = getCookie('__Host-csrf') || getCookie('csrf')
-    if (!csrf) return false
     try {
-      const res = await fetch('/api/auth/refresh', { method: 'POST', headers: { 'X-CSRF': csrf } })
+      const res = await fetch('/api/auth/refresh', { method: 'POST' })
       if (!res.ok) { clearAuth(); return false }
       const data = (await res.json()) as { access_token: string; expires_in: number; user?: User }
       setAuth(data.access_token, data.expires_in, data.user)

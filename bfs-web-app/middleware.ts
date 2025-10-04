@@ -13,7 +13,7 @@ export async function middleware(request: NextRequest) {
 
   // Auth guard: protect app routes by requiring refresh cookie
   // Note: Checkout and Orders are intentionally NOT protected to allow guest flows
-  const protectedPrefixes = ["/profile", "/(admin)", "/(pos)", "/(station)"]
+  const protectedPrefixes = ["/profile", "/admin", "/pos", "/station"]
   const isProtected = protectedPrefixes.some((p) => pathname.startsWith(p))
   if (isProtected) {
     const proto = (request.headers.get('x-forwarded-proto') || '').toLowerCase()
@@ -49,10 +49,12 @@ export async function middleware(request: NextRequest) {
   const stripeConnect = ["https://api.stripe.com", "https://m.stripe.network", "https://r.stripe.com"]
   const stripeFrame = ["https://js.stripe.com", "https://hooks.stripe.com", "https://m.stripe.network"]
 
+  const googleTagManager = "https://www.googletagmanager.com"
+
   const csp = [
     "default-src 'self'",
     // Load Stripe.js from Stripe CDN
-    `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${stripeScript}`,
+    `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${stripeScript} ${googleTagManager}`,
     "style-src 'self' 'unsafe-inline'",
     // Stripe Elements iframes and assets
     "img-src 'self' data: blob: https:",

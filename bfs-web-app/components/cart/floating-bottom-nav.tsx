@@ -75,7 +75,7 @@ export function FloatingBottomNav() {
             <Button
               className="rounded-pill h-12 text-base font-medium flex-1 lg:flex-none lg:max-w-xs px-6 md:px-8 lg:px-10 xl:px-12"
               disabled={cart.items.length === 0}
-              onClick={() => router.push("/checkout")}
+              onClick={() => router.push("/food/checkout")}
             >
               Jetzt bezahlen
             </Button>
@@ -176,7 +176,7 @@ export function FloatingBottomNav() {
                         className="rounded-pill h-12 flex-1 text-base font-medium lg:max-w-xs"
                         onClick={() => {
                           setIsCartOpen(false)
-                          router.push("/checkout")
+                          router.push("/food/checkout")
                         }}
                       >
                         Jetzt bezahlen
@@ -273,7 +273,7 @@ export function FloatingBottomNav() {
                         className="rounded-pill h-12 w-full text-base font-medium"
                         onClick={() => {
                           setIsCartOpen(false)
-                          router.push("/checkout")
+                          router.push("/food/checkout")
                         }}
                       >
                         Jetzt bezahlen

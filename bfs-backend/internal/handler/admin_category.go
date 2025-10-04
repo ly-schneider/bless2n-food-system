@@ -1,0 +1,65 @@
+package handler
+
+import (
+    "backend/internal/domain"
+    "backend/internal/repository"
+    "backend/internal/response"
+    "encoding/json"
+    "net/http"
+
+    "go.mongodb.org/mongo-driver/bson/primitive"
+)
+
+type AdminCategoryHandler struct {
+    categories repository.CategoryRepository
+    audit      repository.AuditRepository
+}
+
+func NewAdminCategoryHandler(categories repository.CategoryRepository, audit repository.AuditRepository) *AdminCategoryHandler {
+    return &AdminCategoryHandler{ categories: categories, audit: audit }
+}
+
+// GET /v1/admin/categories
+func (h *AdminCategoryHandler) List(w http.ResponseWriter, r *http.Request) {
+    // Minimal list; add filters later as needed
+    items, total, err := h.categories.List(r.Context(), nil, nil, 200, 0)
+    if err != nil { response.WriteError(w, http.StatusInternalServerError, "failed to list categories"); return }
+    type CatDTO struct { ID string `json:"id"`; Name string `json:"name"`; IsActive bool `json:"isActive"` }
+    out := make([]CatDTO, 0, len(items))
+    for _, c := range items { out = append(out, CatDTO{ ID: c.ID.Hex(), Name: c.Name, IsActive: c.IsActive }) }
+    response.WriteJSON(w, http.StatusOK, map[string]any{"items": out, "count": total})
+}
+
+// POST /v1/admin/categories
+type createCategoryBody struct { Name string `json:"name"`; IsActive *bool `json:"isActive,omitempty"` }
+func (h *AdminCategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
+    var body createCategoryBody
+    if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Name == "" { response.WriteError(w, http.StatusBadRequest, "invalid payload"); return }
+    c := &domain.Category{ Name: body.Name, IsActive: true }
+    if body.IsActive != nil { c.IsActive = *body.IsActive }
+    id, err := h.categories.Insert(r.Context(), c)
+    if err != nil { response.WriteError(w, http.StatusInternalServerError, "create failed"); return }
+    response.WriteJSON(w, http.StatusCreated, map[string]any{"id": id.Hex()})
+}
+
+// PATCH /v1/admin/categories/{id}
+type updateCategoryBody struct { Name *string `json:"name,omitempty"`; IsActive *bool `json:"isActive,omitempty"` }
+func (h *AdminCategoryHandler) Update(w http.ResponseWriter, r *http.Request) {
+    id := chiURLParam(r, "id"); oid, err := primitive.ObjectIDFromHex(id); if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid id"); return }
+    var body updateCategoryBody
+    if err := json.NewDecoder(r.Body).Decode(&body); err != nil { response.WriteError(w, http.StatusBadRequest, "invalid payload"); return }
+    set := primitive.M{}
+    if body.Name != nil { set["name"] = *body.Name }
+    if body.IsActive != nil { set["is_active"] = *body.IsActive }
+    if len(set) == 0 { response.WriteJSON(w, http.StatusOK, map[string]any{"ok": true}); return }
+    if err := h.categories.UpdateFields(r.Context(), oid, set); err != nil { response.WriteError(w, http.StatusInternalServerError, "update failed"); return }
+    response.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// DELETE /v1/admin/categories/{id}
+func (h *AdminCategoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
+    id := chiURLParam(r, "id"); oid, err := primitive.ObjectIDFromHex(id); if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid id"); return }
+    if err := h.categories.DeleteByID(r.Context(), oid); err != nil { response.WriteError(w, http.StatusInternalServerError, "delete failed"); return }
+    response.WriteNoContent(w)
+}
+

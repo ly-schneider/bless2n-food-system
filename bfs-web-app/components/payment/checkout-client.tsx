@@ -16,7 +16,7 @@ type Props = {
   returnPath?: string
 }
 
-export function CheckoutClient({ returnPath = "/checkout/payment/next" }: Props) {
+export function CheckoutClient({ returnPath = "/food/checkout/payment/next" }: Props) {
   const { user, accessToken } = useAuth()
   const { cart } = useCart()
   const [clientSecret, setClientSecret] = useState<string | null>(null)

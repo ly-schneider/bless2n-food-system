@@ -10,7 +10,12 @@ import (
 )
 
 type MenuSlotItemRepository interface {
-	FindByMenuSlotIDs(ctx context.Context, menuSlotIDs []primitive.ObjectID) ([]*domain.MenuSlotItem, error)
+    FindByMenuSlotIDs(ctx context.Context, menuSlotIDs []primitive.ObjectID) ([]*domain.MenuSlotItem, error)
+    Insert(ctx context.Context, item *domain.MenuSlotItem) error
+    ExistsBySlotAndProduct(ctx context.Context, slotID primitive.ObjectID, productID primitive.ObjectID) (bool, error)
+    DeleteBySlotAndProduct(ctx context.Context, slotID primitive.ObjectID, productID primitive.ObjectID) (bool, error)
+    DeleteByMenuSlotID(ctx context.Context, slotID primitive.ObjectID) error
+    CountByProductID(ctx context.Context, productID primitive.ObjectID) (int64, error)
 }
 
 type menuSlotItemRepository struct {
@@ -49,4 +54,30 @@ func (r *menuSlotItemRepository) FindByMenuSlotIDs(ctx context.Context, menuSlot
     }
 
     return menuSlotItems, nil
+}
+
+func (r *menuSlotItemRepository) Insert(ctx context.Context, item *domain.MenuSlotItem) error {
+    if item.ID.IsZero() { item.ID = primitive.NewObjectID() }
+    _, err := r.collection.InsertOne(ctx, item)
+    return err
+}
+
+func (r *menuSlotItemRepository) ExistsBySlotAndProduct(ctx context.Context, slotID primitive.ObjectID, productID primitive.ObjectID) (bool, error) {
+    n, err := r.collection.CountDocuments(ctx, primitive.M{"menu_slot_id": slotID, "product_id": productID})
+    return n > 0, err
+}
+
+func (r *menuSlotItemRepository) DeleteBySlotAndProduct(ctx context.Context, slotID primitive.ObjectID, productID primitive.ObjectID) (bool, error) {
+    res, err := r.collection.DeleteOne(ctx, primitive.M{"menu_slot_id": slotID, "product_id": productID})
+    if err != nil { return false, err }
+    return res.DeletedCount > 0, nil
+}
+
+func (r *menuSlotItemRepository) DeleteByMenuSlotID(ctx context.Context, slotID primitive.ObjectID) error {
+    _, err := r.collection.DeleteMany(ctx, primitive.M{"menu_slot_id": slotID})
+    return err
+}
+
+func (r *menuSlotItemRepository) CountByProductID(ctx context.Context, productID primitive.ObjectID) (int64, error) {
+    return r.collection.CountDocuments(ctx, primitive.M{"product_id": productID})
 }

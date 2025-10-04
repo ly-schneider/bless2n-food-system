@@ -1,35 +1,37 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `ordering-system/`: Next.js + Supabase ordering UI (App Router). Code in `app/`, UI in `components/`, shared in `lib/` and `utils/`, DB seeds/migrations in `supabase/`.
-- `bfs-backend/`: Go HTTP API with Clean Architecture. Entry at `cmd/backend/`, core in `internal/` (domain, service, http, etc.). Docker and `Makefile` provided.
-- `webpos2-main/`: Next.js POS client. Source in `src/`, public assets in `public/`.
-- `bfs-cloud/`: Terraform IaC (envs under `envs/`).
-- `bfs-http/`: Yaak/HTTP client collections for API testing.
+- `bfs-backend/`: Go HTTP API (Clean Architecture). Entry at `cmd/backend/`; core under `internal/{domain,service,http,...}`; docs in `docs/`; dev secrets in `secrets/`. Tests live next to code as `*_test.go`.
+- `bfs-web-app/`: Next.js app (App Router). UI in `app/`, components in `components/`, shared code in `lib/` and `hooks/`, assets in `public/`.
+- `bfs-cloud/`: Terraform IaC. Environments under `envs/{staging,prod}`; reusable modules in `modules/`.
+- `bfs-http/`: Yaak/HTTP client collections (`yaak.*.yaml`) for API testing.
 
 ## Build, Test, and Development Commands
-- Ordering UI: `cd ordering-system && npm run dev|build|start` (uses Turbopack). Env from `ordering-system/.env`.
-- POS app: `cd webpos2-main && npm run dev|build|start|lint`.
-- Backend API: `cd bfs-backend && make help`.
+- Backend: `cd bfs-backend && make help`
   - `make dev`: run API with live‑reload (Air).
-  - `make docker-up` / `make docker-up-backend`: start services (Mongo, Mailpit) with/without API.
-  - `make test` / `make test-coverage`: unit tests; coverage threshold 80%.
+  - `make docker-up` / `make docker-up-backend`: start Mongo(+API) via Compose.
+  - `make test`: run unit tests; `make swag` to refresh Swagger docs.
+- Web app: `cd bfs-web-app`
+  - `pnpm dev|build|start|lint` and `pnpm test|test:coverage`.
+- Cloud: `cd bfs-cloud/envs/<env> && terraform init && terraform plan|apply`.
 
 ## Coding Style & Naming Conventions
-- TypeScript/React: 2‑space indent, functional components, hooks prefix `use*`. Prefer `kebab-case` filenames for components and `camelCase` for utilities. Run `npm run lint` where available.
-- Formatting: Prettier is used (see project configs). Keep imports ordered and avoid unused exports.
-- Go: idiomatic Go formatting (`gofmt`, `goimports`). Package layout mirrors `internal/{domain,service,http,...}`.
-- Commits: Conventional Commits enforced via pre‑commit (`feat:`, `fix:`, `refactor:`, etc.; see `git-conventional-commits.yaml`).
+- TypeScript/React: 2‑space indent, functional components. Hooks prefixed `use*`.
+  - Filenames: components `kebab-case`, utilities `camelCase`. Keep imports ordered.
+  - Tools: ESLint + Prettier (`pnpm lint`, `pnpm prettier:fix`).
+- Go: idiomatic formatting via `gofmt`/`goimports`; `golangci-lint` via `make lint`.
+  - Package layout mirrors `internal/{domain,service,http,...}`.
 
 ## Testing Guidelines
-- Go unit tests live alongside code in `*_test.go`. Use table‑driven tests and subtests. Run `make test` locally; for CI, prefer `make test-coverage` (fails if <80%).
-- Frontend: add tests where applicable (e.g., React Testing Library). Name files `*.test.tsx` near the component.
+- Go: table‑driven tests in `*_test.go`. Run `make test`; target 80%+ coverage for changed packages.
+- Web app: Vitest + React Testing Library. Name files `*.test.ts(x)` near subjects. Run `pnpm test` or `pnpm test:coverage`.
 
 ## Commit & Pull Request Guidelines
-- Commits: concise imperative subject, scope when helpful (`feat(auth): ...`). Avoid "WIP"; squash trivial commits.
-- PRs: include clear description, linked issues, setup steps, and screenshots for UI. Note affected packages (`ordering-system`, `bfs-backend`, etc.). Keep changes atomic per app.
+- Commits: Conventional Commits (e.g., `feat(auth): add OTP flow`, `fix: address nil pointer`). Squash trivial fixes; avoid "WIP".
+- PRs: include description, linked issues, setup steps, and UI screenshots when applicable. Call out affected packages (e.g., `bfs-backend`, `bfs-web-app`). Keep changes atomic per app.
 
 ## Security & Configuration Tips
-- Never commit secrets. Use `.env` files and templates (`ordering-system/.env.example`, `bfs-backend/.env.example`).
-- Backend keys: generate Ed25519 dev keys under `bfs-backend/secrets/dev/` (see backend README).
-- Supabase: run SQL in `ordering-system/supabase/` to seed/migrate as needed.
+- Never commit secrets. Use `.env` files and provided templates (e.g., `bfs-backend/.env.example`).
+- Backend dev keys go under `bfs-backend/secrets/dev/` (see backend README).
+- Prefer local DB via `make docker-up`; clean with `make docker-down` or `docker-down-v` (data loss).
+

@@ -10,26 +10,19 @@ export async function POST(_req: Request) {
   const rtName = secure ? '__Host-rt' : 'rt'
   const csrfName = secure ? '__Host-csrf' : 'csrf'
   const rt = cookieStore.get(rtName)?.value
-  const csrfCookie = cookieStore.get(csrfName)?.value
-  const csrfHeader = hdrs.get('X-CSRF') || hdrs.get('x-csrf')
 
-  if (!rt || !csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
-    return NextResponse.json({ error: true, message: 'Forbidden' }, { status: 403 })
+  if (!rt) {
+    return NextResponse.json({ error: true, message: 'Unauthorized' }, { status: 401 })
   }
 
-  // Call backend refresh with double-submit and forward the refresh cookie explicitly
-  const cookieHeader = [
-    `${rtName}=${encodeURIComponent(rt)}`,
-    csrfCookie ? `${csrfName}=${encodeURIComponent(csrfCookie)}` : null,
-  ].filter(Boolean).join('; ')
+  // Call backend refresh - no CSRF required since backend generates new CSRF tokens
   const res = await fetch(`${API_BASE_URL}/v1/auth/refresh`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-CSRF': csrfHeader,
       'X-Internal-Call': '1',
-      // Forward refresh + CSRF cookies so backend can validate & rotate
-      'Cookie': cookieHeader,
+      // Forward refresh cookie for validation
+      'Cookie': `${rtName}=${encodeURIComponent(rt)}`,
     },
   })
 

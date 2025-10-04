@@ -13,3 +13,9 @@ var emailChangeHTML string
 
 //go:embed templates/email_change_otp.txt
 var emailChangeText string
+
+//go:embed templates/admin_invite.html
+var adminInviteHTML string
+
+//go:embed templates/admin_invite.txt
+var adminInviteText string

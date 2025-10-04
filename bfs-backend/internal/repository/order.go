@@ -26,6 +26,8 @@ type OrderRepository interface {
     DeletePendingByAttemptIDExcept(ctx context.Context, attemptID string, except primitive.ObjectID) (int64, error)
     // ListByCustomerID returns orders for a given customer with pagination
     ListByCustomerID(ctx context.Context, customerID primitive.ObjectID, limit, offset int) ([]*domain.Order, int64, error)
+    // ListAdmin returns orders with admin filters
+    ListAdmin(ctx context.Context, status *domain.OrderStatus, from, to *time.Time, q *string, limit, offset int) ([]*domain.Order, int64, error)
 }
 
 type orderRepository struct {
@@ -205,5 +207,42 @@ func (r *orderRepository) ListByCustomerID(ctx context.Context, customerID primi
     if err := cur.Err(); err != nil {
         return nil, 0, err
     }
+    return orders, total, nil
+}
+
+func (r *orderRepository) ListAdmin(ctx context.Context, status *domain.OrderStatus, from, to *time.Time, q *string, limit, offset int) ([]*domain.Order, int64, error) {
+    filter := bson.M{}
+    if status != nil { filter["status"] = *status }
+    if from != nil || to != nil {
+        created := bson.M{}
+        if from != nil { created["$gte"] = *from }
+        if to != nil { created["$lt"] = *to }
+        filter["created_at"] = created
+    }
+    if q != nil && *q != "" {
+        // search by id prefix or contact email
+        or := []bson.M{}
+        // try ObjectID
+        if oid, err := primitive.ObjectIDFromHex(*q); err == nil {
+            or = append(or, bson.M{"_id": oid})
+        }
+        or = append(or, bson.M{"contact_email": bson.M{"$regex": *q, "$options": "i"}})
+        filter["$or"] = or
+    }
+    total, err := r.collection.CountDocuments(ctx, filter)
+    if err != nil { return nil, 0, err }
+    opts := options.Find().SetSort(bson.M{"created_at": -1})
+    if limit > 0 { opts.SetLimit(int64(limit)) }
+    if offset > 0 { opts.SetSkip(int64(offset)) }
+    cur, err := r.collection.Find(ctx, filter, opts)
+    if err != nil { return nil, 0, err }
+    defer func() { _ = cur.Close(ctx) }()
+    var orders []*domain.Order
+    for cur.Next(ctx) {
+        var o domain.Order
+        if err := cur.Decode(&o); err != nil { return nil, 0, err }
+        orders = append(orders, &o)
+    }
+    if err := cur.Err(); err != nil { return nil, 0, err }
     return orders, total, nil
 }

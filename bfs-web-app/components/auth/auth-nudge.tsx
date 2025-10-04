@@ -23,7 +23,7 @@ export function AuthNudgeBanner() {
       <div className="mt-4 flex gap-2">
         <Button
           variant="selected"
-          onClick={() => router.push("/login?next=/checkout")}
+          onClick={() => router.push("/login?next=/food/checkout")}
         >
           Anmelden
         </Button>
