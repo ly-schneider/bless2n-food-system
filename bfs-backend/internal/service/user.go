@@ -16,6 +16,7 @@ import (
 )
 
 type UserService interface {
+    GetByID(ctx context.Context, userID primitive.ObjectID) (*domain.User, error)
     RequestEmailChange(ctx context.Context, userID primitive.ObjectID, newEmail, ip, ua string) error
     ConfirmEmailChange(ctx context.Context, userID primitive.ObjectID, code string) (*domain.User, error)
     UpdateProfile(ctx context.Context, userID primitive.ObjectID, firstName, lastName *string, newEmail *string, role domain.UserRole, ip, ua string) (*domain.User, bool, error)
@@ -145,4 +146,7 @@ func (s *userService) UpdateProfile(ctx context.Context, userID primitive.Object
     u2, err := s.users.FindByID(ctx, userID)
     if err != nil { return nil, initiated, err }
     return u2, initiated, nil
+}
+func (s *userService) GetByID(ctx context.Context, userID primitive.ObjectID) (*domain.User, error) {
+    return s.users.FindByID(ctx, userID)
 }

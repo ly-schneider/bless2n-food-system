@@ -28,7 +28,7 @@ export default function CheckoutErrorPage() {
       <p className="text-muted-foreground -mt-6 text-center">Bitte versuche es erneut oder wähle eine andere Methode.</p>
 
       {/* Bottom fixed action buttons stacked */}
-      <div className="fixed inset-x-0 bottom-0 p-4">
+      <div className="max-w-xl mx-auto fixed inset-x-0 bottom-0 p-4">
         <div className="flex flex-col gap-3">
           <Button className="rounded-pill h-12 w-full text-base font-medium" onClick={handleRetry}>
             Erneut versuchen

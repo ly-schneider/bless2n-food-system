@@ -272,7 +272,7 @@ function CheckoutForm({
       )}
 
       <div className="bg-background fixed right-0 bottom-0 left-0 z-50 p-4">
-        <div className="flex items-center justify-between gap-3">
+        <div className="max-w-xl mx-auto flex items-center justify-between gap-3">
           <Button
             onClick={() => {
               router.back()

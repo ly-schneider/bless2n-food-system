@@ -12,10 +12,10 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/me`, { method: "GET" })
+        const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/users/me`, { method: "GET" })
         if (!res.ok) throw new Error("Unauthorized")
-        const me = await res.json() as { role?: string }
-        if (!cancelled) setOk(me?.role === 'admin')
+        const data = await res.json() as { user?: { role?: string } }
+        if (!cancelled) setOk(data?.user?.role === 'admin')
       } catch {
         if (!cancelled) setOk(false)
       }
@@ -31,4 +31,3 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
   if (!ok) return null
   return <>{children}</>
 }
-

@@ -1,7 +1,7 @@
 "use client"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Grid2x2, MailPlus, ReceiptText, Users, KeyRound } from "lucide-react"
+import { Grid2x2, MailPlus, ReceiptText, Users, KeyRound, Home } from "lucide-react"
 import Image from "next/image"
 
 type NavItem = {
@@ -14,6 +14,7 @@ type NavItem = {
 export function AdminSidebar({ badges }: { badges?: Partial<Record<string, number>> }) {
   const pathname = usePathname()
   const items: NavItem[] = [
+    { href: "/admin", label: "Home", icon: <Home className="size-5" /> },
     { href: "/admin/menu", label: "Menu", icon: <Grid2x2 className="size-5" /> },
     { href: "/admin/orders", label: "Bestellungen", icon: <ReceiptText className="size-5" />, badge: badges?.orders },
     { href: "/admin/users", label: "Benutzer", icon: <Users className="size-5" /> },
@@ -45,7 +46,7 @@ export function AdminSidebar({ badges }: { badges?: Partial<Record<string, numbe
       </div>
       {/* Desktop: vertical rounded panel with margin spacing from left */}
       <div className="hidden md:block">
-        <div className="ml-6 md:ml-8 lg:ml-10 mt-4 rounded-xl border bg-card shadow-sm w-[264px] p-2">
+        <div className="ml-6 md:ml-8 lg:ml-10 rounded-[11px] bg-card shadow-sm max-w-md p-1">
           {items.map((it) => {
             const active = pathname === it.href
             return (
@@ -75,18 +76,15 @@ export function AdminShell({ children, badges }: { children: React.ReactNode; ba
   return (
     <div className="min-h-svh w-full">
       <div className="mx-auto w-full">
-        {/* Mobile: nav above content */}
-        <div className="md:hidden pt-3 pb-2">
+        <div className="md:hidden pt-3">
           <AdminSidebar badges={badges} />
         </div>
-        {/* Desktop: two-column with sidebar left and content right */}
         <div className="hidden md:grid md:grid-cols-[300px_1fr] md:gap-6">
           <div>
             <AdminSidebar badges={badges} />
           </div>
           <div className="pr-6 md:pr-8 lg:pr-10">{children}</div>
         </div>
-        {/* Mobile content below nav */}
         <div className="md:hidden px-6 md:px-8 lg:px-10 pt-4 pb-10">{children}</div>
       </div>
     </div>

@@ -13,7 +13,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <AdminGuard>
       <AdminMainHeader />
       <AdminShell>
-        <div className="mx-auto w-full pt-6 pb-10">{children}</div>
+        <div className="mx-auto w-full pb-10">{children}</div>
       </AdminShell>
     </AdminGuard>
   )

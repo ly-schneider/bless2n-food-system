@@ -115,7 +115,7 @@ export default function OrdersPage() {
         </ul>
       )}
 
-      <div ref={footerRef} className="fixed inset-x-0 bottom-0 z-50 p-4">
+      <div ref={footerRef} className="max-w-xl mx-auto fixed inset-x-0 bottom-0 z-50 p-4">
         <Button
           variant="outline"
           className="rounded-pill h-12 w-full bg-white text-base font-medium text-black"

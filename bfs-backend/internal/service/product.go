@@ -177,18 +177,18 @@ func (s *productService) ListProducts(
 	}
 
 	catDTOByID := make(map[primitive.ObjectID]domain.CategoryDTO, len(catByID))
-	for id, c := range catByID {
-		catDTOByID[id] = domain.CategoryDTO{ID: c.ID.Hex(), Name: c.Name, IsActive: c.IsActive}
-	}
+    for id, c := range catByID {
+        catDTOByID[id] = domain.CategoryDTO{ID: c.ID.Hex(), Name: c.Name, IsActive: c.IsActive, Position: c.Position}
+    }
 
 	out := make([]domain.ProductDTO, 0, len(products))
 
-	toCatDTO := func(id primitive.ObjectID) domain.CategoryDTO {
-		if dto, ok := catDTOByID[id]; ok {
-			return dto
-		}
-		return domain.CategoryDTO{ID: id.Hex(), Name: "", IsActive: false}
-	}
+    toCatDTO := func(id primitive.ObjectID) domain.CategoryDTO {
+        if dto, ok := catDTOByID[id]; ok {
+            return dto
+        }
+        return domain.CategoryDTO{ID: id.Hex(), Name: "", IsActive: false, Position: 0}
+    }
 
     // Precompute availability for simple products
     simpleIDs := make([]primitive.ObjectID, 0)

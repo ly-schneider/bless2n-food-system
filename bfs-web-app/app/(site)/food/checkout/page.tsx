@@ -140,7 +140,7 @@ export default function CheckoutPage() {
       </main>
 
       <div ref={footerRef} className="fixed right-0 bottom-0 left-0 z-50 p-4 bg-background">
-        <div className="container mx-auto flex flex-col gap-3">
+        <div className="max-w-xl mx-auto flex flex-col gap-3">
           {cart.items.length > 0 && (
             <div className="flex items-center justify-between py-2">
               <div className="flex flex-col">

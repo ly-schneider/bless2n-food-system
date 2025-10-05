@@ -71,7 +71,7 @@ export function FloatingBottomNav() {
     totalItems > 0 && (
       <>
         <div ref={barRef} className="fixed right-0 bottom-0 left-0 z-50 p-4">
-          <div className="container mx-auto flex items-center justify-center gap-3">
+          <div className="max-w-xl mx-auto flex items-center justify-center gap-3">
             <Button
               className="rounded-pill h-12 text-base font-medium flex-1 lg:flex-none lg:max-w-xs px-6 md:px-8 lg:px-10 xl:px-12"
               disabled={cart.items.length === 0}

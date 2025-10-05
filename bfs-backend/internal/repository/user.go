@@ -41,6 +41,24 @@ func (r *userRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*
     if err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&u); err != nil {
         return nil, err
     }
+    // Backward-compat: earlier seeds used `firstname`/`lastname` (no underscore).
+    // If the canonical fields are empty, try reading legacy keys and map them.
+    if u.FirstName == "" || u.LastName == "" {
+        var raw bson.M
+        // Only project legacy fields to minimize payload
+        if err := r.collection.FindOne(ctx, bson.M{"_id": id}, options.FindOne().SetProjection(bson.M{"firstname": 1, "lastname": 1})).Decode(&raw); err == nil {
+            if u.FirstName == "" {
+                if v, ok := raw["firstname"].(string); ok {
+                    u.FirstName = v
+                }
+            }
+            if u.LastName == "" {
+                if v, ok := raw["lastname"].(string); ok {
+                    u.LastName = v
+                }
+            }
+        }
+    }
     return &u, nil
 }
 

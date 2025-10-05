@@ -6,6 +6,7 @@ import (
     "backend/internal/domain"
     "net/http"
     "strconv"
+    "encoding/json"
     "go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -37,5 +38,27 @@ func (h *AdminUserHandler) Promote(w http.ResponseWriter, r *http.Request) {
     // Only allow customer -> admin
     if u.Role != domain.UserRoleCustomer { response.WriteError(w, http.StatusBadRequest, "unsupported role change"); return }
     if err := h.users.UpdateRole(r.Context(), oid, domain.UserRoleAdmin); err != nil { response.WriteError(w, http.StatusInternalServerError, "update failed"); return }
+    response.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// GET /v1/admin/users/{id}
+func (h *AdminUserHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+    id := chiURLParam(r, "id"); oid, err := primitive.ObjectIDFromHex(id); if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid id"); return }
+    u, err := h.users.FindByID(r.Context(), oid)
+    if err != nil || u == nil { response.WriteError(w, http.StatusNotFound, "not found"); return }
+    type UserDTO struct { ID string `json:"id"`; Email string `json:"email"`; Role string `json:"role"` }
+    response.WriteJSON(w, http.StatusOK, map[string]any{"user": UserDTO{ ID: u.ID.Hex(), Email: u.Email, Role: string(u.Role) }})
+}
+
+// PATCH /v1/admin/users/{id}/role
+type patchRoleBody struct { Role string `json:"role"` }
+func (h *AdminUserHandler) PatchRole(w http.ResponseWriter, r *http.Request) {
+    id := chiURLParam(r, "id"); oid, err := primitive.ObjectIDFromHex(id); if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid id"); return }
+    var body patchRoleBody
+    if err := json.NewDecoder(r.Body).Decode(&body); err != nil || (body.Role != string(domain.UserRoleAdmin) && body.Role != string(domain.UserRoleCustomer)) {
+        response.WriteError(w, http.StatusBadRequest, "invalid role"); return
+    }
+    role := domain.UserRole(body.Role)
+    if err := h.users.UpdateRole(r.Context(), oid, role); err != nil { response.WriteError(w, http.StatusInternalServerError, "update failed"); return }
     response.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }

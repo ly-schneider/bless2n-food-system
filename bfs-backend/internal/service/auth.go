@@ -21,6 +21,7 @@ type AuthService interface {
     Logout(ctx context.Context, refreshToken string) error
     ListUserActiveSessions(ctx context.Context, userID string) ([]map[string]any, error)
     RevokeSessionFamily(ctx context.Context, userID string, familyID string) error
+    RevokeAllSessions(ctx context.Context, userID string) error
 }
 
 type authService struct {
@@ -222,6 +223,12 @@ func (a *authService) Logout(ctx context.Context, refreshToken string) error {
         return errors.New("invalid_refresh")
     }
     return a.refreshTokens.RevokeFamily(ctx, rec.FamilyID, "logout")
+}
+
+func (a *authService) RevokeAllSessions(ctx context.Context, userID string) error {
+    oid, err := primitive.ObjectIDFromHex(userID)
+    if err != nil { return err }
+    return a.refreshTokens.RevokeAllByUser(ctx, oid, "user_revoked_all")
 }
 
 // simple sliding-window in-memory limiter (not distributed; for tests/local)

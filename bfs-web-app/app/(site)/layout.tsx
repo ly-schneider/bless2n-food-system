@@ -28,7 +28,6 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
         <main className="flex-1">{children}</main>
         <Footer />
       </CartProvider>
-      {/* Consent + Analytics */}
       <AnalyticsConsentGate />
       <CookieBanner />
     </div>

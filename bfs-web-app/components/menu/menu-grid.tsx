@@ -11,17 +11,16 @@ import { formatChf } from "@/lib/utils"
 import { ListResponse, ProductDTO } from "@/types"
 
 export function MenuGrid({ products }: { products: ListResponse<ProductDTO> }) {
-  const categoryOrder = {
-    'Menus': 1,
-    'Burgers': 2,
-    'Beilagen': 3,
-    'Getränke': 4
+  const getCatPos = (p?: { position?: number | null } | null) => {
+    const v = p?.position
+    return typeof v === 'number' && isFinite(v) ? v : 1_000_000
   }
 
   const sortedProducts = [...products.items].sort((a, b) => {
-    const orderA = categoryOrder[a.category.name as keyof typeof categoryOrder] || 999
-    const orderB = categoryOrder[b.category.name as keyof typeof categoryOrder] || 999
-    return orderA - orderB
+    const pa = getCatPos(a.category)
+    const pb = getCatPos(b.category)
+    if (pa !== pb) return pa - pb
+    return a.name.localeCompare(b.name)
   })
 
   return (

@@ -13,5 +13,5 @@ export const metadata: Metadata = {
 }
 
 export default function OrdersLayout({ children }: { children: React.ReactNode }) {
-  return children
+  return <div className="max-w-xl mx-auto">{children}</div>
 }

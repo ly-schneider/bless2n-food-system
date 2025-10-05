@@ -280,7 +280,7 @@ export default function CheckoutQRPage() {
         </div>
       ) : null}
 
-      <div ref={footerRef} className="fixed inset-x-0 bottom-0 z-50 p-4">
+      <div ref={footerRef} className="max-w-xl mx-auto fixed inset-x-0 bottom-0 z-50 p-4">
         <div className="flex flex-col gap-2">
           <Button
             variant="outline"
@@ -293,7 +293,7 @@ export default function CheckoutQRPage() {
           {from === "success" && (
             <Button
               variant="selected"
-              className="rounded-pill h-12 w-full text-base font-medium"
+              className="rounded-pill h-12 w-full text-base"
               onClick={() => router.push("/food/orders")}
             >
               Alle Bestellungen

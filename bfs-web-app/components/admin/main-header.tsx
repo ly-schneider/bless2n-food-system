@@ -20,7 +20,7 @@ export function AdminMainHeader({ className }: { className?: string }) {
           </div>
           <div className="flex items-center gap-2">
             <Button
-              variant="primary"
+              variant="outline"
               size="sm"
               onClick={() => {
                 try {
@@ -28,16 +28,17 @@ export function AdminMainHeader({ className }: { className?: string }) {
                 } catch {}
               }}
               aria-label="Aktualisieren"
+              className="border-0 rounded-[11px]"
             >
               <RefreshCw className="size-4" />
               <span>Aktualisieren</span>
             </Button>
-            <Button variant="ghost" size="icon" aria-label="Benachrichtigungen">
-              <Bell className="size-5" />
+            <Button variant="outline" size="icon" aria-label="Benachrichtigungen" className="border-0 rounded-[11px]">
+              <Bell className="size-4.5" />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" aria-haspopup="menu">
+                <Button variant="outline" size="sm" aria-haspopup="menu" className="border-0 rounded-[11px] py-4.5">
                   Account <ChevronDown className="size-4" />
                 </Button>
               </DropdownMenuTrigger>

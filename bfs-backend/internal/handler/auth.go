@@ -247,6 +247,17 @@ func (h *AuthHandler) RevokeSession(w http.ResponseWriter, r *http.Request) {
     w.WriteHeader(http.StatusNoContent)
 }
 
+// RevokeAllSessions revokes all refresh token families for the authenticated user
+func (h *AuthHandler) RevokeAllSessions(w http.ResponseWriter, r *http.Request) {
+    claims, ok := middleware.GetUserFromContext(r.Context())
+    if !ok { http.Error(w, "Unauthorized", http.StatusUnauthorized); return }
+    if err := h.authService.RevokeAllSessions(r.Context(), claims.Subject); err != nil {
+        http.Error(w, "Failed to revoke all", http.StatusInternalServerError)
+        return
+    }
+    w.WriteHeader(http.StatusNoContent)
+}
+
 // Sessions lists active session families (devices) for the authenticated user.
 // It groups refresh tokens by family and exposes minimal metadata.
 func (h *AuthHandler) Sessions(w http.ResponseWriter, r *http.Request) {

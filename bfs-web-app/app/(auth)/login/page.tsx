@@ -7,6 +7,9 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/contexts/auth-context"
 import type { User } from "@/types"
+import Link from "next/link"
+import Image from "next/image"
+import AuthHeader from "@/components/layout/auth-header"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -16,7 +19,6 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [resending, setResending] = useState(false)
   const [resendCooldown, setResendCooldown] = useState(0)
-  // Terms are auto-acknowledged by continuing (no checkbox)
   const router = useRouter()
   const sp = useSearchParams()
   const next = sp.get("next") || "/"
@@ -69,7 +71,6 @@ export default function LoginPage() {
     }
   }
 
-  // Handle resend cooldown tick
   useEffect(() => {
     if (step !== "code" || resendCooldown <= 0) return
     const id = setInterval(() => {
@@ -98,15 +99,16 @@ export default function LoginPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <main className="container mx-auto px-4 py-10">
-        <h1 className="mb-2 text-2xl font-semibold">Anmelden oder Registrieren</h1>
+      <main className="container mx-auto px-4 pt-24 pb-10">
+        <AuthHeader />
+        <h1 className="mt-4 mb-2 text-center text-2xl font-semibold">Anmelden oder Registrieren</h1>
 
-        <div className="space-y-4">
+        <div className="mt-12 space-y-4">
           {step === "start" && (
             <div className="space-y-3">
               <div className="flex flex-col gap-2">
                 <Button
-                  className="rounded-pill h-10 w-full"
+                  className="border-border h-10 w-full rounded-[9px] border bg-transparent"
                   variant="outline"
                   style={{ fontFamily: "Roboto, system-ui, Arial, sans-serif" }}
                   onClick={() => {
@@ -147,7 +149,7 @@ export default function LoginPage() {
                   <div className="bg-border h-px flex-1" />
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label htmlFor="email">E-Mail-Adresse</Label>
                 <Input
                   id="email"
@@ -183,6 +185,8 @@ export default function LoginPage() {
 
           {step === "code" && (
             <div className="space-y-3">
+              <p className="mt-4 mb-2 text-sm">Wir haben dir einen Code per E-Mail gesendet. Bitte gib ihn hier ein:</p>
+
               <div className="space-y-2">
                 <Label htmlFor="otp">Code eingeben</Label>
                 <InputOTP

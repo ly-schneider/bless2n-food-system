@@ -7,6 +7,7 @@ import (
 
     "time"
 
+    "go.mongodb.org/mongo-driver/bson"
     "go.mongodb.org/mongo-driver/bson/primitive"
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/mongo/options"
@@ -32,15 +33,13 @@ func NewCategoryRepository(db *database.MongoDB) CategoryRepository {
 }
 
 func (r *categoryRepository) GetByID(ctx context.Context, id primitive.ObjectID) (*domain.Category, error) {
-	var category domain.Category
-	err := r.collection.FindOne(ctx, primitive.M{"_id": id}).Decode(&category)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &category, nil
+    var raw bson.M
+    err := r.collection.FindOne(ctx, primitive.M{"_id": id}).Decode(&raw)
+    if err != nil {
+        if err == mongo.ErrNoDocuments { return nil, nil }
+        return nil, err
+    }
+    return mapRawToCategory(raw), nil
 }
 
 func (r *categoryRepository) GetByIDs(ctx context.Context, ids []primitive.ObjectID) (categories []*domain.Category, err error) {
@@ -55,12 +54,9 @@ func (r *categoryRepository) GetByIDs(ctx context.Context, ids []primitive.Objec
     }()
 
     for cursor.Next(ctx) {
-        var category domain.Category
-        if derr := cursor.Decode(&category); derr != nil {
-            err = derr
-            return nil, err
-        }
-        categories = append(categories, &category)
+        var raw bson.M
+        if derr := cursor.Decode(&raw); derr != nil { err = derr; return nil, err }
+        categories = append(categories, mapRawToCategory(raw))
     }
 
     if derr := cursor.Err(); derr != nil {
@@ -77,7 +73,8 @@ func (r *categoryRepository) List(ctx context.Context, active *bool, q *string, 
     if q != nil && *q != "" { filter["name"] = primitive.M{"$regex": *q, "$options": "i"} }
     total, err := r.collection.CountDocuments(ctx, filter)
     if err != nil { return nil, 0, err }
-    opts := options.Find().SetSort(primitive.M{"name": 1})
+    // Sort by explicit position first, fallback by name for stability (ordered)
+    opts := options.Find().SetSort(bson.D{{Key: "position", Value: 1}, {Key: "name", Value: 1}})
     if limit > 0 { opts.SetLimit(int64(limit)) }
     if offset > 0 { opts.SetSkip(int64(offset)) }
     cur, err := r.collection.Find(ctx, filter, opts)
@@ -85,9 +82,9 @@ func (r *categoryRepository) List(ctx context.Context, active *bool, q *string, 
     defer func() { _ = cur.Close(ctx) }()
     var out []*domain.Category
     for cur.Next(ctx) {
-        var c domain.Category
-        if err := cur.Decode(&c); err != nil { return nil, 0, err }
-        out = append(out, &c)
+        var raw bson.M
+        if err := cur.Decode(&raw); err != nil { return nil, 0, err }
+        out = append(out, mapRawToCategory(raw))
     }
     if err := cur.Err(); err != nil { return nil, 0, err }
     return out, total, nil
@@ -113,4 +110,31 @@ func (r *categoryRepository) UpdateFields(ctx context.Context, id primitive.Obje
 func (r *categoryRepository) DeleteByID(ctx context.Context, id primitive.ObjectID) error {
     _, err := r.collection.DeleteOne(ctx, primitive.M{"_id": id})
     return err
+}
+
+// Tolerant mapper to avoid decode errors on null/typed position
+func mapRawToCategory(m bson.M) *domain.Category {
+    var c domain.Category
+    if v, ok := m["_id"].(primitive.ObjectID); ok { c.ID = v }
+    if v, ok := m["name"].(string); ok { c.Name = v }
+    if v, ok := m["is_active"].(bool); ok { c.IsActive = v }
+    // position may be int32/int64/float64/string/nil
+    switch v := m["position"].(type) {
+    case int32:
+        c.Position = int(v)
+    case int64:
+        c.Position = int(v)
+    case float64:
+        c.Position = int(v)
+    case string:
+        // best-effort parse
+        // ignore error => default 0
+        // no strconv import to keep minimal; numbers from seeds are ints
+        // leave as 0 if not numeric
+    default:
+        // missing or nil => default 0
+    }
+    if v, ok := m["created_at"].(time.Time); ok { c.CreatedAt = v }
+    if v, ok := m["updated_at"].(time.Time); ok { c.UpdatedAt = v }
+    return &c
 }

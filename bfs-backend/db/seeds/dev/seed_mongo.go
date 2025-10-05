@@ -78,12 +78,12 @@ func SeedMongo(ctx context.Context, client *mongo.Client, cfg MongoConfig, logge
 }
 
 func resetCollections(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {
-    collections := []string{
-        "users", "admin_invites", "otp_tokens", "refresh_tokens", "identity_links",
-        "stations", "device_requests", "categories", "products",
-        "menu_slots", "menu_slot_items", "station_products",
-        "orders", "order_items", "inventory_ledger",
-    }
+	collections := []string{
+		"users", "admin_invites", "otp_tokens", "refresh_tokens", "identity_links",
+		"stations", "device_requests", "categories", "products",
+		"menu_slots", "menu_slot_items", "station_products",
+		"orders", "order_items", "inventory_ledger",
+	}
 
 	for _, coll := range collections {
 		collection := db.Collection(coll)
@@ -98,7 +98,7 @@ func resetCollections(ctx context.Context, db *mongo.Database, logger *zap.Logge
 }
 
 func ensureIndexes(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {
-    // Users collection indexes
+	// Users collection indexes
 	usersCollection := db.Collection("users")
 	userIndexes := []mongo.IndexModel{
 		{Keys: bson.D{{Key: "email", Value: 1}}, Options: options.Index().SetUnique(true)},
@@ -107,20 +107,20 @@ func ensureIndexes(ctx context.Context, db *mongo.Database, logger *zap.Logger) 
 		{Keys: bson.D{{Key: "created_at", Value: 1}}},
 	}
 
-    if _, err := usersCollection.Indexes().CreateMany(ctx, userIndexes); err != nil {
-        return fmt.Errorf("failed to create users indexes: %w", err)
-    }
+	if _, err := usersCollection.Indexes().CreateMany(ctx, userIndexes); err != nil {
+		return fmt.Errorf("failed to create users indexes: %w", err)
+	}
 
-    // Identity links collection indexes
-    identityLinks := db.Collection("identity_links")
-    identityIndexes := []mongo.IndexModel{
-        {Keys: bson.D{{Key: "provider", Value: 1}, {Key: "provider_user_id", Value: 1}}, Options: options.Index().SetUnique(true)},
-        {Keys: bson.D{{Key: "user_id", Value: 1}}},
-        {Keys: bson.D{{Key: "created_at", Value: 1}}},
-    }
-    if _, err := identityLinks.Indexes().CreateMany(ctx, identityIndexes); err != nil {
-        return fmt.Errorf("failed to create identity_links indexes: %w", err)
-    }
+	// Identity links collection indexes
+	identityLinks := db.Collection("identity_links")
+	identityIndexes := []mongo.IndexModel{
+		{Keys: bson.D{{Key: "provider", Value: 1}, {Key: "provider_user_id", Value: 1}}, Options: options.Index().SetUnique(true)},
+		{Keys: bson.D{{Key: "user_id", Value: 1}}},
+		{Keys: bson.D{{Key: "created_at", Value: 1}}},
+	}
+	if _, err := identityLinks.Indexes().CreateMany(ctx, identityIndexes); err != nil {
+		return fmt.Errorf("failed to create identity_links indexes: %w", err)
+	}
 
 	// Orders collection indexes
 	ordersCollection := db.Collection("orders")
@@ -139,6 +139,7 @@ func ensureIndexes(ctx context.Context, db *mongo.Database, logger *zap.Logger) 
 	categoryIndexes := []mongo.IndexModel{
 		{Keys: bson.D{{Key: "name", Value: 1}}, Options: options.Index().SetUnique(true)},
 		{Keys: bson.D{{Key: "is_active", Value: 1}}},
+		{Keys: bson.D{{Key: "position", Value: 1}}},
 	}
 
 	if _, err := categoriesCollection.Indexes().CreateMany(ctx, categoryIndexes); err != nil {
@@ -399,8 +400,8 @@ func generateAdmins(ctx context.Context, db *mongo.Database, logger *zap.Logger)
 		admin := map[string]interface{}{
 			"_id":         primitive.NewObjectID(),
 			"email":       fmt.Sprintf("admin%d@dev.local", i+1),
-			"firstname":   gofakeit.FirstName(),
-			"lastname":    gofakeit.LastName(),
+			"first_name":  gofakeit.FirstName(),
+			"last_name":   gofakeit.LastName(),
 			"role":        "admin",
 			"is_verified": true,
 			"created_at":  now.Add(-time.Duration(gofakeit.Number(0, 180*24)) * time.Hour),
@@ -435,29 +436,36 @@ func generateAdmins(ctx context.Context, db *mongo.Database, logger *zap.Logger)
 func generateCategories(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {
 	collection := db.Collection("categories")
 
-	categories := []string{"Menus", "Burgers", "Beilagen", "Getränke"}
+	// Seed with explicit positions
+	type seedCat struct {
+		Name     string
+		Position int
+	}
+	categories := []seedCat{{"Menus", 0}, {"Burgers", 1}, {"Beilagen", 2}, {"Getränke", 3}}
 	var operations []mongo.WriteModel
 
-	for _, categoryName := range categories {
+	for _, cat := range categories {
 		now := time.Now()
 		category := map[string]interface{}{
 			"_id":        primitive.NewObjectID(),
-			"name":       categoryName,
+			"name":       cat.Name,
 			"is_active":  true,
+			"position":   cat.Position,
 			"created_at": now.Add(-time.Duration(gofakeit.Number(0, 180*24)) * time.Hour),
 			"updated_at": now,
 		}
 
 		// Use upsert for idempotency - match by name and ensure is_active is true
-		filter := bson.D{{Key: "name", Value: categoryName}}
+		filter := bson.D{{Key: "name", Value: cat.Name}}
 		update := bson.D{
 			{Key: "$setOnInsert", Value: bson.D{
 				{Key: "_id", Value: category["_id"]},
 				{Key: "created_at", Value: category["created_at"]},
 			}},
 			{Key: "$set", Value: bson.D{
-				{Key: "name", Value: categoryName},
+				{Key: "name", Value: cat.Name},
 				{Key: "is_active", Value: true},
+				{Key: "position", Value: cat.Position},
 				{Key: "updated_at", Value: now},
 			}},
 		}

@@ -1,27 +1,16 @@
 "use client"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
-import { Pencil, Plus, RefreshCw } from "lucide-react"
+import { Pencil, PencilIcon, Plus, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
-
-type Category = { id: string; name: string; isActive: boolean }
-type Product = {
-  id: string
-  name: string
-  priceCents: number
-  isActive: boolean
-  image?: string | null
-  category?: { id: string; name: string } | null
-  availableQuantity?: number | null
-  isLowStock?: boolean
-}
+import { Category, ProductDTO } from "@/types"
 
 type DirtyProduct = {
   id: string
@@ -30,9 +19,6 @@ type DirtyProduct = {
   categoryId: string | null
   stock: number | null
 }
-
-const CATEGORY_KEYS = ["Alles", "Menus", "Burgers", "Beilagen", "Getränke"] as const
-type CatKey = (typeof CATEGORY_KEYS)[number]
 
 function formatPriceLabel(cents: number): string {
   const francs = Math.floor(cents / 100)
@@ -53,38 +39,56 @@ function parsePriceInputToCents(input: string): number | null {
 export default function AdminMenuPage() {
   const fetchAuth = useAuthorizedFetch()
   const [cats, setCats] = useState<Category[]>([])
-  const [items, setItems] = useState<Product[]>([])
+  const [items, setItems] = useState<ProductDTO[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeCat, setActiveCat] = useState<CatKey>("Alles")
+  // activeCat: "all" for all items or category.id for a specific category
+  const [activeCat, setActiveCat] = useState<string>("all")
   const [edit, setEdit] = useState<DirtyProduct | null>(null)
   const [saving, setSaving] = useState(false)
 
   const totalCount = items.length
 
-  const chips = useMemo(() => {
-    const counts: Record<CatKey, number> = { Alles: items.length, Menus: 0, Burgers: 0, Beilagen: 0, Getränke: 0 }
+  // Count items by category id for dynamic chips
+  const countsByCatId = useMemo(() => {
+    const counts: Record<string, number> = {}
     for (const it of items) {
-      const n = it.category?.name || ""
-      if (n.toLowerCase().includes("menu")) counts.Menus++
-      else if (n.toLowerCase().includes("burger")) counts.Burgers++
-      else if (n.toLowerCase().includes("beilagen")) counts.Beilagen++
-      else if (n.toLowerCase().includes("getränke") || n.toLowerCase().includes("getraenke")) counts.Getränke++
+      const id = it.category?.id
+      if (!id) continue
+      counts[id] = (counts[id] || 0) + 1
     }
     return counts
   }, [items])
 
-  const filtered = useMemo(() => {
-    if (activeCat === "Alles") return items
-    return items.filter((it) => {
-      const n = it.category?.name?.toLowerCase() || ""
-      if (activeCat === "Menus") return n.includes("menu")
-      if (activeCat === "Burgers") return n.includes("burger")
-      if (activeCat === "Beilagen") return n.includes("beilagen")
-      if (activeCat === "Getränke") return n.includes("getränke") || n.includes("getraenke")
-      return true
+  // Helper to normalize category position (undefined -> large number)
+  const getCatPos = useCallback((c?: { position?: number | null } | null) => {
+    const p = c?.position
+    return typeof p === "number" && isFinite(p) ? p : 1_000_000
+  }, [])
+
+  // Categories sorted by position then name
+  const sortedCats = useMemo(() => {
+    return [...cats].sort((a, b) => {
+      const pa = getCatPos(a)
+      const pb = getCatPos(b)
+      if (pa !== pb) return pa - pb
+      return a.name.localeCompare(b.name)
     })
-  }, [items, activeCat])
+  }, [cats, getCatPos])
+
+  const filtered = useMemo(() => {
+    if (activeCat === "all") {
+      return [...items].sort((a, b) => {
+        const pa = getCatPos(a.category)
+        const pb = getCatPos(b.category)
+        if (pa !== pb) return pa - pb
+        return a.name.localeCompare(b.name)
+      })
+    }
+    return items
+      .filter((it) => it.category?.id === activeCat)
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [items, activeCat, getCatPos])
 
   const refetch = useCallback(async () => {
     setLoading(true)
@@ -96,10 +100,16 @@ export default function AdminMenuPage() {
       ])
       if (cr.ok) {
         const d = (await cr.json()) as { items: Category[] }
-        setCats(d.items || [])
+        const sorted = (d.items || []).sort((a, b) => {
+          const pa = getCatPos(a)
+          const pb = getCatPos(b)
+          if (pa !== pb) return pa - pb
+          return a.name.localeCompare(b.name)
+        })
+        setCats(sorted)
       }
       if (pr.ok) {
-        const d = (await pr.json()) as { items: Product[] }
+        const d = (await pr.json()) as { items: ProductDTO[] }
         setItems((d.items || []).filter((p) => p.isActive))
       } else {
         throw new Error(`HTTP ${pr.status}`)
@@ -116,11 +126,13 @@ export default function AdminMenuPage() {
     refetch()
   }, [refetch])
 
-  // Initialize and persist category filter via query param
+  // Initialize category filter via query param; allow "all" or a category id
   useEffect(() => {
     const sp = new URLSearchParams(window.location.search)
     const cat = sp.get("cat")
-    if (cat && CATEGORY_KEYS.includes(cat as CatKey)) setActiveCat(cat as CatKey)
+    if (!cat) return
+    if (cat === "all") setActiveCat("all")
+    else setActiveCat(cat)
   }, [])
   useEffect(() => {
     const url = new URL(window.location.href)
@@ -137,61 +149,69 @@ export default function AdminMenuPage() {
 
   return (
     <div className="space-y-5">
-      {/* Category/filter chips row */}
-      <h1 className="text-xl font-semibold">Menu</h1>
+      <h1 className="mb-2 text-xl font-semibold">Menu</h1>
       <div className="flex flex-wrap items-center gap-2">
-        {/* Alles with red numeric counter badge anchored on right */}
-        <button
-          className={`relative h-9 rounded-full border px-4 text-sm ${
-            activeCat === "Alles" ? "bg-muted font-semibold" : "bg-card"
+        <Button
+          className={`border-border hover:bg-card hover:text-foreground group flex h-10 items-center justify-between gap-2 rounded-[10px] border px-1.5 text-sm ${
+            activeCat === "all" ? "bg-card" : "text-muted-foreground bg-transparent"
           }`}
-          onClick={() => setActiveCat("Alles")}
-          aria-pressed={activeCat === "Alles"}
+          onClick={() => setActiveCat("all")}
+          aria-pressed={activeCat === "all"}
         >
           Alles
           <span
-            className="bg-destructive absolute -top-2 -right-2 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs text-white"
+            className={`text-foreground group-hover:text-foreground flex h-7 min-w-7 items-center justify-center rounded-[6px] px-1 text-sm transition-all duration-300 group-hover:bg-[#FFBBBB] ${
+              activeCat === "all" ? "text-foreground bg-[#FFBBBB]" : "text-muted-foreground bg-[#D9D9D9]"
+            }`}
             aria-label={`${totalCount} Produkte`}
           >
             {totalCount}
           </span>
-        </button>
-        {(["Menus", "Burgers", "Beilagen", "Getränke"] as CatKey[]).map((ck) => (
-          <button
-            key={ck}
-            className={`flex h-9 items-center gap-1 rounded-full border px-4 text-sm ${
-              activeCat === ck ? "bg-muted font-semibold" : "bg-card"
+        </Button>
+        {sortedCats.map((c) => (
+          <Button
+            key={c.id}
+            className={`border-border hover:bg-card hover:text-foreground group flex h-10 items-center justify-between gap-2 rounded-[10px] border px-1.5 text-sm ${
+              activeCat === c.id ? "bg-card" : "text-muted-foreground bg-transparent"
             }`}
-            onClick={() => setActiveCat(ck)}
-            aria-pressed={activeCat === ck}
+            onClick={() => setActiveCat(c.id)}
+            aria-pressed={activeCat === c.id}
           >
-            {ck} <span className="text-muted-foreground">{chips[ck]}</span>
-          </button>
+            {c.name}{" "}
+            <span
+              className={`text-foreground group-hover:text-foreground flex h-7 min-w-7 items-center justify-center rounded-[6px] px-1 text-sm transition-all duration-300 group-hover:bg-[#FFBBBB] ${
+                activeCat === c.id ? "text-foreground bg-[#FFBBBB]" : "text-muted-foreground bg-[#D9D9D9]"
+              }`}
+            >
+              {countsByCatId[c.id] ?? 0}
+            </span>
+          </Button>
         ))}
-        <span className="mx-1" />
         <Button
-          variant="secondary"
-          size="sm"
-          className="rounded-full"
+          className="border-border text-foreground hover:bg-card flex h-10 items-center justify-between gap-2 rounded-[10px] border bg-transparent px-1.5 text-sm"
           onClick={() => {
             /* could toggle category edit */
           }}
         >
-          <Pencil className="size-4" /> Bearbeiten
+          Bearbeiten
+          <span className="bg-foreground flex h-7 min-w-7 items-center justify-center rounded-[6px] px-1 text-sm text-white">
+            <Pencil className="size-3.5" />
+          </span>
         </Button>
         <Button
-          variant="primary"
-          size="sm"
-          className="rounded-full"
+          className="border-border text-foreground hover:bg-card flex h-10 items-center justify-between gap-2 rounded-[10px] border bg-transparent px-1.5 text-sm"
           onClick={() => setEdit({ id: "new", name: "", priceCents: 0, categoryId: null, stock: null })}
         >
-          <Plus className="size-4" /> Erstellen
+          Erstellen
+          <span className="bg-foreground flex h-7 min-w-7 items-center justify-center rounded-[6px] px-1 text-sm text-white">
+            <Plus className="size-4" />
+          </span>
         </Button>
       </div>
 
       {/* Grid */}
       {loading ? (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-5 sm:gap-3 xl:gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <Card key={i} className="rounded-xl border">
               <div className="p-3">
@@ -215,18 +235,18 @@ export default function AdminMenuPage() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {filtered.map((p) => (
+        <div className="grid grid-cols-1 gap-5 sm:gap-3 xl:gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filtered.map((product) => (
             <ProductCard
-              key={p.id}
-              p={p}
+              key={product.id}
+              product={product}
               onEdit={() =>
                 setEdit({
-                  id: p.id,
-                  name: p.name,
-                  priceCents: p.priceCents,
-                  categoryId: p.category?.id ?? null,
-                  stock: p.availableQuantity ?? null,
+                  id: product.id,
+                  name: product.name,
+                  priceCents: product.priceCents,
+                  categoryId: product.category?.id ?? null,
+                  stock: product.availableQuantity ?? null,
                 })
               }
             />
@@ -259,47 +279,73 @@ export default function AdminMenuPage() {
   )
 }
 
-function ProductCard({ p, onEdit }: { p: Product; onEdit: () => void }) {
-  const unavailable = !p.isActive
-  const stockBadge = typeof p.availableQuantity === "number" ? `${p.availableQuantity} verfügbar` : null
+function ProductCard({ product, onEdit }: { product: ProductDTO; onEdit: () => void }) {
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false)
+  const isAvailable = product.isAvailable !== false // default true
+  const isLowStock = product.isLowStock === true
+  const availableQty = product.availableQuantity ?? null
+  const isActive = product.isActive !== false
+  const composition = useMemo(() => {
+    if (product.type !== "menu" || !product.menu?.slots || product.menu.slots.length === 0) return null
+    const counts = new Map<string, number>()
+    for (const slot of product.menu.slots) {
+      const name = slot.name?.trim() || "Slot"
+      counts.set(name, (counts.get(name) || 0) + 1)
+    }
+    // Build minimal description like: "Burger + Beilage + 2× Getränk"
+    const parts = Array.from(counts.entries()).map(([name, count]) => (count > 1 ? `${count}× ${name}` : name))
+    return parts.join(" + ")
+  }, [product])
+
   return (
-    <Card
-      className={`overflow-hidden rounded-xl border transition-shadow ${!unavailable ? "hover:shadow" : "opacity-60"}`}
-    >
-      <div className="relative">
-        <div
-          className={`bg-muted/60 flex aspect-[4/3] w-full items-center justify-center overflow-hidden ${
-            unavailable ? "grayscale" : ""
-          }`}
-        >
-          {p.image ? (
-            <Image src={p.image} alt={p.name} width={400} height={300} className="h-full w-full object-cover" />
+    <Card className="gap-0 overflow-hidden rounded-[11px] p-0 transition-shadow hover:shadow-lg">
+      <CardHeader className="p-2">
+        <div className="relative aspect-video rounded-[11px] rounded-t-lg bg-[#cec9c6]">
+          {product.image ? (
+            <Image
+              src={product.image}
+              alt={"Produktbild von " + product.name}
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              quality={90}
+              className="h-full w-full rounded-[11px] object-cover"
+            />
           ) : (
-            <div className="text-muted-foreground text-xs">Kein Bild</div>
+            <div className="absolute inset-0 flex items-center justify-center text-zinc-500">Kein Bild</div>
+          )}
+          {!isAvailable && (
+            <div className="absolute inset-0 z-10 grid place-items-center rounded-[11px] bg-black/55">
+              <span className="rounded-full bg-red-400 px-3 py-1 text-sm font-medium text-white">Ausverkauft</span>
+            </div>
+          )}
+          {isAvailable && !isActive && (
+            <div className="absolute inset-0 z-10 grid place-items-center rounded-[11px] bg-black/55">
+              <span className="rounded-full bg-zinc-700 px-3 py-1 text-sm font-medium text-white">Nicht verfügbar</span>
+            </div>
+          )}
+          {isLowStock && isAvailable && isActive && (
+            <div className="absolute top-1 left-2 z-10">
+              <span className="rounded-full bg-amber-600 px-2 py-0.5 text-xs font-medium text-white">
+                {availableQty !== null ? `Nur ${availableQty} übrig` : "Geringer Bestand"}
+              </span>
+            </div>
           )}
         </div>
-        {stockBadge && (
-          <span
-            className="bg-primary text-primary-foreground absolute top-2 left-2 rounded-full px-2 py-0.5 text-[11px]"
-            aria-label={`${p.availableQuantity ?? 0} Stück verfügbar`}
-          >
-            {stockBadge}
-          </span>
-        )}
-        {!unavailable && (
-          <button
-            className="absolute right-2 bottom-2 rounded-md bg-black/80 p-1.5 text-white"
-            aria-label={`Bearbeiten ${p.name}`}
-            onClick={onEdit}
-          >
-            <Pencil className="size-4" />
-          </button>
-        )}
-      </div>
-      <div className="p-3">
-        <div className="text-sm font-medium">{p.name}</div>
-        <div className="text-muted-foreground mt-1 text-sm">{formatPriceLabel(p.priceCents)}</div>
-      </div>
+      </CardHeader>
+
+      <CardContent className="px-2 pt-0 pb-4">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col">
+            <h3 className="font-family-secondary text-lg">{product.name}</h3>
+            <p className="font-family-secondary text-base">{formatPriceLabel(product.priceCents)}</p>
+          </div>
+          <div className="flex items-center">
+            <Button size="icon" onClick={onEdit} aria-label={`Produkt ${product.name} bearbeiten`} className="bg-foreground text-white rounded-[10px] hover:bg-foreground/90">
+              <PencilIcon className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
     </Card>
   )
 }
@@ -438,7 +484,7 @@ function EditDialog({
   )
 }
 
-async function saveChanges(fetchAuth: ReturnType<typeof useAuthorizedFetch>, items: Product[], p: DirtyProduct) {
+async function saveChanges(fetchAuth: ReturnType<typeof useAuthorizedFetch>, items: ProductDTO[], p: DirtyProduct) {
   const csrf = getCSRFCookie()
   const original = items.find((it) => it.id === p.id)
 
