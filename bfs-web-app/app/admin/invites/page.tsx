@@ -1,28 +1,39 @@
 "use client"
+import Link from "next/link"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
 import { readErrorMessage } from "@/lib/http"
 import { useEffect, useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
-type Invite = { id: string; email: string; status: string; expiresAt: string; createdAt: string }
+type Invite = {
+  id: string
+  email: string
+  status: string
+  invitedBy: string
+  expiresAt: string
+  createdAt: string
+}
 
 export default function AdminInvitesPage() {
   const fetchAuth = useAuthorizedFetch()
   const [items, setItems] = useState<Invite[]>([])
   const [email, setEmail] = useState("")
-  const [error, setError] = useState<string| null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => { void reload() }, [])
+  useEffect(() => {
+    void reload()
+  }, [])
 
   async function reload() {
     try {
       const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/invites`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json() as { items: Invite[] }
+      const data = (await res.json()) as { items: Invite[] }
       setItems(data.items || [])
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Failed to load invites'
+      const msg = e instanceof Error ? e.message : "Failed to load invites"
       setError(msg)
     }
   }
@@ -31,68 +42,98 @@ export default function AdminInvitesPage() {
     if (!email.trim()) return
     const csrf = getCSRFCookie()
     const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/invites`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF': csrf || '' }, body: JSON.stringify({ email: email.trim() })
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
+      body: JSON.stringify({ email: email.trim() }),
     })
-    if (!res.ok) { setError(await readErrorMessage(res)); return }
-    setEmail(""); await reload()
-  }
-
-  async function revoke(id: string) {
-    const csrf = getCSRFCookie()
-    const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/invites/${id}/revoke`, { method: 'POST', headers: { 'X-CSRF': csrf || '' } })
-    if (!res.ok) { setError(await readErrorMessage(res)); return }
-    await reload()
-  }
-
-  async function resend(id: string) {
-    const csrf = getCSRFCookie()
-    const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/invites/${id}/resend`, { method: 'POST', headers: { 'X-CSRF': csrf || '' } })
-    if (!res.ok) { setError(await readErrorMessage(res)); return }
+    if (!res.ok) {
+      setError(await readErrorMessage(res))
+      return
+    }
+    setEmail("")
     await reload()
   }
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Admin‑Einladungen</h1>
-      {error && <div className="text-sm text-red-600">{error}</div>}
-      <div className="flex items-center gap-2">
-        <Input value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="E‑Mail‑Adresse" className="h-8 w-72" />
-        <Button variant="outline" size="sm" className="h-8" onClick={() => void createInvite()}>Einladen</Button>
+    <div className="min-w-0 space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Admin‑Einladungen</h1>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border border-gray-100">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="text-left px-3 py-2">E‑Mail</th>
-              <th className="text-left px-3 py-2">Status</th>
-              <th className="text-left px-3 py-2">Ablauf</th>
-              <th className="text-right px-3 py-2">Aktionen</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((i) => (
-              <tr key={i.id} className="border-t border-gray-100">
-                <td className="px-3 py-2">{i.email}</td>
-                <td className="px-3 py-2">{i.status}</td>
-                <td className="px-3 py-2">{new Date(i.expiresAt).toLocaleString()}</td>
-                <td className="px-3 py-2 text-right space-x-2">
-                  {i.status === 'pending' && <>
-                    <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => void resend(i.id)}>Erneut senden</Button>
-                    <Button variant="ghost" size="sm" className="h-7 px-2 text-red-700" onClick={() => void revoke(i.id)}>Widerrufen</Button>
-                  </>}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {error && <div className="text-sm text-red-600">{error}</div>}
+
+      <div className="flex items-center gap-2">
+        <Input
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="E‑Mail‑Adresse"
+          className="h-8 w-72"
+        />
+        <Button variant="outline" size="sm" className="h-8" onClick={() => void createInvite()}>
+          Einladen
+        </Button>
+      </div>
+
+      <div className="rounded-md border">
+        <div className="relative">
+          <div className="from-background pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r to-transparent" />
+          <div className="from-background pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l to-transparent" />
+          <div
+            className="max-w-full overflow-x-auto overscroll-x-contain rounded-[10px]"
+            role="region"
+            aria-label="Invites table – scroll horizontally to reveal more columns"
+            tabIndex={0}
+          >
+            <Table className="whitespace-nowrap">
+              <TableHeader className="bg-card sticky top-0">
+                <TableRow>
+                  <TableHead className="whitespace-nowrap">ID</TableHead>
+                  <TableHead className="whitespace-nowrap">Eingeladene E‑Mail</TableHead>
+                  <TableHead className="whitespace-nowrap">Status</TableHead>
+                  <TableHead className="whitespace-nowrap">Eingeladet von</TableHead>
+                  <TableHead className="whitespace-nowrap">Erstellt</TableHead>
+                  <TableHead className="whitespace-nowrap">Läuft ab</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Aktionen</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((i) => {
+                  const created = new Date(i.createdAt).toLocaleString("de-CH")
+                  const expires = new Date(i.expiresAt).toLocaleString("de-CH")
+                  const inviter = (
+                    <Link href={`/admin/users/${encodeURIComponent(i.invitedBy)}`} className="underline underline-offset-2 text-xs">
+                      {i.invitedBy}
+                    </Link>
+                  )
+                  return (
+                    <TableRow key={i.id} className="even:bg-card odd:bg-muted/40">
+                      <TableCell className="text-xs">{i.id}</TableCell>
+                      <TableCell>{i.email}</TableCell>
+                      <TableCell className="uppercase">{i.status}</TableCell>
+                      <TableCell>{inviter}</TableCell>
+                      <TableCell className="whitespace-nowrap">{created}</TableCell>
+                      <TableCell className="whitespace-nowrap">{expires}</TableCell>
+                      <TableCell className="text-right">
+                        <Link href={`/admin/invites/${encodeURIComponent(i.id)}`}>
+                          <Button size="sm" variant="outline">Details</Button>
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
       </div>
     </div>
   )
 }
 
 function getCSRFCookie(): string | null {
-  if (typeof document === 'undefined') return null
-  const name = (document.location.protocol === 'https:' ? '__Host-' : '') + 'csrf'
-  const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()\[\]\\/+^])/g, '\\$1') + '=([^;]*)'))
+  if (typeof document === "undefined") return null
+  const name = (document.location.protocol === "https:" ? "__Host-" : "") + "csrf"
+  const m = document.cookie.match(
+    new RegExp("(?:^|; )" + name.replace(/([.$?*|{}()\[\]\\/+^])/g, "\\$1") + "=([^;]*)")
+  )
   return m && m[1] ? decodeURIComponent(m[1]!) : null
 }

@@ -37,9 +37,27 @@ func (h *AdminInviteHandler) List(w http.ResponseWriter, r *http.Request) {
     if v := r.URL.Query().Get("offset"); v != "" { if n, err := strconv.Atoi(v); err == nil && n >= 0 { offset = n } }
     items, total, err := h.invites.List(r.Context(), status, email, limit, offset)
     if err != nil { response.WriteError(w, http.StatusInternalServerError, "failed to list invites"); return }
-    type InviteDTO struct { ID string `json:"id"`; Email string `json:"email"`; Status string `json:"status"`; ExpiresAt time.Time `json:"expiresAt"`; CreatedAt time.Time `json:"createdAt"`; UsedAt *time.Time `json:"usedAt,omitempty"` }
+    type InviteDTO struct {
+        ID         string     `json:"id"`
+        Email      string     `json:"email"`
+        Status     string     `json:"status"`
+        InvitedBy  string     `json:"invitedBy"`
+        ExpiresAt  time.Time  `json:"expiresAt"`
+        CreatedAt  time.Time  `json:"createdAt"`
+        UsedAt     *time.Time `json:"usedAt,omitempty"`
+    }
     out := make([]InviteDTO, 0, len(items))
-    for _, it := range items { out = append(out, InviteDTO{ ID: it.ID.Hex(), Email: it.InviteeEmail, Status: it.Status, ExpiresAt: it.ExpiresAt, CreatedAt: it.CreatedAt, UsedAt: it.UsedAt }) }
+    for _, it := range items {
+        out = append(out, InviteDTO{
+            ID:        it.ID.Hex(),
+            Email:     it.InviteeEmail,
+            Status:    it.Status,
+            InvitedBy: it.InvitedBy.Hex(),
+            ExpiresAt: it.ExpiresAt,
+            CreatedAt: it.CreatedAt,
+            UsedAt:    it.UsedAt,
+        })
+    }
     response.WriteJSON(w, http.StatusOK, map[string]any{"items": out, "count": total})
 }
 

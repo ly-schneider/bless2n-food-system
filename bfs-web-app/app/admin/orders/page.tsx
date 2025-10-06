@@ -95,7 +95,7 @@ export default function AdminOrdersPage() {
                   const userLink = o.customerId ? (
                     <Link
                       href={`/admin/users/${encodeURIComponent(o.customerId)}`}
-                      className="underline underline-offset-2"
+                      className="underline underline-offset-2 text-xs"
                     >
                       {o.customerId}
                     </Link>

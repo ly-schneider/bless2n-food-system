@@ -7,6 +7,7 @@ import (
     "net/http"
     "strconv"
     "encoding/json"
+    "time"
     "go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -23,9 +24,29 @@ func (h *AdminUserHandler) List(w http.ResponseWriter, r *http.Request) {
     items, total, err := h.users.List(r.Context(), limit, offset)
     if err != nil { response.WriteError(w, http.StatusInternalServerError, "failed to list users"); return }
     // redact
-    type UserDTO struct { ID string `json:"id"`; Email string `json:"email"`; Role string `json:"role"` }
+    type UserDTO struct {
+        ID         string    `json:"id"`
+        Email      string    `json:"email"`
+        FirstName  string    `json:"firstName"`
+        LastName   string    `json:"lastName"`
+        Role       string    `json:"role"`
+        IsVerified bool      `json:"isVerified"`
+        CreatedAt  time.Time `json:"createdAt"`
+        UpdatedAt  time.Time `json:"updatedAt"`
+    }
     out := make([]UserDTO, 0, len(items))
-    for _, u := range items { out = append(out, UserDTO{ ID: u.ID.Hex(), Email: u.Email, Role: string(u.Role) }) }
+    for _, u := range items {
+        out = append(out, UserDTO{
+            ID:         u.ID.Hex(),
+            Email:      u.Email,
+            FirstName:  u.FirstName,
+            LastName:   u.LastName,
+            Role:       string(u.Role),
+            IsVerified: u.IsVerified,
+            CreatedAt:  u.CreatedAt,
+            UpdatedAt:  u.UpdatedAt,
+        })
+    }
     response.WriteJSON(w, http.StatusOK, map[string]any{"items": out, "count": total})
 }
 
@@ -46,8 +67,26 @@ func (h *AdminUserHandler) GetByID(w http.ResponseWriter, r *http.Request) {
     id := chiURLParam(r, "id"); oid, err := primitive.ObjectIDFromHex(id); if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid id"); return }
     u, err := h.users.FindByID(r.Context(), oid)
     if err != nil || u == nil { response.WriteError(w, http.StatusNotFound, "not found"); return }
-    type UserDTO struct { ID string `json:"id"`; Email string `json:"email"`; Role string `json:"role"` }
-    response.WriteJSON(w, http.StatusOK, map[string]any{"user": UserDTO{ ID: u.ID.Hex(), Email: u.Email, Role: string(u.Role) }})
+    type UserDTO struct {
+        ID         string    `json:"id"`
+        Email      string    `json:"email"`
+        FirstName  string    `json:"firstName"`
+        LastName   string    `json:"lastName"`
+        Role       string    `json:"role"`
+        IsVerified bool      `json:"isVerified"`
+        CreatedAt  time.Time `json:"createdAt"`
+        UpdatedAt  time.Time `json:"updatedAt"`
+    }
+    response.WriteJSON(w, http.StatusOK, map[string]any{"user": UserDTO{
+        ID:         u.ID.Hex(),
+        Email:      u.Email,
+        FirstName:  u.FirstName,
+        LastName:   u.LastName,
+        Role:       string(u.Role),
+        IsVerified: u.IsVerified,
+        CreatedAt:  u.CreatedAt,
+        UpdatedAt:  u.UpdatedAt,
+    }})
 }
 
 // PATCH /v1/admin/users/{id}/role
