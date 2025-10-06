@@ -17,6 +17,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Button } from "@/components/ui/button"
+import { Calendar as CalendarIcon } from "lucide-react"
+import type { DateRange } from "react-day-picker"
+import { de } from "date-fns/locale"
 
 type OrderItem = { id: string; totalCents?: number | null; createdAt?: string }
 
@@ -24,23 +30,42 @@ export default function AdminDashboard() {
   const fetchAuth = useAuthorizedFetch()
   const [error, setError] = useState<string | null>(null)
 
-  const [series14d, setSeries14d] = useState<
+  const [series, setSeries] = useState<
     { date: string; orders: number; revenue: number }[]
   >([])
   const [lowStock, setLowStock] = useState<
     { id: string; name: string; qty?: number | null }[]
   >([])
 
+  // Date range: default to last 30 days (inclusive today)
+  const [range, setRange] = useState<DateRange>(() => {
+    const now = new Date()
+    const from = new Date(now)
+    from.setDate(now.getDate() - 29)
+    from.setHours(0, 0, 0, 0)
+    const to = new Date(now)
+    to.setHours(0, 0, 0, 0)
+    return { from, to }
+  })
+
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
+        // Resolve date range and compute [start, endExclusive)
         const now = new Date()
-        const start = new Date(now)
-        start.setDate(now.getDate() - 13)
+        const today = new Date(now)
+        today.setHours(0, 0, 0, 0)
+        const start = new Date(range?.from ?? now)
         start.setHours(0, 0, 0, 0)
-        const end = new Date(now)
-        end.setDate(now.getDate() + 1)
+        const inclusiveTo = new Date(range?.to ?? today)
+        inclusiveTo.setHours(0, 0, 0, 0)
+        // Clamp to not go into the future
+        if (inclusiveTo.getTime() > today.getTime()) {
+          inclusiveTo.setTime(today.getTime())
+        }
+        const end = new Date(inclusiveTo)
+        end.setDate(inclusiveTo.getDate() + 1)
         end.setHours(0, 0, 0, 0)
 
         const [ordersRes, productsRes] = await Promise.all([
@@ -52,7 +77,7 @@ export default function AdminDashboard() {
           fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/products?limit=200`),
         ])
 
-        // Build 14d timeseries for orders and revenue
+        // Build timeseries for orders and revenue
         let items: OrderItem[] = []
         if (ordersRes.ok) {
           const data = (await ordersRes.json()) as { items?: OrderItem[] }
@@ -61,7 +86,10 @@ export default function AdminDashboard() {
 
         const dayKey = (d: Date) => d.toISOString().slice(0, 10) // YYYY-MM-DD
         const byDay = new Map<string, { orders: number; revenue: number }>()
-        for (let i = 0; i < 14; i++) {
+        // number of days between start (inclusive) and end (exclusive)
+        const millisPerDay = 24 * 60 * 60 * 1000
+        const totalDays = Math.max(0, Math.round((end.getTime() - start.getTime()) / millisPerDay))
+        for (let i = 0; i < totalDays; i++) {
           const d = new Date(start)
           d.setDate(start.getDate() + i)
           byDay.set(dayKey(d), { orders: 0, revenue: 0 })
@@ -79,7 +107,7 @@ export default function AdminDashboard() {
           const d = new Date(iso)
           return d.toLocaleDateString("de-CH", { day: "2-digit", month: "2-digit" })
         }
-        const series = Array.from(byDay.entries())
+        const builtSeries = Array.from(byDay.entries())
           .sort(([a], [b]) => (a < b ? -1 : 1))
           .map(([k, v]) => ({ date: fmtDay(k), orders: v.orders, revenue: Number(v.revenue.toFixed(2)) }))
 
@@ -101,7 +129,7 @@ export default function AdminDashboard() {
         }
 
         if (!cancelled) {
-          setSeries14d(series)
+          setSeries(builtSeries)
           setLowStock(low)
         }
       } catch (e: unknown) {
@@ -112,7 +140,7 @@ export default function AdminDashboard() {
     return () => {
       cancelled = true
     }
-  }, [fetchAuth])
+  }, [fetchAuth, range.from?.getTime(), range.to?.getTime()])
 
   const lowList = useMemo(() => lowStock.slice(0, 5), [lowStock])
 
@@ -122,16 +150,53 @@ export default function AdminDashboard() {
     qty: { label: "Menge", color: "#f59e0b" }, // amber-500
   } as const
 
+  const fmtRangeLabel = useMemo(() => {
+    const from = range?.from
+    const to = range?.to
+    if (!from && !to) return "Zeitraum wählen"
+    const fmt = (d: Date) => d.toLocaleDateString("de-CH")
+    if (from && !to) return `${fmt(from)} –`
+    if (!from && to) return `– ${fmt(to)}`
+    return `${fmt(from!)} – ${fmt(to!)}`
+  }, [range])
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Adminbereich</h1>
       {error && <div className="text-red-600 text-sm">{error}</div>}
 
+      <div className="flex items-center gap-3">
+        <span className="text-sm text-muted-foreground">Zeitraum:</span>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="justify-start gap-2">
+              <CalendarIcon className="size-4" />
+              <span className="font-normal">{fmtRangeLabel}</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="range"
+              numberOfMonths={2}
+              selected={range}
+              onSelect={(r) => r && setRange(r)}
+              defaultMonth={range?.from ?? new Date()}
+              captionLayout="dropdown"
+              locale={de}
+              formatters={{
+                formatMonthDropdown: (date) => date.toLocaleString("de-CH", { month: "short" }),
+              }}
+              disabled={{ after: (() => { const d = new Date(); d.setHours(0,0,0,0); return d })() }}
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
+
       <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <div className="rounded-lg border border-gray-200 p-4">
-          <h2 className="mb-2 text-sm font-medium text-gray-600">Bestellungen (letzte 14 Tage)</h2>
+          <h2 className="mb-2 text-sm font-medium text-gray-600">Bestellungen</h2>
           <ChartContainer config={chartConfig} className="h-60 w-full">
-            <BarChart data={series14d} margin={{ left: 8, right: 8 }}>
+            <BarChart data={series} margin={{ left: 8, right: 8 }}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="date" tickLine={false} axisLine={false} />
               <YAxis allowDecimals={false} width={28} axisLine={false} tickLine={false} />
@@ -143,9 +208,9 @@ export default function AdminDashboard() {
         </div>
 
         <div className="rounded-lg border border-gray-200 p-4">
-          <h2 className="mb-2 text-sm font-medium text-gray-600">Umsatz (letzte 14 Tage)</h2>
+          <h2 className="mb-2 text-sm font-medium text-gray-600">Umsatz</h2>
           <ChartContainer config={chartConfig} className="h-60 w-full">
-            <LineChart data={series14d} margin={{ left: 8, right: 8 }}>
+            <LineChart data={series} margin={{ left: 8, right: 8 }}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" />
               <XAxis dataKey="date" tickLine={false} axisLine={false} />
               <YAxis width={40} axisLine={false} tickLine={false} />

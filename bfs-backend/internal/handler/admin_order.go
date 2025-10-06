@@ -44,12 +44,40 @@ func (h *AdminOrderHandler) List(w http.ResponseWriter, r *http.Request) {
 
     items, total, err := h.orders.ListAdmin(r.Context(), status, from, to, q, limit, offset)
     if err != nil { response.WriteError(w, http.StatusInternalServerError, "failed to list orders"); return }
-    // Minimal DTO
-    type OrderDTO struct { ID string `json:"id"`; Status domain.OrderStatus `json:"status"`; TotalCents int64 `json:"totalCents"`; CreatedAt time.Time `json:"createdAt"` }
+    // Expanded DTO for admin list view
+    type OrderDTO struct {
+        ID               string             `json:"id"`
+        Status           domain.OrderStatus `json:"status"`
+        TotalCents       int64              `json:"totalCents"`
+        CreatedAt        time.Time          `json:"createdAt"`
+        UpdatedAt        time.Time          `json:"updatedAt"`
+        ContactEmail     *string            `json:"contactEmail,omitempty"`
+        CustomerID       *string            `json:"customerId,omitempty"`
+        PaymentIntentID  *string            `json:"paymentIntentId,omitempty"`
+        StripeChargeID   *string            `json:"stripeChargeId,omitempty"`
+        PaymentAttemptID *string            `json:"paymentAttemptId,omitempty"`
+    }
     out := make([]OrderDTO, 0, len(items))
     var revenue int64
     for _, o := range items {
-        out = append(out, OrderDTO{ID: o.ID.Hex(), Status: o.Status, TotalCents: int64(o.TotalCents), CreatedAt: o.CreatedAt})
+        var custID *string
+        if o.CustomerID != nil {
+            s := o.CustomerID.Hex()
+            custID = &s
+        }
+        dto := OrderDTO{
+            ID:               o.ID.Hex(),
+            Status:           o.Status,
+            TotalCents:       int64(o.TotalCents),
+            CreatedAt:        o.CreatedAt,
+            UpdatedAt:        o.UpdatedAt,
+            ContactEmail:     o.ContactEmail,
+            CustomerID:       custID,
+            PaymentIntentID:  o.StripePaymentIntentID,
+            StripeChargeID:   o.StripeChargeID,
+            PaymentAttemptID: o.PaymentAttemptID,
+        }
+        out = append(out, dto)
         if o.Status == domain.OrderStatusPaid { revenue += int64(o.TotalCents) }
     }
     response.WriteJSON(w, http.StatusOK, map[string]any{"items": out, "count": total, "totals": map[string]any{"revenueCents": revenue}})

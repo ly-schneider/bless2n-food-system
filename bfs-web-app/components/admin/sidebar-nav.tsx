@@ -74,7 +74,7 @@ export function AdminSidebar({ badges }: { badges?: Partial<Record<string, numbe
 
 export function AdminShell({ children, badges }: { children: React.ReactNode; badges?: Partial<Record<string, number>> }) {
   return (
-    <div className="min-h-svh w-full">
+    <div className="min-h-dvh w-full overflow-x-clip">
       <div className="mx-auto w-full">
         <div className="md:hidden pt-3">
           <AdminSidebar badges={badges} />
@@ -83,9 +83,9 @@ export function AdminShell({ children, badges }: { children: React.ReactNode; ba
           <div>
             <AdminSidebar badges={badges} />
           </div>
-          <div className="pr-6 md:pr-8 lg:pr-10">{children}</div>
+          <div className="min-w-0 pr-6 md:pr-8 lg:pr-10">{children}</div>
         </div>
-        <div className="md:hidden px-6 md:px-8 lg:px-10 pt-4 pb-10">{children}</div>
+        <div className="md:hidden min-w-0 px-6 md:px-8 lg:px-10 pt-4 pb-10">{children}</div>
       </div>
     </div>
   )
