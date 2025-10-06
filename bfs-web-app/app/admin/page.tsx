@@ -219,7 +219,7 @@ export default function AdminDashboard() {
                 content={
                   <ChartTooltipContent
                     formatter={(value) => (
-                      <span className="font-mono">{new Intl.NumberFormat("de-CH", { style: "currency", currency: "CHF" }).format(Number(value))}</span>
+                      <span>{new Intl.NumberFormat("de-CH", { style: "currency", currency: "CHF" }).format(Number(value))}</span>
                     )}
                   />
                 }

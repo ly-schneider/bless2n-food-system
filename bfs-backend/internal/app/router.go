@@ -30,6 +30,7 @@ func NewRouter(
     inventoryRepo repository.InventoryLedgerRepository,
     auditRepo repository.AuditRepository,
     orderRepo repository.OrderRepository,
+    orderItemRepo repository.OrderItemRepository,
     userRepo repository.UserRepository,
     menuSlotRepo repository.MenuSlotRepository,
     menuSlotItemRepo repository.MenuSlotItemRepository,
@@ -37,13 +38,14 @@ func NewRouter(
     adminInviteRepo repository.AdminInviteRepository,
     refreshTokenRepo repository.RefreshTokenRepository,
     emailSvc service.EmailService,
+    jwtSvc service.JWTService,
     cfg config.Config,
 ) http.Handler {
     enableDocs := cfg.App.AppEnv != "prod"
     return httpRouter.NewRouter(
         authHandler, devHandler, adminHandler, userHandler, orderHandler, stationHandler, categoryHandler, productHandler, paymentHandler, redemptionHandler, healthHandler, jwksHandler,
         jwtMw, securityMw,
-        productRepo, inventoryRepo, auditRepo, orderRepo, userRepo, menuSlotRepo, menuSlotItemRepo, categoryRepo, adminInviteRepo, refreshTokenRepo, emailSvc,
-        enableDocs,
+        productRepo, inventoryRepo, auditRepo, orderRepo, orderItemRepo, userRepo, menuSlotRepo, menuSlotItemRepo, categoryRepo, adminInviteRepo, refreshTokenRepo, emailSvc,
+        jwtSvc, enableDocs,
     )
 }

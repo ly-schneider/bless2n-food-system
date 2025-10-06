@@ -60,6 +60,11 @@ export async function POST(req: Request) {
       body: body ?? undefined,
     })
 
+    // For 204 No Content, return an empty body to avoid NextResponse errors
+    if (res.status === 204) {
+      return new NextResponse(null, { status: 204 })
+    }
+
     const contentType = res.headers.get('content-type') || ''
     const payload = contentType.includes('application/json') ? await res.json().catch(() => ({})) : await res.text()
     return new NextResponse(

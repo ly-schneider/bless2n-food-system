@@ -44,7 +44,6 @@ export default function Header() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-48 rounded-2xl">
-              <DropdownMenuLabel>Allgemein</DropdownMenuLabel>
               <DropdownMenuItem asChild>
                 <Link href="/food/orders" className="flex items-center gap-2">
                   <LayoutList className="h-4 w-4" />

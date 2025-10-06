@@ -20,6 +20,7 @@ type AdminInviteRepository interface {
     Revoke(ctx context.Context, id primitive.ObjectID) (bool, error)
     MarkAccepted(ctx context.Context, id primitive.ObjectID) error
     UpdateToken(ctx context.Context, id primitive.ObjectID, tokenHash string, expiresAt time.Time) error
+    Delete(ctx context.Context, id primitive.ObjectID) error
 }
 
 type adminInviteRepository struct {
@@ -101,5 +102,10 @@ func (r *adminInviteRepository) MarkAccepted(ctx context.Context, id primitive.O
 
 func (r *adminInviteRepository) UpdateToken(ctx context.Context, id primitive.ObjectID, tokenHash string, expiresAt time.Time) error {
     _, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": bson.M{"token_hash": tokenHash, "expires_at": expiresAt, "status": "pending"}})
+    return err
+}
+
+func (r *adminInviteRepository) Delete(ctx context.Context, id primitive.ObjectID) error {
+    _, err := r.collection.DeleteOne(ctx, bson.M{"_id": id})
     return err
 }

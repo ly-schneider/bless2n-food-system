@@ -20,10 +20,13 @@ type AdminInviteHandler struct {
     users   repository.UserRepository
     audit   repository.AuditRepository
     email   service.EmailService
+    // For issuing sessions on acceptance
+    jwt     service.JWTService
+    refresh repository.RefreshTokenRepository
 }
 
-func NewAdminInviteHandler(invites repository.AdminInviteRepository, users repository.UserRepository, audit repository.AuditRepository, email service.EmailService) *AdminInviteHandler {
-    return &AdminInviteHandler{ invites: invites, users: users, audit: audit, email: email }
+func NewAdminInviteHandler(invites repository.AdminInviteRepository, users repository.UserRepository, audit repository.AuditRepository, email service.EmailService, jwt service.JWTService, refresh repository.RefreshTokenRepository) *AdminInviteHandler {
+    return &AdminInviteHandler{ invites: invites, users: users, audit: audit, email: email, jwt: jwt, refresh: refresh }
 }
 
 // GET /v1/admin/invites
@@ -105,13 +108,94 @@ func (h *AdminInviteHandler) Accept(w http.ResponseWriter, r *http.Request) {
     inv, err := h.invites.FindByTokenHash(r.Context(), hash)
     if err != nil || inv == nil { response.WriteError(w, http.StatusUnauthorized, "invalid token"); return }
     if inv.Status != "pending" || time.Now().UTC().After(inv.ExpiresAt) { response.WriteError(w, http.StatusUnauthorized, "expired or used"); return }
-    // Upsert or upgrade user to admin role
-    if _, err := h.users.UpsertByEmailWithRole(r.Context(), inv.InviteeEmail, domain.UserRoleAdmin, true, body.FirstName, body.LastName); err != nil {
-        response.WriteError(w, http.StatusInternalServerError, "user create failed"); return
+    // Require name to create admin user
+    if body.FirstName == nil || *body.FirstName == "" {
+        response.WriteError(w, http.StatusBadRequest, "firstName required"); return
     }
+    // Upsert or upgrade user to admin role (with provided name)
+    u, err := h.users.UpsertByEmailWithRole(r.Context(), inv.InviteeEmail, domain.UserRoleAdmin, true, body.FirstName, body.LastName)
+    if err != nil { response.WriteError(w, http.StatusInternalServerError, "user create failed"); return }
     if err := h.invites.MarkAccepted(r.Context(), inv.ID); err != nil { response.WriteError(w, http.StatusInternalServerError, "mark accepted failed"); return }
     _ = h.audit.Insert(r.Context(), &domain.AuditLog{ Action: domain.AuditUpdate, EntityType: "admin_invite", EntityID: inv.ID.Hex(), After: map[string]any{"status": "accepted"} })
+    // Issue session (access + refresh) and set cookies similar to OTP flow
+    if h.jwt != nil && h.refresh != nil {
+        // Generate tokens and persist refresh token family
+        access, err := h.jwt.GenerateAccessToken(u)
+        if err != nil { response.WriteError(w, http.StatusInternalServerError, "token error"); return }
+        rt, err := h.jwt.GenerateRefreshToken()
+        if err != nil { response.WriteError(w, http.StatusInternalServerError, "token error"); return }
+        family, err := utils.GenerateFamilyID()
+        if err != nil { response.WriteError(w, http.StatusInternalServerError, "token error"); return }
+        now := time.Now().UTC()
+        // derive a friendly client id from headers (best-effort)
+        clientID := r.Header.Get("X-Forwarded-User-Agent")
+        if clientID == "" { clientID = r.Header.Get("X-Original-User-Agent") }
+        if clientID == "" { clientID = r.Header.Get("X-Client-UA") }
+        if clientID == "" { clientID = r.Header.Get("User-Agent") }
+        if clientID == "" { clientID = "Invite" }
+        if len(clientID) > 64 { clientID = clientID[:64] }
+        if _, err := h.refresh.Create(r.Context(), &domain.RefreshToken{
+            UserID:     u.ID,
+            ClientID:   clientID,
+            TokenHash:  utils.HashTokenSHA256(rt),
+            IssuedAt:   now,
+            LastUsedAt: time.Time{},
+            ExpiresAt:  now.Add(service.RefreshTokenDuration),
+            IsRevoked:  false,
+            FamilyID:   family,
+        }); err != nil {
+            response.WriteError(w, http.StatusInternalServerError, "session error"); return
+        }
+        // Cookies: refresh (HttpOnly) and CSRF (non-HttpOnly)
+        middleware.SetAuthCookie(w, r, utils.RefreshCookieName, rt, int(7*24*3600))
+        csrf, _ := utils.GenerateCSRFToken()
+        csrfName := utils.CSRFCookieName
+        csrfSecure := middleware.IsHTTPS(r)
+        if csrfSecure { csrfName = "__Host-" + csrfName }
+        middleware.SetSecureCookie(w, middleware.SecureCookieOptions{
+            Name:     csrfName,
+            Value:    csrf,
+            Path:     "/",
+            MaxAge:   7*24*3600,
+            HttpOnly: false,
+            Secure:   csrfSecure,
+            SameSite: http.SameSiteLaxMode,
+        })
+        // Response like other auth flows
+        w.Header().Set("Content-Type", "application/json")
+        resp := map[string]any{
+            "access_token": access,
+            "expires_in":   int64(service.AccessTokenDuration.Seconds()),
+            "token_type":   "Bearer",
+            "user":         map[string]any{"id": u.ID.Hex(), "email": u.Email, "role": string(u.Role)},
+        }
+        if r.Header.Get("X-Internal-Call") == "1" {
+            resp["refresh_token"] = rt
+            resp["csrf_token"] = csrf
+        }
+        _ = json.NewEncoder(w).Encode(resp)
+        return
+    }
+    // Fallback
     response.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// POST /v1/invites/verify (public) - verify invite token and return metadata
+type verifyInviteBody struct { Token string `json:"token"` }
+func (h *AdminInviteHandler) Verify(w http.ResponseWriter, r *http.Request) {
+    var body verifyInviteBody
+    if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Token == "" { response.WriteError(w, http.StatusBadRequest, "invalid payload"); return }
+    hash := utils.HashTokenSHA256(body.Token)
+    inv, err := h.invites.FindByTokenHash(r.Context(), hash)
+    if err != nil || inv == nil { response.WriteError(w, http.StatusUnauthorized, "invalid token"); return }
+    status := inv.Status
+    if status == "pending" && time.Now().UTC().After(inv.ExpiresAt) { status = "expired" }
+    w.Header().Set("Content-Type", "application/json")
+    _ = json.NewEncoder(w).Encode(map[string]any{
+        "email":     inv.InviteeEmail,
+        "expiresAt": inv.ExpiresAt,
+        "status":    status,
+    })
 }
 
 // POST /v1/admin/invites/{id}/resend - rotate token and resend email
@@ -126,4 +210,13 @@ func (h *AdminInviteHandler) Resend(w http.ResponseWriter, r *http.Request) {
     if err := h.invites.UpdateToken(r.Context(), inv.ID, hash, exp); err != nil { response.WriteError(w, http.StatusInternalServerError, "update failed"); return }
     _ = h.email.SendAdminInvite(r.Context(), inv.InviteeEmail, token, exp)
     response.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// DELETE /v1/admin/invites/{id}
+func (h *AdminInviteHandler) Delete(w http.ResponseWriter, r *http.Request) {
+    id := chiURLParam(r, "id")
+    oid, err := primitive.ObjectIDFromHex(id)
+    if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid id"); return }
+    if err := h.invites.Delete(r.Context(), oid); err != nil { response.WriteError(w, http.StatusInternalServerError, "delete failed"); return }
+    w.WriteHeader(http.StatusNoContent)
 }

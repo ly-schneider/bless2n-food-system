@@ -101,3 +101,84 @@ func (h *AdminUserHandler) PatchRole(w http.ResponseWriter, r *http.Request) {
     if err := h.users.UpdateRole(r.Context(), oid, role); err != nil { response.WriteError(w, http.StatusInternalServerError, "update failed"); return }
     response.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
+
+// PATCH /v1/admin/users/{id} - update profile fields (email, names, role, verified)
+type adminPatchUserBody struct {
+    Email      *string `json:"email,omitempty"`
+    FirstName  *string `json:"firstName,omitempty"`
+    LastName   *string `json:"lastName,omitempty"`
+    Role       *string `json:"role,omitempty"`
+    IsVerified *bool   `json:"isVerified,omitempty"`
+}
+
+func (h *AdminUserHandler) PatchProfile(w http.ResponseWriter, r *http.Request) {
+    id := chiURLParam(r, "id")
+    oid, err := primitive.ObjectIDFromHex(id)
+    if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid id"); return }
+
+    u, err := h.users.FindByID(r.Context(), oid)
+    if err != nil || u == nil { response.WriteError(w, http.StatusNotFound, "not found"); return }
+
+    var body adminPatchUserBody
+    if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+        response.WriteError(w, http.StatusBadRequest, "invalid json")
+        return
+    }
+
+    // Names
+    if body.FirstName != nil || body.LastName != nil {
+        if err := h.users.UpdateNames(r.Context(), oid, body.FirstName, body.LastName); err != nil {
+            response.WriteError(w, http.StatusInternalServerError, "update names failed"); return
+        }
+        // refresh
+        if nu, err := h.users.FindByID(r.Context(), oid); err == nil && nu != nil { u = nu }
+    }
+    // Email / verification
+    if body.Email != nil || body.IsVerified != nil {
+        newEmail := u.Email
+        if body.Email != nil { newEmail = *body.Email }
+        newVerified := u.IsVerified
+        if body.IsVerified != nil { newVerified = *body.IsVerified }
+        if err := h.users.UpdateEmail(r.Context(), oid, newEmail, newVerified); err != nil {
+            response.WriteError(w, http.StatusInternalServerError, "update email failed"); return
+        }
+        if nu, err := h.users.FindByID(r.Context(), oid); err == nil && nu != nil { u = nu }
+    }
+    // Role
+    if body.Role != nil {
+        if *body.Role != string(domain.UserRoleAdmin) && *body.Role != string(domain.UserRoleCustomer) {
+            response.WriteError(w, http.StatusBadRequest, "invalid role")
+            return
+        }
+        if err := h.users.UpdateRole(r.Context(), oid, domain.UserRole(*body.Role)); err != nil {
+            response.WriteError(w, http.StatusInternalServerError, "update role failed"); return
+        }
+        if nu, err := h.users.FindByID(r.Context(), oid); err == nil && nu != nil { u = nu }
+    }
+
+    type UserDTO struct {
+        ID         string    `json:"id"`
+        Email      string    `json:"email"`
+        FirstName  string    `json:"firstName"`
+        LastName   string    `json:"lastName"`
+        Role       string    `json:"role"`
+        IsVerified bool      `json:"isVerified"`
+        CreatedAt  time.Time `json:"createdAt"`
+        UpdatedAt  time.Time `json:"updatedAt"`
+    }
+    response.WriteJSON(w, http.StatusOK, map[string]any{"user": UserDTO{
+        ID: u.ID.Hex(), Email: u.Email, FirstName: u.FirstName, LastName: u.LastName,
+        Role: string(u.Role), IsVerified: u.IsVerified, CreatedAt: u.CreatedAt, UpdatedAt: u.UpdatedAt,
+    }})
+}
+
+// DELETE /v1/admin/users/{id}
+func (h *AdminUserHandler) Delete(w http.ResponseWriter, r *http.Request) {
+    id := chiURLParam(r, "id")
+    oid, err := primitive.ObjectIDFromHex(id)
+    if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid id"); return }
+    if err := h.users.DeleteByID(r.Context(), oid); err != nil {
+        response.WriteError(w, http.StatusInternalServerError, "delete failed"); return
+    }
+    w.WriteHeader(http.StatusNoContent)
+}

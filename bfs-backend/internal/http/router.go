@@ -37,6 +37,7 @@ func NewRouter(
 	inventoryRepo repository.InventoryLedgerRepository,
 	auditRepo repository.AuditRepository,
 	orderRepo repository.OrderRepository,
+	orderItemRepo repository.OrderItemRepository,
 	userRepo repository.UserRepository,
 	menuSlotRepo repository.MenuSlotRepository,
 	menuSlotItemRepo repository.MenuSlotItemRepository,
@@ -44,6 +45,7 @@ func NewRouter(
 	adminInviteRepo repository.AdminInviteRepository,
 	refreshTokenRepo repository.RefreshTokenRepository,
 	emailSvc service.EmailService,
+	jwtSvc service.JWTService,
 	enableDocs bool,
 ) http.Handler {
 	r := chi.NewRouter()
@@ -80,7 +82,7 @@ func NewRouter(
 		v1.Route("/auth", func(a chi.Router) {
 			a.Post("/otp/request", authHandler.RequestOTP)
 			a.Post("/otp/verify", authHandler.VerifyOTP)
-            a.Post("/google/code", authHandler.GoogleCode)
+			a.Post("/google/code", authHandler.GoogleCode)
 			a.Post("/refresh", authHandler.Refresh)
 			a.Post("/logout", authHandler.Logout)
 		})
@@ -152,14 +154,17 @@ func NewRouter(
 			admin.Delete("/products/{id}", http.HandlerFunc(ap.DeleteHard))
 			admin.Patch("/products/{id}/category", http.HandlerFunc(ap.PatchCategory))
 			// Orders admin
-			ao := handler.NewAdminOrderHandler(orderRepo, auditRepo)
+			ao := handler.NewAdminOrderHandler(orderRepo, orderItemRepo, productRepo, auditRepo)
 			admin.Get("/orders", http.HandlerFunc(ao.List))
+			admin.Get("/orders/{id}", http.HandlerFunc(ao.GetByID))
 			admin.Get("/orders/export.csv", http.HandlerFunc(ao.ExportCSV))
 			admin.Patch("/orders/{id}/status", http.HandlerFunc(ao.PatchStatus))
 			// Users admin
 			au := handler.NewAdminUserHandler(userRepo)
 			admin.Get("/users", http.HandlerFunc(au.List))
 			admin.Get("/users/{id}", http.HandlerFunc(au.GetByID))
+			admin.Patch("/users/{id}", http.HandlerFunc(au.PatchProfile))
+			admin.Delete("/users/{id}", http.HandlerFunc(au.Delete))
 			admin.Patch("/users/{id}/role", http.HandlerFunc(au.PatchRole))
 			// Legacy: promote
 			admin.Post("/users/{id}/promote", http.HandlerFunc(au.Promote))
@@ -189,9 +194,10 @@ func NewRouter(
 			admin.Post("/menus/{id}/slots/{slotId}/items", http.HandlerFunc(am.AttachItem))
 			admin.Delete("/menus/{id}/slots/{slotId}/items/{productId}", http.HandlerFunc(am.DetachItem))
 			// Admin invites (admin-only for creating new admins)
-			ai := handler.NewAdminInviteHandler(adminInviteRepo, userRepo, auditRepo, emailSvc)
+			ai := handler.NewAdminInviteHandler(adminInviteRepo, userRepo, auditRepo, emailSvc, jwtSvc, refreshTokenRepo)
 			admin.Get("/invites", http.HandlerFunc(ai.List))
 			admin.Post("/invites", http.HandlerFunc(ai.Create))
+			admin.Delete("/invites/{id}", http.HandlerFunc(ai.Delete))
 			admin.Post("/invites/{id}/revoke", http.HandlerFunc(ai.Revoke))
 			admin.Post("/invites/{id}/resend", http.HandlerFunc(ai.Resend))
 		})
@@ -207,8 +213,9 @@ func NewRouter(
 			pay.Post("/webhook", paymentHandler.Webhook)
 		})
 
-		// Public invite accept endpoint
-		v1.Post("/invites/accept", http.HandlerFunc(handler.NewAdminInviteHandler(adminInviteRepo, userRepo, auditRepo, emailSvc).Accept))
+		// Public invite endpoints
+		v1.Post("/invites/accept", http.HandlerFunc(handler.NewAdminInviteHandler(adminInviteRepo, userRepo, auditRepo, emailSvc, jwtSvc, refreshTokenRepo).Accept))
+		v1.Post("/invites/verify", http.HandlerFunc(handler.NewAdminInviteHandler(adminInviteRepo, userRepo, auditRepo, emailSvc, jwtSvc, refreshTokenRepo).Verify))
 	})
 
 	return r

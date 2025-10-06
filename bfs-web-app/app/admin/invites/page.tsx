@@ -54,6 +54,21 @@ export default function AdminInvitesPage() {
     await reload()
   }
 
+  async function deleteInvite(id: string) {
+    try {
+      const csrf = getCSRFCookie()
+      const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/invites/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: { "X-CSRF": csrf || "" },
+      })
+      if (!res.ok && res.status !== 204) throw new Error(await readErrorMessage(res))
+      await reload()
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Löschen fehlgeschlagen"
+      setError(msg)
+    }
+  }
+
   return (
     <div className="min-w-0 space-y-4">
       <div className="flex items-center justify-between">
@@ -113,9 +128,7 @@ export default function AdminInvitesPage() {
                       <TableCell className="whitespace-nowrap">{created}</TableCell>
                       <TableCell className="whitespace-nowrap">{expires}</TableCell>
                       <TableCell className="text-right">
-                        <Link href={`/admin/invites/${encodeURIComponent(i.id)}`}>
-                          <Button size="sm" variant="outline">Details</Button>
-                        </Link>
+                        <Button size="sm" variant="destructive" onClick={() => void deleteInvite(i.id)}>Löschen</Button>
                       </TableCell>
                     </TableRow>
                   )

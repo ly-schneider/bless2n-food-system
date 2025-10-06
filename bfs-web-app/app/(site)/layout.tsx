@@ -3,8 +3,6 @@ import { Golos_Text } from "next/font/google"
 import Header from "@/components/layout/header"
 import Footer from "@/components/layout/footer"
 import { CartProvider } from "@/contexts/cart-context"
-import CookieBanner from "@/components/cookie-banner"
-import AnalyticsConsentGate from "@/components/google-analytics"
 
 const golosText = Golos_Text({
   weight: ["500"],
@@ -28,8 +26,6 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
         <main className="flex-1">{children}</main>
         <Footer />
       </CartProvider>
-      <AnalyticsConsentGate />
-      <CookieBanner />
     </div>
   )
 }

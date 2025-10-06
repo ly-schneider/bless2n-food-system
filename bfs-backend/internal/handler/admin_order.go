@@ -14,12 +14,14 @@ import (
 )
 
 type AdminOrderHandler struct {
-    orders repository.OrderRepository
-    audit  repository.AuditRepository
+    orders     repository.OrderRepository
+    orderItems repository.OrderItemRepository
+    products   repository.ProductRepository
+    audit      repository.AuditRepository
 }
 
-func NewAdminOrderHandler(orders repository.OrderRepository, audit repository.AuditRepository) *AdminOrderHandler {
-    return &AdminOrderHandler{ orders: orders, audit: audit }
+func NewAdminOrderHandler(orders repository.OrderRepository, orderItems repository.OrderItemRepository, products repository.ProductRepository, audit repository.AuditRepository) *AdminOrderHandler {
+    return &AdminOrderHandler{ orders: orders, orderItems: orderItems, products: products, audit: audit }
 }
 
 func (h *AdminOrderHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -119,4 +121,69 @@ func (h *AdminOrderHandler) PatchStatus(w http.ResponseWriter, r *http.Request) 
     after, _ := h.orders.FindByID(r.Context(), oid)
     _ = h.audit.Insert(r.Context(), &domain.AuditLog{ Action: domain.AuditUpdate, EntityType: "order", EntityID: id, Before: before, After: after, RequestID: getRequestIDPtr(r), ActorUserID: objIDPtr(claims.Subject), ActorRole: strPtr(string(claims.Role)) })
     response.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// AdminOrderDetailsDTO returns detailed order including items for admin view
+type AdminOrderDetailsDTO struct {
+    ID               string             `json:"id"`
+    Status           domain.OrderStatus `json:"status"`
+    TotalCents       int64              `json:"totalCents"`
+    CreatedAt        time.Time          `json:"createdAt"`
+    UpdatedAt        time.Time          `json:"updatedAt"`
+    ContactEmail     *string            `json:"contactEmail,omitempty"`
+    CustomerID       *string            `json:"customerId,omitempty"`
+    PaymentIntentID  *string            `json:"paymentIntentId,omitempty"`
+    StripeChargeID   *string            `json:"stripeChargeId,omitempty"`
+    PaymentAttemptID *string            `json:"paymentAttemptId,omitempty"`
+    Items            []PublicOrderItemDTO `json:"items"`
+}
+
+// GET /v1/admin/orders/{id}
+func (h *AdminOrderHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+    id := chiURLParam(r, "id")
+    oid, err := primitive.ObjectIDFromHex(id)
+    if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid id"); return }
+
+    ord, err := h.orders.FindByID(r.Context(), oid)
+    if err != nil || ord == nil { response.WriteError(w, http.StatusNotFound, "not found"); return }
+
+    // Load items
+    items, err := h.orderItems.FindByOrderID(r.Context(), oid)
+    if err != nil { response.WriteError(w, http.StatusInternalServerError, "failed to load items"); return }
+
+    // Enrich items with product images (non-sensitive)
+    pidSet := map[primitive.ObjectID]struct{}{}
+    for _, it := range items { pidSet[it.ProductID] = struct{}{} }
+    ids := make([]primitive.ObjectID, 0, len(pidSet))
+    for k := range pidSet { ids = append(ids, k) }
+    products, _ := h.products.GetByIDs(r.Context(), ids)
+    imgByID := map[primitive.ObjectID]*string{}
+    for _, p := range products {
+        if p.Image != nil && *p.Image != "" { v := *p.Image; imgByID[p.ID] = &v } else { imgByID[p.ID] = nil }
+    }
+
+    dtoItems := make([]PublicOrderItemDTO, 0, len(items))
+    for _, it := range items {
+        var parentID *string
+        if it.ParentItemID != nil { s := it.ParentItemID.Hex(); parentID = &s }
+        var msID *string
+        if it.MenuSlotID != nil { s := it.MenuSlotID.Hex(); msID = &s }
+        img := imgByID[it.ProductID]
+        dtoItems = append(dtoItems, PublicOrderItemDTO{
+            ID: it.ID.Hex(), OrderID: it.OrderID.Hex(), ProductID: it.ProductID.Hex(), Title: it.Title,
+            Quantity: it.Quantity, PricePerUnitCents: int64(it.PricePerUnitCents), ParentItemID: parentID,
+            MenuSlotID: msID, MenuSlotName: it.MenuSlotName, ProductImage: img,
+        })
+    }
+
+    var custID *string
+    if ord.CustomerID != nil { s := ord.CustomerID.Hex(); custID = &s }
+    dto := AdminOrderDetailsDTO{
+        ID: ord.ID.Hex(), Status: ord.Status, TotalCents: int64(ord.TotalCents),
+        CreatedAt: ord.CreatedAt, UpdatedAt: ord.UpdatedAt,
+        ContactEmail: ord.ContactEmail, CustomerID: custID,
+        PaymentIntentID: ord.StripePaymentIntentID, StripeChargeID: ord.StripeChargeID, PaymentAttemptID: ord.PaymentAttemptID,
+        Items: dtoItems,
+    }
+    response.WriteJSON(w, http.StatusOK, map[string]any{"order": dto})
 }

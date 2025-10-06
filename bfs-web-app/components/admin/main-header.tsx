@@ -1,19 +1,25 @@
 "use client"
 import { useRouter } from "next/navigation"
-import { Bell, ChevronDown, RefreshCw } from "lucide-react"
+import { Bell, Home, LogOut, RefreshCw, TextAlignEnd, User } from "lucide-react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem, DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
+import Link from "next/link"
 
 export function AdminMainHeader({ className }: { className?: string }) {
   const router = useRouter()
+
   return (
-    <div className={cn("sticky top-0 z-[50] bg-background", className)}>
+    <div className={cn("bg-background sticky top-0 z-[50]", className)}>
       <div className="mx-auto w-full px-6 md:px-8 lg:px-10">
-        <div className="h-16 flex items-center justify-between">
+        <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-7 w-7 rounded-full overflow-hidden bg-muted flex items-center justify-center">
+            <div className="bg-muted flex h-7 w-7 items-center justify-center overflow-hidden rounded-full">
               <Image src="/assets/images/blessthun.png" alt="BlessThun" width={28} height={28} />
             </div>
             <span className="text-base font-semibold">BlessThun</span>
@@ -28,24 +34,44 @@ export function AdminMainHeader({ className }: { className?: string }) {
                 } catch {}
               }}
               aria-label="Aktualisieren"
-              className="border-0 rounded-[11px]"
+              className="rounded-[11px] border-0"
             >
               <RefreshCw className="size-4" />
               <span>Aktualisieren</span>
             </Button>
-            <Button variant="outline" size="icon" aria-label="Benachrichtigungen" className="border-0 rounded-[11px]">
+            <Button variant="outline" size="icon" aria-label="Benachrichtigungen" className="rounded-[11px] border-0">
               <Bell className="size-4.5" />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" aria-haspopup="menu" className="border-0 rounded-[11px] py-4.5">
-                  Account <ChevronDown className="size-4" />
+                <Button variant="outline" size="sm" aria-haspopup="menu" className="rounded-[11px] border-0 py-4.5">
+                  <TextAlignEnd className="size-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="rounded-xl">
-                <DropdownMenuLabel>Konto</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => router.push("/profile")}>Profil</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => router.push("/")}>Zur Startseite</DropdownMenuItem>
+              <DropdownMenuContent align="end" className="min-w-48 rounded-2xl">
+                <DropdownMenuItem asChild>
+                  <Link href="/profile" className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    <span>Benutzer</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/food" className="flex items-center gap-2">
+                    <Home className="h-4 w-4" />
+                    <span>Food</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex items-center gap-2"
+                  onClick={async () => {
+                    router.push("/")
+                  }}
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Abmelden</span>
+                </DropdownMenuItem>
+
+                {/* Rechtliches links moved to footer */}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
