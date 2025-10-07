@@ -71,3 +71,34 @@ func (h *DevHandler) PreviewEmailChangeEmail(w http.ResponseWriter, r *http.Requ
     w.Header().Set("Content-Type", "text/html; charset=utf-8")
     _, _ = w.Write([]byte(html))
 }
+
+// PreviewAdminInviteEmail renders the admin invite email for preview in non-prod.
+func (h *DevHandler) PreviewAdminInviteEmail(w http.ResponseWriter, r *http.Request) {
+    if strings.EqualFold(h.cfg.App.AppEnv, "prod") {
+        http.NotFound(w, r)
+        return
+    }
+    q := r.URL.Query()
+    // Optional: custom token for building the AcceptURL
+    token := q.Get("token")
+    // Default TTL 7 days; allow override via ttl= e.g., "48h" or "30m"
+    ttl := 7 * 24 * time.Hour
+    if v := q.Get("ttl"); v != "" {
+        if d, err := time.ParseDuration(v); err == nil && d > 0 {
+            ttl = d
+        }
+    }
+    subj, text, html, err := h.email.PreviewAdminInvite(r.Context(), token, ttl)
+    if err != nil {
+        http.Error(w, fmt.Sprintf("render failed: %v", err), http.StatusInternalServerError)
+        return
+    }
+    _ = subj
+    if strings.EqualFold(q.Get("format"), "text") {
+        w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+        _, _ = w.Write([]byte(text))
+        return
+    }
+    w.Header().Set("Content-Type", "text/html; charset=utf-8")
+    _, _ = w.Write([]byte(html))
+}

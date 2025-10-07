@@ -1,26 +1,108 @@
-<!DOCTYPE html>
-<html lang="de">
+<!doctype html>
+<html lang="de" dir="ltr"
+      xmlns:v="urn:schemas-microsoft-com:vml"
+      xmlns:o="urn:schemas-microsoft-com:office:office">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Admin Einladung</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <!-- Prevent iOS auto-zoom/reformat -->
+    <meta name="x-apple-disable-message-reformatting">
+    <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+    <!-- Force LIGHT ONLY across supporting clients -->
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
+    <title>{{.Brand}} Einladung</title>
+
+    <!--[if mso]>
+      <noscript>
+        <xml>
+          <o:OfficeDocumentSettings>
+            <o:PixelsPerInch>96</o:PixelsPerInch>
+          </o:OfficeDocumentSettings>
+        </xml>
+      </noscript>
+      <style>
+        body, table, td, p, a, span { font-family: Arial, sans-serif !important; }
+      </style>
+    <![endif]-->
+
+    <style>
+      @media (max-width:600px){
+        .container { width:100% !important; }
+        .px { padding-left:16px !important; padding-right:16px !important; }
+      }
+    </style>
   </head>
-  <body style="margin:0;padding:0;background:#F6F6F6">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-      <tr><td align="center" style="padding:24px 16px">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;background:#FFFFFF;border-radius:8px;overflow:hidden">
-          <tr><td style="background:#111;color:#fff;padding:14px 24px;font:600 16px -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">{{.Brand}}</td></tr>
-          <tr><td style="padding:20px 24px">
-            <h1 style="margin:0 0 8px 0;font:600 18px/1.3 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#000">Einladung als Admin für {{.Brand}}</h1>
-            <p style="margin:0 0 12px 0;font:14px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#333">Du wurdest als Administrator eingeladen. Klicke auf den Link, um die Einladung zu akzeptieren:</p>
-            <p style="margin:0 0 16px 0"><a href="{{.AcceptURL}}" style="display:inline-block;padding:10px 14px;background:#111;color:#fff;text-decoration:none;border-radius:6px;font:600 14px/1 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">Einladung akzeptieren</a></p>
-            <p style="margin:0 0 8px 0;font:12px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#555">Falls der Button nicht funktioniert, nutze diesen Link:</p>
-            <p style="margin:0 0 16px 0;font:12px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#777;word-break:break-all">{{.AcceptURL}}</p>
-            <p style="margin:0 0 16px 0;font:12px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#777">Diese Einladung läuft in {{.TTL}} ab.</p>
-          </td></tr>
-          <tr><td style="padding:12px 24px;background:#FAFAFA;color:#666;font:12px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">Wenn du diese Einladung nicht erwartest, kannst du sie ignorieren.</td></tr>
-        </table>
-      </td></tr>
+
+  <body style="margin:0;padding:0;">
+    <!-- Hidden preheader for inbox preview -->
+    <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;color:transparent;opacity:0;">
+      Du wurdest als Administrator eingeladen. Einladung l\u00E4uft in {{.TTL}} ab &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
+    </div>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+           bgcolor="#E9E7E6" style="background-color:#E9E7E6;">
+      <tr>
+        <td align="center" style="padding:24px;">
+          <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0"
+                 class="container"
+                 bgcolor="#FDFDFD"
+                 style="width:560px;max-width:560px;background-color:#FDFDFD;border:1px solid #D7D7D7;border-radius:11px;">
+            <!-- HEADER -->
+            <tr>
+              <td class="px" style="padding:20px 24px 8px 24px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td style="font:700 14px/1.2 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#000000;">
+                      {{.Brand}}
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- CONTENT -->
+            <tr>
+              <td class="px" style="padding:8px 24px 24px 24px;">
+                <p style="margin:0 0 8px 0;font:600 18px/1.3 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#000000;">
+                  Einladung als Admin
+                </p>
+                <p style="margin:0 0 16px 0;font:13px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#7B7B7B;">
+                  Du wurdest als Administrator bei {{.Brand}} eingeladen. Akzeptiere die Einladung, um Zugriff zu erhalten:
+                </p>
+
+                <!-- CTA: light button to match card style -->
+                <p style="margin:0 0 16px 0;">
+                  <a href="{{.AcceptURL}}"
+                     style="display:inline-block;padding:10px 14px;background:#FFFFFF;border:1px solid #D7D7D7;border-radius:7px;text-decoration:none;font:600 14px/1 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#000000;">
+                    Einladung akzeptieren
+                  </a>
+                </p>
+
+                <p style="margin:0 0 8px 0;font:12px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#7B7B7B;">
+                  Falls der Button nicht funktioniert, nutze diesen Link:
+                </p>
+                <p style="margin:0 0 16px 0;font:12px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#7B7B7B;word-break:break-all;">
+                  {{.AcceptURL}}
+                </p>
+                <p style="margin:0;font:12px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#7B7B7B;">
+                  Diese Einladung läuft in {{.TTL}} ab.
+                </p>
+              </td>
+            </tr>
+
+            <!-- FOOTER -->
+            <tr>
+              <td class="px" style="padding:16px 24px 24px 24px;">
+                <p style="margin:0;font:12px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#7B7B7B;">
+                  Wenn du diese Einladung nicht erwartest, kannst du sie ignorieren.
+                </p>
+              </td>
+            </tr>
+
+          </table>
+        </td>
+      </tr>
     </table>
   </body>
   </html>

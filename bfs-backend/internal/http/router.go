@@ -75,6 +75,7 @@ func NewRouter(
 		r.Get("/swagger/*", httpSwagger.WrapHandler)
 		r.Get("/dev/email/preview/login", devHandler.PreviewLoginEmail)
 		r.Get("/dev/email/preview/email-change", devHandler.PreviewEmailChangeEmail)
+		r.Get("/dev/email/preview/admin-invite", devHandler.PreviewAdminInviteEmail)
 	}
 
 	r.Route("/v1", func(v1 chi.Router) {

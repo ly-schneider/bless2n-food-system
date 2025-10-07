@@ -27,7 +27,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
     if (ok === false) router.replace("/")
   }, [ok, router])
 
-  if (ok === null) return <div className="text-sm text-gray-600">Checking access…</div>
+  if (ok === null) return <div className="text-sm text-gray-600 text-center items-center justify-center font-semibold">Überprüfe den Zugriff...</div>
   if (!ok) return null
   return <>{children}</>
 }

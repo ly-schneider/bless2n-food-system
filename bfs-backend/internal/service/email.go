@@ -18,6 +18,7 @@ type EmailService interface {
     SendEmailChangeVerification(ctx context.Context, toNewEmail, code, ip, ua string, codeTTL time.Duration) error
     PreviewEmailChangeVerification(ctx context.Context, toNewEmail, code, ip, ua string, codeTTL time.Duration) (subject, text, html string, err error)
     SendAdminInvite(ctx context.Context, to, token string, expiresAt time.Time) error
+    PreviewAdminInvite(ctx context.Context, token string, ttl time.Duration) (subject, text, html string, err error)
 }
 
 type emailService struct {
@@ -27,15 +28,15 @@ type emailService struct {
 }
 
 func NewEmailService(cfg config.Config) EmailService {
-    return &emailService{
-        cfg:      cfg,
-        htmlTmpl: template.Must(template.New("login_html").Parse(loginEmailHTML)),
-        textTmpl: template.Must(template.New("login_text").Parse(loginEmailText)),
-    }
+	return &emailService{
+		cfg:      cfg,
+		htmlTmpl: template.Must(template.New("login_html").Parse(loginEmailHTML)),
+		textTmpl: template.Must(template.New("login_text").Parse(loginEmailText)),
+	}
 }
 
 type loginData struct {
-    Brand       string
+	Brand       string
 	Code        string
 	CodeTTL     string
 	IP          string
@@ -45,7 +46,7 @@ type loginData struct {
 
 func (e *emailService) SendLoginEmail(ctx context.Context, to, code, ip, ua string, codeTTL time.Duration) error {
 	data := loginData{
-		Brand:       "BlessThun",
+		Brand:       "BlessThun Food",
 		Code:        code,
 		CodeTTL:     friendlyTTL(codeTTL),
 		IP:          ip,
@@ -68,7 +69,7 @@ func (e *emailService) SendLoginEmail(ctx context.Context, to, code, ip, ua stri
 
 func (e *emailService) PreviewLoginEmail(ctx context.Context, to, code, ip, ua string, codeTTL time.Duration) (string, string, string, error) {
 	data := loginData{
-		Brand:       "BlessThun",
+		Brand:       "BlessThun Food",
 		Code:        code,
 		CodeTTL:     friendlyTTL(codeTTL),
 		IP:          ip,
@@ -87,66 +88,97 @@ func (e *emailService) PreviewLoginEmail(ctx context.Context, to, code, ip, ua s
 }
 
 type emailChangeData struct {
-    Brand   string
-    Code    string
-    CodeTTL string
-    NewEmail string
-    IP      string
-    UA      string
+	Brand    string
+	Code     string
+	CodeTTL  string
+	NewEmail string
+	IP       string
+	UA       string
 }
 
 func (e *emailService) SendEmailChangeVerification(ctx context.Context, toNewEmail, code, ip, ua string, codeTTL time.Duration) error {
-    data := emailChangeData{
-        Brand:   "BlessThun",
-        Code:    code,
-        CodeTTL: friendlyTTL(codeTTL),
-        NewEmail: toNewEmail,
-        IP:      ip,
-        UA:      ua,
-    }
-    htmlT := template.Must(template.New("email_change_html").Parse(emailChangeHTML))
-    textT := template.Must(template.New("email_change_text").Parse(emailChangeText))
-    var htmlBody, textBody strings.Builder
-    if err := htmlT.Execute(&htmlBody, data); err != nil { return err }
-    if err := textT.Execute(&textBody, data); err != nil { return err }
-    return e.send(ctx, toNewEmail, "E‑Mail Änderung bestätigen", textBody.String(), htmlBody.String())
+	data := emailChangeData{
+		Brand:    "BlessThun Food",
+		Code:     code,
+		CodeTTL:  friendlyTTL(codeTTL),
+		NewEmail: toNewEmail,
+		IP:       ip,
+		UA:       ua,
+	}
+	htmlT := template.Must(template.New("email_change_html").Parse(emailChangeHTML))
+	textT := template.Must(template.New("email_change_text").Parse(emailChangeText))
+	var htmlBody, textBody strings.Builder
+	if err := htmlT.Execute(&htmlBody, data); err != nil {
+		return err
+	}
+	if err := textT.Execute(&textBody, data); err != nil {
+		return err
+	}
+	return e.send(ctx, toNewEmail, "E‑Mail Änderung bestätigen", textBody.String(), htmlBody.String())
 }
 
 func (e *emailService) PreviewEmailChangeVerification(ctx context.Context, toNewEmail, code, ip, ua string, codeTTL time.Duration) (string, string, string, error) {
-    data := emailChangeData{
-        Brand:   "BlessThun",
-        Code:    code,
-        CodeTTL: friendlyTTL(codeTTL),
-        NewEmail: toNewEmail,
-        IP:      ip,
-        UA:      ua,
-    }
-    htmlT := template.Must(template.New("email_change_html").Parse(emailChangeHTML))
-    textT := template.Must(template.New("email_change_text").Parse(emailChangeText))
-    var htmlBody, textBody strings.Builder
-    if err := htmlT.Execute(&htmlBody, data); err != nil { return "","","", err }
-    if err := textT.Execute(&textBody, data); err != nil { return "","","", err }
-    return "E‑Mail Änderung bestätigen", textBody.String(), htmlBody.String(), nil
+	data := emailChangeData{
+		Brand:    "BlessThun Food",
+		Code:     code,
+		CodeTTL:  friendlyTTL(codeTTL),
+		NewEmail: toNewEmail,
+		IP:       ip,
+		UA:       ua,
+	}
+	htmlT := template.Must(template.New("email_change_html").Parse(emailChangeHTML))
+	textT := template.Must(template.New("email_change_text").Parse(emailChangeText))
+	var htmlBody, textBody strings.Builder
+	if err := htmlT.Execute(&htmlBody, data); err != nil {
+		return "", "", "", err
+	}
+	if err := textT.Execute(&textBody, data); err != nil {
+		return "", "", "", err
+	}
+	return "E‑Mail Änderung bestätigen", textBody.String(), htmlBody.String(), nil
 }
 
 type inviteData struct {
-    Brand     string
-    AcceptURL string
-    TTL       string
+	Brand     string
+	AcceptURL string
+	TTL       string
 }
 
 func (e *emailService) SendAdminInvite(ctx context.Context, to, token string, expiresAt time.Time) error {
-    // Build accept URL; public landing page handles acceptance
+	// Build accept URL; public landing page handles acceptance
+	base := strings.TrimRight(e.cfg.App.PublicBaseURL, "/")
+	acceptURL := base + "/invite/accept?token=" + token
+	ttl := time.Until(expiresAt)
+	data := inviteData{Brand: "BlessThun Food", AcceptURL: acceptURL, TTL: friendlyTTL(ttl)}
+	htmlT := template.Must(template.New("invite_html").Parse(adminInviteHTML))
+	textT := template.Must(template.New("invite_text").Parse(adminInviteText))
+	var htmlBody, textBody strings.Builder
+	if err := htmlT.Execute(&htmlBody, data); err != nil {
+		return err
+	}
+	if err := textT.Execute(&textBody, data); err != nil {
+		return err
+	}
+    return e.send(ctx, to, "Einladung als Admin", textBody.String(), htmlBody.String())
+}
+
+func (e *emailService) PreviewAdminInvite(ctx context.Context, token string, ttl time.Duration) (string, string, string, error) {
+    if token == "" {
+        token = "preview-token"
+    }
     base := strings.TrimRight(e.cfg.App.PublicBaseURL, "/")
     acceptURL := base + "/invite/accept?token=" + token
-    ttl := time.Until(expiresAt)
-    data := inviteData{ Brand: "BlessThun", AcceptURL: acceptURL, TTL: friendlyTTL(ttl) }
+    data := inviteData{Brand: "BlessThun Food", AcceptURL: acceptURL, TTL: friendlyTTL(ttl)}
     htmlT := template.Must(template.New("invite_html").Parse(adminInviteHTML))
     textT := template.Must(template.New("invite_text").Parse(adminInviteText))
     var htmlBody, textBody strings.Builder
-    if err := htmlT.Execute(&htmlBody, data); err != nil { return err }
-    if err := textT.Execute(&textBody, data); err != nil { return err }
-    return e.send(ctx, to, "Einladung als Admin", textBody.String(), htmlBody.String())
+    if err := htmlT.Execute(&htmlBody, data); err != nil {
+        return "", "", "", err
+    }
+    if err := textT.Execute(&textBody, data); err != nil {
+        return "", "", "", err
+    }
+    return "Einladung als Admin", textBody.String(), htmlBody.String(), nil
 }
 
 func (e *emailService) send(ctx context.Context, to, subject, textBody, htmlBody string) error {
@@ -264,11 +296,34 @@ func tlsDial(addr, serverName string) (*tls.Conn, error) {
 }
 
 func friendlyTTL(d time.Duration) string {
-	if d%time.Hour == 0 {
-		return fmt.Sprintf("%dh", int(d.Hours()))
-	}
-	if d%time.Minute == 0 {
-		return fmt.Sprintf("%dm", int(d.Minutes()))
-	}
-	return d.String()
+    // Make output human friendly for emails: include days, hours, minutes; drop seconds.
+    if d < 0 {
+        d = -d
+    }
+    // Avoid ugly fractional seconds like 59.997s
+    d = d.Truncate(time.Minute)
+
+    days := int(d / (24 * time.Hour))
+    d -= time.Duration(days) * 24 * time.Hour
+    hours := int(d / time.Hour)
+    d -= time.Duration(hours) * time.Hour
+    minutes := int(d / time.Minute)
+
+    parts := make([]string, 0, 3)
+    if days > 0 {
+        if days == 1 {
+            parts = append(parts, "1 Tag")
+        } else {
+            // Dative plural because templates use "in {{.TTL}}"
+            parts = append(parts, fmt.Sprintf("%d Tagen", days))
+        }
+    }
+    if hours > 0 {
+        parts = append(parts, fmt.Sprintf("%d Std", hours))
+    }
+    if minutes > 0 || len(parts) == 0 {
+        // Show minutes even if zero when there are no larger units
+        parts = append(parts, fmt.Sprintf("%d Min", minutes))
+    }
+    return strings.Join(parts, " ")
 }
