@@ -2,9 +2,6 @@
 
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { useAuth } from "@/contexts/auth-context"
-import { API_BASE_URL } from "@/lib/api"
-import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,9 +13,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { useAuth } from "@/contexts/auth-context"
+import { API_BASE_URL } from "@/lib/api"
 
 import type { UserRole } from "@/types"
-import { Input } from "@/components/ui/input"
 
 export default function ProfilePage() {
   const { signOut, getToken, refresh } = useAuth()

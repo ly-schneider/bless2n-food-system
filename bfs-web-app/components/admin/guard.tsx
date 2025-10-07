@@ -1,7 +1,7 @@
 "use client"
+import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
-import { useRouter } from "next/navigation"
 
 export function AdminGuard({ children }: { children: React.ReactNode }) {
   const fetchAuth = useAuthorizedFetch()

@@ -37,6 +37,9 @@ func NewRouter(
     categoryRepo repository.CategoryRepository,
     adminInviteRepo repository.AdminInviteRepository,
     refreshTokenRepo repository.RefreshTokenRepository,
+    stationRepo repository.StationRepository,
+    stationRequestRepo repository.StationRequestRepository,
+    stationProductRepo repository.StationProductRepository,
     emailSvc service.EmailService,
     jwtSvc service.JWTService,
     cfg config.Config,
@@ -45,7 +48,7 @@ func NewRouter(
     return httpRouter.NewRouter(
         authHandler, devHandler, adminHandler, userHandler, orderHandler, stationHandler, categoryHandler, productHandler, paymentHandler, redemptionHandler, healthHandler, jwksHandler,
         jwtMw, securityMw,
-        productRepo, inventoryRepo, auditRepo, orderRepo, orderItemRepo, userRepo, menuSlotRepo, menuSlotItemRepo, categoryRepo, adminInviteRepo, refreshTokenRepo, emailSvc,
+        productRepo, inventoryRepo, auditRepo, orderRepo, orderItemRepo, userRepo, menuSlotRepo, menuSlotItemRepo, categoryRepo, adminInviteRepo, refreshTokenRepo, stationRepo, stationRequestRepo, stationProductRepo, emailSvc,
         jwtSvc, enableDocs,
     )
 }

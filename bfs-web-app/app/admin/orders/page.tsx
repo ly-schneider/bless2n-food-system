@@ -1,10 +1,10 @@
 "use client"
-import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
 import { formatChf } from "@/lib/utils"
 
 // Minimal shape expected from the admin orders endpoint

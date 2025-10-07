@@ -1,8 +1,8 @@
 "use client"
+import { Grid2x2, Home, KeyRound, MailPlus, ReceiptText, Users, MonitorCheck } from "lucide-react"
+import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Grid2x2, MailPlus, ReceiptText, Users, KeyRound, Home } from "lucide-react"
-import Image from "next/image"
 
 type NavItem = {
   href: string
@@ -20,6 +20,7 @@ export function AdminSidebar({ badges }: { badges?: Partial<Record<string, numbe
     { href: "/admin/users", label: "Benutzer", icon: <Users className="size-5" /> },
     { href: "/admin/invites", label: "Einladungen", icon: <MailPlus className="size-5" />, badge: badges?.invites },
     { href: "/admin/sessions", label: "Sessions", icon: <KeyRound className="size-5" /> },
+    { href: "/admin/stations", label: "Stationen", icon: <MonitorCheck className="size-5" /> },
   ]
 
   return (

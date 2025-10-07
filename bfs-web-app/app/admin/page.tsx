@@ -1,13 +1,8 @@
 "use client"
+import { de } from "date-fns/locale"
+import { Calendar as CalendarIcon } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
-import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
-import {
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart"
+import type { DateRange } from "react-day-picker"
 import {
   Bar,
   BarChart,
@@ -17,12 +12,17 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
-import { Calendar as CalendarIcon } from "lucide-react"
-import type { DateRange } from "react-day-picker"
-import { de } from "date-fns/locale"
+import { Calendar } from "@/components/ui/calendar"
+import {
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
 
 type OrderItem = { id: string; totalCents?: number | null; createdAt?: string }
 

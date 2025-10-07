@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { getPaymentStatus } from "@/lib/api/payments"
+import { useEffect, useRef } from "react"
 import { useCart } from "@/contexts/cart-context"
+import { getPaymentStatus } from "@/lib/api/payments"
 import { addOrder } from "@/lib/orders-storage"
 
 export default function PaymentNextPage() {
@@ -77,7 +77,7 @@ export default function PaymentNextPage() {
 
     void resolve()
   // We intentionally depend only on search params and cart snapshot values
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [sp])
 
   return (

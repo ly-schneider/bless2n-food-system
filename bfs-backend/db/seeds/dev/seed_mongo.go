@@ -50,13 +50,15 @@ func SeedMongo(ctx context.Context, client *mongo.Client, cfg MongoConfig, logge
 		}
 	}
 
-	// Reset collections if requested
-	if cfg.ResetBeforeSeeding {
-		logger.Info("Resetting collections before seeding")
-		if err := resetCollections(ctx, db, logger); err != nil {
-			return fmt.Errorf("failed to reset collections: %w", err)
-		}
-	}
+    // Reset database if requested (drop entire DB)
+    if cfg.ResetBeforeSeeding {
+        logger.Info("Dropping database before seeding", zap.String("database", cfg.DatabaseName))
+        if err := dropDatabase(ctx, db, logger); err != nil {
+            return fmt.Errorf("failed to drop database: %w", err)
+        }
+        // Recreate handle after drop
+        db = client.Database(cfg.DatabaseName)
+    }
 
 	// Ensure indexes
 	if err := ensureIndexes(ctx, db, logger); err != nil {
@@ -77,24 +79,12 @@ func SeedMongo(ctx context.Context, client *mongo.Client, cfg MongoConfig, logge
 	return nil
 }
 
-func resetCollections(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {
-	collections := []string{
-		"users", "admin_invites", "otp_tokens", "refresh_tokens", "identity_links",
-		"stations", "device_requests", "categories", "products",
-		"menu_slots", "menu_slot_items", "station_products",
-		"orders", "order_items", "inventory_ledger",
-	}
-
-	for _, coll := range collections {
-		collection := db.Collection(coll)
-		result, err := collection.DeleteMany(ctx, bson.D{})
-		if err != nil {
-			return fmt.Errorf("failed to reset collection %s: %w", coll, err)
-		}
-		logger.Info("Reset collection", zap.String("collection", coll), zap.Int64("deleted", result.DeletedCount))
-	}
-
-	return nil
+func dropDatabase(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {
+    if err := db.Drop(ctx); err != nil {
+        return err
+    }
+    logger.Info("Dropped database successfully")
+    return nil
 }
 
 func ensureIndexes(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {

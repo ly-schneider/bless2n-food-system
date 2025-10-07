@@ -1,10 +1,10 @@
 "use client"
 import Image from "next/image"
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
 import { useParams } from "next/navigation"
-import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
+import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
 import { formatChf } from "@/lib/utils"
 
 type OrderItem = {

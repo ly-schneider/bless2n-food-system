@@ -3,9 +3,9 @@
 // import eslintPluginTailwindcss from "eslint-plugin-tailwindcss"
 import eslintPluginNext from "@next/eslint-plugin-next"
 import eslintPluginImport from "eslint-plugin-import"
+import eslintPluginReactHooks from "eslint-plugin-react-hooks"
 import eslintPluginStorybook from "eslint-plugin-storybook"
 import typescriptEslint from "typescript-eslint"
-import eslintPluginReactHooks from "eslint-plugin-react-hooks"
 import * as fs from "fs"
 
 const eslintIgnore = [

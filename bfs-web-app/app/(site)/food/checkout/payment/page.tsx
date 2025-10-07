@@ -1,11 +1,11 @@
 "use client"
 
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
 import { AuthNudgeBanner } from "@/components/auth/auth-nudge"
 import { CheckoutClient } from "@/components/payment/checkout-client"
 import { useAuth } from "@/contexts/auth-context"
 import { useCart } from "@/contexts/cart-context"
-import { useRouter } from "next/navigation"
-import { useEffect } from "react"
 
 export default function PaymentPage() {
   const { cart } = useCart()

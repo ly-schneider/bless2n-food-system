@@ -1,9 +1,9 @@
 import type { Metadata } from "next"
 import { Golos_Text } from "next/font/google"
-import AuthHeader from "@/components/layout/auth-header"
-import AuthFooter from "@/components/layout/auth-footer"
-import AnalyticsConsentGate from "@/components/google-analytics"
 import CookieBanner from "@/components/cookie-banner"
+import AnalyticsConsentGate from "@/components/google-analytics"
+import AuthFooter from "@/components/layout/auth-footer"
+import AuthHeader from "@/components/layout/auth-header"
 
 const golosText = Golos_Text({
   weight: ["500"],

@@ -1,13 +1,13 @@
 "use client"
-import { useEffect, useState } from "react"
 import Image from "next/image"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { readErrorMessage } from "@/lib/http"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
+import { readErrorMessage } from "@/lib/http"
 
 type Product = {
   id: string

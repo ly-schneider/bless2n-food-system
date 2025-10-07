@@ -1,8 +1,8 @@
 import "styles/tailwind.css"
-import { AuthProvider } from "@/contexts/auth-context"
 import { Golos_Text } from "next/font/google"
-import AnalyticsConsentGate from "@/components/google-analytics"
 import CookieBanner from "@/components/cookie-banner"
+import AnalyticsConsentGate from "@/components/google-analytics"
+import { AuthProvider } from "@/contexts/auth-context"
 
 const golosText = Golos_Text({
   weight: ["500"],

@@ -1,15 +1,15 @@
 "use client"
+import Image from "next/image"
+import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
+import AuthHeader from "@/components/layout/auth-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/contexts/auth-context"
 import type { User } from "@/types"
-import Link from "next/link"
-import Image from "next/image"
-import AuthHeader from "@/components/layout/auth-header"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")

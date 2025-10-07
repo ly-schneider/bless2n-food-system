@@ -13,7 +13,7 @@ export async function middleware(request: NextRequest) {
 
   // Auth guard: protect app routes by requiring refresh cookie
   // Note: Checkout and Orders are intentionally NOT protected to allow guest flows
-  const protectedPrefixes = ["/profile", "/admin", "/pos", "/station"]
+  const protectedPrefixes = ["/profile", "/admin", "/pos"]
   const isProtected = protectedPrefixes.some((p) => pathname.startsWith(p))
   if (isProtected) {
     const proto = (request.headers.get('x-forwarded-proto') || '').toLowerCase()

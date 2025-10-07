@@ -1,10 +1,10 @@
 "use client"
+import { useEffect, useMemo, useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
 import { readErrorMessage } from "@/lib/http"
-import { useEffect, useMemo, useState } from "react"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
 
 type Category = { id: string; name: string; isActive: boolean; position: number }
 

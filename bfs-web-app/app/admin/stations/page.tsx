@@ -1,0 +1,214 @@
+"use client"
+import { useEffect, useState } from "react"
+import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
+import { AdminShell } from "@/components/admin/sidebar-nav"
+
+type StationRequest = {
+  id: string
+  name: string
+  model: string
+  os: string
+  status: string
+  createdAt: string
+  expiresAt: string
+}
+
+type Station = {
+  id: string
+  name: string
+  deviceKey: string
+  approved: boolean
+  approvedAt?: string
+  createdAt: string
+}
+
+type Product = { id: string; name: string }
+
+export default function AdminStationRequestsPage() {
+  const fetchAuth = useAuthorizedFetch()
+  const [items, setItems] = useState<StationRequest[]>([])
+  const [stations, setStations] = useState<Station[]>([])
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [assigned, setAssigned] = useState<Record<string, { productId: string; name: string }[]>>({})
+  const [allProducts, setAllProducts] = useState<Product[]>([])
+  const [addProductId, setAddProductId] = useState<string>("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function load() {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/stations/requests?status=pending`)
+      const json = (await res.json()) as { items: StationRequest[] }
+      setItems(json.items || [])
+      const rs = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/stations`)
+      const js = (await rs.json()) as { items: Station[] }
+      setStations(js.items || [])
+      // Load products for selection
+      const pr = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/products?limit=500`)
+      const pj = (await pr.json()) as { items?: { id: string; name: string }[] }
+      if (pj && Array.isArray(pj.items)) setAllProducts(pj.items.map((x) => ({ id: x.id, name: x.name })))
+    } catch (e) {
+      setError("Laden fehlgeschlagen")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    load()
+  }, [])
+
+  async function act(id: string, action: "approve" | "reject") {
+    try {
+      const res = await fetchAuth(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/stations/requests/${id}/${action}`,
+        { method: "POST" }
+      )
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { detail?: string; message?: string }
+        throw new Error(j.detail || j.message || `Error ${res.status}`)
+      }
+      setItems((prev) => prev.filter((x) => x.id !== id))
+    } catch (e) {
+      setError(action === "approve" ? "Genehmigung fehlgeschlagen" : "Ablehnung fehlgeschlagen")
+    }
+  }
+
+  async function openEditor(st: Station) {
+    const next = st.id === editingId ? null : st.id
+    setEditingId(next)
+    if (next) {
+      try {
+        const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/stations/${st.id}/products`)
+        const j = (await res.json()) as { items: { productId: string; name: string }[] }
+        setAssigned((prev) => ({ ...prev, [st.id]: j.items || [] }))
+        setAddProductId("")
+      } catch {}
+    }
+  }
+
+  async function addProductToStation(stationId: string) {
+    if (!addProductId) return
+    await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/stations/${stationId}/products`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productIds: [addProductId] }),
+    })
+    const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/stations/${stationId}/products`)
+    const j = (await res.json()) as { items: { productId: string; name: string }[] }
+    setAssigned((prev) => ({ ...prev, [stationId]: j.items || [] }))
+    setAddProductId("")
+  }
+
+  async function removeProductFromStation(stationId: string, productId: string) {
+    await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/stations/${stationId}/products/${productId}`, { method: "DELETE" })
+    setAssigned((prev) => ({ ...prev, [stationId]: (prev[stationId] || []).filter((x) => x.productId !== productId) }))
+  }
+
+  return (
+    <div className="pt-4">
+      <h1 className="font-primary mb-4 text-2xl">Stationen & Anfragen</h1>
+      {error && (
+        <div role="alert" className="text-destructive bg-destructive/10 mb-3 rounded px-3 py-2">
+          {error}
+        </div>
+      )}
+      {loading && <div className="text-muted-foreground">Lädt…</div>}
+      {/* Stations list */}
+      <h2 className="mb-2 mt-2 text-lg font-semibold">Stationen</h2>
+      {!loading && stations.length === 0 && (
+        <div className="text-muted-foreground">Keine Stationen vorhanden.</div>
+      )}
+      <div className="mb-6 space-y-3">
+        {stations.map((st) => {
+          const isEditing = editingId === st.id
+          const assignedList = assigned[st.id] || []
+          const unassigned = allProducts.filter(p => !assignedList.some(a => a.productId === p.id))
+          return (
+            <div key={st.id} className="bg-card border-border rounded-[11px] border p-3">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-semibold">{st.name}</div>
+                  <div className="text-muted-foreground truncate text-sm">{maskKey(st.deviceKey)}</div>
+                  <div className="text-muted-foreground text-xs">Erstellt: {new Date(st.createdAt).toLocaleString()}</div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className={`rounded px-2 py-1 text-sm ${st.approved ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>{st.approved ? 'Genehmigt' : 'Ausstehend'}</span>
+                  <button onClick={() => openEditor(st)} className="bg-secondary text-secondary-foreground rounded px-3 py-2">Produkte bearbeiten</button>
+                </div>
+              </div>
+              {isEditing && (
+                <div className="mt-3 rounded-lg border border-border p-3">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm">Produkt hinzufügen</label>
+                    <div className="flex items-center gap-2">
+                      <select className="border border-border rounded px-3 py-2 flex-1" value={addProductId} onChange={(e) => setAddProductId(e.target.value)}>
+                        <option value="">– Produkt auswählen –</option>
+                        {unassigned.map(p => (<option key={p.id} value={p.id}>{p.name}</option>))}
+                      </select>
+                      <button className="bg-primary text-primary-foreground rounded px-3 py-2 disabled:opacity-50" disabled={!addProductId} onClick={() => addProductToStation(st.id)}>Hinzufügen</button>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <div className="mb-2 text-sm font-medium">Zugewiesene Produkte</div>
+                    {assignedList.length === 0 ? (
+                      <div className="text-sm text-muted-foreground">Keine Produkte zugewiesen.</div>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {assignedList.map(a => (
+                          <span key={a.productId} className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-sm">
+                            {a.name}
+                            <button aria-label="Entfernen" className="text-muted-foreground hover:text-destructive" onClick={() => removeProductFromStation(st.id, a.productId)}>×</button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Requests list */}
+      <h2 className="mb-2 mt-2 text-lg font-semibold">Offene Anfragen</h2>
+      {!loading && items.length === 0 && <div className="text-muted-foreground">Keine offenen Anfragen.</div>}
+      <div className="space-y-3">
+        {items.map((it) => (
+          <div
+            key={it.id}
+            className="bg-card border-border flex items-center justify-between gap-4 rounded-[11px] border p-3"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-semibold">{it.name}</div>
+              <div className="text-muted-foreground truncate text-sm">
+                {it.model} • {it.os}
+              </div>
+              <div className="text-muted-foreground text-xs">Erstellt: {new Date(it.createdAt).toLocaleString()}</div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button onClick={() => act(it.id, "reject")} className="bg-destructive rounded px-3 py-2 text-white">
+                Ablehnen
+              </button>
+              <button
+                onClick={() => act(it.id, "approve")}
+                className="bg-primary text-primary-foreground rounded px-3 py-2"
+              >
+                Genehmigen
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function maskKey(k: string) {
+  if (!k) return ''
+  if (k.length <= 6) return '•••'
+  return `${k.slice(0,3)}•••${k.slice(-3)}`
+}

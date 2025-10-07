@@ -1,7 +1,7 @@
 "use client"
+import { useCallback } from 'react'
 import { useAuth } from '@/contexts/auth-context'
 import { API_BASE_URL } from '@/lib/api'
-import { useCallback } from 'react'
 
 /**
  * Authorized fetch hook for API requests with automatic token refresh and CSRF protection.

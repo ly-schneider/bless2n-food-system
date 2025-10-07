@@ -1,5 +1,5 @@
+import { cookies, headers as nextHeaders } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { headers as nextHeaders, cookies } from 'next/headers'
 import { API_BASE_URL } from '@/lib/api'
 
 type ForwardPayload = {

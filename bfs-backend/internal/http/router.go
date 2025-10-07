@@ -18,35 +18,38 @@ import (
 )
 
 func NewRouter(
-	authHandler *handler.AuthHandler,
-	devHandler *handler.DevHandler,
-	adminHandler *handler.AdminHandler,
-	userHandler *handler.UserHandler,
-	orderHandler *handler.OrderHandler,
-	stationHandler *handler.StationHandler,
-	categoryHandler *handler.CategoryHandler,
-	productHandler *handler.ProductHandler,
-	paymentHandler *handler.PaymentHandler,
-	redemptionHandler *handler.RedemptionHandler,
-	healthHandler *handler.HealthHandler,
-	jwksHandler *handler.JWKSHandler,
-	jwtMw *jwtMiddleware.JWTMiddleware,
-	securityMw *jwtMiddleware.SecurityMiddleware,
-	// repositories for admin handlers
-	productRepo repository.ProductRepository,
-	inventoryRepo repository.InventoryLedgerRepository,
-	auditRepo repository.AuditRepository,
-	orderRepo repository.OrderRepository,
-	orderItemRepo repository.OrderItemRepository,
-	userRepo repository.UserRepository,
-	menuSlotRepo repository.MenuSlotRepository,
-	menuSlotItemRepo repository.MenuSlotItemRepository,
-	categoryRepo repository.CategoryRepository,
-	adminInviteRepo repository.AdminInviteRepository,
-	refreshTokenRepo repository.RefreshTokenRepository,
-	emailSvc service.EmailService,
-	jwtSvc service.JWTService,
-	enableDocs bool,
+    authHandler *handler.AuthHandler,
+    devHandler *handler.DevHandler,
+    adminHandler *handler.AdminHandler,
+    userHandler *handler.UserHandler,
+    orderHandler *handler.OrderHandler,
+    stationHandler *handler.StationHandler,
+    categoryHandler *handler.CategoryHandler,
+    productHandler *handler.ProductHandler,
+    paymentHandler *handler.PaymentHandler,
+    redemptionHandler *handler.RedemptionHandler,
+    healthHandler *handler.HealthHandler,
+    jwksHandler *handler.JWKSHandler,
+    jwtMw *jwtMiddleware.JWTMiddleware,
+    securityMw *jwtMiddleware.SecurityMiddleware,
+    // repositories for admin handlers
+    productRepo repository.ProductRepository,
+    inventoryRepo repository.InventoryLedgerRepository,
+    auditRepo repository.AuditRepository,
+    orderRepo repository.OrderRepository,
+    orderItemRepo repository.OrderItemRepository,
+    userRepo repository.UserRepository,
+    menuSlotRepo repository.MenuSlotRepository,
+    menuSlotItemRepo repository.MenuSlotItemRepository,
+    categoryRepo repository.CategoryRepository,
+    adminInviteRepo repository.AdminInviteRepository,
+    refreshTokenRepo repository.RefreshTokenRepository,
+    stationRepo repository.StationRepository,
+    stationRequestRepo repository.StationRequestRepository,
+    stationProductRepo repository.StationProductRepository,
+    emailSvc service.EmailService,
+    jwtSvc service.JWTService,
+    enableDocs bool,
 ) http.Handler {
 	r := chi.NewRouter()
 	// wire chi URLParam to admin handler helpers
@@ -78,7 +81,7 @@ func NewRouter(
 		r.Get("/dev/email/preview/admin-invite", devHandler.PreviewAdminInviteEmail)
 	}
 
-	r.Route("/v1", func(v1 chi.Router) {
+		r.Route("/v1", func(v1 chi.Router) {
 		// Auth routes
 		v1.Route("/auth", func(a chi.Router) {
 			a.Post("/otp/request", authHandler.RequestOTP)
@@ -107,13 +110,22 @@ func NewRouter(
 			product.Get("/", productHandler.ListProducts)
 		})
 
-		// Orders: public details by id, and authenticated list
-		v1.Route("/orders", func(orders chi.Router) {
-			// Public access to order details by id (no auth)
-			orders.Get("/{id}", orderHandler.GetPublicByID)
-			// Authenticated list of own orders
-			orders.With(jwtMw.RequireAuth).Get("/", orderHandler.ListMyOrders)
+		// Station public endpoints
+		v1.Route("/stations", func(st chi.Router) {
+			st.Post("/requests", stationHandler.CreateRequest)
+			st.Get("/me", stationHandler.Me)
+			st.Post("/verify-qr", stationHandler.VerifyQR)
+			st.Post("/redeem", stationHandler.Redeem)
 		})
+
+		// Orders: public details by id, and authenticated list
+        v1.Route("/orders", func(orders chi.Router) {
+            // Public access to order details by id (no auth)
+            orders.Get("/{id}", orderHandler.GetPublicByID)
+            orders.Get("/{id}/pickup-qr", stationHandler.GetPickupQR)
+            // Authenticated list of own orders
+            orders.With(jwtMw.RequireAuth).Get("/", orderHandler.ListMyOrders)
+        })
 
 		// Admin routes
 		v1.Route("/admin", func(admin chi.Router) {
@@ -201,6 +213,16 @@ func NewRouter(
 			admin.Delete("/invites/{id}", http.HandlerFunc(ai.Delete))
 			admin.Post("/invites/{id}/revoke", http.HandlerFunc(ai.Revoke))
 			admin.Post("/invites/{id}/resend", http.HandlerFunc(ai.Resend))
+
+			// Stations admin
+            ast := handler.NewAdminStationHandler(stationRequestRepo, stationRepo, stationProductRepo, productRepo, auditRepo, nil)
+            admin.Get("/stations/requests", http.HandlerFunc(ast.ListRequests))
+            admin.Get("/stations", http.HandlerFunc(ast.ListStations))
+            admin.Post("/stations/requests/{id}/approve", http.HandlerFunc(ast.Approve))
+            admin.Post("/stations/requests/{id}/reject", http.HandlerFunc(ast.Reject))
+            admin.Get("/stations/{id}/products", http.HandlerFunc(ast.ListStationProducts))
+            admin.Post("/stations/{id}/products", http.HandlerFunc(ast.AssignProducts))
+            admin.Delete("/stations/{id}/products/{productId}", http.HandlerFunc(ast.RemoveProduct))
 		})
 
 		v1.Route("/payments", func(pay chi.Router) {

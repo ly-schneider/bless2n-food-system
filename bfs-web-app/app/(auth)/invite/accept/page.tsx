@@ -1,13 +1,13 @@
 "use client"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
+import AuthHeader from "@/components/layout/auth-header"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/contexts/auth-context"
-import type { User } from "@/types"
-import AuthHeader from "@/components/layout/auth-header"
 import { API_BASE_URL } from "@/lib/api"
+import type { User } from "@/types"
 
 export default function AcceptInvitePage() {
   const sp = useSearchParams()

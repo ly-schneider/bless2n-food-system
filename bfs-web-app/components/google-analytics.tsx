@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { GoogleAnalytics } from "@next/third-parties/google"
+import { useEffect, useState } from "react"
 
 const COOKIE_NAME = "ga_consent"
 

@@ -5,8 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/contexts/cart-context"
-import { addOrder } from "@/lib/orders-storage"
 import { getPaymentStatus } from "@/lib/api/payments"
+import { addOrder } from "@/lib/orders-storage"
 
 export default function CheckoutSuccessPage() {
   const sp = useSearchParams()
@@ -65,7 +65,7 @@ export default function CheckoutSuccessPage() {
       }
     }
     void resolvePI()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [pi, redirectStatus, clearCart, router, cart.items, cart.totalCents])
 
   // Legacy Checkout path: store order snapshot and clear cart if provided

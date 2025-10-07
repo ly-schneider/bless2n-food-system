@@ -1,14 +1,15 @@
 "use client"
 
 import { ArrowLeft } from "lucide-react"
+import Image from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useMemo, useRef, useState } from "react"
 import QRCode from "@/components/qrcode"
-import Image from "next/image"
+import { API_BASE_URL } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/contexts/cart-context"
-import { addOrder, getOrder } from "@/lib/orders-storage"
 import { getOrderPublicById, type PublicOrderDetailsDTO } from "@/lib/api/orders"
+import { addOrder, getOrder } from "@/lib/orders-storage"
 import { formatChf } from "@/lib/utils"
 
 export default function CheckoutQRPage() {
@@ -21,6 +22,7 @@ export default function CheckoutQRPage() {
   const [footerHeight, setFooterHeight] = useState(0)
   const [mounted, setMounted] = useState(false)
   const [serverOrder, setServerOrder] = useState<PublicOrderDetailsDTO | null>(null)
+  const [pickupCode, setPickupCode] = useState<string | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
   const [apiError, setApiError] = useState<string | null>(null)
 
@@ -38,6 +40,12 @@ export default function CheckoutQRPage() {
       try {
         const res = await getOrderPublicById(orderId)
         if (!cancelled) setServerOrder(res)
+        // Fetch signed pickup QR payload for stations
+        const q = await fetch(`${API_BASE_URL}/v1/orders/${encodeURIComponent(orderId)}/pickup-qr`)
+        if (q.ok) {
+          const data = (await q.json()) as { code?: string }
+          if (!cancelled) setPickupCode(data.code || null)
+        }
       } catch (e: unknown) {
         const msg = typeof e === 'object' && e && 'message' in e ? String((e as { message?: unknown }).message ?? '') : undefined
         if (!cancelled) setApiError(msg || "Fehler beim Laden der Bestellung")
@@ -139,7 +147,7 @@ export default function CheckoutQRPage() {
 
       {mounted ? (
         orderId ? (
-          <QRCode value={orderId} size={260} className="mx-auto rounded-[11px] border-2 p-1" />
+          <QRCode value={pickupCode ?? orderId ?? ''} size={260} className="mx-auto rounded-[11px] border-2 p-1" />
         ) : (
           <p className="text-red-600">Bestellnummer fehlt.</p>
         )

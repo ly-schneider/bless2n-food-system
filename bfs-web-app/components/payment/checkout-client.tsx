@@ -1,6 +1,8 @@
 "use client"
 
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js"
+import { ArrowLeft } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,8 +11,6 @@ import { useCart } from "@/contexts/cart-context"
 import { attachReceiptEmail, createPaymentIntent } from "@/lib/api/payments"
 import { getStripe } from "@/lib/stripe"
 import { formatChf } from "@/lib/utils"
-import { ArrowLeft } from "lucide-react"
-import { useRouter } from "next/navigation"
 
 type Props = {
   returnPath?: string
@@ -258,7 +258,7 @@ function CheckoutForm({
       <PaymentElement
         options={
           {
-            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+             
             fields: { billingDetails: { name: "never", email: "never", phone: "never", address: "never" } },
             layout: "tabs",
           } as unknown as Parameters<typeof PaymentElement>[0]["options"]

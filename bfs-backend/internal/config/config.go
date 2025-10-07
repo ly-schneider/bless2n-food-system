@@ -11,22 +11,23 @@ import (
 )
 
 type Config struct {
-    App      AppConfig
-    Mongo    MongoConfig
-    Logger   LoggerConfig
-    Smtp     SmtpConfig
-    Security SecurityConfig
-    Stripe   StripeConfig
-    OAuth    OAuthConfig
+	App      AppConfig
+	Mongo    MongoConfig
+	Logger   LoggerConfig
+	Smtp     SmtpConfig
+	Security SecurityConfig
+	Stripe   StripeConfig
+	OAuth    OAuthConfig
+	Stations StationConfig
 }
 
 type AppConfig struct {
-    AppEnv         string
-    AppPort        string
-    JWTIssuer      string
-    JWTPrivPEMPath string
-    JWTPubPEMPath  string
-    PublicBaseURL  string
+	AppEnv         string
+	AppPort        string
+	JWTIssuer      string
+	JWTPrivPEMPath string
+	JWTPubPEMPath  string
+	PublicBaseURL  string
 }
 
 type MongoConfig struct {
@@ -49,25 +50,29 @@ type SmtpConfig struct {
 }
 
 type SecurityConfig struct {
-    EnableHSTS     bool
-    EnableCSP      bool
-    TrustedOrigins []string
+	EnableHSTS     bool
+	EnableCSP      bool
+	TrustedOrigins []string
 }
 
 type StripeConfig struct {
-    SecretKey     string
-    WebhookSecret string
+	SecretKey     string
+	WebhookSecret string
 }
 
 type OAuthConfig struct {
-    Google GoogleConfig
+	Google GoogleConfig
 }
 
 type GoogleConfig struct {
-    ClientID string
-    ClientSecret string // optional; recommended for web client exchange
+	ClientID     string
+	ClientSecret string // optional; recommended for web client exchange
 }
 
+type StationConfig struct {
+	QRSecret        string
+	QRMaxAgeSeconds int
+}
 
 func Load() Config {
 	// Load .env files only if not in Docker environment
@@ -86,15 +91,15 @@ func Load() Config {
 		}
 	}
 
-    cfg := Config{
-        App: AppConfig{
-            AppEnv:         getEnv("APP_ENV"),
-            AppPort:        getEnv("APP_PORT"),
-            JWTIssuer:      getEnv("JWT_ISSUER"),
-            JWTPrivPEMPath: getEnvOptional("JWT_PRIV_PEM_PATH"),
-            JWTPubPEMPath:  getEnvOptional("JWT_PUB_PEM_PATH"),
-            PublicBaseURL:  getEnv("PUBLIC_BASE_URL"),
-        },
+	cfg := Config{
+		App: AppConfig{
+			AppEnv:         getEnv("APP_ENV"),
+			AppPort:        getEnv("APP_PORT"),
+			JWTIssuer:      getEnv("JWT_ISSUER"),
+			JWTPrivPEMPath: getEnvOptional("JWT_PRIV_PEM_PATH"),
+			JWTPubPEMPath:  getEnvOptional("JWT_PUB_PEM_PATH"),
+			PublicBaseURL:  getEnv("PUBLIC_BASE_URL"),
+		},
 		Mongo: MongoConfig{
 			URI:      getEnv("MONGO_URI"),
 			Database: getEnv("MONGO_DATABASE"),
@@ -111,22 +116,26 @@ func Load() Config {
 			From:      getEnv("SMTP_FROM"),
 			TLSPolicy: getEnv("SMTP_TLS_POLICY"),
 		},
-        Security: SecurityConfig{
-            EnableHSTS:     getEnvAsBool("SECURITY_ENABLE_HSTS"),
-            EnableCSP:      getEnvAsBool("SECURITY_ENABLE_CSP"),
-            TrustedOrigins: getTrustedOrigins("SECURITY_TRUSTED_ORIGINS"),
-        },
-        Stripe: StripeConfig{
-            SecretKey:     getEnv("STRIPE_SECRET_KEY"),
-            WebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET"),
-        },
-        OAuth: OAuthConfig{
-            Google: GoogleConfig{
-                ClientID: getEnv("GOOGLE_CLIENT_ID"),
-                ClientSecret: getEnvOptional("GOOGLE_CLIENT_SECRET"),
-            },
-        },
-    }
+		Security: SecurityConfig{
+			EnableHSTS:     getEnvAsBool("SECURITY_ENABLE_HSTS"),
+			EnableCSP:      getEnvAsBool("SECURITY_ENABLE_CSP"),
+			TrustedOrigins: getTrustedOrigins("SECURITY_TRUSTED_ORIGINS"),
+		},
+		Stripe: StripeConfig{
+			SecretKey:     getEnv("STRIPE_SECRET_KEY"),
+			WebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET"),
+		},
+		OAuth: OAuthConfig{
+			Google: GoogleConfig{
+				ClientID:     getEnv("GOOGLE_CLIENT_ID"),
+				ClientSecret: getEnvOptional("GOOGLE_CLIENT_SECRET"),
+			},
+		},
+		Stations: StationConfig{
+			QRSecret:        getEnv("STATION_QR_SECRET"),
+			QRMaxAgeSeconds: getEnvAsInt("STATION_QR_MAX_AGE_SECONDS", 600),
+		},
+	}
 
 	return cfg
 }
@@ -185,4 +194,16 @@ func getTrustedOrigins(key string) []string {
 // getEnvOptional gets an environment variable or returns empty string
 func getEnvOptional(key string) string {
 	return os.Getenv(key)
+}
+
+// getEnvAsInt returns an int or default if empty/malformed
+func getEnvAsInt(key string, def int) int {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+	if i, err := strconv.Atoi(v); err == nil {
+		return i
+	}
+	return def
 }
