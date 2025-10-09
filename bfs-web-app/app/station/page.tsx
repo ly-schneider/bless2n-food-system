@@ -3,6 +3,21 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { API_BASE_URL } from "@/lib/api"
 import Image from "next/image"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter as ModalFooter,
+  DialogHeader as ModalHeader,
+  DialogTitle as ModalTitle,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
 
 type StationStatus = { exists: boolean; approved: boolean; name?: string }
 
@@ -14,109 +29,192 @@ function randKey(): string {
 }
 
 export default function StationPage() {
+  const log = (...args: any[]) => console.log('[Station]', ...args)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
   const [deviceId, setDeviceId] = useState<string>("")
-  const [streaming, setStreaming] = useState(false)
   const [status, setStatus] = useState<StationStatus | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  type PublicOrderItem = { id: string; orderId: string; productId: string; title: string; quantity: number; pricePerUnitCents?: number; productImage?: string | null; isRedeemed?: boolean; parentItemId?: string | null; menuSlotId?: string | null; menuSlotName?: string | null }
+  type PublicOrderItem = {
+    id: string
+    orderId: string
+    productId: string
+    title: string
+    quantity: number
+    pricePerUnitCents?: number
+    productImage?: string | null
+    isRedeemed?: boolean
+    parentItemId?: string | null
+    menuSlotId?: string | null
+    menuSlotName?: string | null
+  }
   type VerifyResult = { orderId: string; items: PublicOrderItem[] }
-  type RedeemResult = { orderId: string; stationId: string; matched: number; redeemed: number; items: PublicOrderItem[]; redeemedAt: string }
   const [result, setResult] = useState<VerifyResult | null>(null)
   const [scanned, setScanned] = useState<string | null>(null)
-  const [redeemResp, setRedeemResp] = useState<RedeemResult | null>(null)
-  const [manual, setManual] = useState("")
-  const [offline, setOffline] = useState(false)
+  // Redemption response is not shown; keep UI minimal
+  const [stationName, setStationName] = useState("")
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [requestSubmitted, setRequestSubmitted] = useState(false)
+  // ZXing removed; using native BarcodeDetector
+  const [scanningPaused, setScanningPaused] = useState(false)
+  const pausedRef = useRef(false)
+  const detectorRef = useRef<any | null>(null)
+  const rafRef = useRef<number | null>(null)
+  const lastCodeRef = useRef<string | null>(null)
+  const lastAtRef = useRef<number>(0)
+  useEffect(() => {
+    pausedRef.current = scanningPaused || drawerOpen
+  }, [scanningPaused, drawerOpen])
 
   const stationKey = useMemo(() => {
     if (typeof window === "undefined") return ""
     let k = localStorage.getItem("bfs.stationKey")
-    if (!k) { k = `st_${randKey()}`; localStorage.setItem("bfs.stationKey", k) }
+    if (!k) {
+      k = `st_${randKey()}`
+      localStorage.setItem("bfs.stationKey", k)
+    }
+    log('stationKey', k)
     return k
   }, [])
-
-  useEffect(() => {
-    setOffline(!navigator.onLine)
-    const on = () => setOffline(false)
-    const off = () => setOffline(true)
-    window.addEventListener("online", on)
-    window.addEventListener("offline", off)
-    return () => { window.removeEventListener("online", on); window.removeEventListener("offline", off) }
-  }, [])
-
-  useEffect(() => {
-    // Register a simple SW to cache this shell
-    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/station-sw.js").catch(() => {})
-    }
-  }, [])
+  // No offline mode or service worker – simplify flow
 
   useEffect(() => {
     // fetch station status
     ;(async () => {
       try {
+        log('GET /v1/stations/me')
         const res = await fetch(`${API_BASE_URL}/v1/stations/me`, { headers: { "X-Station-Key": stationKey } })
         const json = await res.json()
         setStatus(json as StationStatus)
+        log('status', json)
       } catch {
         setStatus({ exists: false, approved: false })
+        log('status fetch failed')
       }
     })()
   }, [stationKey])
 
+  // After approval: request camera permission, enumerate devices, and start scanning
   useEffect(() => {
-    // list cameras
-    (async () => {
+    if (!status?.approved) return
+    ;(async () => {
       try {
+        // Request permission with default camera to reveal labels
+        log('Requesting camera permission')
+        await navigator.mediaDevices.getUserMedia({ video: true })
+        log('Camera permission granted')
         const ds = await navigator.mediaDevices.enumerateDevices()
         const vids = ds.filter((d) => d.kind === "videoinput")
         setDevices(vids)
-        if (vids.length && !deviceId) { const first = vids[0]; if (first) setDeviceId(first.deviceId) }
-      } catch {
-        // no permission yet or insecure context
+        log('Cameras', vids.map(v => ({ id: v.deviceId, label: v.label })))
+        const preferred = vids[0]?.deviceId || ""
+        setDeviceId((prev) => prev || preferred)
+      } catch (e) {
+        setError("Kamerazugriff verweigert oder nicht verfügbar.")
+        log('Camera permission failed', e)
       }
     })()
-  }, [deviceId])
+  }, [status?.approved])
 
-  async function startCamera() {
-    if (!deviceId) return
-    setError(null)
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } } })
-      const v = videoRef.current
-      if (v) { v.srcObject = stream; await v.play(); setStreaming(true) }
-    } catch {
-      setError("Camera access denied or unavailable. You can use manual entry.")
+  // Cleanup on unmount: stop camera tracks and cancel RAF
+  useEffect(() => {
+    return () => {
+      try {
+        const v = videoRef.current
+        const tracks = (v?.srcObject as MediaStream | null)?.getTracks() || []
+        tracks.forEach((t) => t.stop())
+      } catch {}
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
     }
-  }
+  }, [])
 
-  async function stopCamera() {
-    const v = videoRef.current
-    if (v?.srcObject) {
-      const tracks = (v.srcObject as MediaStream).getTracks()
-      tracks.forEach((t) => t.stop())
-      v.srcObject = null
+  // Native BarcodeDetector scanning loop (camera stays active)
+  useEffect(() => {
+    if (!status?.approved) return
+    const BD = (typeof window !== 'undefined' ? (window as any).BarcodeDetector : null)
+    if (!BD) return
+    if (!detectorRef.current) {
+      try { detectorRef.current = new BD({ formats: ['qr_code'] }); log('BarcodeDetector initialized') } catch { return }
     }
-    setStreaming(false)
-  }
+    let cancelled = false
+    const tick = async () => {
+      if (cancelled) return
+      if (!(scanningPaused || drawerOpen) && videoRef.current && detectorRef.current) {
+        try {
+          const codes = await detectorRef.current.detect(videoRef.current)
+          const found = codes?.find((c: any) => c.rawValue)
+          if (found?.rawValue) {
+            const now = Date.now()
+            const value = String(found.rawValue)
+            const isRepeat = lastCodeRef.current === value && (now - lastAtRef.current) < 1500
+            if (!isRepeat) {
+              lastCodeRef.current = value
+              lastAtRef.current = now
+              setScanningPaused(true)
+              log('QR detected', value.slice(0, 24) + (value.length > 24 ? '…' : ''))
+              await handleScanned(value)
+            }
+          }
+        } catch {}
+      }
+      rafRef.current = requestAnimationFrame(tick)
+    }
+    log('Detection loop started')
+    rafRef.current = requestAnimationFrame(tick)
+    return () => { cancelled = true; if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+  }, [status?.approved, scanningPaused, drawerOpen])
 
-  async function scanOnce() {
+  // Start/keep camera stream on device change; no need to restart detector
+  useEffect(() => {
+    if (!status?.approved) return
+    ;(async () => {
+      try {
+        log('Starting camera stream', { deviceId: deviceId || 'default' })
+        const constraints: MediaStreamConstraints = deviceId
+          ? { video: { deviceId: { exact: deviceId } } as MediaTrackConstraints }
+          : { video: true }
+        const v = videoRef.current
+        if (!v) return
+        try { (v.srcObject as MediaStream | null)?.getTracks().forEach((t) => t.stop()) } catch {}
+        const stream = await navigator.mediaDevices.getUserMedia(constraints)
+        v.srcObject = stream
+        await v.play().catch(() => {})
+        log('Camera stream active', { tracks: stream.getTracks().map(t => ({ kind: t.kind, state: t.readyState })) })
+      } catch {
+        setError("Kamerazugriff verweigert oder nicht verfügbar.")
+        log('Failed to start camera stream')
+      }
+    })()
+  }, [deviceId, status?.approved])
+
+  async function handleScanned(code: string) {
     setError(null)
     setBusy(true)
     try {
-      const code = manual.trim() || await decodeOnce(videoRef.current)
-      if (!code) { setError("No code detected"); return }
-      const verify = await fetch(`${API_BASE_URL}/v1/stations/verify-qr`, { method: "POST", headers: { "Content-Type": "application/json", "X-Station-Key": stationKey }, body: JSON.stringify({ code }) })
+      log('verify-qr start')
+      const verify = await fetch(`${API_BASE_URL}/v1/stations/verify-qr`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Station-Key": stationKey },
+        body: JSON.stringify({ code }),
+      })
       type Problem = { detail?: string }
-      if (!verify.ok) { const j = (await verify.json().catch(()=>({}))) as Problem; throw new Error(j.detail || `Error ${verify.status}`) }
+      if (!verify.ok) {
+        const j = (await verify.json().catch(() => ({}))) as Problem
+        const msg = j.detail || `Fehler ${verify.status}`
+        log('verify-qr failed', msg)
+        throw new Error(msg)
+      }
       const data = (await verify.json()) as VerifyResult
       setResult(data)
       setScanned(code)
-      setRedeemResp(null)
+      setDrawerOpen(true)
+      log('verify-qr ok', { orderId: data.orderId, items: data.items?.length })
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Scan failed")
+      setError(e instanceof Error ? e.message : "Scan fehlgeschlagen")
+      // Verarbeitung wieder zulassen; Kamera läuft weiter
+      setScanningPaused(false)
+      log('verify-qr error; resume scanning')
     } finally {
       setBusy(false)
     }
@@ -124,138 +222,220 @@ export default function StationPage() {
 
   async function redeem() {
     if (!result) return
-    if (offline) return
-    setBusy(true)
+    const count = result.items?.filter((i) => !i.isRedeemed).length || 0
+    if (count === 0) return
     setError(null)
+    log('redeem start', { count })
     try {
       const idem = `idem_${Date.now()}_${Math.random().toString(36).slice(2)}`
-      const res = await fetch(`${API_BASE_URL}/v1/stations/redeem`, { method: "POST", headers: { "Content-Type": "application/json", "X-Station-Key": stationKey, "Idempotency-Key": idem }, body: JSON.stringify({ code: scanned }) })
-      const json = (await res.json().catch(()=>({}))) as { detail?: string; message?: string } | RedeemResult
-      if (!res.ok) throw new Error((json as { detail?: string; message?: string }).detail || (json as { detail?: string; message?: string }).message || `Error ${res.status}`)
-      setRedeemResp(json as RedeemResult)
+      const res = await fetch(`${API_BASE_URL}/v1/stations/redeem`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Station-Key": stationKey, "Idempotency-Key": idem },
+        body: JSON.stringify({ code: scanned }),
+      })
+      const json = (await res.json().catch(() => ({}))) as { detail?: string; message?: string }
+      if (!res.ok) {
+        const msg = json.detail || json.message || `Fehler ${res.status}`
+        // Ignore specific backend message when nothing to redeem
+        if (/no items to redeem/i.test(msg)) return
+        throw new Error(msg)
+      }
+      log('redeem ok')
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Redeem failed")
-    } finally { setBusy(false) }
+      setError(e instanceof Error ? e.message : "Einlösen fehlgeschlagen")
+      log('redeem error', e)
+    }
   }
 
   async function requestVerification() {
     const deviceLabel = (devices[0]?.label || navigator.userAgent).slice(0, 80)
     const os = navigator.platform || "web"
-    const name = prompt("Station label (e.g., Grill #1)") || deviceLabel || "Station"
+    const name = (stationName || deviceLabel || "Station").slice(0, 80)
     if (!name) return
     setBusy(true)
     try {
-      await fetch(`${API_BASE_URL}/v1/stations/requests`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, model: deviceLabel, os, deviceKey: stationKey }) })
+      log('request verification', { name, os, model: deviceLabel })
+      await fetch(`${API_BASE_URL}/v1/stations/requests`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, model: deviceLabel, os, deviceKey: stationKey }),
+      })
+      setRequestSubmitted(true)
       // refresh status
       const r = await fetch(`${API_BASE_URL}/v1/stations/me`, { headers: { "X-Station-Key": stationKey } })
-      const js = await r.json(); setStatus(js as StationStatus)
-    } catch { setError("Request failed") } finally { setBusy(false) }
+      const js = await r.json()
+      setStatus(js as StationStatus)
+      log('status after request', js)
+    } catch {
+      setError("Anfrage fehlgeschlagen")
+      log('request verification failed')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-6 flex flex-col items-center gap-4">
-      <h1 className="text-3xl font-primary">Station</h1>
-      {offline && (
-        <div role="status" aria-live="polite" className="text-destructive bg-destructive/10 px-3 py-2 rounded">
-          Offline. Scanning okay; redemption disabled.
-        </div>
-      )}
+    <div className="bg-background text-foreground flex min-h-screen flex-col items-center gap-4 pt-6 sm:p-6">
+      <h1 className="font-primary text-3xl">Abholungsstation</h1>
+      <p className="text-muted-foreground max-w-md text-center">Scanne Abhol-QR-Codes hier</p>
+
+      {/* Only show request screen when not approved: nothing else */}
       {status && !status.approved && (
-        <div className="w-full max-w-xl border border-border bg-card rounded p-4 flex flex-col gap-3">
-          <div className="font-semibold">This device is not an approved station.</div>
-          <button onClick={requestVerification} className="bg-primary text-primary-foreground rounded px-4 py-3 disabled:opacity-50" disabled={busy}>Request Station Verification</button>
-          <div className="text-sm text-muted-foreground">After approval, this screen will unlock redemption.</div>
-        </div>
-      )}
-
-      <div className="w-full max-w-xl border border-border bg-card rounded p-4 flex flex-col gap-4">
-        <label className="text-sm">Camera</label>
-        <select className="border border-border rounded px-3 py-2" value={deviceId} onChange={(e) => setDeviceId(e.target.value)}>
-          {devices.map((d) => (<option key={d.deviceId} value={d.deviceId}>{d.label || `Camera ${d.deviceId.slice(0,6)}`}</option>))}
-        </select>
-        <video ref={videoRef} className="w-full bg-muted rounded" muted playsInline />
-        <div className="flex gap-2">
-          {!streaming ? (
-            <button onClick={startCamera} className="bg-primary text-primary-foreground rounded px-4 py-3">Start Camera</button>
-          ) : (
-            <button onClick={stopCamera} className="bg-secondary text-secondary-foreground rounded px-4 py-3">Stop Camera</button>
-          )}
-          <button onClick={scanOnce} className="bg-selected text-sidebar-primary-foreground rounded px-4 py-3 disabled:opacity-50" disabled={busy}>Scan</button>
-        </div>
-        <div className="flex gap-2 items-center">
-          <input className="flex-1 border border-border rounded px-3 py-2" placeholder="Manual QR payload" value={manual} onChange={(e) => setManual(e.target.value)} />
-          <button onClick={scanOnce} className="bg-secondary text-secondary-foreground rounded px-4 py-2 disabled:opacity-50" disabled={busy}>Submit</button>
-        </div>
-        {error && <div role="alert" aria-live="assertive" className="text-destructive">{error}</div>}
-      </div>
-
-      {result && (
-        <div className="w-full max-w-xl border border-border bg-card rounded p-4">
-          <div className="font-semibold mb-3">Zu verteilende Artikel</div>
-          <div className="flex flex-col gap-3">
-            {result.items?.map((it) => (
-              <div key={it.id} className="rounded-xl border p-3">
-                <div className="flex items-center gap-3">
-                  {it.productImage ? (
-                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[11px] bg-[#cec9c6]">
-                      <Image src={it.productImage} alt={it.title} fill sizes="64px" className="h-full w-full object-cover" />
-                    </div>
-                  ) : null}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">{it.title}</p>
-                        {it.menuSlotName && (
-                          <div className="mt-1 text-xs text-muted-foreground">{it.menuSlotName}: {it.title}</div>
-                        )}
-                      </div>
-                      <div className="shrink-0 text-right">
-                        <p className="text-sm text-muted-foreground">x{it.quantity}</p>
-                        <span className={`inline-block mt-1 text-xs rounded px-2 py-1 ${it.isRedeemed ? 'bg-muted text-muted-foreground' : 'bg-primary text-primary-foreground'}`}>{it.isRedeemed ? 'Redeemed' : 'Unredeemed'}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+        <div className="border-border bg-card flex w-full max-w-md flex-col gap-4 rounded border p-4">
+          {!requestSubmitted ? (
+            <>
+              <div className="font-semibold">Station-Freigabe anfordern</div>
+              <div className="flex gap-2">
+                <input
+                  className="border-border flex-1 rounded border px-3 py-2"
+                  placeholder="Stationsname (z.B. Grill #1)"
+                  value={stationName}
+                  onChange={(e) => setStationName(e.target.value)}
+                />
+                <button
+                  onClick={requestVerification}
+                  className="bg-primary text-primary-foreground rounded px-4 py-2 disabled:opacity-50"
+                  disabled={busy || !stationName.trim()}
+                >
+                  Anfragen
+                </button>
               </div>
-            ))}
-          </div>
-          <div className="mt-4 flex gap-2">
-            <button className="bg-primary text-primary-foreground rounded px-4 py-3 disabled:opacity-50" disabled={busy || offline || !(status?.approved)} onClick={redeem}>Redeem</button>
-            <button className="bg-secondary text-secondary-foreground rounded px-4 py-3" onClick={() => { setResult(null); setRedeemResp(null); setManual(""); setScanned(null) }}>Scan next</button>
-          </div>
+              {error && (
+                <div role="alert" aria-live="assertive" className="text-destructive">
+                  {error}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="font-semibold">Anfrage gesendet</div>
+              <p className="text-muted-foreground text-sm">
+                Deine Stations-Anfrage wurde übermittelt. Sobald sie freigegeben ist, erscheint hier der Kamera-Scanner.
+              </p>
+            </>
+          )}
         </div>
       )}
 
-      {redeemResp && (
-        <div className="w-full max-w-xl border border-border bg-card rounded p-4">
-          <div className="font-semibold mb-2">Receipt</div>
-          <div className="text-sm">Redeemed: {String(redeemResp.redeemed)} / Matched: {String(redeemResp.matched)}</div>
-          <div className="mt-2">
-            <ul className="space-y-1">
-              {redeemResp.items?.map((it: PublicOrderItem) => (
-                <li key={it.id} className="flex justify-between text-sm">
-                  <span>{it.title}</span>
-                  <span className={it.isRedeemed ? "text-foreground" : "text-muted-foreground"}>{it.isRedeemed ? "Redeemed" : "Remaining"}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="mt-3">
-            <button className="bg-secondary text-secondary-foreground rounded px-4 py-3" onClick={() => { setResult(null); setRedeemResp(null); setScanned(null) }}>Scan next</button>
-          </div>
+      {/* After approval: show camera and continuous scanning */}
+      {status?.approved && (
+        <div className="flex w-full max-w-xl flex-col gap-4">
+          {devices.length > 1 && (
+            <div className="flex flex-col gap-2">
+              <label className="text-sm">Kamera</label>
+              <Select value={deviceId} onValueChange={setDeviceId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Kamera wählen" />
+                </SelectTrigger>
+                <SelectContent>
+                  {devices.map((d) => (
+                    <SelectItem key={d.deviceId} value={d.deviceId}>
+                      {d.label || `Kamera ${d.deviceId.slice(0, 6)}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <video ref={videoRef} className="bg-muted w-full rounded-2xl" muted playsInline />
+          {error && (
+            <div role="alert" aria-live="assertive" className="text-destructive">
+              {error}
+            </div>
+          )}
         </div>
       )}
+
+      {/* Overlay wenn Produkte dargestellt werden: immer Dialog */}
+      <Dialog
+        open={drawerOpen && !!result}
+        onOpenChange={(open) => {
+          setDrawerOpen(open)
+          if (!open) {
+            setResult(null)
+            setScanned(null)
+            // Kamera bleibt aktiv; wieder Scannen erlauben
+            setScanningPaused(false)
+            pausedRef.current = false
+            lastAtRef.current = 0
+            log('Dialog closed; resume scanning')
+          }
+        }}
+      >
+        <DialogContent showCloseButton={false}>
+          <ModalHeader>
+            <ModalTitle>Zu verteilende Artikel</ModalTitle>
+          </ModalHeader>
+          <div className="mt-2">
+            {result && (
+              <div className="flex flex-col gap-3">
+                {result.items
+                  ?.filter((it) => !it.isRedeemed)
+                  .map((it) => (
+                    <div key={it.id} className="bg-card/50 rounded-xl border p-3">
+                      <div className="flex items-center gap-3">
+                        {it.productImage ? (
+                          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[11px] bg-[#cec9c6]">
+                            <Image
+                              src={it.productImage}
+                              alt={it.title}
+                              fill
+                              sizes="64px"
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                        ) : null}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate font-medium">{it.title}</p>
+                              {it.menuSlotName && (
+                                <div className="text-muted-foreground mt-1 text-xs">
+                                  {it.menuSlotName}: {it.title}
+                                </div>
+                              )}
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <p className="text-muted-foreground text-base">x{it.quantity}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                {(result.items?.filter((it) => !it.isRedeemed).length || 0) === 0 && (
+                  <div className="text-muted-foreground text-sm">Keine Artikel zum Einlösen.</div>
+                )}
+              </div>
+            )}
+          </div>
+          <ModalFooter>
+            <Button
+              onClick={async () => {
+                const count = result?.items?.filter((i) => !i.isRedeemed).length || 0
+                if (status?.approved && count > 0) {
+                  try {
+                    await redeem()
+                  } catch {}
+                }
+                // Ensure scanning resumes even when closing programmatically
+                setDrawerOpen(false)
+                setResult(null)
+                setScanned(null)
+                setScanningPaused(false)
+                pausedRef.current = false
+                lastAtRef.current = 0
+                log('Dialog closed; resume scanning')
+              }}
+            >
+              Abschliessen
+            </Button>
+          </ModalFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
 
-async function decodeOnce(video: HTMLVideoElement | null): Promise<string | null> {
-  try {
-    const { BrowserQRCodeReader } = await import("@zxing/browser")
-    const reader = new BrowserQRCodeReader()
-    const res = await reader.decodeOnceFromVideoDevice(undefined, video!)
-    return res.getText()
-  } catch {
-    return null
-  }
-}
+// Note: continuous scanning is handled via BrowserQRCodeReader.decodeFromVideoDevice

@@ -50,15 +50,15 @@ func SeedMongo(ctx context.Context, client *mongo.Client, cfg MongoConfig, logge
 		}
 	}
 
-    // Reset database if requested (drop entire DB)
-    if cfg.ResetBeforeSeeding {
-        logger.Info("Dropping database before seeding", zap.String("database", cfg.DatabaseName))
-        if err := dropDatabase(ctx, db, logger); err != nil {
-            return fmt.Errorf("failed to drop database: %w", err)
-        }
-        // Recreate handle after drop
-        db = client.Database(cfg.DatabaseName)
-    }
+	// Reset database if requested (drop entire DB)
+	if cfg.ResetBeforeSeeding {
+		logger.Info("Dropping database before seeding", zap.String("database", cfg.DatabaseName))
+		if err := dropDatabase(ctx, db, logger); err != nil {
+			return fmt.Errorf("failed to drop database: %w", err)
+		}
+		// Recreate handle after drop
+		db = client.Database(cfg.DatabaseName)
+	}
 
 	// Ensure indexes
 	if err := ensureIndexes(ctx, db, logger); err != nil {
@@ -80,11 +80,11 @@ func SeedMongo(ctx context.Context, client *mongo.Client, cfg MongoConfig, logge
 }
 
 func dropDatabase(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {
-    if err := db.Drop(ctx); err != nil {
-        return err
-    }
-    logger.Info("Dropped database successfully")
-    return nil
+	if err := db.Drop(ctx); err != nil {
+		return err
+	}
+	logger.Info("Dropped database successfully")
+	return nil
 }
 
 func ensureIndexes(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {
@@ -162,17 +162,6 @@ func ensureIndexes(ctx context.Context, db *mongo.Database, logger *zap.Logger) 
 		return fmt.Errorf("failed to create order_items indexes: %w", err)
 	}
 
-	// Stations collection indexes
-	stationsCollection := db.Collection("stations")
-	stationIndexes := []mongo.IndexModel{
-		{Keys: bson.D{{Key: "name", Value: 1}}},
-		{Keys: bson.D{{Key: "created_at", Value: 1}}},
-	}
-
-	if _, err := stationsCollection.Indexes().CreateMany(ctx, stationIndexes); err != nil {
-		return fmt.Errorf("failed to create stations indexes: %w", err)
-	}
-
 	// Menu slots collection indexes
 	menuSlotsCollection := db.Collection("menu_slots")
 	menuSlotIndexes := []mongo.IndexModel{
@@ -195,17 +184,6 @@ func ensureIndexes(ctx context.Context, db *mongo.Database, logger *zap.Logger) 
 		return fmt.Errorf("failed to create menu_slot_items indexes: %w", err)
 	}
 
-	// Station products collection indexes
-	stationProductsCollection := db.Collection("station_products")
-	stationProductIndexes := []mongo.IndexModel{
-		{Keys: bson.D{{Key: "station_id", Value: 1}}},
-		{Keys: bson.D{{Key: "product_id", Value: 1}}},
-	}
-
-	if _, err := stationProductsCollection.Indexes().CreateMany(ctx, stationProductIndexes); err != nil {
-		return fmt.Errorf("failed to create station_products indexes: %w", err)
-	}
-
 	// Inventory ledger indexes
 	if err := ensureInventoryIndexes(ctx, db, logger); err != nil {
 		return err
@@ -223,7 +201,7 @@ func loadBaselineData(ctx context.Context, db *mongo.Database, baselineDir strin
 
 func generateBulkData(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {
 	// Generate healthy amounts of data:
-	// 20 customers, 3 admins, 10 simple products, 2 menu products with slots, 3 stations, 0 orders
+	// 20 customers, 3 admins, 10 simple products, 2 menu products with slots, 0 orders
 
 	// Generate customers
 	if err := generateCustomers(ctx, db, logger); err != nil {
@@ -258,16 +236,6 @@ func generateBulkData(ctx context.Context, db *mongo.Database, logger *zap.Logge
 	// Generate menu slot items
 	if err := generateMenuSlotItems(ctx, db, logger); err != nil {
 		return fmt.Errorf("failed to generate menu slot items: %w", err)
-	}
-
-	// Generate stations
-	if err := generateStations(ctx, db, logger); err != nil {
-		return fmt.Errorf("failed to generate stations: %w", err)
-	}
-
-	// Generate station products
-	if err := generateStationProducts(ctx, db, logger); err != nil {
-		return fmt.Errorf("failed to generate station products: %w", err)
 	}
 
 	// Seed inventory opening balance: +50 for each simple product
@@ -650,47 +618,6 @@ func generateMenuProducts(ctx context.Context, db *mongo.Database, logger *zap.L
 	return nil
 }
 
-func generateStations(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {
-	collection := db.Collection("stations")
-	stationCount := 3
-
-	var operations []mongo.WriteModel
-	stationNames := []string{"North Station", "South Station", "Central Station"}
-
-	for i := 0; i < stationCount; i++ {
-		now := time.Now()
-		station := map[string]interface{}{
-			"_id":        primitive.NewObjectID(),
-			"name":       stationNames[i],
-			"created_at": now.Add(-time.Duration(gofakeit.Number(0, 60*24)) * time.Hour),
-			"updated_at": now,
-		}
-
-		// Use upsert for idempotency
-		filter := bson.D{{Key: "_id", Value: station["_id"]}}
-		update := bson.D{{Key: "$setOnInsert", Value: station}}
-		operations = append(operations, mongo.NewUpdateOneModel().
-			SetFilter(filter).
-			SetUpdate(update).
-			SetUpsert(true))
-	}
-
-	if len(operations) > 0 {
-		result, err := collection.BulkWrite(ctx, operations)
-		if err != nil {
-			return fmt.Errorf("failed to insert stations: %w", err)
-		}
-
-		logger.Info("Generated stations",
-			zap.Int("count", stationCount),
-			zap.Int64("inserted", result.InsertedCount),
-			zap.Int64("upserted", result.UpsertedCount),
-		)
-	}
-
-	return nil
-}
-
 func generateMenuSlots(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {
 	productsCollection := db.Collection("products")
 	menuSlotsCollection := db.Collection("menu_slots")
@@ -861,77 +788,6 @@ func generateMenuSlotItems(ctx context.Context, db *mongo.Database, logger *zap.
 			zap.Int("slots", len(menuSlots)),
 			zap.Int64("items_inserted", result.InsertedCount),
 			zap.Int64("items_upserted", result.UpsertedCount),
-		)
-	}
-
-	return nil
-}
-
-func generateStationProducts(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {
-	stationsCollection := db.Collection("stations")
-	productsCollection := db.Collection("products")
-	stationProductsCollection := db.Collection("station_products")
-
-	// Get all stations
-	stationsCursor, err := stationsCollection.Find(ctx, bson.D{})
-	if err != nil {
-		return fmt.Errorf("failed to find stations: %w", err)
-	}
-	defer func() { _ = stationsCursor.Close(ctx) }()
-
-	var stations []struct {
-		ID primitive.ObjectID `bson:"_id"`
-	}
-	if err := stationsCursor.All(ctx, &stations); err != nil {
-		return fmt.Errorf("failed to decode stations: %w", err)
-	}
-
-	// Get all simple products (only simple products can be redeemed at stations)
-	simpleCursor, err := productsCollection.Find(ctx, bson.D{{Key: "type", Value: "simple"}})
-	if err != nil {
-		return fmt.Errorf("failed to find simple products: %w", err)
-	}
-	defer func() { _ = simpleCursor.Close(ctx) }()
-
-	var simpleProducts []struct {
-		ID primitive.ObjectID `bson:"_id"`
-	}
-	if err := simpleCursor.All(ctx, &simpleProducts); err != nil {
-		return fmt.Errorf("failed to decode simple products: %w", err)
-	}
-
-	var operations []mongo.WriteModel
-
-	// Each station can redeem all simple products
-	for _, station := range stations {
-		for _, product := range simpleProducts {
-			stationProduct := map[string]interface{}{
-				"_id":        primitive.NewObjectID(),
-				"station_id": station.ID,
-				"product_id": product.ID,
-			}
-
-			// Use upsert for idempotency
-			filter := bson.D{{Key: "_id", Value: stationProduct["_id"]}}
-			update := bson.D{{Key: "$setOnInsert", Value: stationProduct}}
-			operations = append(operations, mongo.NewUpdateOneModel().
-				SetFilter(filter).
-				SetUpdate(update).
-				SetUpsert(true))
-		}
-	}
-
-	if len(operations) > 0 {
-		result, err := stationProductsCollection.BulkWrite(ctx, operations)
-		if err != nil {
-			return fmt.Errorf("failed to insert station products: %w", err)
-		}
-
-		logger.Info("Generated station products",
-			zap.Int("stations", len(stations)),
-			zap.Int("products_per_station", len(simpleProducts)),
-			zap.Int64("relations_inserted", result.InsertedCount),
-			zap.Int64("relations_upserted", result.UpsertedCount),
 		)
 	}
 

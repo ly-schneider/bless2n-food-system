@@ -8,9 +8,7 @@ import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
+  DropdownMenuItem, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/contexts/auth-context"
 
@@ -22,7 +20,7 @@ export default function Header() {
     <header className="my-2 w-full">
       <div className={`mx-auto px-4 ${pathname.includes("/food/orders") || pathname.includes("/food/checkout") || pathname.includes("/profile") ? "max-w-xl" : "container"}`}>
         <div className="relative flex items-center justify-between">
-          <Link href="/" className="flex items-center">
+          <Link href="/food" className="flex items-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-full">
               <Image
                 src="/assets/images/blessthun.png"

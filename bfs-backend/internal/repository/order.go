@@ -23,6 +23,8 @@ type OrderRepository interface {
     DeleteIfPending(ctx context.Context, id primitive.ObjectID) (bool, error)
     FindPendingByStripeSessionID(ctx context.Context, sessionID string) (*domain.Order, error)
     FindPendingByAttemptID(ctx context.Context, attemptID string) (*domain.Order, error)
+    // FindPendingIDsByAttemptIDExcept returns IDs of pending orders with the given attemptID excluding the provided order ID
+    FindPendingIDsByAttemptIDExcept(ctx context.Context, attemptID string, except primitive.ObjectID) ([]primitive.ObjectID, error)
     DeletePendingByAttemptIDExcept(ctx context.Context, attemptID string, except primitive.ObjectID) (int64, error)
     // ListByCustomerID returns orders for a given customer with pagination
     ListByCustomerID(ctx context.Context, customerID primitive.ObjectID, limit, offset int) ([]*domain.Order, int64, error)
@@ -102,8 +104,14 @@ func (r *orderRepository) SetStripePaymentSuccess(ctx context.Context, id primit
     if receiptEmail != nil && *receiptEmail != "" {
         set["contact_email"] = *receiptEmail
     }
-    _, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": set})
-    return err
+    res, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": set})
+    if err != nil {
+        return err
+    }
+    if res.MatchedCount == 0 {
+        return mongo.ErrNoDocuments
+    }
+    return nil
 }
 
 func (r *orderRepository) SetPaymentAttemptID(ctx context.Context, id primitive.ObjectID, attemptID string) error {
@@ -124,8 +132,14 @@ func (r *orderRepository) UpdateStatusAndContact(ctx context.Context, id primiti
     if contactEmail != nil && *contactEmail != "" {
         set["contact_email"] = *contactEmail
     }
-    _, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": set})
-    return err
+    res, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": set})
+    if err != nil {
+        return err
+    }
+    if res.MatchedCount == 0 {
+        return mongo.ErrNoDocuments
+    }
+    return nil
 }
 
 func (r *orderRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*domain.Order, error) {
@@ -161,6 +175,28 @@ func (r *orderRepository) FindPendingByAttemptID(ctx context.Context, attemptID 
         return nil, err
     }
     return &o, nil
+}
+
+func (r *orderRepository) FindPendingIDsByAttemptIDExcept(ctx context.Context, attemptID string, except primitive.ObjectID) ([]primitive.ObjectID, error) {
+    if attemptID == "" {
+        return []primitive.ObjectID{}, nil
+    }
+    filter := bson.M{
+        "payment_attempt_id": attemptID,
+        "status":             domain.OrderStatusPending,
+        "_id":                bson.M{"$ne": except},
+    }
+    cur, err := r.collection.Find(ctx, filter, options.Find().SetProjection(bson.M{"_id": 1}))
+    if err != nil { return nil, err }
+    defer func(){ _ = cur.Close(ctx) }()
+    ids := make([]primitive.ObjectID, 0)
+    for cur.Next(ctx) {
+        var doc struct{ ID primitive.ObjectID `bson:"_id"` }
+        if err := cur.Decode(&doc); err != nil { return nil, err }
+        ids = append(ids, doc.ID)
+    }
+    if err := cur.Err(); err != nil { return nil, err }
+    return ids, nil
 }
 
 func (r *orderRepository) DeletePendingByAttemptIDExcept(ctx context.Context, attemptID string, except primitive.ObjectID) (int64, error) {

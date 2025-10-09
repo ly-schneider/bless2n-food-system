@@ -105,7 +105,7 @@ export default function CheckoutSuccessPage() {
       <div className="max-w-xl mx-auto fixed inset-x-0 bottom-0 p-4">
         <Button
           className="rounded-pill w-full h-12 text-base font-medium"
-          onClick={() => router.push(orderId ? `/food/checkout/qr?order_id=${orderId}&from=success` : "/")}
+          onClick={() => router.push(orderId ? `/food/orders/${orderId}?from=success` : "/")}
         >
           Weiter
         </Button>

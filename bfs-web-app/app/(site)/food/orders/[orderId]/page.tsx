@@ -2,7 +2,7 @@
 
 import { ArrowLeft } from "lucide-react"
 import Image from "next/image"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useMemo, useRef, useState } from "react"
 import QRCode from "@/components/qrcode"
 import { API_BASE_URL } from "@/lib/api"
@@ -14,7 +14,7 @@ import { formatChf } from "@/lib/utils"
 
 export default function CheckoutQRPage() {
   const sp = useSearchParams()
-  const orderId = sp.get("order_id")
+  const { orderId } = useParams<{ orderId: string }>()
   const from = sp.get("from")
   const { clearCart } = useCart()
   const clearedRef = useRef(false)
@@ -135,7 +135,7 @@ export default function CheckoutQRPage() {
       className="flex flex-col p-4"
       style={{ paddingBottom: footerHeight ? footerHeight + 16 : 16 }}
     >
-      <h1 className="mb-2 text-2xl font-semibold">Abholungs QR-Code</h1>
+      <h1 className="mb-2 text-2xl font-semibold">Dein Abhol-QR-Code</h1>
       <p className={`text-muted-foreground text-sm ${from === "success" ? "mb-2" : "mb-6"}`}>
         Zeigen Sie diesen QR-Code bei der Abholung vor.
       </p>

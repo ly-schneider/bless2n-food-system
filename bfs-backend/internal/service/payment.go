@@ -564,6 +564,12 @@ func (s *paymentService) CreatePaymentIntentForExistingPendingOrder(ctx context.
 
 func (s *paymentService) CleanupOtherPendingOrdersByAttemptID(ctx context.Context, attemptID string, keepOrderID primitive.ObjectID) (int64, error) {
     if attemptID == "" || keepOrderID.IsZero() { return 0, nil }
+    // Find duplicates to cascade-delete their items first to avoid orphans
+    ids, err := s.orderRepo.FindPendingIDsByAttemptIDExcept(ctx, attemptID, keepOrderID)
+    if err != nil { return 0, err }
+    for _, id := range ids {
+        _ = s.orderItemRepo.DeleteByOrderID(ctx, id)
+    }
     return s.orderRepo.DeletePendingByAttemptIDExcept(ctx, attemptID, keepOrderID)
 }
 

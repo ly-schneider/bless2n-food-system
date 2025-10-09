@@ -1,5 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
 import { AdminShell } from "@/components/admin/sidebar-nav"
 
@@ -31,7 +33,7 @@ export default function AdminStationRequestsPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [assigned, setAssigned] = useState<Record<string, { productId: string; name: string }[]>>({})
   const [allProducts, setAllProducts] = useState<Product[]>([])
-  const [addProductId, setAddProductId] = useState<string>("")
+  const [addProductId, setAddProductId] = useState<string | undefined>(undefined)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -84,7 +86,7 @@ export default function AdminStationRequestsPage() {
         const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/stations/${st.id}/products`)
         const j = (await res.json()) as { items: { productId: string; name: string }[] }
         setAssigned((prev) => ({ ...prev, [st.id]: j.items || [] }))
-        setAddProductId("")
+        setAddProductId(undefined)
       } catch {}
     }
   }
@@ -94,12 +96,12 @@ export default function AdminStationRequestsPage() {
     await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/stations/${stationId}/products`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productIds: [addProductId] }),
+      body: JSON.stringify({ productIds: [addProductId!] }),
     })
     const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/stations/${stationId}/products`)
     const j = (await res.json()) as { items: { productId: string; name: string }[] }
     setAssigned((prev) => ({ ...prev, [stationId]: j.items || [] }))
-    setAddProductId("")
+    setAddProductId(undefined)
   }
 
   async function removeProductFromStation(stationId: string, productId: string) {
@@ -135,8 +137,7 @@ export default function AdminStationRequestsPage() {
                   <div className="text-muted-foreground text-xs">Erstellt: {new Date(st.createdAt).toLocaleString()}</div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <span className={`rounded px-2 py-1 text-sm ${st.approved ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>{st.approved ? 'Genehmigt' : 'Ausstehend'}</span>
-                  <button onClick={() => openEditor(st)} className="bg-secondary text-secondary-foreground rounded px-3 py-2">Produkte bearbeiten</button>
+                  <Button variant="outline" onClick={() => openEditor(st)}>Produkte bearbeiten</Button>
                 </div>
               </div>
               {isEditing && (
@@ -144,11 +145,21 @@ export default function AdminStationRequestsPage() {
                   <div className="flex flex-col gap-2">
                     <label className="text-sm">Produkt hinzufügen</label>
                     <div className="flex items-center gap-2">
-                      <select className="border border-border rounded px-3 py-2 flex-1" value={addProductId} onChange={(e) => setAddProductId(e.target.value)}>
-                        <option value="">– Produkt auswählen –</option>
-                        {unassigned.map(p => (<option key={p.id} value={p.id}>{p.name}</option>))}
-                      </select>
-                      <button className="bg-primary text-primary-foreground rounded px-3 py-2 disabled:opacity-50" disabled={!addProductId} onClick={() => addProductToStation(st.id)}>Hinzufügen</button>
+                      <Select
+                        key={`${st.id}-${assignedList.length}-${addProductId ?? 'none'}`}
+                        value={addProductId}
+                        onValueChange={setAddProductId}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Produkt auswählen" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {unassigned.map(p => (
+                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button disabled={!addProductId} onClick={() => addProductToStation(st.id)}>Hinzufügen</Button>
                     </div>
                   </div>
                   <div className="mt-3">
@@ -160,7 +171,7 @@ export default function AdminStationRequestsPage() {
                         {assignedList.map(a => (
                           <span key={a.productId} className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-sm">
                             {a.name}
-                            <button aria-label="Entfernen" className="text-muted-foreground hover:text-destructive" onClick={() => removeProductFromStation(st.id, a.productId)}>×</button>
+                            <Button aria-label="Entfernen" variant="ghost" size="sm" className="h-6 px-2 text-muted-foreground hover:text-destructive" onClick={() => removeProductFromStation(st.id, a.productId)}>×</Button>
                           </span>
                         ))}
                       </div>
@@ -190,15 +201,8 @@ export default function AdminStationRequestsPage() {
               <div className="text-muted-foreground text-xs">Erstellt: {new Date(it.createdAt).toLocaleString()}</div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <button onClick={() => act(it.id, "reject")} className="bg-destructive rounded px-3 py-2 text-white">
-                Ablehnen
-              </button>
-              <button
-                onClick={() => act(it.id, "approve")}
-                className="bg-primary text-primary-foreground rounded px-3 py-2"
-              >
-                Genehmigen
-              </button>
+              <Button variant="destructive" onClick={() => act(it.id, "reject")}>Ablehnen</Button>
+              <Button onClick={() => act(it.id, "approve")}>Genehmigen</Button>
             </div>
           </div>
         ))}
