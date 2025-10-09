@@ -71,7 +71,7 @@ export async function POST(req: Request) {
       typeof payload === 'string' ? payload : JSON.stringify(payload),
       { status: res.status, headers: { 'content-type': contentType || 'application/json' } }
     )
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: true, message: 'Proxy error' }, { status: 500 })
   }
 }

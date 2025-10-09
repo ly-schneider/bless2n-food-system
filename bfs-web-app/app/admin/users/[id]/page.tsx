@@ -72,7 +72,14 @@ export default function AdminUserDetailPage() {
       setSaving(true)
       setError(null)
       const csrf = getCSRFCookie()
-      const body: any = {
+      type UpdateUserPayload = {
+        email: string
+        firstName?: string
+        lastName?: string
+        role: string
+        isVerified?: boolean
+      }
+      const body: UpdateUserPayload = {
         email,
         firstName: firstName || undefined,
         lastName: lastName || undefined,

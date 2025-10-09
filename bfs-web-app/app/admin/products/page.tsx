@@ -28,7 +28,7 @@ export default function AdminProductsPage() {
   const [page, setPage] = useState(0)
   const [items, setItems] = useState<Product[]>([])
   const [count, setCount] = useState(0)
-  const [loading, setLoading] = useState(false)
+  const [, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cats, setCats] = useState<Category[]>([])
 

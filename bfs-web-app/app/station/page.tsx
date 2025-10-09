@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
-import { API_BASE_URL } from "@/lib/api"
 import Image from "next/image"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
+import { API_BASE_URL } from "@/lib/api"
 
 type StationStatus = { exists: boolean; approved: boolean; name?: string }
 
@@ -29,7 +29,7 @@ function randKey(): string {
 }
 
 export default function StationPage() {
-  const log = (...args: any[]) => console.log('[Station]', ...args)
+  const log = (...args: unknown[]) => console.log('[Station]', ...args)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
   const [deviceId, setDeviceId] = useState<string>("")
@@ -59,7 +59,14 @@ export default function StationPage() {
   // ZXing removed; using native BarcodeDetector
   const [scanningPaused, setScanningPaused] = useState(false)
   const pausedRef = useRef(false)
-  const detectorRef = useRef<any | null>(null)
+  interface DetectedBarcode { rawValue?: string }
+  interface BarcodeDetector {
+    detect: (
+      source: HTMLVideoElement | CanvasImageSource | ImageBitmap | ImageData | Blob
+    ) => Promise<DetectedBarcode[]>
+  }
+  type BarcodeDetectorConstructor = new (init?: { formats?: string[] }) => BarcodeDetector
+  const detectorRef = useRef<BarcodeDetector | null>(null)
   const rafRef = useRef<number | null>(null)
   const lastCodeRef = useRef<string | null>(null)
   const lastAtRef = useRef<number>(0)
@@ -132,7 +139,9 @@ export default function StationPage() {
   // Native BarcodeDetector scanning loop (camera stays active)
   useEffect(() => {
     if (!status?.approved) return
-    const BD = (typeof window !== 'undefined' ? (window as any).BarcodeDetector : null)
+    const BD = (typeof window !== 'undefined'
+      ? (window as unknown as { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector
+      : undefined)
     if (!BD) return
     if (!detectorRef.current) {
       try { detectorRef.current = new BD({ formats: ['qr_code'] }); log('BarcodeDetector initialized') } catch { return }
@@ -143,7 +152,7 @@ export default function StationPage() {
       if (!(scanningPaused || drawerOpen) && videoRef.current && detectorRef.current) {
         try {
           const codes = await detectorRef.current.detect(videoRef.current)
-          const found = codes?.find((c: any) => c.rawValue)
+          const found = codes?.find((c) => c.rawValue)
           if (found?.rawValue) {
             const now = Date.now()
             const value = String(found.rawValue)

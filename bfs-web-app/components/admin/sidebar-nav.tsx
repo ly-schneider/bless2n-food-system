@@ -1,6 +1,5 @@
 "use client"
-import { Grid2x2, Home, KeyRound, MailPlus, ReceiptText, Users, MonitorCheck } from "lucide-react"
-import Image from "next/image"
+import { Grid2x2, Home, KeyRound, MailPlus, MonitorCheck, ReceiptText, Users } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 

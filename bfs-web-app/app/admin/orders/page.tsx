@@ -1,8 +1,7 @@
 "use client"
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
 import { formatChf } from "@/lib/utils"
@@ -23,7 +22,7 @@ type Order = {
 
 export default function AdminOrdersPage() {
   const fetchAuth = useAuthorizedFetch()
-  const [status, setStatus] = useState<string>("all")
+  const [status, _setStatus] = useState<string>("all")
   const [items, setItems] = useState<Order[]>([])
   const [error, setError] = useState<string | null>(null)
 
@@ -47,11 +46,7 @@ export default function AdminOrdersPage() {
     }
   }, [fetchAuth, status])
 
-  async function exportCSV() {
-    const url = new URL(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/orders/export.csv`)
-    if (status && status !== "all") url.searchParams.set("status", status)
-    window.location.href = url.toString()
-  }
+  // CSV export UI not present; omit unused helper
 
   return (
     <div className="min-w-0 space-y-4">

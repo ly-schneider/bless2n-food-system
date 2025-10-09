@@ -3,7 +3,6 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
-import { AdminShell } from "@/components/admin/sidebar-nav"
 
 type StationRequest = {
   id: string
@@ -51,7 +50,7 @@ export default function AdminStationRequestsPage() {
       const pr = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/products?limit=500`)
       const pj = (await pr.json()) as { items?: { id: string; name: string }[] }
       if (pj && Array.isArray(pj.items)) setAllProducts(pj.items.map((x) => ({ id: x.id, name: x.name })))
-    } catch (e) {
+    } catch {
       setError("Laden fehlgeschlagen")
     } finally {
       setLoading(false)
@@ -73,7 +72,7 @@ export default function AdminStationRequestsPage() {
         throw new Error(j.detail || j.message || `Error ${res.status}`)
       }
       setItems((prev) => prev.filter((x) => x.id !== id))
-    } catch (e) {
+    } catch {
       setError(action === "approve" ? "Genehmigung fehlgeschlagen" : "Ablehnung fehlgeschlagen")
     }
   }

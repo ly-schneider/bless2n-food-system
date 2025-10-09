@@ -280,22 +280,12 @@ export default function AdminMenuPage() {
 }
 
 function ProductCard({ product, onEdit }: { product: ProductDTO; onEdit: () => void }) {
-  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false)
+  // Config modal not used within admin card view
   const isAvailable = product.isAvailable !== false // default true
   const isLowStock = product.isLowStock === true
   const availableQty = product.availableQuantity ?? null
   const isActive = product.isActive !== false
-  const composition = useMemo(() => {
-    if (product.type !== "menu" || !product.menu?.slots || product.menu.slots.length === 0) return null
-    const counts = new Map<string, number>()
-    for (const slot of product.menu.slots) {
-      const name = slot.name?.trim() || "Slot"
-      counts.set(name, (counts.get(name) || 0) + 1)
-    }
-    // Build minimal description like: "Burger + Beilage + 2× Getränk"
-    const parts = Array.from(counts.entries()).map(([name, count]) => (count > 1 ? `${count}× ${name}` : name))
-    return parts.join(" + ")
-  }, [product])
+  // composition details not displayed in this view
 
   return (
     <Card className="gap-0 overflow-hidden rounded-[11px] p-0 transition-shadow hover:shadow-lg">

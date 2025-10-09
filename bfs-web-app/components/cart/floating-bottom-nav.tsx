@@ -27,8 +27,8 @@ export function FloatingBottomNav() {
 
   // Measure the fixed action bar to add an in-flow spacer and avoid overlap
   const barRef = useRef<HTMLDivElement>(null)
-  const [barHeight, setBarHeight] = useState(0)
-  const [appFooterHeight, setAppFooterHeight] = useState(0)
+  const [, setBarHeight] = useState(0)
+  const [, setAppFooterHeight] = useState(0)
 
   useEffect(() => {
     const el = barRef.current
