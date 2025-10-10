@@ -1,6 +1,6 @@
-import { cookies, headers as nextHeaders } from 'next/headers'
-import { NextResponse } from 'next/server'
-import { API_BASE_URL } from '@/lib/api'
+import { cookies, headers as nextHeaders } from "next/headers"
+import { NextResponse } from "next/server"
+import { API_BASE_URL } from "@/lib/api"
 
 type ForwardPayload = {
   url: string
@@ -15,10 +15,10 @@ export async function POST(req: Request) {
     const cookieStore = await cookies()
 
     // CSRF double-submit validation: header must match cookie value
-    const csrfHeader = hdrs.get('X-CSRF') || hdrs.get('x-csrf') || ''
-    const csrfCookie = cookieStore.get('__Host-csrf')?.value || cookieStore.get('csrf')?.value || ''
+    const csrfHeader = hdrs.get("X-CSRF") || hdrs.get("x-csrf") || ""
+    const csrfCookie = cookieStore.get("__Host-csrf")?.value || cookieStore.get("csrf")?.value || ""
     if (!csrfHeader || !csrfCookie || csrfHeader !== csrfCookie) {
-      return NextResponse.json({ error: true, message: 'Forbidden' }, { status: 403 })
+      return NextResponse.json({ error: true, message: "Forbidden" }, { status: 403 })
     }
 
     const data = (await req.json()) as ForwardPayload
@@ -26,21 +26,21 @@ export async function POST(req: Request) {
 
     // Allow only forwarding to our backend base URL
     if (!url.startsWith(API_BASE_URL)) {
-      return NextResponse.json({ error: true, message: 'Invalid forward target' }, { status: 400 })
+      return NextResponse.json({ error: true, message: "Invalid forward target" }, { status: 400 })
     }
 
     // Prepare headers for backend request
     const outHeaders: Record<string, string> = { ...fwdHeaders }
     // Remove any existing CSRF headers to prevent duplication, then add the validated one
-    Object.keys(outHeaders).forEach(key => {
-      if (key.toLowerCase() === 'x-csrf') {
+    Object.keys(outHeaders).forEach((key) => {
+      if (key.toLowerCase() === "x-csrf") {
         delete outHeaders[key]
       }
     })
-    outHeaders['X-CSRF'] = csrfHeader
+    outHeaders["X-CSRF"] = csrfHeader
 
     // Prepare cookies: only forward authentication-related cookies
-    const rtCookie = cookieStore.get('__Host-rt')?.value || cookieStore.get('rt')?.value
+    const rtCookie = cookieStore.get("__Host-rt")?.value || cookieStore.get("rt")?.value
     const cookiePairs: string[] = []
     // Include both variants to be robust across dev/https
     cookiePairs.push(`csrf=${encodeURIComponent(csrfCookie)}`)
@@ -49,10 +49,10 @@ export async function POST(req: Request) {
       cookiePairs.push(`rt=${encodeURIComponent(rtCookie)}`)
       cookiePairs.push(`__Host-rt=${encodeURIComponent(rtCookie)}`)
     }
-    const cookieHeader = cookiePairs.join('; ')
+    const cookieHeader = cookiePairs.join("; ")
 
     const res = await fetch(url, {
-      method: method || 'POST',
+      method: method || "POST",
       headers: {
         ...outHeaders,
         Cookie: cookieHeader,
@@ -65,13 +65,13 @@ export async function POST(req: Request) {
       return new NextResponse(null, { status: 204 })
     }
 
-    const contentType = res.headers.get('content-type') || ''
-    const payload = contentType.includes('application/json') ? await res.json().catch(() => ({})) : await res.text()
-    return new NextResponse(
-      typeof payload === 'string' ? payload : JSON.stringify(payload),
-      { status: res.status, headers: { 'content-type': contentType || 'application/json' } }
-    )
+    const contentType = res.headers.get("content-type") || ""
+    const payload = contentType.includes("application/json") ? await res.json().catch(() => ({})) : await res.text()
+    return new NextResponse(typeof payload === "string" ? payload : JSON.stringify(payload), {
+      status: res.status,
+      headers: { "content-type": contentType || "application/json" },
+    })
   } catch {
-    return NextResponse.json({ error: true, message: 'Proxy error' }, { status: 500 })
+    return NextResponse.json({ error: true, message: "Proxy error" }, { status: 500 })
   }
 }

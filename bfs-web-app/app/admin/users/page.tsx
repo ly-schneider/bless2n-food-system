@@ -87,7 +87,9 @@ export default function AdminUsersPage() {
                       <TableCell className="whitespace-nowrap">{updated}</TableCell>
                       <TableCell className="text-right">
                         <Link href={`/admin/users/${encodeURIComponent(u.id)}`}>
-                          <Button size="sm" variant="outline">Details</Button>
+                          <Button size="sm" variant="outline">
+                            Details
+                          </Button>
                         </Link>
                       </TableCell>
                     </TableRow>

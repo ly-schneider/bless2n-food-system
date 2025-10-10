@@ -7,7 +7,7 @@ export type AdminNavItem = { href: string; label: string }
 export function AdminNav({ items }: { items: AdminNavItem[] }) {
   const pathname = usePathname()
   return (
-    <nav className="flex gap-4 border-b border-gray-200 px-4 py-2 text-sm sticky top-0 bg-white z-10">
+    <nav className="sticky top-0 z-10 flex gap-4 border-b border-gray-200 bg-white px-4 py-2 text-sm">
       {items.map((n) => {
         const active = pathname === n.href
         return (
@@ -19,4 +19,3 @@ export function AdminNav({ items }: { items: AdminNavItem[] }) {
     </nav>
   )
 }
-

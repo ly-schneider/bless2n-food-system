@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className={`${golosText.variable} min-h-screen overflow-x-hidden flex flex-col`}>
+    <div className={`${golosText.variable} flex min-h-screen flex-col overflow-x-hidden`}>
       <CartProvider>
         <Header />
         <main className="flex-1">{children}</main>

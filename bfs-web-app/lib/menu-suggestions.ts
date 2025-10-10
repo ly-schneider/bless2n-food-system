@@ -1,6 +1,6 @@
-import { Cart, CartItem } from '@/types/cart'
-import { MenuDTO, MenuSlotDTO } from '@/types/menu'
-import { ProductDTO } from '@/types/product'
+import { Cart, CartItem } from "@/types/cart"
+import { MenuDTO, MenuSlotDTO } from "@/types/menu"
+import { ProductDTO } from "@/types/product"
 
 export interface MenuSuggestion {
   menuProduct: ProductDTO
@@ -16,7 +16,7 @@ function canMapCartItemToSlot(cartItem: CartItem, slot: MenuSlotDTO): boolean {
 
 function buildConfiguration(
   slots: MenuSlotDTO[],
-  chosen: { slotId: string; cartItem: CartItem }[],
+  chosen: { slotId: string; cartItem: CartItem }[]
 ): Record<string, string> {
   const cfg: Record<string, string> = {}
   for (const { slotId, cartItem } of chosen) {
@@ -24,20 +24,17 @@ function buildConfiguration(
   }
   // Ensure all slots are present (fallback none)
   for (const s of slots) {
-    if (!(s.id in cfg)) cfg[s.id] = ''
+    if (!(s.id in cfg)) cfg[s.id] = ""
   }
   return cfg
 }
 
-export function findBestMenuSuggestion(
-  cart: Cart,
-  allProducts: ProductDTO[],
-): MenuSuggestion | null {
-  const menus = allProducts.filter((p) => p.type === 'menu' && p.menu && p.menu.slots && p.menu.slots.length > 0)
+export function findBestMenuSuggestion(cart: Cart, allProducts: ProductDTO[]): MenuSuggestion | null {
+  const menus = allProducts.filter((p) => p.type === "menu" && p.menu && p.menu.slots && p.menu.slots.length > 0)
   if (menus.length === 0) return null
 
   // Consider only simple products in cart with available quantity
-  const simpleItems = cart.items.filter((i) => i.product.type === 'simple' && i.quantity > 0)
+  const simpleItems = cart.items.filter((i) => i.product.type === "simple" && i.quantity > 0)
   if (simpleItems.length === 0) return null
 
   let best: MenuSuggestion | null = null
@@ -50,9 +47,7 @@ export function findBestMenuSuggestion(
     const usedItemIds = new Set<string>()
 
     for (const slot of slots) {
-      const match = simpleItems.find(
-        (it) => !usedItemIds.has(it.id) && canMapCartItemToSlot(it, slot),
-      )
+      const match = simpleItems.find((it) => !usedItemIds.has(it.id) && canMapCartItemToSlot(it, slot))
       if (!match) {
         // This menu cannot be built from current cart
         chosen.length = 0
@@ -81,4 +76,3 @@ export function findBestMenuSuggestion(
 
   return best
 }
-

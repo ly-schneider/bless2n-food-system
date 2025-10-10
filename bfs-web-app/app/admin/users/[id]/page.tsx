@@ -3,7 +3,14 @@ import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
@@ -61,7 +68,9 @@ export default function AdminUserDetailPage() {
       }
     }
     void load()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [fetchAuth, id])
 
   const created = user?.createdAt ? new Date(user.createdAt).toLocaleString("de-CH") : "–"
@@ -123,14 +132,16 @@ export default function AdminUserDetailPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Benutzer</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setEditOpen(true)} disabled={!user}>Benutzer bearbeiten</Button>
+          <Button variant="outline" onClick={() => setEditOpen(true)} disabled={!user}>
+            Benutzer bearbeiten
+          </Button>
           <Link href="/admin/users">
             <Button variant="outline">Zurück zur Übersicht</Button>
           </Link>
         </div>
       </div>
 
-      {loading && <div className="text-sm text-muted-foreground">Lade Benutzer…</div>}
+      {loading && <div className="text-muted-foreground text-sm">Lade Benutzer…</div>}
       {error && <div className="text-sm text-red-600">{error}</div>}
 
       {user && (
@@ -138,13 +149,28 @@ export default function AdminUserDetailPage() {
           <div className="rounded-md border p-4">
             <h2 className="mb-3 text-base font-semibold">Details</h2>
             <div className="space-y-1 text-sm">
-              <div><span className="text-muted-foreground">ID:</span> <span className="text-xs">{user.id}</span></div>
-              <div><span className="text-muted-foreground">E‑Mail:</span> {user.email}</div>
-              <div><span className="text-muted-foreground">Name:</span> {(user.firstName || "–") + " " + (user.lastName || "")}</div>
-              <div><span className="text-muted-foreground">Rolle:</span> <span className="uppercase">{user.role}</span></div>
-              <div><span className="text-muted-foreground">Verifiziert:</span> {user.isVerified ? "Ja" : "Nein"}</div>
-              <div><span className="text-muted-foreground">Erstellt:</span> {created}</div>
-              <div><span className="text-muted-foreground">Aktualisiert:</span> {updated}</div>
+              <div>
+                <span className="text-muted-foreground">ID:</span> <span className="text-xs">{user.id}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">E‑Mail:</span> {user.email}
+              </div>
+              <div>
+                <span className="text-muted-foreground">Name:</span>{" "}
+                {(user.firstName || "–") + " " + (user.lastName || "")}
+              </div>
+              <div>
+                <span className="text-muted-foreground">Rolle:</span> <span className="uppercase">{user.role}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Verifiziert:</span> {user.isVerified ? "Ja" : "Nein"}
+              </div>
+              <div>
+                <span className="text-muted-foreground">Erstellt:</span> {created}
+              </div>
+              <div>
+                <span className="text-muted-foreground">Aktualisiert:</span> {updated}
+              </div>
             </div>
           </div>
 
@@ -153,9 +179,11 @@ export default function AdminUserDetailPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium">Benutzer löschen</p>
-                <p className="text-xs text-muted-foreground">Entfernt den Benutzer dauerhaft.</p>
+                <p className="text-muted-foreground text-xs">Entfernt den Benutzer dauerhaft.</p>
               </div>
-              <Button variant="destructive" onClick={() => void deleteUser()}>Benutzer löschen</Button>
+              <Button variant="destructive" onClick={() => void deleteUser()}>
+                Benutzer löschen
+              </Button>
             </div>
           </div>
         </div>
@@ -170,22 +198,22 @@ export default function AdminUserDetailPage() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <label className="text-sm text-muted-foreground">E‑Mail</label>
+              <label className="text-muted-foreground text-sm">E‑Mail</label>
               <Input value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-sm text-muted-foreground">Vorname</label>
+                <label className="text-muted-foreground text-sm">Vorname</label>
                 <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
               </div>
               <div className="space-y-1">
-                <label className="text-sm text-muted-foreground">Nachname</label>
+                <label className="text-muted-foreground text-sm">Nachname</label>
                 <Input value={lastName} onChange={(e) => setLastName(e.target.value)} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-sm text-muted-foreground">Rolle</label>
+                <label className="text-muted-foreground text-sm">Rolle</label>
                 <Select value={role} onValueChange={setRole}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Rolle" />
@@ -197,18 +225,53 @@ export default function AdminUserDetailPage() {
                 </Select>
               </div>
               <div className="space-y-1">
-                <label className="text-sm text-muted-foreground">Verifiziert</label>
+                <label className="text-muted-foreground text-sm">Verifiziert</label>
                 <div className="flex items-center gap-2">
-                  <Button type="button" variant={isVerified ? "default" : "outline"} size="sm" onClick={() => setIsVerified(true)}>Ja</Button>
-                  <Button type="button" variant={isVerified === false ? "default" : "outline"} size="sm" onClick={() => setIsVerified(false)}>Nein</Button>
+                  <Button
+                    type="button"
+                    variant={isVerified ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setIsVerified(true)}
+                  >
+                    Ja
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={isVerified === false ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setIsVerified(false)}
+                  >
+                    Nein
+                  </Button>
                 </div>
               </div>
             </div>
           </div>
           <DialogFooter>
             <div className="flex w-full justify-end gap-2">
-              <Button variant="outline" onClick={() => { if (user) { setEmail(user.email || ""); setFirstName(user.firstName || ""); setLastName(user.lastName || ""); setRole(user.role || "customer"); setIsVerified(user.isVerified); } }}>Zurücksetzen</Button>
-              <Button onClick={async () => { await save(); setEditOpen(false) }} disabled={saving}>Speichern</Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (user) {
+                    setEmail(user.email || "")
+                    setFirstName(user.firstName || "")
+                    setLastName(user.lastName || "")
+                    setRole(user.role || "customer")
+                    setIsVerified(user.isVerified)
+                  }
+                }}
+              >
+                Zurücksetzen
+              </Button>
+              <Button
+                onClick={async () => {
+                  await save()
+                  setEditOpen(false)
+                }}
+                disabled={saving}
+              >
+                Speichern
+              </Button>
             </div>
           </DialogFooter>
         </DialogContent>

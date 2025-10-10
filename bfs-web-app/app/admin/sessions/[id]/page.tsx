@@ -47,7 +47,9 @@ export default function AdminSessionDetailPage() {
       }
     }
     if (userId && familyId) void load()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [fetchAuth, userId, familyId])
 
   async function revoke() {
@@ -56,11 +58,14 @@ export default function AdminSessionDetailPage() {
     try {
       setRevoking(true)
       const csrf = getCSRFCookie()
-      const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/users/${encodeURIComponent(userId)}/sessions/revoke`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
-        body: JSON.stringify({ familyId }),
-      })
+      const res = await fetchAuth(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/users/${encodeURIComponent(userId)}/sessions/revoke`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
+          body: JSON.stringify({ familyId }),
+        }
+      )
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       router.push("/admin/sessions")
     } catch (e: unknown) {
@@ -88,23 +93,42 @@ export default function AdminSessionDetailPage() {
         </div>
       </div>
 
-      {loading && <div className="text-sm text-muted-foreground">Lade Session…</div>}
+      {loading && <div className="text-muted-foreground text-sm">Lade Session…</div>}
       {error && <div className="text-sm text-red-600">{error}</div>}
 
       {item ? (
         <div className="rounded-md border p-4">
           <h2 className="mb-3 text-base font-semibold">Details</h2>
           <div className="space-y-1 text-sm">
-            <div><span className="text-muted-foreground">Benutzer ID:</span> <Link href={`/admin/users/${encodeURIComponent(item.userId)}`} className="underline underline-offset-2 text-xs">{item.userId}</Link></div>
-            <div><span className="text-muted-foreground">E‑Mail:</span> {item.email || "–"}</div>
-            <div><span className="text-muted-foreground">Gerät:</span> {item.device}</div>
-            <div><span className="text-muted-foreground">Family ID:</span> <span className="font-mono text-xs">{item.familyId}</span></div>
-            <div><span className="text-muted-foreground">Erstellt:</span> {created}</div>
-            <div><span className="text-muted-foreground">Zuletzt genutzt:</span> {lastUsed}</div>
+            <div>
+              <span className="text-muted-foreground">Benutzer ID:</span>{" "}
+              <Link
+                href={`/admin/users/${encodeURIComponent(item.userId)}`}
+                className="text-xs underline underline-offset-2"
+              >
+                {item.userId}
+              </Link>
+            </div>
+            <div>
+              <span className="text-muted-foreground">E‑Mail:</span> {item.email || "–"}
+            </div>
+            <div>
+              <span className="text-muted-foreground">Gerät:</span> {item.device}
+            </div>
+            <div>
+              <span className="text-muted-foreground">Family ID:</span>{" "}
+              <span className="font-mono text-xs">{item.familyId}</span>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Erstellt:</span> {created}
+            </div>
+            <div>
+              <span className="text-muted-foreground">Zuletzt genutzt:</span> {lastUsed}
+            </div>
           </div>
         </div>
       ) : (
-        !loading && <div className="text-sm text-muted-foreground">Keine Session gefunden.</div>
+        !loading && <div className="text-muted-foreground text-sm">Keine Session gefunden.</div>
       )}
     </div>
   )
@@ -116,4 +140,3 @@ function getCSRFCookie(): string | null {
   const m = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/([.$?*|{}()\[\]\\/+^])/g, "\\$1") + "=([^;]*)"))
   return m && m[1] ? decodeURIComponent(m[1]!) : null
 }
-

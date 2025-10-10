@@ -71,9 +71,9 @@ export function FloatingBottomNav() {
     totalItems > 0 && (
       <>
         <div ref={barRef} className="fixed right-0 bottom-0 left-0 z-50 p-4">
-          <div className="max-w-xl mx-auto flex items-center justify-center gap-3">
+          <div className="mx-auto flex max-w-xl items-center justify-center gap-3">
             <Button
-              className="rounded-pill h-12 text-base font-medium flex-1 lg:flex-none lg:max-w-xs px-6 md:px-8 lg:px-10 xl:px-12"
+              className="rounded-pill h-12 flex-1 px-6 text-base font-medium md:px-8 lg:max-w-xs lg:flex-none lg:px-10 xl:px-12"
               disabled={cart.items.length === 0}
               onClick={() => router.push("/food/checkout")}
             >
@@ -105,7 +105,7 @@ export function FloatingBottomNav() {
                     <p className="text-muted-foreground mt-1 text-sm">Fügen Sie Produkte hinzu, um zu beginnen</p>
                   </div>
                 ) : (
-                  <div className="mt-3 -mb-5 flex flex-col divide-y divide-border [&>*]:py-5 [&>*:first-child]:pt-0">
+                  <div className="divide-border mt-3 -mb-5 flex flex-col divide-y [&>*]:py-5 [&>*:first-child]:pt-0">
                     {(() => {
                       const rows: React.ReactNode[] = []
                       if (suggestion && contiguous && startIndex >= 0 && endIndex >= startIndex) {
@@ -124,7 +124,7 @@ export function FloatingBottomNav() {
                         const grouped = cart.items.slice(startIndex, endIndex + 1)
                         rows.push(
                           <InlineMenuGroup
-                            key={`group-${grouped.map((g) => g.id).join('-')}`}
+                            key={`group-${grouped.map((g) => g.id).join("-")}`}
                             suggestion={suggestion}
                             items={grouped}
                             onEditItem={(it) => setEditingItem(it)}
@@ -189,7 +189,10 @@ export function FloatingBottomNav() {
           </Drawer>
         ) : (
           <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
-            <SheetContent side="right" className="bg-primary-foreground rounded-l-3xl w-full sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl">
+            <SheetContent
+              side="right"
+              className="bg-primary-foreground w-full rounded-l-3xl sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl"
+            >
               <SheetHeader>
                 <SheetTitle className="text-[1.35rem]">Warenkorb</SheetTitle>
               </SheetHeader>
@@ -202,7 +205,7 @@ export function FloatingBottomNav() {
                     <p className="text-muted-foreground mt-1 text-sm">Fügen Sie Produkte hinzu, um zu beginnen</p>
                   </div>
                 ) : (
-                  <div className="mt-3 -mb-5 flex flex-col divide-y divide-border [&>*]:py-5 [&>*:first-child]:pt-0">
+                  <div className="divide-border mt-3 -mb-5 flex flex-col divide-y [&>*]:py-5 [&>*:first-child]:pt-0">
                     {(() => {
                       const rows: React.ReactNode[] = []
                       if (suggestion && contiguous && startIndex >= 0 && endIndex >= startIndex) {
@@ -221,7 +224,7 @@ export function FloatingBottomNav() {
                         const grouped = cart.items.slice(startIndex, endIndex + 1)
                         rows.push(
                           <InlineMenuGroup
-                            key={`group-${grouped.map((g) => g.id).join('-')}`}
+                            key={`group-${grouped.map((g) => g.id).join("-")}`}
                             suggestion={suggestion}
                             items={grouped}
                             onEditItem={(it) => setEditingItem(it)}
@@ -295,7 +298,6 @@ export function FloatingBottomNav() {
             editingItemId={editingItem.id}
           />
         )}
-        
       </>
     )
   )

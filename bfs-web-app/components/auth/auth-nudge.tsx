@@ -21,10 +21,7 @@ export function AuthNudgeBanner() {
     <div className="mb-3 rounded-lg border bg-white p-3 shadow-sm">
       <p className="text-sm">Melde dich an, um deine Bestellungen zu speichern und den Checkout zu beschleunigen.</p>
       <div className="mt-4 flex gap-2">
-        <Button
-          variant="selected"
-          onClick={() => router.push("/login?next=/food/checkout")}
-        >
+        <Button variant="selected" onClick={() => router.push("/login?next=/food/checkout")}>
           Anmelden
         </Button>
         <Button

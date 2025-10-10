@@ -5,11 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem, DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/contexts/auth-context"
 
 export default function Header() {
@@ -18,7 +14,13 @@ export default function Header() {
   const pathname = usePathname()
   return (
     <header className="my-2 w-full">
-      <div className={`mx-auto px-4 ${pathname.includes("/food/orders") || pathname.includes("/food/checkout") || pathname.includes("/profile") ? "max-w-xl" : "container"}`}>
+      <div
+        className={`mx-auto px-4 ${
+          pathname.includes("/food/orders") || pathname.includes("/food/checkout") || pathname.includes("/profile")
+            ? "max-w-xl"
+            : "container"
+        }`}
+      >
         <div className="relative flex items-center justify-between">
           <Link href="/food" className="flex items-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-full">

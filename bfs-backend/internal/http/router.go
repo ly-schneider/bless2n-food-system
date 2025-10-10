@@ -24,6 +24,7 @@ func NewRouter(
     userHandler *handler.UserHandler,
     orderHandler *handler.OrderHandler,
     stationHandler *handler.StationHandler,
+    posHandler *handler.POSHandler,
     categoryHandler *handler.CategoryHandler,
     productHandler *handler.ProductHandler,
     paymentHandler *handler.PaymentHandler,
@@ -46,6 +47,8 @@ func NewRouter(
     refreshTokenRepo repository.RefreshTokenRepository,
     stationRepo repository.StationRepository,
     stationRequestRepo repository.StationRequestRepository,
+    posDeviceRepo repository.PosDeviceRepository,
+    posRequestRepo repository.PosRequestRepository,
     stationProductRepo repository.StationProductRepository,
     emailSvc service.EmailService,
     jwtSvc service.JWTService,
@@ -110,13 +113,22 @@ func NewRouter(
 			product.Get("/", productHandler.ListProducts)
 		})
 
-		// Station public endpoints
-		v1.Route("/stations", func(st chi.Router) {
-			st.Post("/requests", stationHandler.CreateRequest)
-			st.Get("/me", stationHandler.Me)
-			st.Post("/verify-qr", stationHandler.VerifyQR)
-			st.Post("/redeem", stationHandler.Redeem)
-		})
+        // Station public endpoints
+        v1.Route("/stations", func(st chi.Router) {
+            st.Post("/requests", stationHandler.CreateRequest)
+            st.Get("/me", stationHandler.Me)
+            st.Post("/verify-qr", stationHandler.VerifyQR)
+            st.Post("/redeem", stationHandler.Redeem)
+        })
+
+        // POS public endpoints (device-gated via X-Pos-Token)
+        v1.Route("/pos", func(pos chi.Router) {
+            pos.Post("/requests", posHandler.CreateRequest)
+            pos.Get("/me", posHandler.Me)
+            pos.Post("/orders", posHandler.CreateOrder)
+            pos.Post("/orders/{id}/pay-cash", posHandler.PayCash)
+            pos.Post("/orders/{id}/pay-card", posHandler.PayCard)
+        })
 
 		// Orders: public details by id, and authenticated list
         v1.Route("/orders", func(orders chi.Router) {
@@ -223,6 +235,14 @@ func NewRouter(
             admin.Get("/stations/{id}/products", http.HandlerFunc(ast.ListStationProducts))
             admin.Post("/stations/{id}/products", http.HandlerFunc(ast.AssignProducts))
             admin.Delete("/stations/{id}/products/{productId}", http.HandlerFunc(ast.RemoveProduct))
+
+            // POS admin
+            apos := handler.NewAdminPOSHandler(posRequestRepo, posDeviceRepo)
+            admin.Get("/pos/requests", http.HandlerFunc(apos.ListRequests))
+            admin.Post("/pos/requests/{id}/approve", http.HandlerFunc(apos.Approve))
+            admin.Post("/pos/requests/{id}/reject", http.HandlerFunc(apos.Reject))
+            admin.Get("/pos/devices", http.HandlerFunc(apos.ListDevices))
+            admin.Patch("/pos/devices/{id}/config", http.HandlerFunc(apos.PatchConfig))
 		})
 
 		v1.Route("/payments", func(pay chi.Router) {

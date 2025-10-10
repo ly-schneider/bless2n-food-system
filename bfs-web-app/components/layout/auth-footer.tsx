@@ -2,12 +2,9 @@ import Link from "next/link"
 
 export default function AuthFooter() {
   return (
-    <footer
-      id="auth-footer"
-      className={`text-muted-foreground w-full border-t border-gray-200/70 py-4 text-sm mb-4`}
-    >
+    <footer id="auth-footer" className={`text-muted-foreground mb-4 w-full border-t border-gray-200/70 py-4 text-sm`}>
       <div className="container mx-auto px-4">
-        <nav className="flex flex-wrap items-center gap-x-4 gap-y-2 justify-center">
+        <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
           <Link href="/agb" className="hover:underline">
             AGB
           </Link>

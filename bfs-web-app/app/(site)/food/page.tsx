@@ -14,15 +14,14 @@ export default async function HomePage() {
   try {
     products = await listProducts()
   } catch (error) {
-    console.error('Failed to fetch products:', error)
+    console.error("Failed to fetch products:", error)
     products = { items: [], count: 0 }
   }
 
   return (
     <div className="bg-background min-h-screen">
-
       <main className="container mx-auto p-4">
-        <h2 className="text-2xl mb-2">Alle Produkte</h2>
+        <h2 className="mb-2 text-2xl">Alle Produkte</h2>
         <MenuGrid products={products} />
       </main>
 

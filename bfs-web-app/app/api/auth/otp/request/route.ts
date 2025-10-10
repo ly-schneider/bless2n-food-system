@@ -1,21 +1,21 @@
-import { headers } from 'next/headers'
-import { NextResponse } from 'next/server'
-import { API_BASE_URL } from '@/lib/api'
+import { headers } from "next/headers"
+import { NextResponse } from "next/server"
+import { API_BASE_URL } from "@/lib/api"
 
 export async function POST(req: Request) {
   try {
     const { email } = (await req.json()) as { email: string }
     const hdrs = await headers()
-    const ua = hdrs.get('user-agent') || ''
-    const xff = hdrs.get('x-forwarded-for') || ''
+    const ua = hdrs.get("user-agent") || ""
+    const xff = hdrs.get("x-forwarded-for") || ""
     // Call backend (always return 202/generic)
     await fetch(`${API_BASE_URL}/v1/auth/otp/request`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         // forward browser context so backend can label device + ip nicely
-        'X-Forwarded-User-Agent': ua,
-        ...(xff ? { 'X-Forwarded-For': xff } : {}),
+        "X-Forwarded-User-Agent": ua,
+        ...(xff ? { "X-Forwarded-For": xff } : {}),
       },
       body: JSON.stringify({ email }),
     })

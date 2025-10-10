@@ -72,7 +72,10 @@ export default function AdminOrderDetailPage() {
     const roots: OrderItem[] = []
     for (const it of order.items) {
       const hasParent = typeof it.parentItemId === "string" && !!it.parentItemId
-      if (!hasParent) { roots.push(it); continue }
+      if (!hasParent) {
+        roots.push(it)
+        continue
+      }
       let parentId = it.parentItemId as string
       while (parentId) {
         const node = byId[parentId]
@@ -100,7 +103,7 @@ export default function AdminOrderDetailPage() {
         </Link>
       </div>
 
-      {loading && <div className="text-sm text-muted-foreground">Lade Bestellung…</div>}
+      {loading && <div className="text-muted-foreground text-sm">Lade Bestellung…</div>}
       {error && <div className="text-sm text-red-600">{error}</div>}
 
       {order && (
@@ -108,24 +111,56 @@ export default function AdminOrderDetailPage() {
           <div className="rounded-md border p-4">
             <h2 className="mb-3 text-base font-semibold">Details</h2>
             <div className="space-y-1 text-sm">
-              <div><span className="text-muted-foreground">ID:</span> <span className="text-xs">{order.id}</span></div>
-              <div><span className="text-muted-foreground">Status:</span> <span className="uppercase">{order.status}</span></div>
-              <div><span className="text-muted-foreground">Summe:</span> <span className="font-medium">{formatChf(order.totalCents)}</span></div>
-              <div><span className="text-muted-foreground">E‑Mail:</span> {order.contactEmail || "–"}</div>
-              <div><span className="text-muted-foreground">Benutzer:</span> {order.customerId ? (
-                <Link href={`/admin/users/${encodeURIComponent(order.customerId)}`} className="underline underline-offset-2 text-xs">{order.customerId}</Link>
-              ) : "–"}</div>
-              <div><span className="text-muted-foreground">Erstellt:</span> {created}</div>
-              <div><span className="text-muted-foreground">Aktualisiert:</span> {updated}</div>
+              <div>
+                <span className="text-muted-foreground">ID:</span> <span className="text-xs">{order.id}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Status:</span> <span className="uppercase">{order.status}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Summe:</span>{" "}
+                <span className="font-medium">{formatChf(order.totalCents)}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">E‑Mail:</span> {order.contactEmail || "–"}
+              </div>
+              <div>
+                <span className="text-muted-foreground">Benutzer:</span>{" "}
+                {order.customerId ? (
+                  <Link
+                    href={`/admin/users/${encodeURIComponent(order.customerId)}`}
+                    className="text-xs underline underline-offset-2"
+                  >
+                    {order.customerId}
+                  </Link>
+                ) : (
+                  "–"
+                )}
+              </div>
+              <div>
+                <span className="text-muted-foreground">Erstellt:</span> {created}
+              </div>
+              <div>
+                <span className="text-muted-foreground">Aktualisiert:</span> {updated}
+              </div>
             </div>
           </div>
 
           <div className="rounded-md border p-4">
             <h2 className="mb-3 text-base font-semibold">Zahlung/Stripe</h2>
             <div className="space-y-1 text-sm">
-              <div><span className="text-muted-foreground">Payment Intent:</span> <span className="text-xs">{order.paymentIntentId || "–"}</span></div>
-              <div><span className="text-muted-foreground">Charge:</span> <span className="text-xs">{order.stripeChargeId || "–"}</span></div>
-              <div><span className="text-muted-foreground">Payment Attempt:</span> <span className="text-xs">{order.paymentAttemptId || "–"}</span></div>
+              <div>
+                <span className="text-muted-foreground">Payment Intent:</span>{" "}
+                <span className="text-xs">{order.paymentIntentId || "–"}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Charge:</span>{" "}
+                <span className="text-xs">{order.stripeChargeId || "–"}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Payment Attempt:</span>{" "}
+                <span className="text-xs">{order.paymentAttemptId || "–"}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -135,7 +170,7 @@ export default function AdminOrderDetailPage() {
         <div>
           <h2 className="mb-3 text-lg font-semibold">Bestellte Artikel</h2>
           {grouped.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Keine Artikel gefunden.</p>
+            <p className="text-muted-foreground text-sm">Keine Artikel gefunden.</p>
           ) : (
             <div className="flex flex-col gap-3">
               {grouped.map(({ parent, children }) => (
@@ -160,7 +195,10 @@ export default function AdminOrderDetailPage() {
                           {children.length > 0 && (
                             <div className="mt-1 flex flex-row flex-wrap gap-1.5">
                               {children.map((c) => (
-                                <span key={c.id} className="text-muted-foreground border-border rounded-lg border px-2 py-0.5 text-xs">
+                                <span
+                                  key={c.id}
+                                  className="text-muted-foreground border-border rounded-lg border px-2 py-0.5 text-xs"
+                                >
                                   {c.menuSlotName ?? "Option"}: {c.title}
                                 </span>
                               ))}

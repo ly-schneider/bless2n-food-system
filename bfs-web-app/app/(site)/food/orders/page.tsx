@@ -24,7 +24,7 @@ export default function OrdersPage() {
         try {
           const res = await listMyOrders(accessToken)
           if (res.items?.length) {
-            setOrders(res.items.map(it => ({ id: it.id, createdAt: it.createdAt })))
+            setOrders(res.items.map((it) => ({ id: it.id, createdAt: it.createdAt })))
             return
           }
         } catch {
@@ -75,7 +75,10 @@ export default function OrdersPage() {
   }, [])
 
   return (
-    <div className="p-4" style={{ paddingBottom: (buttonBarHeight ? Math.max(buttonBarHeight - appFooterHeight, 0) : 0) + 16 }}>
+    <div
+      className="p-4"
+      style={{ paddingBottom: (buttonBarHeight ? Math.max(buttonBarHeight - appFooterHeight, 0) : 0) + 16 }}
+    >
       <h1 className="mb-2 text-2xl font-semibold">Bestellungen</h1>
       <p className="text-muted-foreground mb-6 text-sm">
         Tippe auf eine Bestellung, um den Abholungs QR-Code anzuzeigen.
@@ -115,7 +118,7 @@ export default function OrdersPage() {
         </ul>
       )}
 
-      <div ref={footerRef} className="max-w-xl mx-auto fixed inset-x-0 bottom-0 z-50 p-4">
+      <div ref={footerRef} className="fixed inset-x-0 bottom-0 z-50 mx-auto max-w-xl p-4">
         <Button
           variant="outline"
           className="rounded-pill h-12 w-full bg-white text-base font-medium text-black"

@@ -18,7 +18,7 @@ function read(): StoredOrder[] {
     if (!raw) return []
     const parsed = JSON.parse(raw) as StoredOrder[]
     if (!Array.isArray(parsed)) return []
-    return parsed.filter(o => o && typeof o.id === "string")
+    return parsed.filter((o) => o && typeof o.id === "string")
   } catch {
     return []
   }
@@ -34,7 +34,7 @@ function write(list: StoredOrder[]) {
 
 export function addOrder(id: string, items?: CartItem[], totalCents?: number) {
   const list = read()
-  const idx = list.findIndex(o => o.id === id)
+  const idx = list.findIndex((o) => o.id === id)
   if (idx >= 0) {
     // If already stored but without items, enrich the record.
     const existing = list[idx]!
@@ -53,7 +53,7 @@ export function getOrders(): StoredOrder[] {
 }
 
 export function getOrder(id: string): StoredOrder | undefined {
-  return read().find(o => o.id === id)
+  return read().find((o) => o.id === id)
 }
 
 export function clearOrders() {
@@ -61,6 +61,6 @@ export function clearOrders() {
 }
 
 export function removeOrder(id: string) {
-  const list = read().filter(o => o.id !== id)
+  const list = read().filter((o) => o.id !== id)
   write(list)
 }

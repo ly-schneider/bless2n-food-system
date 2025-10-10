@@ -3,15 +3,7 @@ import { de } from "date-fns/locale"
 import { Calendar as CalendarIcon } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import type { DateRange } from "react-day-picker"
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Line,
-  LineChart,
-  XAxis,
-  YAxis,
-} from "recharts"
+import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import {
@@ -30,12 +22,8 @@ export default function AdminDashboard() {
   const fetchAuth = useAuthorizedFetch()
   const [error, setError] = useState<string | null>(null)
 
-  const [series, setSeries] = useState<
-    { date: string; orders: number; revenue: number }[]
-  >([])
-  const [lowStock, setLowStock] = useState<
-    { id: string; name: string; qty?: number | null }[]
-  >([])
+  const [series, setSeries] = useState<{ date: string; orders: number; revenue: number }[]>([])
+  const [lowStock, setLowStock] = useState<{ id: string; name: string; qty?: number | null }[]>([])
 
   // Date range: default to last 30 days (inclusive today)
   const [range, setRange] = useState<DateRange>(() => {
@@ -163,10 +151,10 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Adminbereich</h1>
-      {error && <div className="text-red-600 text-sm">{error}</div>}
+      {error && <div className="text-sm text-red-600">{error}</div>}
 
       <div className="flex items-center gap-3">
-        <span className="text-sm text-muted-foreground">Zeitraum:</span>
+        <span className="text-muted-foreground text-sm">Zeitraum:</span>
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="outline" className="justify-start gap-2">
@@ -186,7 +174,13 @@ export default function AdminDashboard() {
               formatters={{
                 formatMonthDropdown: (date) => date.toLocaleString("de-CH", { month: "short" }),
               }}
-              disabled={{ after: (() => { const d = new Date(); d.setHours(0,0,0,0); return d })() }}
+              disabled={{
+                after: (() => {
+                  const d = new Date()
+                  d.setHours(0, 0, 0, 0)
+                  return d
+                })(),
+              }}
             />
           </PopoverContent>
         </Popover>
@@ -219,7 +213,9 @@ export default function AdminDashboard() {
                 content={
                   <ChartTooltipContent
                     formatter={(value) => (
-                      <span>{new Intl.NumberFormat("de-CH", { style: "currency", currency: "CHF" }).format(Number(value))}</span>
+                      <span>
+                        {new Intl.NumberFormat("de-CH", { style: "currency", currency: "CHF" }).format(Number(value))}
+                      </span>
                     )}
                   />
                 }

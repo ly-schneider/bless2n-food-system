@@ -1,6 +1,6 @@
-export type Cents = number;
+export type Cents = number
 
 export interface ListResponse<T> {
-  items: T[];
-  count: number;
+  items: T[]
+  count: number
 }

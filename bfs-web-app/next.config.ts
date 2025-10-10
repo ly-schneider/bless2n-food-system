@@ -27,7 +27,7 @@ const config: NextConfig = {
     { source: "/ping", destination: `${API_BASE}/ping` },
   ],
   eslint: {
-    dirs: ['.'],
+    dirs: ["."],
   },
 }
 

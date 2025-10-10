@@ -27,6 +27,8 @@ func NewRepositories() fx.Option {
             repository.NewOrderItemRepository,
             repository.NewAuditRepository,
             repository.NewIdempotencyRepository,
+            repository.NewPosDeviceRepository,
+            repository.NewPosRequestRepository,
         ),
     )
 }

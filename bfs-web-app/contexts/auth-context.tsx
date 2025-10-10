@@ -1,6 +1,6 @@
 "use client"
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import type { User } from '@/types'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
+import type { User } from "@/types"
 
 type AuthState = {
   accessToken: string | null
@@ -19,30 +19,36 @@ type AuthContextType = AuthState & {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 function getCookie(name: string) {
-  if (typeof document === 'undefined') return null
-  const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()\[\]\\/+^])/g, '\\$1') + '=([^;]*)'))
+  if (typeof document === "undefined") return null
+  const m = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/([.$?*|{}()\[\]\\/+^])/g, "\\$1") + "=([^;]*)"))
   return m && m[1] ? decodeURIComponent(m[1]!) : null
 }
 
-const SESSION_KEY = 'bfs.auth.session'
+const SESSION_KEY = "bfs.auth.session"
 type StoredSession = { token: string; expiresAt: number; user?: User }
 function readSession(): StoredSession | null {
-  if (typeof window === 'undefined') return null
+  if (typeof window === "undefined") return null
   try {
     const raw = sessionStorage.getItem(SESSION_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as StoredSession
     if (!parsed || !parsed.token || !parsed.expiresAt) return null
     return parsed
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 function writeSession(s: StoredSession) {
-  if (typeof window === 'undefined') return
-  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(s)) } catch {}
+  if (typeof window === "undefined") return
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(s))
+  } catch {}
 }
 function clearSession() {
-  if (typeof window === 'undefined') return
-  try { sessionStorage.removeItem(SESSION_KEY) } catch {}
+  if (typeof window === "undefined") return
+  try {
+    sessionStorage.removeItem(SESSION_KEY)
+  } catch {}
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -71,8 +77,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch('/api/auth/refresh', { method: 'POST' })
-      if (!res.ok) { clearAuth(); return false }
+      const res = await fetch("/api/auth/refresh", { method: "POST" })
+      if (!res.ok) {
+        clearAuth()
+        return false
+      }
       const data = (await res.json()) as { access_token: string; expires_in: number; user?: User }
       setAuth(data.access_token, data.expires_in, data.user)
       return true
@@ -83,8 +92,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [setAuth, clearAuth])
 
   const signOut = useCallback(async () => {
-    const csrf = getCookie('__Host-csrf') || getCookie('csrf')
-    try { await fetch('/api/auth/logout', { method: 'POST', headers: csrf ? { 'X-CSRF': csrf } : {} }) } catch {}
+    const csrf = getCookie("__Host-csrf") || getCookie("csrf")
+    try {
+      await fetch("/api/auth/logout", { method: "POST", headers: csrf ? { "X-CSRF": csrf } : {} })
+    } catch {}
     clearAuth()
   }, [clearAuth])
 
@@ -107,12 +118,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const now = Date.now()
     const msUntil = Math.max(0, expiresAt - now - 60_000)
     if (refreshTimer) clearTimeout(refreshTimer)
-    const t = setTimeout(() => { void refresh() }, msUntil)
+    const t = setTimeout(() => {
+      void refresh()
+    }, msUntil)
     setRefreshTimer(t)
     return () => clearTimeout(t)
   }, [expiresAt, refresh])
 
-  const value = useMemo(() => ({ accessToken, user, expiresAt, setAuth, clearAuth, refresh, signOut }), [accessToken, user, expiresAt, setAuth, clearAuth, refresh, signOut])
+  const value = useMemo(
+    () => ({ accessToken, user, expiresAt, setAuth, clearAuth, refresh, signOut }),
+    [accessToken, user, expiresAt, setAuth, clearAuth, refresh, signOut]
+  )
   // expose a snapshot getter that always reads latest state
   const getToken = () => accessToken
   const valueWithGetter = useMemo(() => ({ ...value, getToken }), [value])
@@ -122,6 +138,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider")
   return ctx
 }

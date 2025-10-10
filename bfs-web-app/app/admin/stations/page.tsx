@@ -73,7 +73,7 @@ export default function AdminStationRequestsPage() {
       }
       setItems((prev) => prev.filter((x) => x.id !== id))
     } catch {
-      setError(action === "approve" ? "Genehmigung fehlgeschlagen" : "Ablehnung fehlgeschlagen")
+      setError(action === "approve" ? "Annahme fehlgeschlagen" : "Ablehnung fehlgeschlagen")
     }
   }
 
@@ -104,7 +104,9 @@ export default function AdminStationRequestsPage() {
   }
 
   async function removeProductFromStation(stationId: string, productId: string) {
-    await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/stations/${stationId}/products/${productId}`, { method: "DELETE" })
+    await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/stations/${stationId}/products/${productId}`, {
+      method: "DELETE",
+    })
     setAssigned((prev) => ({ ...prev, [stationId]: (prev[stationId] || []).filter((x) => x.productId !== productId) }))
   }
 
@@ -118,34 +120,36 @@ export default function AdminStationRequestsPage() {
       )}
       {loading && <div className="text-muted-foreground">Lädt…</div>}
       {/* Stations list */}
-      <h2 className="mb-2 mt-2 text-lg font-semibold">Stationen</h2>
-      {!loading && stations.length === 0 && (
-        <div className="text-muted-foreground">Keine Stationen vorhanden.</div>
-      )}
+      <h2 className="mt-2 mb-2 text-lg font-semibold">Stationen</h2>
+      {!loading && stations.length === 0 && <div className="text-muted-foreground">Keine Stationen vorhanden.</div>}
       <div className="mb-6 space-y-3">
         {stations.map((st) => {
           const isEditing = editingId === st.id
           const assignedList = assigned[st.id] || []
-          const unassigned = allProducts.filter(p => !assignedList.some(a => a.productId === p.id))
+          const unassigned = allProducts.filter((p) => !assignedList.some((a) => a.productId === p.id))
           return (
             <div key={st.id} className="bg-card border-border rounded-[11px] border p-3">
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-semibold">{st.name}</div>
                   <div className="text-muted-foreground truncate text-sm">{maskKey(st.deviceKey)}</div>
-                  <div className="text-muted-foreground text-xs">Erstellt: {new Date(st.createdAt).toLocaleString()}</div>
+                  <div className="text-muted-foreground text-xs">
+                    Erstellt: {new Date(st.createdAt).toLocaleString()}
+                  </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <Button variant="outline" onClick={() => openEditor(st)}>Produkte bearbeiten</Button>
+                  <Button variant="outline" onClick={() => openEditor(st)}>
+                    Produkte bearbeiten
+                  </Button>
                 </div>
               </div>
               {isEditing && (
-                <div className="mt-3 rounded-lg border border-border p-3">
+                <div className="border-border mt-3 rounded-lg border p-3">
                   <div className="flex flex-col gap-2">
                     <label className="text-sm">Produkt hinzufügen</label>
                     <div className="flex items-center gap-2">
                       <Select
-                        key={`${st.id}-${assignedList.length}-${addProductId ?? 'none'}`}
+                        key={`${st.id}-${assignedList.length}-${addProductId ?? "none"}`}
                         value={addProductId}
                         onValueChange={setAddProductId}
                       >
@@ -153,24 +157,39 @@ export default function AdminStationRequestsPage() {
                           <SelectValue placeholder="Produkt auswählen" />
                         </SelectTrigger>
                         <SelectContent>
-                          {unassigned.map(p => (
-                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                          {unassigned.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.name}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                      <Button disabled={!addProductId} onClick={() => addProductToStation(st.id)}>Hinzufügen</Button>
+                      <Button disabled={!addProductId} onClick={() => addProductToStation(st.id)}>
+                        Hinzufügen
+                      </Button>
                     </div>
                   </div>
                   <div className="mt-3">
                     <div className="mb-2 text-sm font-medium">Zugewiesene Produkte</div>
                     {assignedList.length === 0 ? (
-                      <div className="text-sm text-muted-foreground">Keine Produkte zugewiesen.</div>
+                      <div className="text-muted-foreground text-sm">Keine Produkte zugewiesen.</div>
                     ) : (
                       <div className="flex flex-wrap gap-2">
-                        {assignedList.map(a => (
-                          <span key={a.productId} className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-sm">
+                        {assignedList.map((a) => (
+                          <span
+                            key={a.productId}
+                            className="border-border inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm"
+                          >
                             {a.name}
-                            <Button aria-label="Entfernen" variant="ghost" size="sm" className="h-6 px-2 text-muted-foreground hover:text-destructive" onClick={() => removeProductFromStation(st.id, a.productId)}>×</Button>
+                            <Button
+                              aria-label="Entfernen"
+                              variant="ghost"
+                              size="sm"
+                              className="text-muted-foreground hover:text-destructive h-6 px-2"
+                              onClick={() => removeProductFromStation(st.id, a.productId)}
+                            >
+                              ×
+                            </Button>
                           </span>
                         ))}
                       </div>
@@ -184,7 +203,7 @@ export default function AdminStationRequestsPage() {
       </div>
 
       {/* Requests list */}
-      <h2 className="mb-2 mt-2 text-lg font-semibold">Offene Anfragen</h2>
+      <h2 className="mt-2 mb-2 text-lg font-semibold">Offene Anfragen</h2>
       {!loading && items.length === 0 && <div className="text-muted-foreground">Keine offenen Anfragen.</div>}
       <div className="space-y-3">
         {items.map((it) => (
@@ -200,8 +219,12 @@ export default function AdminStationRequestsPage() {
               <div className="text-muted-foreground text-xs">Erstellt: {new Date(it.createdAt).toLocaleString()}</div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <Button variant="destructive" onClick={() => act(it.id, "reject")}>Ablehnen</Button>
-              <Button onClick={() => act(it.id, "approve")}>Genehmigen</Button>
+              <Button variant="destructive" onClick={() => act(it.id, "reject")}>
+                Ablehnen
+              </Button>
+              <Button variant="success" onClick={() => act(it.id, "approve")}>
+                Annehmen
+              </Button>
             </div>
           </div>
         ))}
@@ -211,7 +234,7 @@ export default function AdminStationRequestsPage() {
 }
 
 function maskKey(k: string) {
-  if (!k) return ''
-  if (k.length <= 6) return '•••'
-  return `${k.slice(0,3)}•••${k.slice(-3)}`
+  if (!k) return ""
+  if (k.length <= 6) return "•••"
+  return `${k.slice(0, 3)}•••${k.slice(-3)}`
 }

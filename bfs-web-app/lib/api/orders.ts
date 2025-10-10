@@ -14,13 +14,10 @@ export interface ListResponse<T> {
 }
 
 export async function listMyOrders(accessToken?: string) {
-  return apiRequest<ListResponse<OrderSummaryDTO>>(
-    "/v1/orders",
-    {
-      method: "GET",
-      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
-    }
-  )
+  return apiRequest<ListResponse<OrderSummaryDTO>>("/v1/orders", {
+    method: "GET",
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+  })
 }
 
 export interface PublicOrderDetailsDTO {

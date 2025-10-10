@@ -21,14 +21,11 @@ export interface CreateIntentResponse {
 }
 
 export async function createPaymentIntent(body: CreateIntentRequest, accessToken?: string) {
-  const res = await apiRequest<ApiEnvelope<CreateIntentResponse>>(
-    "/v1/payments/create-intent",
-    {
-      method: "POST",
-      body: JSON.stringify(body),
-      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
-    }
-  )
+  const res = await apiRequest<ApiEnvelope<CreateIntentResponse>>("/v1/payments/create-intent", {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+  })
   return res.data
 }
 

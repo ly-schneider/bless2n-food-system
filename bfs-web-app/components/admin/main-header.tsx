@@ -1,14 +1,10 @@
 "use client"
-import { Bell, Home, LogOut, RefreshCw, TextAlignEnd, User } from "lucide-react"
+import { Home, LogOut, RefreshCw, TextAlignEnd, User } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem, DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
 export function AdminMainHeader({ className }: { className?: string }) {
@@ -38,9 +34,6 @@ export function AdminMainHeader({ className }: { className?: string }) {
             >
               <RefreshCw className="size-4" />
               <span>Aktualisieren</span>
-            </Button>
-            <Button variant="outline" size="icon" aria-label="Benachrichtigungen" className="rounded-[11px] border-0">
-              <Bell className="size-4.5" />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

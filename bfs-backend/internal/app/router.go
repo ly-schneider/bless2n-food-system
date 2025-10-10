@@ -18,6 +18,7 @@ func NewRouter(
     userHandler *handler.UserHandler,
     orderHandler *handler.OrderHandler,
     stationHandler *handler.StationHandler,
+    posHandler *handler.POSHandler,
     categoryHandler *handler.CategoryHandler,
     productHandler *handler.ProductHandler,
     paymentHandler *handler.PaymentHandler,
@@ -39,6 +40,8 @@ func NewRouter(
     refreshTokenRepo repository.RefreshTokenRepository,
     stationRepo repository.StationRepository,
     stationRequestRepo repository.StationRequestRepository,
+    posDeviceRepo repository.PosDeviceRepository,
+    posRequestRepo repository.PosRequestRepository,
     stationProductRepo repository.StationProductRepository,
     emailSvc service.EmailService,
     jwtSvc service.JWTService,
@@ -46,9 +49,9 @@ func NewRouter(
 ) http.Handler {
     enableDocs := cfg.App.AppEnv != "prod"
     return httpRouter.NewRouter(
-        authHandler, devHandler, adminHandler, userHandler, orderHandler, stationHandler, categoryHandler, productHandler, paymentHandler, redemptionHandler, healthHandler, jwksHandler,
+        authHandler, devHandler, adminHandler, userHandler, orderHandler, stationHandler, posHandler, categoryHandler, productHandler, paymentHandler, redemptionHandler, healthHandler, jwksHandler,
         jwtMw, securityMw,
-        productRepo, inventoryRepo, auditRepo, orderRepo, orderItemRepo, userRepo, menuSlotRepo, menuSlotItemRepo, categoryRepo, adminInviteRepo, refreshTokenRepo, stationRepo, stationRequestRepo, stationProductRepo, emailSvc,
+        productRepo, inventoryRepo, auditRepo, orderRepo, orderItemRepo, userRepo, menuSlotRepo, menuSlotItemRepo, categoryRepo, adminInviteRepo, refreshTokenRepo, stationRepo, stationRequestRepo, posDeviceRepo, posRequestRepo, stationProductRepo, emailSvc,
         jwtSvc, enableDocs,
     )
 }

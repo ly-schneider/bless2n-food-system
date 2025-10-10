@@ -19,6 +19,7 @@ func NewHandlers() fx.Option {
             handler.NewUserHandler,
             handler.NewOrderHandler,
             handler.NewStationHandler,
+            handler.NewPOSHandler,
             handler.NewCategoryHandler,
             handler.NewProductHandler,
             handler.NewPaymentHandler,

@@ -85,8 +85,12 @@ export default function AdminSessionsPage() {
                       <TableCell className="whitespace-nowrap">{created}</TableCell>
                       <TableCell className="whitespace-nowrap">{last}</TableCell>
                       <TableCell className="text-right">
-                        <Link href={`/admin/sessions/${encodeURIComponent(r.userId)}:${encodeURIComponent(r.familyId)}`}>
-                          <Button size="sm" variant="outline">Details</Button>
+                        <Link
+                          href={`/admin/sessions/${encodeURIComponent(r.userId)}:${encodeURIComponent(r.familyId)}`}
+                        >
+                          <Button size="sm" variant="outline">
+                            Details
+                          </Button>
                         </Link>
                       </TableCell>
                     </TableRow>

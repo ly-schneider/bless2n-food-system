@@ -25,10 +25,12 @@ export default function CheckoutErrorPage() {
         </div>
       </div>
       <h1 className="text-3xl font-semibold">Bezahlung fehlgeschlagen</h1>
-      <p className="text-muted-foreground -mt-6 text-center">Bitte versuche es erneut oder wähle eine andere Methode.</p>
+      <p className="text-muted-foreground -mt-6 text-center">
+        Bitte versuche es erneut oder wähle eine andere Methode.
+      </p>
 
       {/* Bottom fixed action buttons stacked */}
-      <div className="max-w-xl mx-auto fixed inset-x-0 bottom-0 p-4">
+      <div className="fixed inset-x-0 bottom-0 mx-auto max-w-xl p-4">
         <div className="flex flex-col gap-3">
           <Button className="rounded-pill h-12 w-full text-base font-medium" onClick={handleRetry}>
             Erneut versuchen

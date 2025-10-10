@@ -66,7 +66,9 @@ const (
 	MenuSlotItemsCollection   = "menu_slot_items"
 	StationProductsCollection = "station_products"
 	InventoryLedgerCollection = "inventory_ledger"
-	OrdersCollection          = "orders"
+    OrdersCollection          = "orders"
     OrderItemsCollection      = "order_items"
     AuditLogsCollection       = "audit_logs"
+    PosDevicesCollection      = "pos_devices"
+    PosRequestsCollection     = "pos_requests"
 )

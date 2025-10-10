@@ -9,7 +9,9 @@ export default function CheckoutCancelPage() {
   const router = useRouter()
   useCart() // keep context warm; not directly used
 
-  const handleRetry = () => { router.push("/food/checkout") }
+  const handleRetry = () => {
+    router.push("/food/checkout")
+  }
 
   return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center gap-10 px-4 pb-36">
@@ -25,7 +27,7 @@ export default function CheckoutCancelPage() {
       <h1 className="text-3xl font-semibold">Bezahlung Abgebrochen</h1>
 
       {/* Bottom fixed action buttons stacked */}
-      <div className="max-w-xl mx-auto fixed inset-x-0 bottom-0 p-4">
+      <div className="fixed inset-x-0 bottom-0 mx-auto max-w-xl p-4">
         <div className="flex flex-col gap-3">
           <Button className="rounded-pill h-12 w-full text-base font-medium" onClick={handleRetry}>
             Erneut versuchen

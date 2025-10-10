@@ -43,7 +43,8 @@ export default function AgbPage() {
         <p>
           <strong>Abholung.</strong>
           <br />
-          Nach Bestellannahme können Sie sich für die Abholung bereithalten. Die Abholung ist ausschliesslich während der ausgewiesenen Geschäftszeiten möglich. Ein Anspruch auf Abholung ausserhalb dieser Zeiten besteht nicht.
+          Nach Bestellannahme können Sie sich für die Abholung bereithalten. Die Abholung ist ausschliesslich während
+          der ausgewiesenen Geschäftszeiten möglich. Ein Anspruch auf Abholung ausserhalb dieser Zeiten besteht nicht.
         </p>
 
         <p>

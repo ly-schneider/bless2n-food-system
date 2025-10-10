@@ -47,10 +47,15 @@ export default function ProfilePage() {
         if (!token) throw new Error("Not authenticated")
         const res = await fetch(`${API_BASE_URL}/v1/users/me`, { headers: { Authorization: `Bearer ${token}` } })
         if (!res.ok) throw new Error("Failed to load profile")
-        const data = (await res.json()) as { user?: { email?: string; firstName?: string; lastName?: string; role?: UserRole } }
-        if (data.user?.email) { setEmail(data.user.email); setInitialEmail(data.user.email) }
-        if (data.user?.firstName !== undefined) setFirstName(data.user.firstName || '')
-        if (data.user?.lastName !== undefined) setLastName(data.user.lastName || '')
+        const data = (await res.json()) as {
+          user?: { email?: string; firstName?: string; lastName?: string; role?: UserRole }
+        }
+        if (data.user?.email) {
+          setEmail(data.user.email)
+          setInitialEmail(data.user.email)
+        }
+        if (data.user?.firstName !== undefined) setFirstName(data.user.firstName || "")
+        if (data.user?.lastName !== undefined) setLastName(data.user.lastName || "")
         if (data.user?.role) setRole(data.user.role)
         setError(null)
       } catch (e: unknown) {
@@ -72,7 +77,7 @@ export default function ProfilePage() {
       }
       if (!token) throw new Error("Not authenticated")
       // 1) Update names (admin only)
-      if (role === 'admin') {
+      if (role === "admin") {
         const res = await fetch(`${API_BASE_URL}/v1/users/me`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -130,7 +135,10 @@ export default function ProfilePage() {
           const r = await fetch(`${API_BASE_URL}/v1/users/me`, { headers: { Authorization: `Bearer ${token}` } })
           if (r.ok) {
             const d = (await r.json()) as { user?: { email?: string } }
-            if (d.user?.email) { setEmail(d.user.email); setInitialEmail(d.user.email) }
+            if (d.user?.email) {
+              setEmail(d.user.email)
+              setInitialEmail(d.user.email)
+            }
           }
         }
       } catch {}
@@ -179,20 +187,36 @@ export default function ProfilePage() {
       {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
 
       <section className="mt-2 mb-8 space-y-3">
-        {role === 'admin' && (
+        {role === "admin" && (
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-sm font-semibold" htmlFor="firstName">Vorname</label>
-              <Input className="w-full rounded-[11px] border px-3 py-2" id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+              <label className="mb-1 block text-sm font-semibold" htmlFor="firstName">
+                Vorname
+              </label>
+              <Input
+                className="w-full rounded-[11px] border px-3 py-2"
+                id="firstName"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+              />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-semibold" htmlFor="lastName">Nachname</label>
-              <Input className="w-full rounded-[11px] border px-3 py-2" id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+              <label className="mb-1 block text-sm font-semibold" htmlFor="lastName">
+                Nachname
+              </label>
+              <Input
+                className="w-full rounded-[11px] border px-3 py-2"
+                id="lastName"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+              />
             </div>
           </div>
         )}
         <div>
-          <label className="mb-1 block text-sm font-semibold" htmlFor="email">E-Mail-Adresse</label>
+          <label className="mb-1 block text-sm font-semibold" htmlFor="email">
+            E-Mail-Adresse
+          </label>
           <div className="flex gap-2">
             <Input
               className="w-full rounded-[11px] border px-3 py-2"
@@ -202,7 +226,7 @@ export default function ProfilePage() {
               name="email"
               id="email"
             />
-            <Button className="rounded-[10px] !py-5 px-6" onClick={saveProfile} disabled={savingEmail}>
+            <Button className="rounded-[10px] px-6 !py-5" onClick={saveProfile} disabled={savingEmail}>
               {savingEmail ? "Speichern…" : "Speichern"}
             </Button>
           </div>
@@ -210,16 +234,25 @@ export default function ProfilePage() {
 
         {emailChangeInitiated && (
           <div className="rounded-[11px] border p-3">
-            <p className="mb-2 text-sm">Wir haben dir einen Code an die neue Adresse gesendet. Bitte bestätige die Änderung:</p>
+            <p className="mb-2 text-sm">
+              Wir haben dir einen Code an die neue Adresse gesendet. Bitte bestätige die Änderung:
+            </p>
             <div className="flex gap-2">
-              <Input className="w-full rounded-[11px] border px-3 py-2" placeholder="6-stelliger Code" value={verificationCode} onChange={(e) => setVerificationCode(e.target.value)} />
-              <Button onClick={confirmEmailChange} disabled={verificationCode.length !== 6 || loading}>Bestätigen</Button>
+              <Input
+                className="w-full rounded-[11px] border px-3 py-2"
+                placeholder="6-stelliger Code"
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value)}
+              />
+              <Button onClick={confirmEmailChange} disabled={verificationCode.length !== 6 || loading}>
+                Bestätigen
+              </Button>
             </div>
           </div>
         )}
       </section>
 
-      <div className="flex justify-self-end gap-4">
+      <div className="flex gap-4 justify-self-end">
         <Button
           variant={"outline"}
           className="rounded-[10px]"
@@ -232,13 +265,16 @@ export default function ProfilePage() {
         </Button>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant={"link"} className="text-red-500">Account löschen</Button>
+            <Button variant={"link"} className="text-red-500">
+              Account löschen
+            </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Account wirklich löschen?</AlertDialogTitle>
               <AlertDialogDescription>
-                Dieser Vorgang kann nicht rückgängig gemacht werden. Dein Account und alle zugehörigen Daten werden dauerhaft gelöscht.
+                Dieser Vorgang kann nicht rückgängig gemacht werden. Dein Account und alle zugehörigen Daten werden
+                dauerhaft gelöscht.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

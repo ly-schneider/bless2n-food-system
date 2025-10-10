@@ -1,89 +1,87 @@
 "use client"
 
-import Image from "next/image";
-import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { useCart } from "@/contexts/cart-context";
-import { CartItemConfiguration, MenuSlotDTO, ProductDTO } from "@/types";
+import Image from "next/image"
+import React, { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useCart } from "@/contexts/cart-context"
+import { CartItemConfiguration, MenuSlotDTO, ProductDTO } from "@/types"
 
 interface ProductConfigurationModalProps {
-  product: ProductDTO;
-  isOpen: boolean;
-  onClose: () => void;
-  initialConfiguration?: CartItemConfiguration;
-  editingItemId?: string; // when provided, modal acts in edit mode
+  product: ProductDTO
+  isOpen: boolean
+  onClose: () => void
+  initialConfiguration?: CartItemConfiguration
+  editingItemId?: string // when provided, modal acts in edit mode
 }
 
-export function ProductConfigurationModal({ product, isOpen, onClose, initialConfiguration, editingItemId }: ProductConfigurationModalProps) {
-  const { addToCart, updateItemConfiguration } = useCart();
-  const [selectedConfiguration, setSelectedConfiguration] = useState<CartItemConfiguration>(initialConfiguration || {});
-  
+export function ProductConfigurationModal({
+  product,
+  isOpen,
+  onClose,
+  initialConfiguration,
+  editingItemId,
+}: ProductConfigurationModalProps) {
+  const { addToCart, updateItemConfiguration } = useCart()
+  const [selectedConfiguration, setSelectedConfiguration] = useState<CartItemConfiguration>(initialConfiguration || {})
+
   const handleSlotSelection = (slotId: string, productId: string) => {
-    setSelectedConfiguration(prev => ({
+    setSelectedConfiguration((prev) => ({
       ...prev,
       [slotId]: productId,
-    }));
-  };
-  
+    }))
+  }
+
   const handleSave = () => {
     if (editingItemId) {
-      updateItemConfiguration(editingItemId, product, selectedConfiguration);
+      updateItemConfiguration(editingItemId, product, selectedConfiguration)
     } else {
-      addToCart(product, selectedConfiguration);
+      addToCart(product, selectedConfiguration)
     }
-    setSelectedConfiguration(initialConfiguration || {});
-    onClose();
-  };
+    setSelectedConfiguration(initialConfiguration || {})
+    onClose()
+  }
 
   // Reset configuration when modal opens/closes
   React.useEffect(() => {
     if (isOpen) {
-      setSelectedConfiguration(initialConfiguration || {});
+      setSelectedConfiguration(initialConfiguration || {})
     }
-  }, [isOpen, initialConfiguration]);
-  
+  }, [isOpen, initialConfiguration])
+
   const isConfigurationComplete = () => {
-    if (!product.menu?.slots) return true;
-    
-    return product.menu.slots.every(slot => selectedConfiguration[slot.id] !== undefined);
-  };
+    if (!product.menu?.slots) return true
+
+    return product.menu.slots.every((slot) => selectedConfiguration[slot.id] !== undefined)
+  }
 
   const isConfigurationValid = () => {
-    if (!product.menu?.slots) return true;
+    if (!product.menu?.slots) return true
     // Ensure selected products are still active
-    return product.menu.slots.every(slot => {
-      const sel = selectedConfiguration[slot.id];
-      if (!sel) return false;
-      const item = slot.menuSlotItems?.find(it => it.id === sel);
-      if (!item) return false;
+    return product.menu.slots.every((slot) => {
+      const sel = selectedConfiguration[slot.id]
+      if (!sel) return false
+      const item = slot.menuSlotItems?.find((it) => it.id === sel)
+      if (!item) return false
       // must be active and available
-      const isActive = item.isActive !== false;
-      const isAvailable = item.isAvailable !== false;
-      return isActive && isAvailable;
-    });
+      const isActive = item.isActive !== false
+      const isAvailable = item.isAvailable !== false
+      return isActive && isAvailable
+    })
   }
-  
+
   if (!product.menu?.slots) {
-    return null;
+    return null
   }
-  
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl font-family-primary">
-            Konfigurieren
-          </DialogTitle>
+          <DialogTitle className="font-family-primary text-xl">Konfigurieren</DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-6">
           {product.menu.slots.map((slot) => (
             <MenuSlotSelector
@@ -94,90 +92,88 @@ export function ProductConfigurationModal({ product, isOpen, onClose, initialCon
             />
           ))}
         </div>
-        
+
         <DialogFooter className="flex-col gap-4 sm:flex-col">
-          <div className="flex gap-2 w-full">
+          <div className="flex w-full gap-2">
             <Button
               onClick={handleSave}
               disabled={!isConfigurationComplete() || !isConfigurationValid()}
-              className="flex-1 rounded-pill h-12 text-base font-medium"
+              className="rounded-pill h-12 flex-1 text-base font-medium"
             >
-              {editingItemId ? 'Im Warenkorb aktualisieren' : 'Zum Warenkorb hinzufügen'}
+              {editingItemId ? "Im Warenkorb aktualisieren" : "Zum Warenkorb hinzufügen"}
             </Button>
           </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
+  )
 }
 
 interface MenuSlotSelectorProps {
-  slot: MenuSlotDTO;
-  selectedProductId?: string;
-  onSelect: (productId: string) => void;
+  slot: MenuSlotDTO
+  selectedProductId?: string
+  onSelect: (productId: string) => void
 }
 
 function MenuSlotSelector({ slot, selectedProductId, onSelect }: MenuSlotSelectorProps) {
   if (!slot.menuSlotItems) {
-    return null;
+    return null
   }
-  
+
   return (
     <div className="space-y-3">
-      <h3 className="font-family-secondary font-medium text-lg">
-        {slot.name}
-      </h3>
-      
+      <h3 className="font-family-secondary text-lg font-medium">{slot.name}</h3>
+
       <div className="grid gap-2">
         {slot.menuSlotItems.map((item) => {
-          const isActive = item.isActive !== false;
-          const isAvailable = item.isAvailable !== false;
-          const isSelected = selectedProductId === item.id;
-          const isLowStock = item.isLowStock === true;
-          const qty = typeof item.availableQuantity === 'number' ? item.availableQuantity : null;
+          const isActive = item.isActive !== false
+          const isAvailable = item.isAvailable !== false
+          const isSelected = selectedProductId === item.id
+          const isLowStock = item.isLowStock === true
+          const qty = typeof item.availableQuantity === "number" ? item.availableQuantity : null
           return (
             <Card
               key={item.id}
               className={`relative transition-all hover:shadow-md ${
-                isSelected ? 'ring-2 ring-primary bg-primary/5' : 'hover:bg-gray-50'
-              } ${(!isActive || !isAvailable) ? 'opacity-60 grayscale pointer-events-none' : 'cursor-pointer'}`}
-              onClick={() => { if (isActive && isAvailable) onSelect(item.id) }}
+                isSelected ? "ring-primary bg-primary/5 ring-2" : "hover:bg-gray-50"
+              } ${!isActive || !isAvailable ? "pointer-events-none opacity-60 grayscale" : "cursor-pointer"}`}
+              onClick={() => {
+                if (isActive && isAvailable) onSelect(item.id)
+              }}
               aria-disabled={!isActive || !isAvailable}
             >
               {!isActive && (
-                <span className="absolute right-2 top-2 z-10 px-2 py-0.5 text-xs font-medium text-white bg-zinc-700 rounded-full">
+                <span className="absolute top-2 right-2 z-10 rounded-full bg-zinc-700 px-2 py-0.5 text-xs font-medium text-white">
                   Nicht verfügbar
                 </span>
               )}
               {isActive && !isAvailable && (
-                <span className="absolute right-2 top-2 z-10 px-2 py-0.5 text-xs font-medium text-white bg-red-600 rounded-full">
+                <span className="absolute top-2 right-2 z-10 rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">
                   Ausverkauft
                 </span>
               )}
               {isActive && isAvailable && isLowStock && (
-                <span className="absolute right-2 top-2 z-10 px-2 py-0.5 text-xs font-medium text-white bg-amber-600 rounded-full">
-                  {qty !== null ? `Nur ${qty} übrig` : 'Geringer Bestand'}
+                <span className="absolute top-2 right-2 z-10 rounded-full bg-amber-600 px-2 py-0.5 text-xs font-medium text-white">
+                  {qty !== null ? `Nur ${qty} übrig` : "Geringer Bestand"}
                 </span>
               )}
               <CardContent className="p-3">
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {item.image && (
-                      <div className="w-12 h-12 bg-gray-200 rounded-lg overflow-hidden relative">
+                      <div className="relative h-12 w-12 overflow-hidden rounded-lg bg-gray-200">
                         <Image
                           src={item.image}
                           alt={item.name}
                           fill
                           sizes="48px"
                           quality={90}
-                          className="w-full h-full object-cover"
+                          className="h-full w-full object-cover"
                         />
                       </div>
                     )}
                     <div>
-                      <h4 className="font-family-secondary font-medium">
-                        {item.name}
-                      </h4>
+                      <h4 className="font-family-secondary font-medium">{item.name}</h4>
                     </div>
                   </div>
                 </div>
@@ -187,5 +183,5 @@ function MenuSlotSelector({ slot, selectedProductId, onSelect }: MenuSlotSelecto
         })}
       </div>
     </div>
-  );
+  )
 }

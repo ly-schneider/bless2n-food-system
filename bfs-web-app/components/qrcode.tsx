@@ -33,14 +33,5 @@ export default function QRCode({ value, size = 220, className }: Props) {
   }, [value, size])
 
   if (!src) return null
-  return (
-    <Image
-      src={src}
-      alt="QR Code"
-      width={size}
-      height={size}
-      className={className}
-      unoptimized
-    />
-  )
+  return <Image src={src} alt="QR Code" width={size} height={size} className={className} unoptimized />
 }

@@ -10,13 +10,7 @@ import {
   DialogHeader as ModalHeader,
   DialogTitle as ModalTitle,
 } from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { API_BASE_URL } from "@/lib/api"
 
 type StationStatus = { exists: boolean; approved: boolean; name?: string }
@@ -29,7 +23,7 @@ function randKey(): string {
 }
 
 export default function StationPage() {
-  const log = (...args: unknown[]) => console.log('[Station]', ...args)
+  const log = (...args: unknown[]) => console.log("[Station]", ...args)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
   const [deviceId, setDeviceId] = useState<string>("")
@@ -59,7 +53,9 @@ export default function StationPage() {
   // ZXing removed; using native BarcodeDetector
   const [scanningPaused, setScanningPaused] = useState(false)
   const pausedRef = useRef(false)
-  interface DetectedBarcode { rawValue?: string }
+  interface DetectedBarcode {
+    rawValue?: string
+  }
   interface BarcodeDetector {
     detect: (
       source: HTMLVideoElement | CanvasImageSource | ImageBitmap | ImageData | Blob
@@ -81,7 +77,7 @@ export default function StationPage() {
       k = `st_${randKey()}`
       localStorage.setItem("bfs.stationKey", k)
     }
-    log('stationKey', k)
+    log("stationKey", k)
     return k
   }, [])
   // No offline mode or service worker – simplify flow
@@ -90,14 +86,14 @@ export default function StationPage() {
     // fetch station status
     ;(async () => {
       try {
-        log('GET /v1/stations/me')
+        log("GET /v1/stations/me")
         const res = await fetch(`${API_BASE_URL}/v1/stations/me`, { headers: { "X-Station-Key": stationKey } })
         const json = await res.json()
         setStatus(json as StationStatus)
-        log('status', json)
+        log("status", json)
       } catch {
         setStatus({ exists: false, approved: false })
-        log('status fetch failed')
+        log("status fetch failed")
       }
     })()
   }, [stationKey])
@@ -108,18 +104,21 @@ export default function StationPage() {
     ;(async () => {
       try {
         // Request permission with default camera to reveal labels
-        log('Requesting camera permission')
+        log("Requesting camera permission")
         await navigator.mediaDevices.getUserMedia({ video: true })
-        log('Camera permission granted')
+        log("Camera permission granted")
         const ds = await navigator.mediaDevices.enumerateDevices()
         const vids = ds.filter((d) => d.kind === "videoinput")
         setDevices(vids)
-        log('Cameras', vids.map(v => ({ id: v.deviceId, label: v.label })))
+        log(
+          "Cameras",
+          vids.map((v) => ({ id: v.deviceId, label: v.label }))
+        )
         const preferred = vids[0]?.deviceId || ""
         setDeviceId((prev) => prev || preferred)
       } catch (e) {
         setError("Kamerazugriff verweigert oder nicht verfügbar.")
-        log('Camera permission failed', e)
+        log("Camera permission failed", e)
       }
     })()
   }, [status?.approved])
@@ -139,12 +138,18 @@ export default function StationPage() {
   // Native BarcodeDetector scanning loop (camera stays active)
   useEffect(() => {
     if (!status?.approved) return
-    const BD = (typeof window !== 'undefined'
-      ? (window as unknown as { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector
-      : undefined)
+    const BD =
+      typeof window !== "undefined"
+        ? (window as unknown as { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector
+        : undefined
     if (!BD) return
     if (!detectorRef.current) {
-      try { detectorRef.current = new BD({ formats: ['qr_code'] }); log('BarcodeDetector initialized') } catch { return }
+      try {
+        detectorRef.current = new BD({ formats: ["qr_code"] })
+        log("BarcodeDetector initialized")
+      } catch {
+        return
+      }
     }
     let cancelled = false
     const tick = async () => {
@@ -156,12 +161,12 @@ export default function StationPage() {
           if (found?.rawValue) {
             const now = Date.now()
             const value = String(found.rawValue)
-            const isRepeat = lastCodeRef.current === value && (now - lastAtRef.current) < 1500
+            const isRepeat = lastCodeRef.current === value && now - lastAtRef.current < 1500
             if (!isRepeat) {
               lastCodeRef.current = value
               lastAtRef.current = now
               setScanningPaused(true)
-              log('QR detected', value.slice(0, 24) + (value.length > 24 ? '…' : ''))
+              log("QR detected", value.slice(0, 24) + (value.length > 24 ? "…" : ""))
               await handleScanned(value)
             }
           }
@@ -169,9 +174,12 @@ export default function StationPage() {
       }
       rafRef.current = requestAnimationFrame(tick)
     }
-    log('Detection loop started')
+    log("Detection loop started")
     rafRef.current = requestAnimationFrame(tick)
-    return () => { cancelled = true; if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+    return () => {
+      cancelled = true
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    }
   }, [status?.approved, scanningPaused, drawerOpen])
 
   // Start/keep camera stream on device change; no need to restart detector
@@ -179,20 +187,22 @@ export default function StationPage() {
     if (!status?.approved) return
     ;(async () => {
       try {
-        log('Starting camera stream', { deviceId: deviceId || 'default' })
+        log("Starting camera stream", { deviceId: deviceId || "default" })
         const constraints: MediaStreamConstraints = deviceId
           ? { video: { deviceId: { exact: deviceId } } as MediaTrackConstraints }
           : { video: true }
         const v = videoRef.current
         if (!v) return
-        try { (v.srcObject as MediaStream | null)?.getTracks().forEach((t) => t.stop()) } catch {}
+        try {
+          ;(v.srcObject as MediaStream | null)?.getTracks().forEach((t) => t.stop())
+        } catch {}
         const stream = await navigator.mediaDevices.getUserMedia(constraints)
         v.srcObject = stream
         await v.play().catch(() => {})
-        log('Camera stream active', { tracks: stream.getTracks().map(t => ({ kind: t.kind, state: t.readyState })) })
+        log("Camera stream active", { tracks: stream.getTracks().map((t) => ({ kind: t.kind, state: t.readyState })) })
       } catch {
         setError("Kamerazugriff verweigert oder nicht verfügbar.")
-        log('Failed to start camera stream')
+        log("Failed to start camera stream")
       }
     })()
   }, [deviceId, status?.approved])
@@ -201,7 +211,7 @@ export default function StationPage() {
     setError(null)
     setBusy(true)
     try {
-      log('verify-qr start')
+      log("verify-qr start")
       const verify = await fetch(`${API_BASE_URL}/v1/stations/verify-qr`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Station-Key": stationKey },
@@ -211,19 +221,19 @@ export default function StationPage() {
       if (!verify.ok) {
         const j = (await verify.json().catch(() => ({}))) as Problem
         const msg = j.detail || `Fehler ${verify.status}`
-        log('verify-qr failed', msg)
+        log("verify-qr failed", msg)
         throw new Error(msg)
       }
       const data = (await verify.json()) as VerifyResult
       setResult(data)
       setScanned(code)
       setDrawerOpen(true)
-      log('verify-qr ok', { orderId: data.orderId, items: data.items?.length })
+      log("verify-qr ok", { orderId: data.orderId, items: data.items?.length })
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Scan fehlgeschlagen")
       // Verarbeitung wieder zulassen; Kamera läuft weiter
       setScanningPaused(false)
-      log('verify-qr error; resume scanning')
+      log("verify-qr error; resume scanning")
     } finally {
       setBusy(false)
     }
@@ -234,7 +244,7 @@ export default function StationPage() {
     const count = result.items?.filter((i) => !i.isRedeemed).length || 0
     if (count === 0) return
     setError(null)
-    log('redeem start', { count })
+    log("redeem start", { count })
     try {
       const idem = `idem_${Date.now()}_${Math.random().toString(36).slice(2)}`
       const res = await fetch(`${API_BASE_URL}/v1/stations/redeem`, {
@@ -249,10 +259,10 @@ export default function StationPage() {
         if (/no items to redeem/i.test(msg)) return
         throw new Error(msg)
       }
-      log('redeem ok')
+      log("redeem ok")
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Einlösen fehlgeschlagen")
-      log('redeem error', e)
+      log("redeem error", e)
     }
   }
 
@@ -263,7 +273,7 @@ export default function StationPage() {
     if (!name) return
     setBusy(true)
     try {
-      log('request verification', { name, os, model: deviceLabel })
+      log("request verification", { name, os, model: deviceLabel })
       await fetch(`${API_BASE_URL}/v1/stations/requests`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -274,10 +284,10 @@ export default function StationPage() {
       const r = await fetch(`${API_BASE_URL}/v1/stations/me`, { headers: { "X-Station-Key": stationKey } })
       const js = await r.json()
       setStatus(js as StationStatus)
-      log('status after request', js)
+      log("status after request", js)
     } catch {
       setError("Anfrage fehlgeschlagen")
-      log('request verification failed')
+      log("request verification failed")
     } finally {
       setBusy(false)
     }
@@ -368,7 +378,7 @@ export default function StationPage() {
             setScanningPaused(false)
             pausedRef.current = false
             lastAtRef.current = 0
-            log('Dialog closed; resume scanning')
+            log("Dialog closed; resume scanning")
           }
         }}
       >
@@ -435,7 +445,7 @@ export default function StationPage() {
                 setScanningPaused(false)
                 pausedRef.current = false
                 lastAtRef.current = 0
-                log('Dialog closed; resume scanning')
+                log("Dialog closed; resume scanning")
               }}
             >
               Abschliessen

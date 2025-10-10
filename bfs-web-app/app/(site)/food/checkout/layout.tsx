@@ -13,5 +13,5 @@ export const metadata: Metadata = {
 }
 
 export default function CheckoutLayout({ children }: { children: React.ReactNode }) {
-  return <div className="max-w-xl mx-auto">{children}</div>
+  return <div className="mx-auto max-w-xl">{children}</div>
 }

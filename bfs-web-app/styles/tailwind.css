@@ -61,6 +61,9 @@
   --color-accent-hover: var(--accent-hover);
   --color-destructive: var(--destructive);
   --color-destructive-hover: var(--destructive-hover);
+  --color-success: var(--success);
+  --color-success-hover: var(--success-hover);
+  --color-success-foreground: var(--success-foreground);
   --color-selected: var(--selected);
   --color-selected-hover: var(--selected-hover);
   --color-border: var(--border);
@@ -106,6 +109,9 @@
   --accent-hover: #F3F3F3;
   --destructive: #FC6666;
   --destructive-hover: #F85454;
+  --success: #4CAF50;
+  --success-hover: #43A047;
+  --success-foreground: #FDFDFD;
   --selected: #353535;
   --selected-hover: #2E2E2E;
   --border: #D7D7D7;
@@ -148,6 +154,9 @@
   --accent-hover: #F3F3F3;
   --destructive: #FC6666;
   --destructive-hover: #F85454;
+  --success: #4CAF50;
+  --success-hover: #43A047;
+  --success-foreground: #FDFDFD;
   --selected: #353535;
   --selected-hover: #2E2E2E;
   --border: #D7D7D7;

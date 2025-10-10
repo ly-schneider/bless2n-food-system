@@ -30,6 +30,10 @@ type OrderRepository interface {
     ListByCustomerID(ctx context.Context, customerID primitive.ObjectID, limit, offset int) ([]*domain.Order, int64, error)
     // ListAdmin returns orders with admin filters
     ListAdmin(ctx context.Context, status *domain.OrderStatus, from, to *time.Time, q *string, limit, offset int) ([]*domain.Order, int64, error)
+    // POS-specific updates
+    SetOrigin(ctx context.Context, id primitive.ObjectID, origin domain.OrderOrigin) error
+    SetPosPaymentCash(ctx context.Context, id primitive.ObjectID, received domain.Cents, change domain.Cents) error
+    SetPosPaymentCard(ctx context.Context, id primitive.ObjectID, processor string, transactionID *string, status string, markPaid bool) error
 }
 
 type orderRepository struct {
@@ -281,4 +285,38 @@ func (r *orderRepository) ListAdmin(ctx context.Context, status *domain.OrderSta
     }
     if err := cur.Err(); err != nil { return nil, 0, err }
     return orders, total, nil
+}
+
+func (r *orderRepository) SetOrigin(ctx context.Context, id primitive.ObjectID, origin domain.OrderOrigin) error {
+    set := bson.M{ "origin": origin, "updated_at": time.Now().UTC() }
+    res, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": set})
+    if err != nil { return err }
+    if res.MatchedCount == 0 { return mongo.ErrNoDocuments }
+    return nil
+}
+
+func (r *orderRepository) SetPosPaymentCash(ctx context.Context, id primitive.ObjectID, received domain.Cents, change domain.Cents) error {
+    set := bson.M{
+        "status":     domain.OrderStatusPaid,
+        "pos_payment": bson.M{ "method": "cash", "amount_received_cents": received, "change_cents": change },
+        "updated_at": time.Now().UTC(),
+    }
+    res, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": set})
+    if err != nil { return err }
+    if res.MatchedCount == 0 { return mongo.ErrNoDocuments }
+    return nil
+}
+
+func (r *orderRepository) SetPosPaymentCard(ctx context.Context, id primitive.ObjectID, processor string, transactionID *string, status string, markPaid bool) error {
+    set := bson.M{
+        "pos_payment": bson.M{ "method": "card", "processor": processor, "transaction_id": transactionID, "status": status },
+        "updated_at": time.Now().UTC(),
+    }
+    if markPaid {
+        set["status"] = domain.OrderStatusPaid
+    }
+    res, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": set})
+    if err != nil { return err }
+    if res.MatchedCount == 0 { return mongo.ErrNoDocuments }
+    return nil
 }

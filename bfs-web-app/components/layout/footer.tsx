@@ -23,7 +23,7 @@ export default function Footer() {
       }`}
     >
       <div className="container mx-auto px-4">
-        <nav className="flex flex-wrap items-center gap-x-4 gap-y-2 justify-center">
+        <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
           <Link href="/agb" className="hover:underline">
             AGB
           </Link>

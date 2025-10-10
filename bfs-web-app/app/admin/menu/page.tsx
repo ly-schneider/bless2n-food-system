@@ -85,9 +85,7 @@ export default function AdminMenuPage() {
         return a.name.localeCompare(b.name)
       })
     }
-    return items
-      .filter((it) => it.category?.id === activeCat)
-      .sort((a, b) => a.name.localeCompare(b.name))
+    return items.filter((it) => it.category?.id === activeCat).sort((a, b) => a.name.localeCompare(b.name))
   }, [items, activeCat, getCatPos])
 
   const refetch = useCallback(async () => {
@@ -211,7 +209,7 @@ export default function AdminMenuPage() {
 
       {/* Grid */}
       {loading ? (
-        <div className="grid grid-cols-1 gap-5 sm:gap-3 xl:gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-5 sm:gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-5">
           {Array.from({ length: 8 }).map((_, i) => (
             <Card key={i} className="rounded-xl border">
               <div className="p-3">
@@ -235,7 +233,7 @@ export default function AdminMenuPage() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 xl:gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-5">
           {filtered.map((product) => (
             <ProductCard
               key={product.id}
@@ -330,7 +328,12 @@ function ProductCard({ product, onEdit }: { product: ProductDTO; onEdit: () => v
             <p className="font-family-secondary text-base">{formatPriceLabel(product.priceCents)}</p>
           </div>
           <div className="flex items-center">
-            <Button size="icon" onClick={onEdit} aria-label={`Produkt ${product.name} bearbeiten`} className="bg-foreground text-white rounded-[10px] hover:bg-foreground/90">
+            <Button
+              size="icon"
+              onClick={onEdit}
+              aria-label={`Produkt ${product.name} bearbeiten`}
+              className="bg-foreground hover:bg-foreground/90 rounded-[10px] text-white"
+            >
               <PencilIcon className="h-4 w-4" />
             </Button>
           </div>

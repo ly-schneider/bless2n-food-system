@@ -258,7 +258,6 @@ function CheckoutForm({
       <PaymentElement
         options={
           {
-             
             fields: { billingDetails: { name: "never", email: "never", phone: "never", address: "never" } },
             layout: "tabs",
           } as unknown as Parameters<typeof PaymentElement>[0]["options"]
@@ -272,7 +271,7 @@ function CheckoutForm({
       )}
 
       <div className="bg-background fixed right-0 bottom-0 left-0 z-50 p-4">
-        <div className="max-w-xl mx-auto flex items-center justify-between gap-3">
+        <div className="mx-auto flex max-w-xl items-center justify-between gap-3">
           <Button
             onClick={() => {
               router.back()

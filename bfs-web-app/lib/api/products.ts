@@ -1,29 +1,29 @@
-import type { ListResponse, ProductDTO } from '@/types';
-import { apiRequest } from '../api';
+import type { ListResponse, ProductDTO } from "@/types"
+import { apiRequest } from "../api"
 
 export interface ListProductsParams {
-  categoryId?: string;
-  limit?: number;
-  offset?: number;
+  categoryId?: string
+  limit?: number
+  offset?: number
 }
 
 export async function listProducts(params: ListProductsParams = {}): Promise<ListResponse<ProductDTO>> {
-  const searchParams = new URLSearchParams();
-  
+  const searchParams = new URLSearchParams()
+
   if (params.categoryId) {
-    searchParams.append('category_id', params.categoryId);
+    searchParams.append("category_id", params.categoryId)
   }
-  
+
   if (params.limit !== undefined) {
-    searchParams.append('limit', params.limit.toString());
+    searchParams.append("limit", params.limit.toString())
   }
-  
+
   if (params.offset !== undefined) {
-    searchParams.append('offset', params.offset.toString());
+    searchParams.append("offset", params.offset.toString())
   }
 
-  const queryString = searchParams.toString();
-  const endpoint = `/v1/products${queryString ? `?${queryString}` : ''}`;
+  const queryString = searchParams.toString()
+  const endpoint = `/v1/products${queryString ? `?${queryString}` : ""}`
 
-  return apiRequest<ListResponse<ProductDTO>>(endpoint);
+  return apiRequest<ListResponse<ProductDTO>>(endpoint)
 }

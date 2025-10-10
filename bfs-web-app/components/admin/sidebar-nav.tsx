@@ -1,5 +1,5 @@
 "use client"
-import { Grid2x2, Home, KeyRound, MailPlus, MonitorCheck, ReceiptText, Users } from "lucide-react"
+import { CreditCard, Grid2x2, Home, KeyRound, MailPlus, MonitorCheck, ReceiptText, Users } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -20,25 +20,28 @@ export function AdminSidebar({ badges }: { badges?: Partial<Record<string, numbe
     { href: "/admin/invites", label: "Einladungen", icon: <MailPlus className="size-5" />, badge: badges?.invites },
     { href: "/admin/sessions", label: "Sessions", icon: <KeyRound className="size-5" /> },
     { href: "/admin/stations", label: "Stationen", icon: <MonitorCheck className="size-5" /> },
+    { href: "/admin/pos", label: "POS", icon: <CreditCard className="size-5" /> },
   ]
 
   return (
     <nav aria-label="Hauptnavigation" className="w-full">
       {/* Mobile: horizontal badges */}
-      <div className="md:hidden flex flex-wrap gap-2 px-6 md:px-8 lg:px-10">
+      <div className="flex flex-wrap gap-2 px-6 md:hidden md:px-8 lg:px-10">
         {items.map((it) => {
           const active = pathname === it.href
           return (
             <Link
               key={it.href}
               href={it.href}
-              className={`inline-flex items-center gap-2 h-9 px-3 rounded-full border ${active ? "bg-muted font-semibold" : "bg-card"}`}
+              className={`inline-flex h-9 items-center gap-2 rounded-full border px-3 ${
+                active ? "bg-muted font-semibold" : "bg-card"
+              }`}
               aria-current={active ? "page" : undefined}
             >
               {it.icon}
               <span className="text-sm">{it.label}</span>
               {typeof it.badge === "number" && it.badge > 0 && (
-                <span className="text-xs bg-destructive text-white rounded-full px-1.5 py-0.5">{it.badge}</span>
+                <span className="bg-destructive rounded-full px-1.5 py-0.5 text-xs text-white">{it.badge}</span>
               )}
             </Link>
           )
@@ -46,14 +49,16 @@ export function AdminSidebar({ badges }: { badges?: Partial<Record<string, numbe
       </div>
       {/* Desktop: vertical rounded panel with margin spacing from left */}
       <div className="hidden md:block">
-        <div className="ml-6 md:ml-8 lg:ml-10 rounded-[11px] bg-card shadow-sm max-w-md p-1">
+        <div className="bg-card ml-6 max-w-md rounded-[11px] p-1 shadow-sm md:ml-8 lg:ml-10">
           {items.map((it) => {
             const active = pathname === it.href
             return (
               <Link
                 key={it.href}
                 href={it.href}
-                className={`flex items-center justify-between gap-2 px-3 h-10 rounded-lg hover:bg-accent-hover ${active ? "bg-muted font-medium" : ""}`}
+                className={`hover:bg-accent-hover flex h-10 items-center justify-between gap-2 rounded-lg px-3 ${
+                  active ? "bg-muted font-medium" : ""
+                }`}
                 aria-current={active ? "page" : undefined}
               >
                 <span className="flex items-center gap-2.5 text-sm">
@@ -61,7 +66,7 @@ export function AdminSidebar({ badges }: { badges?: Partial<Record<string, numbe
                   {it.label}
                 </span>
                 {typeof it.badge === "number" && it.badge > 0 && (
-                  <span className="text-xs bg-destructive text-white rounded-full px-1.5 py-0.5">{it.badge}</span>
+                  <span className="bg-destructive rounded-full px-1.5 py-0.5 text-xs text-white">{it.badge}</span>
                 )}
               </Link>
             )
@@ -72,11 +77,17 @@ export function AdminSidebar({ badges }: { badges?: Partial<Record<string, numbe
   )
 }
 
-export function AdminShell({ children, badges }: { children: React.ReactNode; badges?: Partial<Record<string, number>> }) {
+export function AdminShell({
+  children,
+  badges,
+}: {
+  children: React.ReactNode
+  badges?: Partial<Record<string, number>>
+}) {
   return (
     <div className="min-h-dvh w-full overflow-x-clip">
       <div className="mx-auto w-full">
-        <div className="md:hidden pt-3">
+        <div className="pt-3 md:hidden">
           <AdminSidebar badges={badges} />
         </div>
         <div className="hidden md:grid md:grid-cols-[300px_1fr] md:gap-6">
@@ -85,7 +96,7 @@ export function AdminShell({ children, badges }: { children: React.ReactNode; ba
           </div>
           <div className="min-w-0 pr-6 md:pr-8 lg:pr-10">{children}</div>
         </div>
-        <div className="md:hidden min-w-0 px-6 md:px-8 lg:px-10 pt-4 pb-10">{children}</div>
+        <div className="min-w-0 px-6 pt-4 pb-10 md:hidden md:px-8 lg:px-10">{children}</div>
       </div>
     </div>
   )

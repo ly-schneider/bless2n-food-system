@@ -31,7 +31,9 @@ export function useBestMenuSuggestion(products?: ProductDTO[]): BestMenuSuggesti
       }
     }
     ensureProducts()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [allProducts])
 
   useEffect(() => {
@@ -44,7 +46,9 @@ export function useBestMenuSuggestion(products?: ProductDTO[]): BestMenuSuggesti
     if (!suggestion) return { contiguous: false, startIndex: -1, endIndex: -1 }
     const involvedIds = new Set(suggestion.sourceItems.map((s) => s.cartItem.id))
     const indices: number[] = []
-    cart.items.forEach((it, idx) => { if (involvedIds.has(it.id)) indices.push(idx) })
+    cart.items.forEach((it, idx) => {
+      if (involvedIds.has(it.id)) indices.push(idx)
+    })
     if (indices.length !== suggestion.sourceItems.length) return { contiguous: false, startIndex: -1, endIndex: -1 }
     const min = Math.min(...indices)
     const max = Math.max(...indices)

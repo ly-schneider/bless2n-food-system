@@ -14,14 +14,14 @@ const iconButtonVariants = cva(
       },
       size: {
         sm: "h-8 w-8",
-        default: "h-10 w-10", 
+        default: "h-10 w-10",
         lg: "h-12 w-12",
         xl: "h-16 w-16",
       },
       shape: {
         square: "rounded-md",
         circle: "rounded-full",
-      }
+      },
     },
     defaultVariants: {
       variant: "default",
@@ -31,38 +31,22 @@ const iconButtonVariants = cva(
   }
 )
 
-interface IconButtonProps 
-  extends React.ComponentPropsWithoutRef<"button">,
-    VariantProps<typeof iconButtonVariants> {
+interface IconButtonProps extends React.ComponentPropsWithoutRef<"button">, VariantProps<typeof iconButtonVariants> {
   asChild?: boolean
 }
 
-interface IconLinkProps 
-  extends React.ComponentPropsWithoutRef<"a">,
-    VariantProps<typeof iconButtonVariants> {}
+interface IconLinkProps extends React.ComponentPropsWithoutRef<"a">, VariantProps<typeof iconButtonVariants> {}
 
 const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
   ({ className, variant, size, shape, ...props }, ref) => {
-    return (
-      <button
-        className={cn(iconButtonVariants({ variant, size, shape, className }))}
-        ref={ref}
-        {...props}
-      />
-    )
+    return <button className={cn(iconButtonVariants({ variant, size, shape, className }))} ref={ref} {...props} />
   }
 )
 IconButton.displayName = "IconButton"
 
 const IconLink = React.forwardRef<HTMLAnchorElement, IconLinkProps>(
   ({ className, variant, size, shape, ...props }, ref) => {
-    return (
-      <a
-        className={cn(iconButtonVariants({ variant, size, shape, className }))}
-        ref={ref}
-        {...props}
-      />
-    )
+    return <a className={cn(iconButtonVariants({ variant, size, shape, className }))} ref={ref} {...props} />
   }
 )
 IconLink.displayName = "IconLink"

@@ -12,6 +12,7 @@ const buttonVariants = cva(
         default: "bg-primary text-primary-background rounded-[7px] hover:bg-primary-hover cursor-pointer",
         primary: "bg-primary text-primary-background rounded-[9999px] hover:bg-primary-hover",
         destructive: "bg-destructive text-white rounded-[7px] hover:bg-destructive-hover",
+        success: "bg-success text-success-foreground rounded-[7px] hover:bg-success-hover",
         outline:
           "border border-border bg-card text-card-foreground rounded-[7px] hover:bg-accent-hover hover:text-accent-foreground",
         secondary: "bg-secondary text-secondary-foreground rounded-[7px] hover:bg-secondary-hover",

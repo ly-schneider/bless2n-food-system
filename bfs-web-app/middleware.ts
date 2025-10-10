@@ -3,21 +3,17 @@ import { NextRequest, NextResponse } from "next/server"
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  if (
-    pathname.startsWith("/_next/") ||
-    pathname.startsWith("/api/health") ||
-    pathname.includes(".")
-  ) {
+  if (pathname.startsWith("/_next/") || pathname.startsWith("/api/health") || pathname.includes(".")) {
     return NextResponse.next()
   }
 
   // Auth guard: protect app routes by requiring refresh cookie
   // Note: Checkout and Orders are intentionally NOT protected to allow guest flows
-  const protectedPrefixes = ["/profile", "/admin", "/pos"]
+  const protectedPrefixes = ["/profile", "/admin"]
   const isProtected = protectedPrefixes.some((p) => pathname.startsWith(p))
   if (isProtected) {
-    const proto = (request.headers.get('x-forwarded-proto') || '').toLowerCase()
-    const rtName = proto === 'https' ? '__Host-rt' : 'rt'
+    const proto = (request.headers.get("x-forwarded-proto") || "").toLowerCase()
+    const rtName = proto === "https" ? "__Host-rt" : "rt"
     const hasRefresh = request.cookies.get(rtName)?.value
     if (!hasRefresh) {
       const url = request.nextUrl.clone()
@@ -37,12 +33,12 @@ export async function middleware(request: NextRequest) {
 
   // CSP optimized for WebView, allow backend API origin in connect-src
   const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL
-  let apiOrigin = ''
+  let apiOrigin = ""
   try {
-    apiOrigin = apiBase ? new URL(apiBase).origin : ''
+    apiOrigin = apiBase ? new URL(apiBase).origin : ""
   } catch {}
 
-  const connectSrc = ["'self'", 'ws:', 'wss:']
+  const connectSrc = ["'self'", "ws:", "wss:"]
   if (apiOrigin) connectSrc.push(apiOrigin)
 
   const stripeScript = "https://js.stripe.com"
@@ -59,8 +55,8 @@ export async function middleware(request: NextRequest) {
     // Stripe Elements iframes and assets
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
-    `connect-src ${[...connectSrc, ...stripeConnect].join(' ')}`,
-    `frame-src ${stripeFrame.join(' ')}`,
+    `connect-src ${[...connectSrc, ...stripeConnect].join(" ")}`,
+    `frame-src ${stripeFrame.join(" ")}`,
     "object-src 'none'",
     "base-uri 'self'",
   ].join("; ")
@@ -71,7 +67,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.jpg$|.*\\.jpeg$|.*\\.gif$|.*\\.svg$).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.jpg$|.*\\.jpeg$|.*\\.gif$|.*\\.svg$).*)"],
 }

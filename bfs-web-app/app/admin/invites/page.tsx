@@ -57,10 +57,13 @@ export default function AdminInvitesPage() {
   async function deleteInvite(id: string) {
     try {
       const csrf = getCSRFCookie()
-      const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/invites/${encodeURIComponent(id)}`, {
-        method: "DELETE",
-        headers: { "X-CSRF": csrf || "" },
-      })
+      const res = await fetchAuth(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/invites/${encodeURIComponent(id)}`,
+        {
+          method: "DELETE",
+          headers: { "X-CSRF": csrf || "" },
+        }
+      )
       if (!res.ok && res.status !== 204) throw new Error(await readErrorMessage(res))
       await reload()
     } catch (e: unknown) {
@@ -115,7 +118,10 @@ export default function AdminInvitesPage() {
                   const created = new Date(i.createdAt).toLocaleString("de-CH")
                   const expires = new Date(i.expiresAt).toLocaleString("de-CH")
                   const inviter = (
-                    <Link href={`/admin/users/${encodeURIComponent(i.invitedBy)}`} className="underline underline-offset-2 text-xs">
+                    <Link
+                      href={`/admin/users/${encodeURIComponent(i.invitedBy)}`}
+                      className="text-xs underline underline-offset-2"
+                    >
                       {i.invitedBy}
                     </Link>
                   )
@@ -128,7 +134,9 @@ export default function AdminInvitesPage() {
                       <TableCell className="whitespace-nowrap">{created}</TableCell>
                       <TableCell className="whitespace-nowrap">{expires}</TableCell>
                       <TableCell className="text-right">
-                        <Button size="sm" variant="destructive" onClick={() => void deleteInvite(i.id)}>Löschen</Button>
+                        <Button size="sm" variant="destructive" onClick={() => void deleteInvite(i.id)}>
+                          Löschen
+                        </Button>
                       </TableCell>
                     </TableRow>
                   )
@@ -145,8 +153,6 @@ export default function AdminInvitesPage() {
 function getCSRFCookie(): string | null {
   if (typeof document === "undefined") return null
   const name = (document.location.protocol === "https:" ? "__Host-" : "") + "csrf"
-  const m = document.cookie.match(
-    new RegExp("(?:^|; )" + name.replace(/([.$?*|{}()\[\]\\/+^])/g, "\\$1") + "=([^;]*)")
-  )
+  const m = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/([.$?*|{}()\[\]\\/+^])/g, "\\$1") + "=([^;]*)"))
   return m && m[1] ? decodeURIComponent(m[1]!) : null
 }
