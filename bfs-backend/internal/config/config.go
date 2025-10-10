@@ -75,9 +75,10 @@ type StationConfig struct {
 }
 
 func Load() Config {
-	// Load .env files only if not in Docker environment
-	if !isDockerEnvironment() {
-		files := []string{".env"}
+    // Load .env files by default outside Docker. In Docker, allow opt-in via ALLOW_DOTENV_IN_DOCKER=true
+    allowDotenvInDocker := os.Getenv("ALLOW_DOTENV_IN_DOCKER") == "true"
+    if !isDockerEnvironment() || allowDotenvInDocker {
+        files := []string{".env"}
 
 		if appEnv := os.Getenv("APP_ENV"); appEnv != "" && appEnv != "local" {
 			envFile := fmt.Sprintf(".env.%s", appEnv)
@@ -86,10 +87,10 @@ func Load() Config {
 			}
 		}
 
-		if err := godotenv.Overload(files...); err != nil {
-			log.Printf("Warning: could not load env files %v: %v", files, err)
-		}
-	}
+        if err := godotenv.Overload(files...); err != nil {
+            log.Printf("Warning: could not load env files %v: %v", files, err)
+        }
+    }
 
 	cfg := Config{
 		App: AppConfig{

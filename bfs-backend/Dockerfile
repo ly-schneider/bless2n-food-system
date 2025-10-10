@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Build stage with security hardening
-FROM golang:1.24-alpine AS build
+FROM golang:1.25-alpine AS build
 
 # Install security updates and build dependencies
 RUN apk update && \
@@ -17,6 +17,9 @@ WORKDIR /src
 
 # Copy dependency files first for better layer caching
 COPY go.mod go.sum ./
+
+# Ensure build directory is writable by non-root user
+RUN chown -R appbuild:appbuild /src
 
 # Download dependencies as non-root user
 USER appbuild

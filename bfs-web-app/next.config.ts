@@ -1,11 +1,12 @@
 import withBundleAnalyzer from "@next/bundle-analyzer"
 import { type NextConfig } from "next"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080"
+const API_BASE = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://backend:8080"
 
 const config: NextConfig = {
   devIndicators: false,
   reactStrictMode: true,
+  output: "standalone",
   logging: {
     fetches: {
       fullUrl: true,

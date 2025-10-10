@@ -20,6 +20,16 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'if [ -n "$MONGO_INITDB_ROOT_USERNAME" ]; then mongosh "mongodb://$MONGO_INITDB_ROOT_USERNAME:$MONGO_INITDB_ROOT_PASSWORD@localhost:27017/admin" --quiet --eval "db.adminCommand(''ping'').ok" | grep -q 1; else mongosh "mongodb://localhost:27017/admin" --quiet --eval "db.adminCommand(''ping'').ok" | grep -q 1; fi',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
 
   mongo-express:
     image: mongo-express:1.0.2-20-alpine3.19
@@ -42,23 +52,14 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
-      mongo-express:
-        condition: service_healthy
       mailpit:
         condition: service_healthy
     restart: unless-stopped
     ports:
       - "${APP_PORT}:8080"
     environment:
-      APP_ENV: ${APP_ENV}
-      APP_PORT: ${APP_PORT}
-      LOG_LEVEL: ${LOG_LEVEL}
-      LOG_DEVELOPMENT: ${LOG_DEVELOPMENT}
-      JWT_ISSUER: ${JWT_ISSUER}
-      JWT_PRIV_PEM_PATH: ${JWT_PRIV_PEM_PATH}
-      JWT_PUB_PEM_PATH: ${JWT_PUB_PEM_PATH}
-
       MONGO_URI: ${MONGO_URI}
+      MONGO_DATABASE: ${MONGO_DATABASE}
       MONGO_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
       MONGO_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
 
@@ -69,6 +70,27 @@ services:
       SMTP_FROM: ${SMTP_FROM}
       SMTP_TLS_POLICY: ${SMTP_TLS_POLICY}
 
+      APP_ENV: ${APP_ENV}
+      APP_PORT: ${APP_PORT}
+      JWT_ISSUER: ${JWT_ISSUER}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+      JWT_PRIV_PEM_PATH: ${JWT_PRIV_PEM_PATH}
+      JWT_PUB_PEM_PATH: ${JWT_PUB_PEM_PATH}
+
+      STATION_QR_SECRET: ${STATION_QR_SECRET}
+      STATION_QR_MAX_AGE_SECONDS: ${STATION_QR_MAX_AGE_SECONDS}
+
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+
+      LOG_LEVEL: ${LOG_LEVEL}
+      LOG_DEVELOPMENT: ${LOG_DEVELOPMENT}
+
       SECURITY_ENABLE_HSTS: ${SECURITY_ENABLE_HSTS}
       SECURITY_ENABLE_CSP: ${SECURITY_ENABLE_CSP}
       SECURITY_TRUSTED_ORIGINS: ${SECURITY_TRUSTED_ORIGINS}
+
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+    volumes:
+      - ./secrets/dev:/app/secrets/dev:ro

@@ -32,7 +32,8 @@ export async function middleware(request: NextRequest) {
   response.headers.set("Referrer-Policy", "origin-when-cross-origin")
 
   // CSP optimized for WebView, allow backend API origin in connect-src
-  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL
+  // Use public API base if provided at build time; otherwise default to localhost for dev
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080"
   let apiOrigin = ""
   try {
     apiOrigin = apiBase ? new URL(apiBase).origin : ""

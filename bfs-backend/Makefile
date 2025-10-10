@@ -40,7 +40,7 @@ AIR ?= $(BIN)/air
 # Stripe
 WEBHOOK_URL ?= http://localhost:$(APP_PORT)/v1/payments/webhook
 
-.PHONY: help tools lint lint-fix swag dev docker-up docker-up-backend docker-down docker-down-v docker-restart docker-restart-backend clean test db-seed db-reset stripe-listen
+.PHONY: help tools lint lint-fix swag dev docker-up docker-up-backend docker-down docker-down-backend docker-down-v docker-down-v-backend docker-restart docker-restart-backend clean test db-seed db-reset stripe-listen
 
 help:
 	@echo "Available commands:"
@@ -52,7 +52,9 @@ help:
 	@echo "  docker-up              - Start Mongo + Mongo Express"
 	@echo "  docker-up-backend      - Start Mongo + Mongo Express + backend (profile)"
 	@echo "  docker-down            - Stop services (keep volumes)"
+	@echo "  docker-down-backend    - Stop services incl. backend (keep volumes)"
 	@echo "  docker-down-v          - Stop services and REMOVE VOLUMES (DATA LOSS)"
+	@echo "  docker-down-v-backend  - Stop services incl. backend and REMOVE VOLUMES (DATA LOSS)"
 	@echo "  docker-restart         - Restart services (no backend)"
 	@echo "  docker-restart-backend - Restart services incl. backend"
 	@echo "  clean                  - Clean build artifacts"
@@ -108,9 +110,17 @@ docker-down:
 	@echo "Stopping services (keeping volumes)..."
 	@$(DC) down --remove-orphans
 
+docker-down-backend:
+	@echo "Stopping services including backend (keeping volumes)..."
+	@$(DC) --profile backend down --remove-orphans
+
 docker-down-v:
 	@echo "Stopping services and removing volumes (DATA LOSS)..."
 	@$(DC) down --volumes --remove-orphans
+
+docker-down-v-backend:
+	@echo "Stopping services including backend and removing volumes (DATA LOSS)..."
+	@$(DC) --profile backend down --volumes --remove-orphans
 
 docker-restart:
 	@echo "Restarting services (no backend)"
