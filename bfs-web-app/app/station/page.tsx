@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { API_BASE_URL } from "@/lib/api"
+import { getClientInfo } from "@/lib/clientInfo"
 
 type StationStatus = { exists: boolean; approved: boolean; name?: string }
 
@@ -267,17 +268,19 @@ export default function StationPage() {
   }
 
   async function requestVerification() {
-    const deviceLabel = (devices[0]?.label || navigator.userAgent).slice(0, 80)
-    const os = navigator.platform || "web"
-    const name = (stationName || deviceLabel || "Station").slice(0, 80)
+    const fallbackLabel = devices[0]?.label || ""
+    const info = await getClientInfo()
+    const deviceLabel = (fallbackLabel || info.model).slice(0, 80)
+    const os = info.os || "web"
+    const name = (stationName || fallbackLabel || "Station").slice(0, 80)
     if (!name) return
     setBusy(true)
     try {
-      log("request verification", { name, os, model: deviceLabel })
+      log("request verification", { name, os, model: info.model })
       await fetch(`${API_BASE_URL}/v1/stations/requests`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, model: deviceLabel, os, deviceKey: stationKey }),
+        body: JSON.stringify({ name, model: info.model, os, deviceKey: stationKey }),
       })
       setRequestSubmitted(true)
       // refresh status

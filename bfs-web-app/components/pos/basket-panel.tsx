@@ -1,6 +1,6 @@
 "use client"
 
-import { Banknote, Check, CreditCard, Printer, ShoppingCart } from "lucide-react"
+import { Banknote, Check, CreditCard, Printer, ShoppingCart, XCircle } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { CartItemDisplay } from "@/components/cart/cart-item-display"
 import { InlineMenuGroup } from "@/components/cart/inline-menu-group"
@@ -21,6 +21,13 @@ type Receipt = {
   orderId?: string
   amountReceivedCents?: number
   changeCents?: number
+  items?: Array<{
+    title: string
+    quantity: number
+    unitPriceCents: number
+    configuration?: Array<{ slot: string; choice: string }>
+  }>
+  pickupQr?: string | null
 }
 
 type PosBridge = {
@@ -47,6 +54,17 @@ export function BasketPanel({ token }: { token: string }) {
   const [hasPosBridge, setHasPosBridge] = useState(false)
   const [canPrint, setCanPrint] = useState(false)
   const [canPayWithCard, setCanPayWithCard] = useState(false)
+  // Card payment UI states
+  const [showCard, setShowCard] = useState(false)
+  const [cardProcessing, setCardProcessing] = useState(false)
+  const [cardSuccess, setCardSuccess] = useState(false)
+  const [cardError, setCardError] = useState<string | null>(null)
+  const [cardRef, setCardRef] = useState<string | null>(null)
+  // Background print progress for card success screen
+  const [cardPrintInProgress, setCardPrintInProgress] = useState(false)
+  const [cardPrintDone, setCardPrintDone] = useState(false)
+  // Background print error dialog (used for both cash and card flows)
+  const [printErrorDialog, setPrintErrorDialog] = useState<string | null>(null)
   const total = cart.totalCents
   const receivedCents = useMemo(() => Math.round((parseFloat(received || "0") || 0) * 100), [received])
   const changeCents = Math.max(0, receivedCents - total)
@@ -62,6 +80,144 @@ export function BasketPanel({ token }: { token: string }) {
     window.addEventListener("pos:lock", onLock)
     return () => window.removeEventListener("pos:lock", onLock)
   }, [])
+
+  // Listen for native print results from the Android WebView bridge
+  useEffect(() => {
+    const onPrintResult = (ev: Event) => {
+      try {
+        const ce = ev as CustomEvent<{ success?: boolean; error?: string }>
+        const detail = ce.detail || {}
+        if (showReceipt) {
+          // Manual print dialog path
+          setPrinting(false)
+          if (detail.success) setPrinted(true)
+          else setPrintError(detail.error || "Drucken fehlgeschlagen")
+        } else if (showCard) {
+          // Card success screen background printing progress
+          setCardPrintInProgress(false)
+          if (detail.success) {
+            setCardPrintDone(true)
+            setTimeout(() => setShowCard(false), 1200)
+          } else {
+            setPrintErrorDialog(detail.error || "Drucken fehlgeschlagen")
+          }
+        } else {
+          // Background printing path — only surface errors
+          if (!detail.success) setPrintErrorDialog(detail.error || "Drucken fehlgeschlagen")
+        }
+      } catch {
+        if (showReceipt) {
+          setPrinting(false)
+          setPrintError("Drucken fehlgeschlagen")
+        } else if (showCard) {
+          setCardPrintInProgress(false)
+          setPrintErrorDialog("Drucken fehlgeschlagen")
+        } else {
+          setPrintErrorDialog("Drucken fehlgeschlagen")
+        }
+      }
+    }
+    window.addEventListener("bfs:print:result", onPrintResult as EventListener)
+    return () => window.removeEventListener("bfs:print:result", onPrintResult as EventListener)
+  }, [showReceipt, showCard])
+
+  // Listen for SumUp results from the Android WebView bridge
+  useEffect(() => {
+    const onSumup = async (ev: Event) => {
+      try {
+        const ce = ev as CustomEvent<{ success?: boolean; error?: string; txId?: string; correlationId?: string }>
+        const d = ce.detail || {}
+        if (cardRef && d.correlationId && d.correlationId !== cardRef) return
+        if (!showCard) return
+
+        if (d.success) {
+          // Create order and mark paid; then show success screen and print in background
+          try {
+            const itemsBody = cart.items.map((it) => ({
+              productId: it.product.id,
+              quantity: it.quantity,
+              configuration: it.configuration || undefined,
+            }))
+            const resOrder = await fetch(`${API_BASE_URL}/v1/pos/orders`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "X-Pos-Token": token },
+              body: JSON.stringify({ items: itemsBody }),
+            })
+            const jOrder = (await resOrder.json()) as { orderId?: string; detail?: string }
+            if (!resOrder.ok || !jOrder.orderId) throw new Error(jOrder.detail || "order_failed")
+            const orderId = jOrder.orderId
+
+            // Attach card payment result (SumUp)
+            await fetch(`${API_BASE_URL}/v1/pos/orders/${orderId}/pay-card`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "X-Pos-Token": token },
+              body: JSON.stringify({ processor: "sumup", transactionId: d.txId || null, status: "succeeded" }),
+            })
+
+            // Fetch pickup QR
+            let pickupQr: string | null = null
+            try {
+              const r = await fetch(`${API_BASE_URL}/v1/orders/${orderId}/pickup-qr`)
+              const q = (await r.json()) as { code?: string }
+              pickupQr = q.code || null
+            } catch {}
+
+            // Build receipt
+            const printItems: NonNullable<Receipt["items"]> = cart.items.map((it) => {
+              const cfg: Array<{ slot: string; choice: string }> = []
+              if (it.product.type === "menu" && it.configuration && it.product.menu?.slots) {
+                for (const [slotId, productId] of Object.entries(it.configuration)) {
+                  const slot = it.product.menu.slots.find((s) => s.id === slotId)
+                  const choice = slot?.menuSlotItems?.find((p) => p.id === productId)
+                  if (slot && choice) cfg.push({ slot: slot.name, choice: choice.name })
+                }
+              }
+              return {
+                title: it.product.name,
+                quantity: it.quantity,
+                unitPriceCents: it.totalPriceCents,
+                configuration: cfg.length ? cfg : undefined,
+              }
+            })
+
+            const nextReceipt: Receipt & { orderTimestamp?: number } = {
+              method: "card",
+              totalCents: total,
+              orderId,
+              items: printItems,
+              pickupQr,
+              orderTimestamp: Date.now(),
+            }
+            // Show success and start background print
+            setCardProcessing(false)
+            setCardSuccess(true)
+            setCardPrintInProgress(true)
+            try {
+              if (canPrint) getBridge()?.print?.(JSON.stringify(nextReceipt))
+              else setPrintErrorDialog("Drucken nicht verfügbar")
+            } catch {}
+            // Clear cart; dialog closes automatically after print completes
+            try { clearCart() } catch {}
+          } catch (e) {
+            // Keep success UI but surface backend error
+            setCardProcessing(false)
+            setCardSuccess(false)
+            setCardError(e instanceof Error ? e.message : "Fehler bei Bestellabschluss")
+          }
+        } else {
+          setCardProcessing(false)
+          setCardSuccess(false)
+          setCardError(d.error || "Kartenzahlung fehlgeschlagen")
+        }
+      } catch (e) {
+        setCardProcessing(false)
+        setCardSuccess(false)
+        setCardError(e instanceof Error ? e.message : "Kartenzahlung fehlgeschlagen")
+      }
+    }
+    window.addEventListener("bfs:sumup:result", onSumup as EventListener)
+    return () => window.removeEventListener("bfs:sumup:result", onSumup as EventListener)
+  }, [API_BASE_URL, cart.items, token, total, showCard, cardRef, clearCart])
 
   useEffect(() => {
     try {
@@ -145,27 +301,83 @@ export function BasketPanel({ token }: { token: string }) {
       const payJson = (await resPay.json()) as PayOk & ApiError
       if (!resPay.ok) throw new Error(payJson.detail || "payment failed")
 
-      openReceipt({
+      // Build print items snapshot before clearing cart
+      const printItems: NonNullable<Receipt["items"]> = cart.items.map((it) => {
+        const cfg: Array<{ slot: string; choice: string }> = []
+        if (it.product.type === "menu" && it.configuration && it.product.menu?.slots) {
+          for (const [slotId, productId] of Object.entries(it.configuration)) {
+            const slot = it.product.menu.slots.find((s) => s.id === slotId)
+            const choice = slot?.menuSlotItems?.find((p) => p.id === productId)
+            if (slot && choice) cfg.push({ slot: slot.name, choice: choice.name })
+          }
+        }
+        return {
+          title: it.product.name,
+          quantity: it.quantity,
+          unitPriceCents: it.totalPriceCents,
+          configuration: cfg.length ? cfg : undefined,
+        }
+      })
+
+      // Fetch official pickup QR before printing (best-effort)
+      let pickupQr: string | null = null
+      try {
+        const qrRes = await fetch(`${API_BASE_URL}/v1/orders/${orderId}/pickup-qr`)
+        const qrJson = (await qrRes.json()) as { code?: string }
+        pickupQr = qrJson?.code || null
+      } catch {}
+
+      const receiptPayload: Receipt & { orderTimestamp?: number } = {
         method: "cash",
         orderId,
         totalCents: total,
         amountReceivedCents: receivedCents,
         changeCents: payJson.changeCents,
-      })
+        items: printItems,
+        pickupQr: pickupQr || undefined,
+        orderTimestamp: Date.now(),
+      }
+
+      // Background print (no UI). If unavailable or fails, show error dialog.
+      try {
+        if (canPrint) getBridge()?.print?.(JSON.stringify(receiptPayload))
+        else setPrintErrorDialog("Drucken nicht verfügbar")
+      } catch {
+        setPrintErrorDialog("Drucken fehlgeschlagen")
+      }
+
+      // Clear cart and close checkout immediately
+      try { clearCart() } catch {}
+      setShowCheckout(false)
+      setTender(null)
+      setReceived("")
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Bezahlen fehlgeschlagen"
       setError(msg)
     } finally {
       setBusy(false)
     }
-  }, [busy, cart.items, token, receivedCents, openReceipt, total])
+  }, [busy, cart.items, token, receivedCents, total, canPrint])
 
   const startCardPayment = useCallback(() => {
     const bridge = getBridge()
     if (bridge && typeof bridge.payWithCard === "function") {
-      bridge.payWithCard({ amountCents: total, currency: "CHF", reference: `pos_${Date.now()}` })
+      const ref = `pos_${Date.now()}`
+      const payload = { amountCents: total, currency: "CHF", reference: ref }
+      setCardRef(ref)
+      setCardError(null)
+      setCardSuccess(false)
+      setCardProcessing(true)
+      setShowCheckout(false)
+      setShowCard(true)
+      try {
+        // Prefer JSON string for Android JS bridge
+        ;(bridge as any).payWithCard(JSON.stringify(payload))
+      } catch {
+        // Fallback to object for other environments
+        ;(bridge as any).payWithCard(payload as any)
+      }
     }
-    openReceipt({ method: "card", totalCents: total })
   }, [openReceipt, total])
 
   const handlePrint = useCallback(() => {
@@ -189,7 +401,7 @@ export function BasketPanel({ token }: { token: string }) {
 
   return (
     <>
-      <aside className="bg-card top-0 mr-3 flex h-[calc(100dvh-5rem)] min-h-0 flex-col rounded-2xl pb-3 md:sticky md:mr-4">
+      <aside className="bg-card top-0 mr-3 flex h-[calc(100dvh-5rem)] min-h-0 flex-col rounded-2xl md:sticky md:mr-4">
         <div className="px-4 py-4">
           <h3 className="text-lg font-semibold">Warenkorb</h3>
         </div>
@@ -266,14 +478,14 @@ export function BasketPanel({ token }: { token: string }) {
         <div className="border-border flex flex-col gap-3 border-t p-4">
           <div className="flex items-center justify-between pb-2">
             <div className="flex flex-col">
-              <p className="text-lg font-semibold">Total</p>
-              <span className="text-muted-foreground text-sm">{cart.items.length} Produkte</span>
+              <p className="text-base font-semibold">Total</p>
+              <span className="text-muted-foreground text-xs">{cart.items.length} Produkte</span>
             </div>
-            <p className="text-lg font-semibold">{formatChf(total)}</p>
+            <p className="text-base font-semibold">{formatChf(total)}</p>
           </div>
           <div className="flex flex-col gap-2">
             <Button
-              className="h-12 w-full rounded-xl text-base"
+              className="h-12 w-full rounded-xl text-sm"
               disabled={cartIsEmpty}
               onClick={() => {
                 setTender(null)
@@ -283,7 +495,7 @@ export function BasketPanel({ token }: { token: string }) {
             >
               Jetzt bezahlen
             </Button>
-            <Button variant="outline" className="h-9 w-full rounded-xl text-sm" onClick={clearCart}>
+            <Button variant="outline" className="h-10 w-full rounded-xl text-xs" onClick={clearCart} disabled={cartIsEmpty}>
               Leeren
             </Button>
           </div>
@@ -324,17 +536,23 @@ export function BasketPanel({ token }: { token: string }) {
                 onClick={() => setTender("cash")}
                 aria-label="Bar bezahlen"
               >
-                <Banknote className="size-14" />
-                <span className="text-lg font-medium">Bar</span>
+                <Banknote className="size-12" />
+                <span className="text-base font-medium">Bar</span>
               </Button>
               <Button
                 className="flex h-36 flex-col items-center justify-center gap-2 rounded-xl"
                 variant="outline"
-                onClick={() => setTender("card")}
+                onClick={() => {
+                  if (canPayWithCard) {
+                    startCardPayment()
+                  } else {
+                    setTender("card")
+                  }
+                }}
                 aria-label="Mit Karte bezahlen"
               >
-                <CreditCard className="size-14" />
-                <span className="text-lg font-medium">Karte</span>
+                <CreditCard className="size-12" />
+                <span className="text-base font-medium">Karte</span>
               </Button>
             </div>
           )}
@@ -400,7 +618,7 @@ export function BasketPanel({ token }: { token: string }) {
                   disabled={receivedCents < total || busy}
                   onClick={startCashPayment}
                 >
-                  Bar bezahlen
+                  Abschliessen
                 </Button>
                 {error && <div className="text-sm text-red-600">{error}</div>}
               </div>
@@ -445,6 +663,116 @@ export function BasketPanel({ token }: { token: string }) {
                 Abbrechen
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Card payment screen */}
+      <Dialog
+        open={showCard}
+        onOpenChange={(v) => {
+          setShowCard(v)
+          if (!v) {
+            setCardProcessing(false)
+            setCardSuccess(false)
+            setCardError(null)
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Kartenzahlung</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {cardProcessing && (
+              <div className="flex flex-col items-center justify-center gap-6 py-4">
+                <div className="relative h-72 w-72">
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-200/60 to-blue-400/40 blur-sm" />
+                  <div className="absolute inset-8 rounded-full border-8 border-blue-300/60" />
+                  <div className="absolute inset-16 rounded-full border-8 border-blue-400/50" />
+                  <div className="absolute inset-24 flex items-center justify-center rounded-full bg-blue-500/80">
+                    <CreditCard className="h-14 w-14 text-white" />
+                  </div>
+                </div>
+                <div className="text-xl font-semibold">Kartenzahlung läuft</div>
+              </div>
+            )}
+            {cardSuccess && (
+              <div className="flex flex-col items-center justify-center gap-6 py-4">
+                <div className="relative h-72 w-72">
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-br from-green-200/60 to-green-400/40 blur-sm" />
+                  <div className="absolute inset-8 rounded-full border-8 border-green-300/60" />
+                  <div className="absolute inset-16 rounded-full border-8 border-green-400/50" />
+                  <div className="absolute inset-24 flex items-center justify-center rounded-full bg-green-500/80">
+                    <Check className="h-14 w-14 text-white" />
+                  </div>
+                </div>
+                <div className="text-xl font-semibold">Kartenzahlung erfolgreich</div>
+                {cardPrintInProgress && (
+                  <div className="text-muted-foreground -mt-2 text-sm">Beleg wird im Hintergrund gedruckt…</div>
+                )}
+                {cardPrintDone && (
+                  <div className="text-muted-foreground -mt-2 text-sm">Beleg gedruckt</div>
+                )}
+              </div>
+            )}
+            {!cardProcessing && cardError && (
+              <div className="flex flex-col items-center justify-center gap-6 py-4">
+                <div className="relative h-72 w-72">
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-br from-red-200/60 to-red-400/40 blur-sm" />
+                  <div className="absolute inset-8 rounded-full border-8 border-red-300/60" />
+                  <div className="absolute inset-16 rounded-full border-8 border-red-400/50" />
+                  <div className="absolute inset-24 flex items-center justify-center rounded-full bg-red-500/80">
+                    <XCircle className="h-14 w-14 text-white" />
+                  </div>
+                </div>
+                <div className="text-xl font-semibold">Kartenzahlung fehlgeschlagen</div>
+                <div className="text-muted-foreground -mt-4 text-sm">{cardError || "Bitte versuchen Sie es erneut."}</div>
+                <div className="mt-2 grid w-full grid-cols-2 gap-3">
+                  <Button
+                    className="h-12 rounded-xl text-base"
+                    onClick={() => {
+                      setCardError(null)
+                      startCardPayment()
+                    }}
+                  >
+                    Erneut versuchen
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-12 rounded-xl text-base"
+                    onClick={() => setShowCard(false)}
+                  >
+                    Schliessen
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCard(false)}>
+              Schliessen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Background print error dialog (cash and card) */}
+      <Dialog
+        open={!!printErrorDialog}
+        onOpenChange={(v) => {
+          if (!v) setPrintErrorDialog(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Drucken fehlgeschlagen</DialogTitle>
+          </DialogHeader>
+          <div className="text-sm">{printErrorDialog}</div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPrintErrorDialog(null)}>
+              OK
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

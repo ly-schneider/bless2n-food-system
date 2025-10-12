@@ -1,0 +1,56 @@
+name: Android CI
+
+on:
+  push:
+    paths:
+      - 'app/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle/**'
+      - '.github/workflows/android.yml'
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # Prefer Gradle props for CI (read by build.gradle)
+      SUMUP_AFFILIATE_KEY: ${{ secrets.SUMUP_AFFILIATE_KEY }}
+      POS_URL_RELEASE: ${{ secrets.POS_URL_RELEASE }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build (dev + release)
+        working-directory: bfs-android-app
+        run: |
+          ./gradlew --no-daemon clean test \
+            -PsumupAffiliateKey="$SUMUP_AFFILIATE_KEY" \
+            -PposUrlRelease="$POS_URL_RELEASE" \
+            assembleDev assembleRelease
+
+      - name: Upload dev APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-dev-apk
+          path: bfs-android-app/app/build/outputs/apk/dev/*.apk
+
+      - name: Upload release APK (unsigned)
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-unsigned-apk
+          path: bfs-android-app/app/build/outputs/apk/release/*.apk

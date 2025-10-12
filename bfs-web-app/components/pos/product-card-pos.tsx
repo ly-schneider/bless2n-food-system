@@ -67,8 +67,8 @@ export function ProductCardPOS({ product, onConfigure }: { product: ProductDTO; 
       <CardContent className="px-2 pt-0 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
-            <h3 className="font-family-secondary text-lg">{product.name}</h3>
-            <p className="font-family-secondary text-base">{formatPriceLabel(product.priceCents)}</p>
+            <h3 className="font-family-secondary text-base">{product.name}</h3>
+            <p className="font-family-secondary text-sm">{formatPriceLabel(product.priceCents)}</p>
           </div>
           <div className="flex items-center">
             <Button

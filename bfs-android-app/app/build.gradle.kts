@@ -10,7 +10,8 @@ android {
 
     defaultConfig {
         applicationId = "ch.leys.bless2n"
-        minSdk = 34
+        // SumUp SDK 5.x requires minSdk >= 26
+        minSdk = 26
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -19,7 +20,18 @@ android {
 
         vectorDrawables { useSupportLibrary = true }
 
-        buildConfigField("String", "SUMUP_AFFILIATE_KEY", "\"sup_afk_7lFr7hXW1inT9pue3Xr5Vo3KUfeMc1gX\"")
+        // SumUp affiliate key from gradle property or environment; avoid hard-coding
+        val sumupAffiliateKey = (project.findProperty("sumupAffiliateKey") as String?)
+            ?: System.getenv("SUMUP_AFFILIATE_KEY")
+            ?: ""
+        if (gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) } && sumupAffiliateKey.isBlank()) {
+            throw GradleException("SUMUP_AFFILIATE_KEY (or -PsumupAffiliateKey) must be set for release builds")
+        }
+        buildConfigField("String", "SUMUP_AFFILIATE_KEY", "\"$sumupAffiliateKey\"")
+
+        // Default buildConfig fields so all variants (incl. debug) compile
+        buildConfigField("String", "POS_URL", "\"http://127.0.0.1:3000/pos\"")
+        buildConfigField("boolean", "DEV_BUILD", "true")
     }
 
     buildFeatures {
@@ -33,6 +45,30 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Configure production POS URL via gradle property or env
+            val buildingRelease = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
+            val posUrlReleaseProp = (project.findProperty("posUrlRelease") as String?) ?: System.getenv("POS_URL_RELEASE")
+            if (buildingRelease && (posUrlReleaseProp.isNullOrBlank())) {
+                throw GradleException("POS_URL_RELEASE (or -PposUrlRelease) must be set for release builds")
+            }
+            val posUrlRelease = posUrlReleaseProp ?: "https://example.com/pos"
+            buildConfigField("String", "POS_URL", "\"$posUrlRelease\"")
+            buildConfigField("boolean", "DEV_BUILD", "false")
+        }
+
+        create("dev") {
+            // Mirror debug-like behavior for developer builds
+            initWith(getByName("debug"))
+            isDebuggable = true
+            signingConfig = signingConfigs.getByName("debug")
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            // Emulator points to host machine
+            val posUrlDev = (project.findProperty("posUrlDev") as String?)
+                ?: System.getenv("POS_URL_DEV")
+                ?: "http://127.0.0.1:3000/pos"
+            buildConfigField("String", "POS_URL", "\"$posUrlDev\"")
+            buildConfigField("boolean", "DEV_BUILD", "true")
         }
     }
     compileOptions {
@@ -52,6 +88,7 @@ dependencies {
     implementation("com.github.DantSu:ESCPOS-ThermalPrinter-Android:3.3.0")
     implementation("com.google.zxing:core:3.5.2")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    implementation("androidx.webkit:webkit:1.10.0")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

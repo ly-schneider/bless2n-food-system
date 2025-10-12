@@ -1,6 +1,6 @@
-// Public base used by the browser. Default to localhost:8080 to avoid
-// accidentally calling the web origin (localhost:3000) when unset.
-const PUBLIC_API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080"
+// Public base used by the browser. Use relative "/api" by default so Next.js
+// can proxy to the backend (avoids WebView cross-origin and mixed-content issues).
+const PUBLIC_API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api"
 // Internal base used by SSR/RSC inside the container to reach backend service name.
 const INTERNAL_API_BASE = process.env.BACKEND_INTERNAL_URL || process.env.INTERNAL_API_BASE_URL
 

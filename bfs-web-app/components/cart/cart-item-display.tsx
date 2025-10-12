@@ -23,14 +23,14 @@ export function CartItemDisplay({ item, onUpdateQuantity, onRemove, onEdit, isPO
       {item.product.image && (
         <div
           className={`relative shrink-0 overflow-hidden rounded-[11px] bg-[#cec9c6] ${
-            isPOS ? "h-18 w-18" : "h-20 w-20"
+            isPOS ? "h-16 w-16" : "h-20 w-20"
           }`}
         >
           <Image
             src={item.product.image}
             alt={"Produktbild von " + item.product.name}
             fill
-            sizes={isPOS ? "72px" : "80px"}
+            sizes={isPOS ? "64px" : "80px"}
             quality={90}
             className="h-full w-full rounded-[11px] object-cover"
           />
@@ -41,7 +41,7 @@ export function CartItemDisplay({ item, onUpdateQuantity, onRemove, onEdit, isPO
           <>
             <div className="flex flex-row justify-between">
               <div className="flex flex-col gap-1">
-                <h3 className={`font-family-secondary truncate font-medium ${isPOS ? "text-base" : "text-lg"}`}>
+                <h3 className={`font-family-secondary truncate font-medium ${isPOS ? "text-sm" : "text-lg"}`}>
                   {item.product.name}
                 </h3>
                 {hasConfiguration && (
@@ -54,7 +54,7 @@ export function CartItemDisplay({ item, onUpdateQuantity, onRemove, onEdit, isPO
                         return (
                           <div
                             key={slotId}
-                            className="text-muted-foreground border-border rounded-lg border p-1 text-xs"
+                            className={`text-muted-foreground border-border rounded-lg border p-1 ${isPOS ? "text-[10px]" : "text-xs"}`}
                           >
                             <p className="font-medium">
                               {slot.name}:{" "}
@@ -73,36 +73,43 @@ export function CartItemDisplay({ item, onUpdateQuantity, onRemove, onEdit, isPO
                   onClick={onRemove}
                   size="icon"
                   variant="outline"
-                  className="text-destructive hover:text-destructive size-10 bg-inherit"
+                  className={`text-destructive hover:text-destructive shrink-0 bg-inherit ${
+                    isPOS ? "size-9" : "size-10"
+                  }`}
                 >
-                  <Trash2 className="size-4" />
+                  <Trash2 className={"size-4"} />
                 </Button>
               </div>
             </div>
             <div className="flex flex-row items-center justify-between">
-              <h4 className={`font-family-secondary truncate ${isPOS ? "text-sm" : "text-base"}`}>
+              <h4 className={`font-family-secondary truncate ${isPOS ? "text-xs" : "text-base"}`}>
                 {formatChf(item.product.priceCents)}
               </h4>
               <div className="flex flex-row items-center gap-2">
-                <Button onClick={onEdit} size="icon" variant="outline" className="size-10 shrink-0 bg-inherit">
-                  <Pen className="size-4" />
+                <Button
+                  onClick={onEdit}
+                  size="icon"
+                  variant="outline"
+                  className={`shrink-0 bg-inherit ${isPOS ? "size-9" : "size-10"}`}
+                >
+                  <Pen className={"size-4"} />
                 </Button>
                 <Button
                   onClick={() => onUpdateQuantity(item.quantity - 1)}
                   size="icon"
                   variant="outline"
-                  className="size-10 shrink-0 bg-inherit"
+                  className={`shrink-0 bg-inherit ${isPOS ? "size-9" : "size-10"}`}
                 >
-                  <Minus className="size-4" />
+                  <Minus className={"size-4"} />
                 </Button>
-                <span className="min-w-4 text-center font-medium">{item.quantity}</span>
+                <span className={`min-w-4 text-center font-medium ${isPOS ? "text-xs" : ""}`}>{item.quantity}</span>
                 <Button
                   onClick={() => onUpdateQuantity(item.quantity + 1)}
                   size="icon"
                   variant="outline"
-                  className="size-10 shrink-0 bg-inherit"
+                  className={`shrink-0 bg-inherit ${isPOS ? "size-9" : "size-10"}`}
                 >
-                  <Plus className="size-4" />
+                  <Plus className={"size-4"} />
                 </Button>
               </div>
             </div>
@@ -110,10 +117,10 @@ export function CartItemDisplay({ item, onUpdateQuantity, onRemove, onEdit, isPO
         ) : (
           <div className="flex flex-row items-center justify-between">
             <div className="flex flex-col gap-0">
-              <h3 className={`font-family-secondary truncate font-medium ${isPOS ? "text-base" : "text-lg"}`}>
+              <h3 className={`font-family-secondary truncate font-medium ${isPOS ? "text-sm" : "text-lg"}`}>
                 {item.product.name}
               </h3>
-              <h4 className={`font-family-secondary truncate ${isPOS ? "text-sm" : "text-base"}`}>
+              <h4 className={`font-family-secondary truncate ${isPOS ? "text-xs" : "text-sm"}`}>
                 {formatChf(item.product.priceCents)}
               </h4>
             </div>
@@ -122,26 +129,28 @@ export function CartItemDisplay({ item, onUpdateQuantity, onRemove, onEdit, isPO
                 onClick={() => onUpdateQuantity(item.quantity - 1)}
                 size="icon"
                 variant="outline"
-                className="size-10 shrink-0 bg-inherit"
+                className={`shrink-0 bg-inherit ${isPOS ? "size-9" : "size-10"}`}
               >
-                <Minus className="size-4" />
+                <Minus className={"size-4"} />
               </Button>
-              <span className="min-w-4 text-center font-medium">{item.quantity}</span>
+              <span className={`min-w-4 text-center font-medium ${isPOS ? "text-xs" : ""}`}>{item.quantity}</span>
               <Button
                 onClick={() => onUpdateQuantity(item.quantity + 1)}
                 size="icon"
                 variant="outline"
-                className="size-10 shrink-0 bg-inherit"
+                className={`shrink-0 bg-inherit ${isPOS ? "size-9" : "size-10"}`}
               >
-                <Plus className="size-4" />
+                <Plus className={"size-4"} />
               </Button>
               <Button
                 onClick={onRemove}
                 size="icon"
                 variant="outline"
-                className="text-destructive hover:text-destructive size-10 shrink-0 bg-inherit"
+                className={`text-destructive hover:text-destructive shrink-0 bg-inherit ${
+                  isPOS ? "size-9" : "size-10"
+                }`}
               >
-                <Trash2 className="size-4" />
+                <Trash2 className={"size-4"} />
               </Button>
             </div>
           </div>

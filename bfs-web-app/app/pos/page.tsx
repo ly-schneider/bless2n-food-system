@@ -1,4 +1,5 @@
 "use client"
+import "./bridge.client"
 
 import { useEffect, useState } from "react"
 import { ProductConfigurationModal } from "@/components/cart/product-configuration-modal"

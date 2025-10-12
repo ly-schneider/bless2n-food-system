@@ -18,6 +18,12 @@ type Order = {
   paymentIntentId?: string | null
   stripeChargeId?: string | null
   paymentAttemptId?: string | null
+  origin?: string | null
+  posPayment?: {
+    method: string
+    amountReceivedCents?: number | null
+    changeCents?: number | null
+  } | null
 }
 
 export default function AdminOrdersPage() {
@@ -30,9 +36,11 @@ export default function AdminOrdersPage() {
     let cancelled = false
     ;(async () => {
       try {
-        const url = new URL(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/orders`)
-        if (status && status !== "all") url.searchParams.set("status", status)
-        const res = await fetchAuth(url.toString())
+        const base = process.env.NEXT_PUBLIC_API_BASE_URL || "/api"
+        const qs = new URLSearchParams()
+        if (status && status !== "all") qs.set("status", status)
+        const url = `${base}/v1/admin/orders${qs.toString() ? `?${qs.toString()}` : ""}`
+        const res = await fetchAuth(url)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = (await res.json()) as { items: Order[] }
         if (!cancelled) setItems(data.items || [])
@@ -71,9 +79,13 @@ export default function AdminOrdersPage() {
                 <TableRow>
                   <TableHead className="whitespace-nowrap">ID</TableHead>
                   <TableHead className="whitespace-nowrap">Status</TableHead>
+                  <TableHead className="whitespace-nowrap">Ursprung</TableHead>
                   <TableHead className="whitespace-nowrap">Preis</TableHead>
                   <TableHead className="whitespace-nowrap">Kontakt E-Mail</TableHead>
                   <TableHead className="whitespace-nowrap">Benutzer</TableHead>
+                  <TableHead className="whitespace-nowrap">POS-Methode</TableHead>
+                  <TableHead className="whitespace-nowrap">Erhalten</TableHead>
+                  <TableHead className="whitespace-nowrap">Rückgeld</TableHead>
                   <TableHead className="whitespace-nowrap">Stripe PI</TableHead>
                   <TableHead className="whitespace-nowrap">Stripe Charge</TableHead>
                   <TableHead className="whitespace-nowrap">Payment Attempt</TableHead>
@@ -85,6 +97,14 @@ export default function AdminOrdersPage() {
               <TableBody>
                 {items.map((o) => {
                   const price = typeof o.totalCents === "number" ? formatChf(o.totalCents) : "–"
+                  const origin = o.origin || "shop"
+                  const posMethod = o.posPayment?.method || "–"
+                  const posReceived =
+                    typeof o.posPayment?.amountReceivedCents === "number"
+                      ? formatChf(o.posPayment!.amountReceivedCents!)
+                      : "–"
+                  const posChange =
+                    typeof o.posPayment?.changeCents === "number" ? formatChf(o.posPayment!.changeCents!) : "–"
                   const created = new Date(o.createdAt).toLocaleString("de-CH")
                   const updated = o.updatedAt ? new Date(o.updatedAt).toLocaleString("de-CH") : "–"
                   const userLink = o.customerId ? (
@@ -101,9 +121,13 @@ export default function AdminOrdersPage() {
                     <TableRow key={o.id} className="even:bg-card odd:bg-muted/40">
                       <TableCell className="text-xs">{o.id}</TableCell>
                       <TableCell className="uppercase">{o.status}</TableCell>
+                      <TableCell className="uppercase">{origin}</TableCell>
                       <TableCell>{price}</TableCell>
                       <TableCell>{o.contactEmail || "–"}</TableCell>
                       <TableCell>{userLink}</TableCell>
+                      <TableCell className="uppercase">{posMethod}</TableCell>
+                      <TableCell>{posReceived}</TableCell>
+                      <TableCell>{posChange}</TableCell>
                       <TableCell className="text-xs">{o.paymentIntentId || "–"}</TableCell>
                       <TableCell className="text-xs">{o.stripeChargeId || "–"}</TableCell>
                       <TableCell className="text-xs">{o.paymentAttemptId || "–"}</TableCell>

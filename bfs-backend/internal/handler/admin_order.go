@@ -58,6 +58,12 @@ func (h *AdminOrderHandler) List(w http.ResponseWriter, r *http.Request) {
         PaymentIntentID  *string            `json:"paymentIntentId,omitempty"`
         StripeChargeID   *string            `json:"stripeChargeId,omitempty"`
         PaymentAttemptID *string            `json:"paymentAttemptId,omitempty"`
+        Origin           *domain.OrderOrigin `json:"origin,omitempty"`
+        PosPayment       *struct {
+            Method              string  `json:"method"`
+            AmountReceivedCents *int64  `json:"amountReceivedCents,omitempty"`
+            ChangeCents         *int64  `json:"changeCents,omitempty"`
+        } `json:"posPayment,omitempty"`
     }
     out := make([]OrderDTO, 0, len(items))
     var revenue int64
@@ -78,6 +84,23 @@ func (h *AdminOrderHandler) List(w http.ResponseWriter, r *http.Request) {
             PaymentIntentID:  o.StripePaymentIntentID,
             StripeChargeID:   o.StripeChargeID,
             PaymentAttemptID: o.PaymentAttemptID,
+            Origin:           o.Origin,
+        }
+        if o.PosPayment != nil {
+            var receivedPtr, changePtr *int64
+            if o.PosPayment.AmountReceivedCents != nil {
+                v := int64(*o.PosPayment.AmountReceivedCents)
+                receivedPtr = &v
+            }
+            if o.PosPayment.ChangeCents != nil {
+                v := int64(*o.PosPayment.ChangeCents)
+                changePtr = &v
+            }
+            dto.PosPayment = &struct {
+                Method              string  `json:"method"`
+                AmountReceivedCents *int64  `json:"amountReceivedCents,omitempty"`
+                ChangeCents         *int64  `json:"changeCents,omitempty"`
+            }{ Method: o.PosPayment.Method, AmountReceivedCents: receivedPtr, ChangeCents: changePtr }
         }
         out = append(out, dto)
         if o.Status == domain.OrderStatusPaid { revenue += int64(o.TotalCents) }
@@ -136,6 +159,12 @@ type AdminOrderDetailsDTO struct {
     StripeChargeID   *string            `json:"stripeChargeId,omitempty"`
     PaymentAttemptID *string            `json:"paymentAttemptId,omitempty"`
     Items            []PublicOrderItemDTO `json:"items"`
+    Origin           *domain.OrderOrigin `json:"origin,omitempty"`
+    PosPayment       *struct {
+        Method              string  `json:"method"`
+        AmountReceivedCents *int64  `json:"amountReceivedCents,omitempty"`
+        ChangeCents         *int64  `json:"changeCents,omitempty"`
+    } `json:"posPayment,omitempty"`
 }
 
 // GET /v1/admin/orders/{id}
@@ -184,6 +213,23 @@ func (h *AdminOrderHandler) GetByID(w http.ResponseWriter, r *http.Request) {
         ContactEmail: ord.ContactEmail, CustomerID: custID,
         PaymentIntentID: ord.StripePaymentIntentID, StripeChargeID: ord.StripeChargeID, PaymentAttemptID: ord.PaymentAttemptID,
         Items: dtoItems,
+        Origin: ord.Origin,
+    }
+    if ord.PosPayment != nil {
+        var receivedPtr, changePtr *int64
+        if ord.PosPayment.AmountReceivedCents != nil {
+            v := int64(*ord.PosPayment.AmountReceivedCents)
+            receivedPtr = &v
+        }
+        if ord.PosPayment.ChangeCents != nil {
+            v := int64(*ord.PosPayment.ChangeCents)
+            changePtr = &v
+        }
+        dto.PosPayment = &struct {
+            Method              string  `json:"method"`
+            AmountReceivedCents *int64  `json:"amountReceivedCents,omitempty"`
+            ChangeCents         *int64  `json:"changeCents,omitempty"`
+        }{ Method: ord.PosPayment.Method, AmountReceivedCents: receivedPtr, ChangeCents: changePtr }
     }
     response.WriteJSON(w, http.StatusOK, map[string]any{"order": dto})
 }

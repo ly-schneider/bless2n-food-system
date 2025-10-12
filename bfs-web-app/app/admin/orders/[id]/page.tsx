@@ -31,6 +31,12 @@ type AdminOrderDetails = {
   paymentIntentId?: string | null
   stripeChargeId?: string | null
   paymentAttemptId?: string | null
+  origin?: string | null
+  posPayment?: {
+    method: string
+    amountReceivedCents?: number | null
+    changeCents?: number | null
+  } | null
   items: OrderItem[]
 }
 
@@ -93,6 +99,10 @@ export default function AdminOrderDetailPage() {
 
   const created = order?.createdAt ? new Date(order.createdAt).toLocaleString("de-CH") : "–"
   const updated = order?.updatedAt ? new Date(order.updatedAt).toLocaleString("de-CH") : "–"
+  const origin = order?.origin || "shop"
+  const posMethod = order?.posPayment?.method
+  const posReceived = typeof order?.posPayment?.amountReceivedCents === "number" ? formatChf(order!.posPayment!.amountReceivedCents!) : null
+  const posChange = typeof order?.posPayment?.changeCents === "number" ? formatChf(order!.posPayment!.changeCents!) : null
 
   return (
     <div className="min-w-0 space-y-6">
@@ -116,6 +126,9 @@ export default function AdminOrderDetailPage() {
               </div>
               <div>
                 <span className="text-muted-foreground">Status:</span> <span className="uppercase">{order.status}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Ursprung:</span> <span className="uppercase">{origin}</span>
               </div>
               <div>
                 <span className="text-muted-foreground">Summe:</span>{" "}
@@ -147,8 +160,20 @@ export default function AdminOrderDetailPage() {
           </div>
 
           <div className="rounded-md border p-4">
-            <h2 className="mb-3 text-base font-semibold">Zahlung/Stripe</h2>
+            <h2 className="mb-3 text-base font-semibold">Zahlung</h2>
             <div className="space-y-1 text-sm">
+              <div>
+                <span className="text-muted-foreground">POS‑Methode:</span>{" "}
+                <span className="uppercase">{posMethod || "–"}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Erhalten:</span>{" "}
+                <span>{posReceived || "–"}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Rückgeld:</span>{" "}
+                <span>{posChange || "–"}</span>
+              </div>
               <div>
                 <span className="text-muted-foreground">Payment Intent:</span>{" "}
                 <span className="text-xs">{order.paymentIntentId || "–"}</span>

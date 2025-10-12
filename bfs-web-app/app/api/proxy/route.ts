@@ -1,77 +1,64 @@
-import { cookies, headers as nextHeaders } from "next/headers"
-import { NextResponse } from "next/server"
-import { API_BASE_URL } from "@/lib/api"
+import { NextRequest, NextResponse } from "next/server"
 
-type ForwardPayload = {
-  url: string
-  method: string
-  headers?: Record<string, string>
-  body?: string | null
-}
+// Backend base the server can reach; fall back to localhost in dev
+const BACKEND_BASE = process.env.BACKEND_INTERNAL_URL || process.env.INTERNAL_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080"
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const hdrs = await nextHeaders()
-    const cookieStore = await cookies()
-
-    // CSRF double-submit validation: header must match cookie value
-    const csrfHeader = hdrs.get("X-CSRF") || hdrs.get("x-csrf") || ""
-    const csrfCookie = cookieStore.get("__Host-csrf")?.value || cookieStore.get("csrf")?.value || ""
-    if (!csrfHeader || !csrfCookie || csrfHeader !== csrfCookie) {
-      return NextResponse.json({ error: true, message: "Forbidden" }, { status: 403 })
+    const { url, method, headers, body } = (await req.json()) as {
+      url: string
+      method: string
+      headers?: Record<string, string>
+      body?: string | null
     }
 
-    const data = (await req.json()) as ForwardPayload
-    const { url, method, headers: fwdHeaders = {}, body } = data
-
-    // Allow only forwarding to our backend base URL
-    if (!url.startsWith(API_BASE_URL)) {
-      return NextResponse.json({ error: true, message: "Invalid forward target" }, { status: 400 })
+    // Basic CSRF double-submit check
+    const headerToken = req.headers.get("x-csrf") || req.headers.get("X-CSRF")
+    const cookieToken = req.cookies.get((req.nextUrl.protocol === "https:" ? "__Host-" : "") + "csrf")?.value
+    if (!headerToken || !cookieToken || headerToken !== cookieToken) {
+      return NextResponse.json({ error: true, message: "Invalid CSRF token" }, { status: 403 })
     }
 
-    // Prepare headers for backend request
-    const outHeaders: Record<string, string> = { ...fwdHeaders }
-    // Remove any existing CSRF headers to prevent duplication, then add the validated one
-    Object.keys(outHeaders).forEach((key) => {
-      if (key.toLowerCase() === "x-csrf") {
-        delete outHeaders[key]
+    // Normalize target URL: support absolute backend URL or relative /api
+    let target: URL
+    if (url.startsWith("/api/")) {
+      target = new URL(url.replace(/^\/api\//, "/"), BACKEND_BASE)
+    } else {
+      target = new URL(url)
+      const backendHost = new URL(BACKEND_BASE)
+      if (target.host !== backendHost.host) {
+        return NextResponse.json({ error: true, message: "Forbidden target host" }, { status: 400 })
       }
-    })
-    outHeaders["X-CSRF"] = csrfHeader
-
-    // Prepare cookies: only forward authentication-related cookies
-    const rtCookie = cookieStore.get("__Host-rt")?.value || cookieStore.get("rt")?.value
-    const cookiePairs: string[] = []
-    // Include both variants to be robust across dev/https
-    cookiePairs.push(`csrf=${encodeURIComponent(csrfCookie)}`)
-    cookiePairs.push(`__Host-csrf=${encodeURIComponent(csrfCookie)}`)
-    if (rtCookie) {
-      cookiePairs.push(`rt=${encodeURIComponent(rtCookie)}`)
-      cookiePairs.push(`__Host-rt=${encodeURIComponent(rtCookie)}`)
     }
-    const cookieHeader = cookiePairs.join("; ")
 
-    const res = await fetch(url, {
-      method: method || "POST",
-      headers: {
-        ...outHeaders,
-        Cookie: cookieHeader,
-      },
+    const forwardHeaders = new Headers(headers || {})
+    // Ensure backend CSRF middleware receives valid tokens
+    // 1) Forward the validated CSRF header
+    if (headerToken) {
+      forwardHeaders.set("X-CSRF", headerToken)
+    }
+    // 2) Forward only the CSRF cookie (not all client cookies)
+    //    Backend accepts either name; send both to cover http/https configs.
+    forwardHeaders.set("cookie", `csrf=${cookieToken}; __Host-csrf=${cookieToken}`)
+
+    const res = await fetch(target.toString(), {
+      method,
+      headers: forwardHeaders,
       body: body ?? undefined,
+      redirect: "manual",
     })
 
-    // For 204 No Content, return an empty body to avoid NextResponse errors
-    if (res.status === 204) {
-      return new NextResponse(null, { status: 204 })
-    }
+    const outHeaders = new Headers(res.headers)
+    // Strip Set-Cookie to avoid cross-site cookie issues in WebView
+    outHeaders.delete("set-cookie")
 
-    const contentType = res.headers.get("content-type") || ""
-    const payload = contentType.includes("application/json") ? await res.json().catch(() => ({})) : await res.text()
-    return new NextResponse(typeof payload === "string" ? payload : JSON.stringify(payload), {
+    const buffer = Buffer.from(await res.arrayBuffer())
+    return new NextResponse(buffer, {
       status: res.status,
-      headers: { "content-type": contentType || "application/json" },
+      headers: outHeaders,
     })
-  } catch {
-    return NextResponse.json({ error: true, message: "Proxy error" }, { status: 500 })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Proxy error"
+    return NextResponse.json({ error: true, message: msg }, { status: 500 })
   }
 }

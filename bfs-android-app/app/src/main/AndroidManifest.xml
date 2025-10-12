@@ -3,8 +3,10 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-feature android:name="android.hardware.bluetooth" android:required="true"/>
-    <uses-feature android:name="android.hardware.wifi"
-        android:required="true"/>
+    <uses-feature android:name="android.hardware.wifi" android:required="true"/>
+    <!-- Camera is optional (used by demo activity only); declare non-required to satisfy lint and ChromeOS rules -->
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.NFC"/>
     <uses-permission android:name="android.permission.BLUETOOTH"/>
@@ -28,9 +30,9 @@
         android:theme="@style/Theme.Androidpoc"
         tools:targetApi="31">
 
-        <!-- your MainActivity stays exactly as before -->
+        <!-- WebView POS activity is the launcher -->
         <activity
-            android:name=".MainActivity"
+            android:name=".WebPosActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.Androidpoc">
@@ -39,6 +41,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Keep legacy demo MainActivity accessible (not launcher) -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.Androidpoc" />
         
         <activity
             android:name=".CustomCaptureActivity"

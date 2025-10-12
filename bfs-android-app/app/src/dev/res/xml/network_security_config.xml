@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Dev: allow cleartext to any host to simplify local testing (emulator, USB + LAN, adb reverse) -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
