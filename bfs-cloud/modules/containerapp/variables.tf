@@ -23,6 +23,22 @@ variable "environment_variables" {
   type    = map(string)
   default = {}
 }
+
+variable "secrets" {
+  type        = map(string)
+  description = "Container App secrets (name => value), e.g., GHCR tokens"
+  default     = {}
+}
+
+variable "registries" {
+  type = list(object({
+    server               = string
+    username             = string
+    password_secret_name = string
+  }))
+  description = "Container registries for pulling private images"
+  default     = []
+}
 variable "enable_system_identity" {
   type    = bool
   default = true

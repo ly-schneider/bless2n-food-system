@@ -274,13 +274,13 @@ func seedInventoryOpeningBalance(ctx context.Context, db *mongo.Database, logger
 		return err
 	}
 	defer func() { _ = cur.Close(ctx) }()
-	type prod struct {
+	type production struct {
 		ID primitive.ObjectID `bson:"_id"`
 	}
 	entries := make([]interface{}, 0)
 	now := time.Now().UTC()
 	for cur.Next(ctx) {
-		var p prod
+		var p production
 		if err := cur.Decode(&p); err != nil {
 			return err
 		}

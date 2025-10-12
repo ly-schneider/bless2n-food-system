@@ -29,5 +29,3 @@ resource "azurerm_subnet" "aca" {
     "Microsoft.Storage"
   ]
 }
-
-# WAF and Private Endpoint subnets removed for cost optimization

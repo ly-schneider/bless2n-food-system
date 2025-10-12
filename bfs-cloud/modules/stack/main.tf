@@ -1,17 +1,3 @@
-terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~> 4.0"
-    }
-  }
-}
-
-provider "azurerm" {
-  features {}
-  resource_provider_registrations = "none"
-}
-
 variable "environment" {
   description = "Environment name"
   type        = string
@@ -60,6 +46,12 @@ variable "config" {
       memory       = string
       min_replicas = number
       max_replicas = number
+      secrets      = optional(map(string), {})
+      registries   = optional(list(object({
+        server               = string
+        username             = string
+        password_secret_name = string
+      })), [])
       http_scale_rule = optional(object({
         name                = string
         concurrent_requests = number
@@ -99,14 +91,14 @@ locals {
 }
 
 module "rg" {
-  source   = "../modules/rg"
+  source   = "../rg"
   name     = var.config.rg_name
   location = var.location
   tags     = var.tags
 }
 
 module "net" {
-  source              = "../modules/network"
+  source              = "../network"
   resource_group_name = module.rg.name
   location            = var.location
   vnet_name           = var.config.vnet_name
@@ -117,7 +109,7 @@ module "net" {
 }
 
 module "obs" {
-  source               = "../modules/observability"
+  source               = "../observability"
   resource_group_name  = module.rg.name
   location             = var.location
   law_name             = var.config.law_name
@@ -128,7 +120,7 @@ module "obs" {
 }
 
 module "aca_env" {
-  source                      = "../modules/containerapps_env"
+  source                      = "../containerapps_env"
   name                        = var.config.env_name
   location                    = var.location
   resource_group_name         = module.rg.name
@@ -139,7 +131,7 @@ module "aca_env" {
 }
 
 module "env_diag" {
-  source                      = "../modules/diagnostic_setting"
+  source                      = "../diagnostic_setting"
   name                        = "${var.config.env_name}-diag"
   target_resource_id          = module.aca_env.id
   log_analytics_workspace_id  = module.obs.log_analytics_id
@@ -148,7 +140,7 @@ module "env_diag" {
 }
 
 module "cosmos" {
-  source                    = "../modules/cosmos_mongo"
+  source                    = "../cosmos_mongo"
   name                      = var.config.cosmos_name
   location                  = var.location
   resource_group_name       = module.rg.name
@@ -163,7 +155,7 @@ module "cosmos" {
 
 module "apps" {
   for_each = var.config.apps
-  source   = "../modules/containerapp"
+  source   = "../containerapp"
 
   name                        = each.key
   resource_group_name         = module.rg.name
@@ -177,6 +169,8 @@ module "apps" {
   enable_system_identity      = true
   log_analytics_workspace_id  = module.obs.log_analytics_id
   environment_variables       = local.environment_variables
+  secrets                     = each.value.secrets
+  registries                  = each.value.registries
   http_scale_rule             = each.value.http_scale_rule
   cpu_scale_rule              = each.value.cpu_scale_rule
   memory_scale_rule           = each.value.memory_scale_rule
@@ -188,7 +182,7 @@ module "apps" {
 module "alerts" {
   count = var.config.enable_alerts ? 1 : 0
   
-  source               = "../modules/alerts"
+  source               = "../alerts"
   name                 = "${var.environment}-alerts"
   short_name           = var.environment
   resource_group_name  = module.rg.name
@@ -200,11 +194,10 @@ module "alerts" {
 
 data "azurerm_client_config" "current" {}
 
-# Cost-optimized security - essential security at minimal cost
-module "cost_optimized_security" {
+module "security" {
   count = var.config.enable_security_features ? 1 : 0
   
-  source                     = "../modules/cost_optimized_security"
+  source                     = "../security"
   name_prefix                = var.environment
   location                   = var.location
   resource_group_name        = module.rg.name
@@ -220,3 +213,4 @@ module "cost_optimized_security" {
   log_analytics_workspace_id = module.obs.log_analytics_id
   tags                       = var.tags
 }
+

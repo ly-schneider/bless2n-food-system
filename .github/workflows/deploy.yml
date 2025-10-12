@@ -1,0 +1,118 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ staging, production ]
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  build-and-push-images:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set Image Names
+        id: names
+        run: |
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "owner_lc=$OWNER_LC" >> $GITHUB_OUTPUT
+          echo "backend=ghcr.io/$OWNER_LC/backend" >> $GITHUB_OUTPUT
+          echo "frontend=ghcr.io/$OWNER_LC/frontend" >> $GITHUB_OUTPUT
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: bfs-backend/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.names.outputs.backend }}:${{ env.IMAGE_TAG }}
+            ${{ steps.names.outputs.backend }}:${{ github.ref_name }}
+          labels: |
+            org.opencontainers.image.source=${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Build & Push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: bfs-web-app
+          file: bfs-web-app/docker/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.names.outputs.frontend }}:${{ env.IMAGE_TAG }}
+            ${{ steps.names.outputs.frontend }}:${{ github.ref_name }}
+          labels: |
+            org.opencontainers.image.source=${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+  deploy-infra:
+    name: Terraform Deploy to Azure
+    needs: build-and-push-images
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bfs-cloud/envs/${{ env.ENV_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute lowercased owner
+        id: owner
+        run: |
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "value=$OWNER_LC" >> $GITHUB_OUTPUT
+
+      - name: Select environment directory
+        run: |
+          case "${{ github.ref_name }}" in
+            staging) echo "ENV_DIR=staging" >> $GITHUB_ENV ;;
+            production) echo "ENV_DIR=production" >> $GITHUB_ENV ;;
+            *) echo "Unsupported branch: ${{ github.ref_name }}"; exit 1 ;;
+          esac
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform Init
+        run: terraform init -input=false
+
+      - name: Terraform Apply
+        env:
+          TF_VAR_registry_server: ghcr.io
+          TF_VAR_registry_namespace: ${{ steps.owner.outputs.value }}
+          TF_VAR_registry_username: ${{ github.actor }}
+          TF_VAR_registry_token: ${{ secrets.GHCR_TOKEN }}
+          TF_VAR_image_tag: ${{ env.IMAGE_TAG }}
+        run: terraform apply -auto-approve -input=false
+
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false

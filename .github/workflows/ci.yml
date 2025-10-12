@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ staging, production ]
+  push:
+    branches-ignore: [ main ]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  backend:
+    name: Backend (Go)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bfs-backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+      - name: Lint
+        run: make tools && make lint
+      - name: Test
+        run: make test
+      - name: Build
+        run: go build ./...
+
+  web-app:
+    name: Web App (Next.js)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bfs-web-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: true
+      - name: Lint
+        run: pnpm lint
+      - name: Prettier
+        run: pnpm prettier
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Test
+        run: pnpm test -- --run
+      - name: Build
+        run: pnpm build
+
+  android:
+    name: Android (Gradle)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bfs-android-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+      - name: Lint
+        run: ./gradlew lint --no-daemon
+      - name: Unit tests
+        run: ./gradlew test --no-daemon
+      - name: Build (Debug)
+        run: ./gradlew assembleDebug --no-daemon
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-debug
+          path: bfs-android-app/app/build/outputs/apk/debug/*.apk
+

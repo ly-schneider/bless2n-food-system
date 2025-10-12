@@ -1,10 +1,14 @@
+locals {
+  frontend_image = "${var.registry_server}/${var.registry_namespace}/frontend:${var.image_tag}"
+  backend_image  = "${var.registry_server}/${var.registry_namespace}/backend:${var.image_tag}"
+}
+
 module "bfs_infrastructure" {
-  source = "../../common"
+  source = "../../modules/stack"
 
   environment   = "staging"
   location      = var.location
   tags          = var.tags
-  images        = var.images
   alert_emails  = var.alert_emails
 
   config = {
@@ -26,13 +30,26 @@ module "bfs_infrastructure" {
     key_vault_name               = "bfs-staging-kv"
     
     apps = {
-      frontend = {
+      frontend-staging = {
         port         = 80
-        image        = var.images.frontend_staging_01
+        image        = local.frontend_image
         cpu          = 0.25
         memory       = "0.5Gi"
         min_replicas = 0
         max_replicas = 20
+        # Optional: registry and secrets for private images (GHCR) plus per-app overrides
+        registries = concat(
+          var.registry_token != null && var.registry_username != null ? [{
+            server                = var.registry_server
+            username              = var.registry_username
+            password_secret_name  = "ghcr-token"
+          }] : [],
+          lookup(var.app_registries, "frontend-staging", [])
+        )
+        secrets = merge(
+          var.registry_token != null ? { "ghcr-token" = var.registry_token } : {},
+          lookup(var.app_secrets, "frontend-staging", {})
+        )
         http_scale_rule = {
           name                = "frontend-http-scale"
           concurrent_requests = 20
@@ -42,13 +59,25 @@ module "bfs_infrastructure" {
           cpu_percentage = 75
         }
       }
-      backend = {
+      backend-staging = {
         port         = 8080
-        image        = var.images.backend_staging_01
+        image        = local.backend_image
         cpu          = 0.5
         memory       = "1.0Gi"
         min_replicas = 0
         max_replicas = 20
+        registries = concat(
+          var.registry_token != null && var.registry_username != null ? [{
+            server                = var.registry_server
+            username              = var.registry_username
+            password_secret_name  = "ghcr-token"
+          }] : [],
+          lookup(var.app_registries, "backend-staging", [])
+        )
+        secrets = merge(
+          var.registry_token != null ? { "ghcr-token" = var.registry_token } : {},
+          lookup(var.app_secrets, "backend-staging", {})
+        )
         http_scale_rule = {
           name                = "backend-http-scale"
           concurrent_requests = 40

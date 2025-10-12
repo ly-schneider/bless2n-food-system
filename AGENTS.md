@@ -3,7 +3,7 @@
 ## Project Structure & Module Organization
 - `bfs-backend/`: Go HTTP API (Clean Architecture). Entry at `cmd/backend/`; core under `internal/{domain,service,http,...}`; docs in `docs/`; dev secrets in `secrets/`. Tests live next to code as `*_test.go`.
 - `bfs-web-app/`: Next.js app (App Router). UI in `app/`, components in `components/`, shared code in `lib/` and `hooks/`, assets in `public/`.
-- `bfs-cloud/`: Terraform IaC. Environments under `envs/{staging,prod}`; reusable modules in `modules/`.
+- `bfs-cloud/`: Terraform IaC. Environments under `envs/{staging,production}`; reusable modules in `modules/`.
 - `bfs-http/`: Yaak/HTTP client collections (`yaak.*.yaml`) for API testing.
 
 ## Build, Test, and Development Commands

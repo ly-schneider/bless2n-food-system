@@ -2,7 +2,7 @@
 
 ## Architecture Overview
 
-This Terraform infrastructure uses a **unified state management** approach with environment-specific configurations. All infrastructure logic is centralized in the `common/` module, while environments differ only through variable configurations.
+This Terraform setup uses a single, concrete approach: deploy from `envs/<env>` (staging, production) as the root module. Shared building blocks live under `modules/`. No separate `common/` or `env-configs/` flow.
 
 ## What this deploys
 
@@ -10,41 +10,41 @@ This Terraform infrastructure uses a **unified state management** approach with 
 - **Per-environment isolation**: Resource Groups, VNets, delegated Subnets, Container Apps Environment
 - **Container Apps**: Auto-scaling web applications with intelligent scaling rules
 - **Database**: Cosmos DB with MongoDB API
-- **Observability**: Log Analytics (both envs), Application Insights (prod), Diagnostic Settings
+- **Observability**: Log Analytics (both envs), Diagnostic Settings
 - **Monitoring**: Metric-based alerts and monitoring (configurable per environment)
 
 ### Auto-Scaling Configuration
 - **Scale-to-Zero**: Applications scale down to 0 replicas when idle (cost-efficient)
 - **Burst Scaling**: Can scale up to 20 replicas during traffic spikes
 - **Smart Triggers**: HTTP request-based, CPU percentage, and memory percentage scaling
-- **Environment-Specific**: Different scaling thresholds for prod vs staging
+- **Environment-Specific**: Scaling thresholds for staging
 
 ## Project Structure
 
 ```
 bfs-cloud/
-├── common/                    # Unified infrastructure module
-│   ├── main.tf               # Core infrastructure logic
-│   ├── outputs.tf            # Shared outputs
-│   └── env-configs/          # Optional: Environment-specific tfvars
-│       ├── prod.tfvars
-│       └── staging.tfvars
 ├── envs/
-│   ├── prod/                 # Production environment
-│   │   ├── main.tf          # Calls common module with prod config
-│   │   ├── variables.tf     # Prod-specific variables
-│   │   ├── outputs.tf       # Prod outputs
-│   │   └── backend.tf       # Terraform backend config
-│   └── staging/             # Staging environment
-│       ├── main.tf          # Calls common module with staging config
-│       ├── variables.tf     # Staging-specific variables
-│       ├── outputs.tf       # Staging outputs
-│       └── backend.tf       # Terraform backend config
+│   ├── staging/             # Staging root module
+│   │   ├── backend.tf
+│   │   ├── main.tf          # Calls modules/stack with env config
+│   │   ├── variables.tf     # Staging variables for CI/manual
+│   │   └── outputs.tf
+│   └── production/                # Prod root module
+│       ├── backend.tf
+│       ├── main.tf          # Calls modules/stack with env config
+│       ├── variables.tf
+│       └── outputs.tf
 └── modules/                 # Reusable Terraform modules
-    ├── containerapp/        # Enhanced with auto-scaling rules
-    ├── network/
+    ├── stack/               # Full infra composition (was common/)
+    ├── containerapp/
+    ├── containerapps_env/
     ├── observability/
-    └── ...
+    ├── diagnostic_setting/
+    ├── alerts/
+    ├── cosmos_mongo/
+    ├── network/
+    ├── rg/
+    └── security/
 ```
 
 ## Application Scaling Strategy
@@ -63,31 +63,73 @@ bfs-cloud/
 - **Cost Optimization**: Zero cost when applications are idle
 - **Performance**: Automatic scaling based on real demand
 - **Reliability**: Multiple scaling triggers prevent bottlenecks
-- **Environment-Appropriate**: Different thresholds for prod vs staging
+- **Environment-Appropriate**: Thresholds for staging
 
 ## Usage
 
 ### Standard Deployment
 ```bash
-# Deploy production
-cd envs/prod
-terraform init
-terraform apply
-
 # Deploy staging  
 cd envs/staging
 terraform init
 terraform apply
 ```
 
-### Using Environment Configs (Alternative)
-```bash
-# Deploy using tfvars files
-cd common
-terraform init
-terraform apply -var-file="env-configs/prod.tfvars"
-terraform apply -var-file="env-configs/staging.tfvars"
+### Two-State Layout (Staging & Prod)
+- Use `envs/staging` and `envs/production` to maintain separate Terraform states and configurations.
+- Each env has its own `backend.tf` (local by default); switch to a remote backend for team usage.
+
+Remote backend example (AzureRM):
+```hcl
+terraform {
+  backend "azurerm" {
+    resource_group_name  = "bfs-tfstate-rg"
+    storage_account_name = "bfstfstorproduction"
+    container_name       = "tfstate"
+    key                  = "envs/staging/terraform.tfstate"
+  }
+}
 ```
+Repeat with `key = "envs/production/terraform.tfstate"` for production.
+
+### CI/CD Deployment (GitHub Actions + GHCR)
+
+Images are sourced from GHCR and the tag is injected via `image_tag`.
+
+Key variables for CI:
+- `registry_server` (default `ghcr.io`)
+- `registry_namespace` (e.g., your GitHub org/user)
+- `registry_username` (e.g., `${{ github.actor }}`)
+- `registry_token` (GHCR token; mark as secret)
+- `image_tag` (e.g., `${{ github.sha }}` or a release tag)
+
+Example Action step (assuming Azure credentials already set via OIDC/secrets):
+
+```yaml
+    - name: Terraform Apply (staging)
+      working-directory: bfs-cloud/envs/staging
+      env:
+        TF_VAR_registry_server: ghcr.io
+        TF_VAR_registry_namespace: ${{ github.repository_owner }}
+        TF_VAR_registry_username: ${{ github.actor }}
+        TF_VAR_registry_token: ${{ secrets.GHCR_TOKEN }}
+        TF_VAR_image_tag: ${{ github.sha }}
+      run: |
+        terraform init -input=false
+        terraform apply -auto-approve -input=false
+```
+
+With this, Container Apps pull private images from GHCR using the provided credentials. The same secret is applied to all apps unless overridden per app.
+
+### Providing App Secrets and Registries
+
+Provide secrets and registries via env variables or tfvars at the env root:
+- Use `TF_VAR_registry_*` and `TF_VAR_image_tag` to handle GHCR in CI.
+- Optionally pass per-app overrides via `TF_VAR_app_secrets` and `TF_VAR_app_registries`.
+  - Example: `TF_VAR_app_secrets='{"frontend-staging":{"API_KEY":"..."}}'`
+These propagate to Azure Container Apps as `secret {}` and `registry {}` blocks.
+
+The previous `common/` + `env-configs/*.tfvars` path has been removed in favor of the simpler env roots.
 
 ## Key Features
 

@@ -69,9 +69,6 @@ resource "azurerm_cosmosdb_mongo_database" "db" {
   throughput          = var.database_throughput
 }
 
-# Private endpoints removed for cost optimization
-# Access is secured through VNet service endpoints and IP restrictions
-
 resource "azurerm_monitor_diagnostic_setting" "cosmos_diag" {
   name               = "${var.name}-diag"
   target_resource_id = azurerm_cosmosdb_account.this.id

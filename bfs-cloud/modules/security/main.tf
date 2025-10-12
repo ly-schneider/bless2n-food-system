@@ -1,6 +1,3 @@
-# Cost-Optimized Security Module
-# Provides essential security at minimal cost
-
 resource "azurerm_network_security_group" "aca_nsg" {
   name                = "${var.name_prefix}-aca-nsg"
   location            = var.location
@@ -53,7 +50,6 @@ resource "azurerm_subnet_network_security_group_association" "aca_nsg_associatio
   network_security_group_id = azurerm_network_security_group.aca_nsg.id
 }
 
-# Basic Key Vault (Standard SKU - much cheaper than Premium)
 resource "azurerm_key_vault" "basic" {
   count = var.enable_key_vault ? 1 : 0
   
@@ -61,14 +57,12 @@ resource "azurerm_key_vault" "basic" {
   location                 = var.location
   resource_group_name      = var.resource_group_name
   tenant_id                = data.azurerm_client_config.current.tenant_id
-  sku_name                 = "standard"  # Much cheaper than premium
+  sku_name                 = "standard"
   soft_delete_retention_days = 7
   
-  # Public access enabled to avoid private endpoint costs
   public_network_access_enabled = true
   rbac_authorization_enabled     = true
 
-  # Allow access from Azure services and specific IPs only
   network_acls {
     default_action = "Deny"
     bypass         = "AzureServices"
@@ -96,7 +90,6 @@ resource "azurerm_role_assignment" "kv_secrets_user" {
   principal_id         = each.value
 }
 
-# Store only critical secrets
 resource "azurerm_key_vault_secret" "cosmos_connection_string" {
   for_each = var.enable_key_vault ? { "cosmos" = var.cosmos_connection_string } : {}
   
@@ -107,7 +100,6 @@ resource "azurerm_key_vault_secret" "cosmos_connection_string" {
   depends_on = [azurerm_role_assignment.kv_admin]
 }
 
-# Basic monitoring alerts (using existing action group)
 resource "azurerm_monitor_metric_alert" "high_error_rate" {
   count = var.enable_basic_monitoring ? length(var.container_app_ids) : 0
   
@@ -141,7 +133,6 @@ resource "azurerm_monitor_metric_alert" "high_error_rate" {
   tags = var.tags
 }
 
-# Basic diagnostic logging to existing Log Analytics
 resource "azurerm_monitor_diagnostic_setting" "basic_security_logs" {
   count = var.enable_key_vault ? 1 : 0
   

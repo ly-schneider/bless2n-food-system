@@ -17,7 +17,6 @@ const config: NextConfig = {
     remotePatterns: [
       { protocol: "http", hostname: "localhost", port: "8080", pathname: "/**" },
       { protocol: "http", hostname: "127.0.0.1", port: "8080", pathname: "/**" },
-      // Allow any https source (CDNs, object storage) used by the API
       { protocol: "https", hostname: "**", pathname: "/**" },
     ],
   },
@@ -26,7 +25,6 @@ const config: NextConfig = {
     { source: "/api/healthz", destination: `${API_BASE}/ping` },
     { source: "/health", destination: `${API_BASE}/ping` },
     { source: "/ping", destination: `${API_BASE}/ping` },
-    // Dev/prod: proxy all API calls through Next to avoid WebView cross-origin issues
     { source: "/api/:path*", destination: `${API_BASE}/:path*` },
   ],
   eslint: {

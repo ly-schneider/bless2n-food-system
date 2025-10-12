@@ -6,6 +6,25 @@ resource "azurerm_container_app" "this" {
 
   revision_mode = "Single"
 
+  # Optional secrets for use by registries or app config
+  dynamic "secret" {
+    for_each = var.secrets
+    content {
+      name  = secret.key
+      value = secret.value
+    }
+  }
+
+  # Optional container registry credentials (e.g., GHCR)
+  dynamic "registry" {
+    for_each = var.registries
+    content {
+      server               = registry.value.server
+      username             = registry.value.username
+      password_secret_name = registry.value.password_secret_name
+    }
+  }
+
   ingress {
     external_enabled           = true
     target_port               = var.target_port

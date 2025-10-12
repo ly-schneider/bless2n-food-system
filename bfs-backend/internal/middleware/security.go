@@ -52,10 +52,10 @@ func generateNonce() (string, error) {
 }
 
 func isHTTPS(r *http.Request) bool {
-    if r.TLS != nil {
-        return true
-    }
-    return strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
+	if r.TLS != nil {
+		return true
+	}
+	return strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
 }
 
 // IsHTTPS is an exported helper for downstream packages to decide cookie policy.
@@ -85,7 +85,7 @@ func (s *SecurityMiddleware) SecurityHeaders(next http.Handler) http.Handler {
 			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
 		}
 
-		// CSP: Report-Only in dev, Enforcing in staging/prod
+		// CSP: Report-Only in dev, Enforcing in staging/production
 		if s.enableCSP {
 			if nonce, err := generateNonce(); err == nil {
 				headerName := "Content-Security-Policy"
@@ -213,60 +213,60 @@ func SetSecureCookie(w http.ResponseWriter, opts SecureCookieOptions) {
 
 // __Host- cookies must be Secure, Path=/, and have NO Domain attribute (HTTPS only)
 func SetSecureAuthCookie(w http.ResponseWriter, name, value string, maxAge int) {
-    http.SetCookie(w, &http.Cookie{
-        Name:     "__Host-" + name,
-        Value:    value,
-        Path:     "/",
-        MaxAge:   maxAge,
-        HttpOnly: true,
-        Secure:   true,
-        SameSite: http.SameSiteLaxMode, // Lax is ergonomic & CSRF-aware for same-site
-    })
+	http.SetCookie(w, &http.Cookie{
+		Name:     "__Host-" + name,
+		Value:    value,
+		Path:     "/",
+		MaxAge:   maxAge,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode, // Lax is ergonomic & CSRF-aware for same-site
+	})
 }
 func ClearSecureAuthCookie(w http.ResponseWriter, name string) {
-    http.SetCookie(w, &http.Cookie{
-        Name:     "__Host-" + name,
-        Value:    "",
-        Path:     "/",
-        MaxAge:   -1,
-        HttpOnly: true,
-        Secure:   true,
-        SameSite: http.SameSiteLaxMode,
-    })
+	http.SetCookie(w, &http.Cookie{
+		Name:     "__Host-" + name,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	})
 }
 
 // SetAuthCookie sets a refresh/auth cookie that works in both HTTPS and local HTTP dev.
 // - On HTTPS: uses __Host- prefix and Secure=true
 // - On HTTP (dev): no prefix and Secure=false (still HttpOnly + SameSite=Lax)
 func SetAuthCookie(w http.ResponseWriter, r *http.Request, name, value string, maxAge int) {
-    if isHTTPS(r) {
-        SetSecureAuthCookie(w, name, value, maxAge)
-        return
-    }
-    http.SetCookie(w, &http.Cookie{
-        Name:     name,
-        Value:    value,
-        Path:     "/",
-        MaxAge:   maxAge,
-        HttpOnly: true,
-        Secure:   false,
-        SameSite: http.SameSiteLaxMode,
-    })
+	if isHTTPS(r) {
+		SetSecureAuthCookie(w, name, value, maxAge)
+		return
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     name,
+		Value:    value,
+		Path:     "/",
+		MaxAge:   maxAge,
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+	})
 }
 
 // ClearAuthCookie clears the refresh/auth cookie for both HTTPS and local HTTP dev.
 func ClearAuthCookie(w http.ResponseWriter, r *http.Request, name string) {
-    if isHTTPS(r) {
-        ClearSecureAuthCookie(w, name)
-        return
-    }
-    http.SetCookie(w, &http.Cookie{
-        Name:     name,
-        Value:    "",
-        Path:     "/",
-        MaxAge:   -1,
-        HttpOnly: true,
-        Secure:   false,
-        SameSite: http.SameSiteLaxMode,
-    })
+	if isHTTPS(r) {
+		ClearSecureAuthCookie(w, name)
+		return
+	}
+	http.SetCookie(w, &http.Cookie{
+		Name:     name,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+	})
 }
