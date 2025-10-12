@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { API_BASE_URL } from "@/lib/api"
-import { getClientInfo } from "@/lib/clientInfo"
+import { getClientInfo } from "@/lib/client-info"
 
 type StationStatus = { exists: boolean; approved: boolean; name?: string }
 
@@ -270,7 +270,6 @@ export default function StationPage() {
   async function requestVerification() {
     const fallbackLabel = devices[0]?.label || ""
     const info = await getClientInfo()
-    const deviceLabel = (fallbackLabel || info.model).slice(0, 80)
     const os = info.os || "web"
     const name = (stationName || fallbackLabel || "Station").slice(0, 80)
     if (!name) return

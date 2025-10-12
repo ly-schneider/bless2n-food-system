@@ -101,8 +101,12 @@ export default function AdminOrderDetailPage() {
   const updated = order?.updatedAt ? new Date(order.updatedAt).toLocaleString("de-CH") : "–"
   const origin = order?.origin || "shop"
   const posMethod = order?.posPayment?.method
-  const posReceived = typeof order?.posPayment?.amountReceivedCents === "number" ? formatChf(order!.posPayment!.amountReceivedCents!) : null
-  const posChange = typeof order?.posPayment?.changeCents === "number" ? formatChf(order!.posPayment!.changeCents!) : null
+  const posReceived =
+    typeof order?.posPayment?.amountReceivedCents === "number"
+      ? formatChf(order!.posPayment!.amountReceivedCents!)
+      : null
+  const posChange =
+    typeof order?.posPayment?.changeCents === "number" ? formatChf(order!.posPayment!.changeCents!) : null
 
   return (
     <div className="min-w-0 space-y-6">
@@ -167,12 +171,10 @@ export default function AdminOrderDetailPage() {
                 <span className="uppercase">{posMethod || "–"}</span>
               </div>
               <div>
-                <span className="text-muted-foreground">Erhalten:</span>{" "}
-                <span>{posReceived || "–"}</span>
+                <span className="text-muted-foreground">Erhalten:</span> <span>{posReceived || "–"}</span>
               </div>
               <div>
-                <span className="text-muted-foreground">Rückgeld:</span>{" "}
-                <span>{posChange || "–"}</span>
+                <span className="text-muted-foreground">Rückgeld:</span> <span>{posChange || "–"}</span>
               </div>
               <div>
                 <span className="text-muted-foreground">Payment Intent:</span>{" "}

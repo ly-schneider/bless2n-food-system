@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { API_BASE_URL } from "@/lib/api"
-import { getClientInfo } from "@/lib/clientInfo"
+import { getClientInfo } from "@/lib/client-info"
 
-export function RequestAccess({ token, onRefresh }: { token: string; onRefresh: () => void }) {
+export function RequestAccess({ token, onRefresh: _onRefresh }: { token: string; onRefresh: () => void }) {
   const [name, setName] = useState("")
   const [requested, setRequested] = useState(false)
 

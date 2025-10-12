@@ -54,7 +54,9 @@ export function CartItemDisplay({ item, onUpdateQuantity, onRemove, onEdit, isPO
                         return (
                           <div
                             key={slotId}
-                            className={`text-muted-foreground border-border rounded-lg border p-1 ${isPOS ? "text-[10px]" : "text-xs"}`}
+                            className={`text-muted-foreground border-border rounded-lg border p-1 ${
+                              isPOS ? "text-[10px]" : "text-xs"
+                            }`}
                           >
                             <p className="font-medium">
                               {slot.name}:{" "}

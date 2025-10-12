@@ -32,7 +32,7 @@ type Receipt = {
 
 type PosBridge = {
   print?: (s: string) => void
-  payWithCard?: (p: { amountCents: number; currency: string; reference: string }) => void
+  payWithCard?: (p: { amountCents: number; currency: string; reference: string } | string) => void
 }
 
 const getBridge = () => (globalThis as unknown as { PosBridge?: PosBridge }).PosBridge
@@ -197,7 +197,9 @@ export function BasketPanel({ token }: { token: string }) {
               else setPrintErrorDialog("Drucken nicht verfügbar")
             } catch {}
             // Clear cart; dialog closes automatically after print completes
-            try { clearCart() } catch {}
+            try {
+              clearCart()
+            } catch {}
           } catch (e) {
             // Keep success UI but surface backend error
             setCardProcessing(false)
@@ -347,7 +349,9 @@ export function BasketPanel({ token }: { token: string }) {
       }
 
       // Clear cart and close checkout immediately
-      try { clearCart() } catch {}
+      try {
+        clearCart()
+      } catch {}
       setShowCheckout(false)
       setTender(null)
       setReceived("")
@@ -372,10 +376,10 @@ export function BasketPanel({ token }: { token: string }) {
       setShowCard(true)
       try {
         // Prefer JSON string for Android JS bridge
-        ;(bridge as any).payWithCard(JSON.stringify(payload))
+        bridge.payWithCard(JSON.stringify(payload))
       } catch {
         // Fallback to object for other environments
-        ;(bridge as any).payWithCard(payload as any)
+        bridge.payWithCard(payload)
       }
     }
   }, [openReceipt, total])
@@ -495,7 +499,12 @@ export function BasketPanel({ token }: { token: string }) {
             >
               Jetzt bezahlen
             </Button>
-            <Button variant="outline" className="h-10 w-full rounded-xl text-xs" onClick={clearCart} disabled={cartIsEmpty}>
+            <Button
+              variant="outline"
+              className="h-10 w-full rounded-xl text-xs"
+              onClick={clearCart}
+              disabled={cartIsEmpty}
+            >
               Leeren
             </Button>
           </div>
@@ -711,9 +720,7 @@ export function BasketPanel({ token }: { token: string }) {
                 {cardPrintInProgress && (
                   <div className="text-muted-foreground -mt-2 text-sm">Beleg wird im Hintergrund gedruckt…</div>
                 )}
-                {cardPrintDone && (
-                  <div className="text-muted-foreground -mt-2 text-sm">Beleg gedruckt</div>
-                )}
+                {cardPrintDone && <div className="text-muted-foreground -mt-2 text-sm">Beleg gedruckt</div>}
               </div>
             )}
             {!cardProcessing && cardError && (
@@ -727,7 +734,9 @@ export function BasketPanel({ token }: { token: string }) {
                   </div>
                 </div>
                 <div className="text-xl font-semibold">Kartenzahlung fehlgeschlagen</div>
-                <div className="text-muted-foreground -mt-4 text-sm">{cardError || "Bitte versuchen Sie es erneut."}</div>
+                <div className="text-muted-foreground -mt-4 text-sm">
+                  {cardError || "Bitte versuchen Sie es erneut."}
+                </div>
                 <div className="mt-2 grid w-full grid-cols-2 gap-3">
                   <Button
                     className="h-12 rounded-xl text-base"
@@ -738,11 +747,7 @@ export function BasketPanel({ token }: { token: string }) {
                   >
                     Erneut versuchen
                   </Button>
-                  <Button
-                    variant="outline"
-                    className="h-12 rounded-xl text-base"
-                    onClick={() => setShowCard(false)}
-                  >
+                  <Button variant="outline" className="h-12 rounded-xl text-base" onClick={() => setShowCard(false)}>
                     Schliessen
                   </Button>
                 </div>
