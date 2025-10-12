@@ -14,9 +14,34 @@ env:
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      web: ${{ steps.filter.outputs.web }}
+      cloud: ${{ steps.filter.outputs.cloud }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'bfs-backend/**'
+            web:
+              - 'bfs-web-app/**'
+            cloud:
+              - 'bfs-cloud/**'
+
   build-and-push-images:
     name: Build & Push Images
     runs-on: ubuntu-latest
+    environment: ${{ github.ref_name }}
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.web == 'true'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,6 +63,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build & Push backend image
+        if: ${{ needs.changes.outputs.backend == 'true' }}
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -51,10 +77,15 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Build & Push frontend image
+        if: ${{ needs.changes.outputs.web == 'true' }}
         uses: docker/build-push-action@v6
         with:
           context: bfs-web-app
           file: bfs-web-app/docker/Dockerfile
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=${{ vars.NEXT_PUBLIC_API_BASE_URL }}
+            BACKEND_INTERNAL_URL=${{ vars.BACKEND_INTERNAL_URL }}
+            NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
           push: true
           tags: |
             ${{ steps.names.outputs.frontend }}:${{ env.IMAGE_TAG }}
@@ -65,8 +96,10 @@ jobs:
 
   deploy-infra:
     name: Terraform Deploy to Azure
-    needs: build-and-push-images
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.web == 'true' || needs.changes.outputs.cloud == 'true'
     runs-on: ubuntu-latest
+    environment: ${{ github.ref_name }}
     defaults:
       run:
         working-directory: bfs-cloud/envs/${{ env.ENV_DIR }}
@@ -85,9 +118,17 @@ jobs:
         run: |
           case "${{ github.ref_name }}" in
             staging) echo "ENV_DIR=staging" >> $GITHUB_ENV ;;
-            production) echo "ENV_DIR=production" >> $GITHUB_ENV ;;
+            production) echo "ENV_DIR=prod" >> $GITHUB_ENV ;;
             *) echo "Unsupported branch: ${{ github.ref_name }}"; exit 1 ;;
           esac
+
+      - name: Choose image tag
+        if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.web == 'true' }}
+        run: echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
+
+      - name: Choose image tag (cloud-only changes)
+        if: ${{ needs.changes.outputs.backend != 'true' && needs.changes.outputs.web != 'true' }}
+        run: echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
 
       - name: Azure Login (OIDC)
         uses: azure/login@v2
@@ -111,6 +152,8 @@ jobs:
           TF_VAR_registry_username: ${{ github.actor }}
           TF_VAR_registry_token: ${{ secrets.GHCR_TOKEN }}
           TF_VAR_image_tag: ${{ env.IMAGE_TAG }}
+          # Optional app-specific envs (example for frontend SSR)
+          # Use TF_VAR_app_secrets to pass sensitive values as container secrets if needed
         run: terraform apply -auto-approve -input=false
 
 concurrency:

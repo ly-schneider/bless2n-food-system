@@ -42,12 +42,14 @@ COPY --chown=nodejs:nodejs . .
 # Accept runtime config as build args
 ARG NEXT_PUBLIC_API_BASE_URL
 ARG BACKEND_INTERNAL_URL
+ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 
 # Set production environment (and propagate envs used at build time)
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL} \
-    BACKEND_INTERNAL_URL=${BACKEND_INTERNAL_URL}
+    BACKEND_INTERNAL_URL=${BACKEND_INTERNAL_URL} \
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
 
 # Build using the same package manager used for install; skip npm prune to avoid
 # unsupported protocols (e.g., link:) and because Next.js standalone bundles deps.
@@ -61,6 +63,7 @@ FROM gcr.io/distroless/nodejs24-debian12:nonroot AS runtime
 # Accept runtime config for SSR as well
 ARG NEXT_PUBLIC_API_BASE_URL
 ARG BACKEND_INTERNAL_URL
+ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 
 # Set secure environment variables
 ENV NODE_ENV=production \
@@ -68,7 +71,8 @@ ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
     NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL} \
-    BACKEND_INTERNAL_URL=${BACKEND_INTERNAL_URL}
+    BACKEND_INTERNAL_URL=${BACKEND_INTERNAL_URL} \
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
 
 # Set working directory
 WORKDIR /app

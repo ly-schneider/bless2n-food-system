@@ -46,6 +46,7 @@ variable "config" {
       memory       = string
       min_replicas = number
       max_replicas = number
+      environment_variables = optional(map(string), {})
       secrets      = optional(map(string), {})
       registries   = optional(list(object({
         server               = string
@@ -168,7 +169,7 @@ module "apps" {
   max_replicas                = each.value.max_replicas
   enable_system_identity      = true
   log_analytics_workspace_id  = module.obs.log_analytics_id
-  environment_variables       = local.environment_variables
+  environment_variables       = merge(local.environment_variables, each.value.environment_variables)
   secrets                     = each.value.secrets
   registries                  = each.value.registries
   http_scale_rule             = each.value.http_scale_rule
@@ -213,4 +214,3 @@ module "security" {
   log_analytics_workspace_id = module.obs.log_analytics_id
   tags                       = var.tags
 }
-
