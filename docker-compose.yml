@@ -70,7 +70,7 @@ services:
   web-app:
     build:
       context: ./bfs-web-app
-      dockerfile: docker/Dockerfile
+      dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
         BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL}

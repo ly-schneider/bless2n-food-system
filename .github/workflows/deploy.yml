@@ -1,22 +1,23 @@
 name: Deploy
 
 on:
-  push:
-    branches: [ staging, production ]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
 
 permissions:
   contents: read
-  packages: write
+  packages: read
   id-token: write
 
 env:
-  REGISTRY: ghcr.io
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
   changes:
     name: Detect changes
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' && contains('staging,production', github.event.workflow_run.head_branch) }}
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       web: ${{ steps.filter.outputs.web }}
@@ -24,6 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
       - uses: dorny/paths-filter@v3
         id: filter
@@ -39,12 +41,13 @@ jobs:
   build-and-push-images:
     name: Build & Push Images
     runs-on: ubuntu-latest
-    environment: ${{ github.ref_name }}
+    environment: ${{ github.event.workflow_run.head_branch }}
     needs: changes
     if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.web == 'true'
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
 
       - name: Azure Login (OIDC)
@@ -54,32 +57,16 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Resolve ACR login server
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set ACR login server
         id: acr
         run: |
-          ACR_NAME="${{ github.ref_name == 'staging' && 'bfsstagingacr' || 'bfsprodacr' }}"
-          echo "Using ACR: $ACR_NAME"
-          
-          # Check if ACR exists, if not wait a bit and retry
-          for i in {1..5}; do
-            if LOGIN_SERVER=$(az acr show -n "$ACR_NAME" --query loginServer -o tsv 2>/dev/null); then
-              echo "login_server=$LOGIN_SERVER" >> $GITHUB_OUTPUT
-              break
-            else
-              echo "ACR $ACR_NAME not found, attempt $i/5. Waiting 30 seconds..."
-              sleep 30
-            fi
-          done
-          
-          if [ -z "$LOGIN_SERVER" ]; then
-            echo "ACR $ACR_NAME not found after 5 attempts" >&2
-            exit 1
-          fi
+          echo "login_server=${{ vars.ACR_LOGIN_SERVER }}" >> $GITHUB_OUTPUT
 
       - name: ACR Login
-        run: |
-          ACR_NAME="${{ github.ref_name == 'staging' && 'bfsstagingacr' || 'bfsprodacr' }}"
-          az acr login -n "$ACR_NAME"
+        run: az acr login -n "${{ vars.ACR_NAME }}"
 
       - name: Set Image Names (ACR)
         id: names
@@ -91,22 +78,24 @@ jobs:
         if: ${{ needs.changes.outputs.backend == 'true' }}
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: bfs-backend
           file: bfs-backend/Dockerfile
           push: true
           tags: |
             ${{ steps.names.outputs.backend }}:${{ env.IMAGE_TAG }}
-            ${{ steps.names.outputs.backend }}:${{ github.ref_name }}
+            ${{ steps.names.outputs.backend }}:${{ github.event.workflow_run.head_branch }}
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
 
       - name: Build & Push frontend image
         if: ${{ needs.changes.outputs.web == 'true' }}
         uses: docker/build-push-action@v6
         with:
           context: bfs-web-app
-          file: bfs-web-app/docker/Dockerfile
+          file: bfs-web-app/Dockerfile
           build-args: |
             NEXT_PUBLIC_API_BASE_URL=${{ vars.NEXT_PUBLIC_API_BASE_URL }}
             BACKEND_INTERNAL_URL=${{ vars.BACKEND_INTERNAL_URL }}
@@ -114,25 +103,28 @@ jobs:
           push: true
           tags: |
             ${{ steps.names.outputs.frontend }}:${{ env.IMAGE_TAG }}
-            ${{ steps.names.outputs.frontend }}:${{ github.ref_name }}
+            ${{ steps.names.outputs.frontend }}:${{ github.event.workflow_run.head_branch }}
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
 
   deploy-infra:
     name: Deploy Infrastructure via TFC
     needs: [changes, build-and-push-images]
     if: always() && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.web == 'true' || needs.changes.outputs.cloud == 'true')
     runs-on: ubuntu-latest
-    environment: ${{ github.ref_name }}
+    environment: ${{ github.event.workflow_run.head_branch }}
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
 
       - name: Set workspace and image tag
         run: |
-          case "${{ github.ref_name }}" in
+          case "${{ github.event.workflow_run.head_branch }}" in
             staging) 
               echo "TF_WORKSPACE=bfs-staging" >> $GITHUB_ENV
               ;;
@@ -140,111 +132,27 @@ jobs:
               echo "TF_WORKSPACE=bfs-production" >> $GITHUB_ENV
               ;;
             *) 
-              echo "Unsupported branch: ${{ github.ref_name }}"
+              echo "Unsupported branch: ${{ github.event.workflow_run.head_branch }}"
               exit 1
               ;;
           esac
           
           if [[ "${{ needs.changes.outputs.backend }}" == "true" || "${{ needs.changes.outputs.web }}" == "true" ]]; then
-            echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
+            echo "IMAGE_TAG=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_ENV
           else
-            echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "IMAGE_TAG=${{ github.event.workflow_run.head_branch }}" >> $GITHUB_ENV
           fi
 
-      - name: Get Terraform Cloud Workspace ID
-        id: workspace
-        run: |
-          WORKSPACE_ID=$(curl -s \
-            -H "Authorization: Bearer ${{ secrets.TF_API_TOKEN }}" \
-            -H "Content-Type: application/vnd.api+json" \
-            "https://app.terraform.io/api/v2/organizations/leys-services/workspaces/${{ env.TF_WORKSPACE }}" \
-            | jq -r '.data.id')
-          echo "workspace_id=$WORKSPACE_ID" >> $GITHUB_OUTPUT
-
-      - name: Create Terraform Cloud Run
-        id: run
-        run: |
-          RUN_ID=$(curl -s -X POST \
-            -H "Authorization: Bearer ${{ secrets.TF_API_TOKEN }}" \
-            -H "Content-Type: application/vnd.api+json" \
-            -d '{
-              "data": {
-                "type": "runs",
-                "attributes": {
-                  "message": "Deploy ${{ github.ref_name }} - commit ${{ github.sha }}",
-                  "auto-apply": true
-                },
-                "relationships": {
-                  "workspace": {
-                    "data": {
-                      "type": "workspaces",
-                      "id": "${{ steps.workspace.outputs.workspace_id }}"
-                    }
-                  }
-                }
-              }
-            }' \
-            "https://app.terraform.io/api/v2/runs" \
-            | jq -r '.data.id')
-          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
-
-      - name: Set Terraform Variables
-        run: |
-          # Set image_tag variable for this run
-          curl -X PATCH \
-            -H "Authorization: Bearer ${{ secrets.TF_API_TOKEN }}" \
-            -H "Content-Type: application/vnd.api+json" \
-            -d '{
-              "data": {
-                "type": "workspaces",
-                "attributes": {
-                  "terraform-variables": [
-                    {
-                      "key": "image_tag",
-                      "value": "${{ env.IMAGE_TAG }}",
-                      "category": "terraform",
-                      "hcl": false,
-                      "sensitive": false
-                    }
-                  ]
-                }
-              }
-            }' \
-            "https://app.terraform.io/api/v2/workspaces/${{ steps.workspace.outputs.workspace_id }}"
-
-      - name: Monitor Terraform Run
-        run: |
-          RUN_ID="${{ steps.run.outputs.run_id }}"
-          echo "Monitoring Terraform Cloud run: $RUN_ID"
-          
-          while true; do
-            STATUS=$(curl -s \
-              -H "Authorization: Bearer ${{ secrets.TF_API_TOKEN }}" \
-              "https://app.terraform.io/api/v2/runs/$RUN_ID" \
-              | jq -r '.data.attributes.status')
-            
-            echo "Run status: $STATUS"
-            
-            case $STATUS in
-              "applied")
-                echo "✅ Terraform run completed successfully!"
-                exit 0
-                ;;
-              "errored"|"canceled"|"force_canceled")
-                echo "❌ Terraform run failed with status: $STATUS"
-                exit 1
-                ;;
-              "planned_and_finished")
-                echo "ℹ️ Terraform run planned but no changes needed"
-                exit 0
-                ;;
-              *)
-                echo "⏳ Waiting for run to complete..."
-                sleep 30
-                ;;
-            esac
-          done
+      - name: Terraform Cloud run (apply with inline tf-vars)
+        uses: kvrhdn/tfe-run@v1
+        with:
+          token: ${{ secrets.TF_API_TOKEN }}
+          workspace: ${{ env.TF_WORKSPACE }}
+          message: "Deploy ${{ github.event.workflow_run.head_branch }} - ${{ env.IMAGE_TAG }}"
+          wait-for-completion: true
+          tf-vars: |
+            image_tag = "${{ env.IMAGE_TAG }}"
 
 concurrency:
-  group: deploy-${{ github.ref_name }}
-  cancel-in-progress: false
+  group: deploy-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
