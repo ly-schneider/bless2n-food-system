@@ -7,22 +7,8 @@ locals {
   backend_image  = "${local.registry_host}/${local.backend_repo}:${var.image_tag}"
 }
 
-# Create ACR
-module "acr" {
-  source = "../../modules/acr"
-  
-  name                = var.acr_name
-  resource_group_name = "bfs-staging-rg"
-  location            = var.location
-  sku                 = "Basic"
-  admin_enabled       = false
-}
-
 module "bfs_infrastructure" {
   source = "../../modules/stack"
-  
-  # Ensure ACR is created before the infrastructure
-  depends_on = [module.acr]
 
   environment   = "staging"
   location      = var.location

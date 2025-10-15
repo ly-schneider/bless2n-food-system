@@ -102,10 +102,26 @@ module "rg" {
   tags     = var.tags
 }
 
+# Create ACR if enabled
+module "acr" {
+  count  = try(var.config.enable_acr, false) ? 1 : 0
+  source = "../acr"
+  
+  name                = var.config.acr_name
+  resource_group_name = module.rg.name
+  location            = var.location
+  sku                 = var.config.acr_sku
+  admin_enabled       = false
+  
+  depends_on = [module.rg]
+}
+
 data "azurerm_container_registry" "acr" {
   count               = try(var.config.enable_acr, false) ? 1 : 0
   name                = var.config.acr_name
   resource_group_name = module.rg.name
+  
+  depends_on = [module.acr]
 }
 
 module "net" {
