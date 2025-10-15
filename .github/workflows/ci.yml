@@ -18,6 +18,7 @@ on:
       - '.github/workflows/ci.yml'
       - '.github/workflows/deploy.yml'
   merge_group:
+  workflow_dispatch:
 
 permissions:
   contents: read
