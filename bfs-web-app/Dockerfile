@@ -29,13 +29,10 @@ USER nodejs
 # Copy package files with proper ownership
 COPY --chown=nodejs:nodejs package.json pnpm-lock.yaml* yarn.lock* package-lock.json* ./
 
-# For pnpm: fetch dependencies first (better layer caching)
-RUN if [ -f pnpm-lock.yaml ]; then pnpm fetch --prod; fi
-
 # Install dependencies with cache mounts (as non-root)
 RUN --mount=type=cache,target=/home/nodejs/.npm,uid=1001,gid=1001 \
     --mount=type=cache,target=/home/nodejs/.pnpm-store,uid=1001,gid=1001 \
-    if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile --offline; \
+    if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; \
     elif [ -f yarn.lock ]; then yarn install --frozen-lockfile; \
     else npm ci; fi
 

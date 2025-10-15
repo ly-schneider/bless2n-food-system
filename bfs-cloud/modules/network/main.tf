@@ -12,17 +12,6 @@ resource "azurerm_subnet" "aca" {
   virtual_network_name = azurerm_virtual_network.this.name
   address_prefixes     = [var.subnet_cidr]
 
-  delegation {
-    name = "aca-delegation"
-    service_delegation {
-      name    = "Microsoft.App/environments"
-      actions = [
-        "Microsoft.Network/virtualNetworks/subnets/join/action",
-        "Microsoft.Network/virtualNetworks/subnets/prepareNetworkPolicies/action",
-      ]
-    }
-  }
-
   service_endpoints = [
     "Microsoft.KeyVault",
     "Microsoft.AzureCosmosDB",
