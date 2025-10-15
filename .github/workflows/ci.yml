@@ -8,6 +8,7 @@ on:
       - 'bfs-web-app/**'
       - 'bfs-android-app/**'
       - '.github/workflows/ci.yml'
+      - '.github/workflows/deploy.yml'
   push:
     branches: [ staging, production ]
     paths:
@@ -15,6 +16,7 @@ on:
       - 'bfs-web-app/**'
       - 'bfs-android-app/**'
       - '.github/workflows/ci.yml'
+      - '.github/workflows/deploy.yml'
   merge_group:
 
 permissions:
