@@ -156,6 +156,7 @@ jobs:
         uses: kvrhdn/tfe-run@v1
         with:
           token: ${{ secrets.TF_API_TOKEN }}
+          organization: leys-services
           workspace: ${{ env.TF_WORKSPACE }}
           message: "Deploy ${{ inputs.head_branch }} - ${{ env.IMAGE_TAG }}"
           wait-for-completion: ${{ inputs.head_branch == 'staging' }}
