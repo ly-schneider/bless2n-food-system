@@ -37,6 +37,7 @@ jobs:
               - 'bfs-web-app/**'
             cloud:
               - 'bfs-cloud/**'
+              - '.github/workflows/**'
 
   build-and-push-images:
     name: Build & Push Images
