@@ -150,7 +150,8 @@ jobs:
           path: bfs-android-app/app/build/outputs/apk/debug/*.apk
 
   deploy:
-    if: github.event_name == 'push' && contains(' staging production ', format(' {0} ', github.ref_name))
+    if: always() && github.event_name == 'push' && contains(' staging production ', format(' {0} ', github.ref_name)) && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    needs: [changes]
     permissions:
       contents: read
       packages: read
