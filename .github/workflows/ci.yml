@@ -151,7 +151,7 @@ jobs:
 
   deploy:
     if: always() && github.event_name == 'push' && contains(' staging production ', format(' {0} ', github.ref_name)) && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
-    needs: [changes]
+    needs: [changes, backend, web-app, android]
     permissions:
       contents: read
       packages: read
