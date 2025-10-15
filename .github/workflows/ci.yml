@@ -148,3 +148,12 @@ jobs:
         with:
           name: android-apk-debug
           path: bfs-android-app/app/build/outputs/apk/debug/*.apk
+
+  deploy:
+    if: github.event_name == 'push' && contains(' staging production ', format(' {0} ', github.ref_name))
+    needs: [changes, backend, web-app, android]
+    uses: ./.github/workflows/deploy.yml
+    with:
+      head_branch: ${{ github.ref_name }}
+      head_sha: ${{ github.sha }}
+    secrets: inherit

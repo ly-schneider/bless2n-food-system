@@ -1,10 +1,14 @@
 name: Deploy
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
-    branches: [staging, production]
+  workflow_call:
+    inputs:
+      head_branch:
+        type: string
+        required: true
+      head_sha:
+        type: string
+        required: true
 
 permissions:
   contents: read
@@ -12,7 +16,7 @@ permissions:
   id-token: write
 
 env:
-  IMAGE_TAG: ${{ github.sha }}
+  IMAGE_TAG: ${{ inputs.head_sha }}
 
 jobs:
   changes:
@@ -20,9 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     if: >
       ${{
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.event == 'push' &&
-        (github.event.workflow_run.head_branch == 'staging' || github.event.workflow_run.head_branch == 'production')
+        (inputs.head_branch == 'staging' || inputs.head_branch == 'production')
       }}
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
@@ -31,7 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ inputs.head_sha }}
           fetch-depth: 0
       - uses: dorny/paths-filter@v3
         id: filter
@@ -48,13 +50,13 @@ jobs:
   build-and-push-images:
     name: Build & Push Images
     runs-on: ubuntu-latest
-    environment: ${{ github.event.workflow_run.head_branch }}
+    environment: ${{ inputs.head_branch }}
     needs: changes
     if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.web == 'true'
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ inputs.head_sha }}
           fetch-depth: 0
 
       - name: Azure Login (OIDC)
@@ -90,10 +92,10 @@ jobs:
           push: true
           tags: |
             ${{ steps.names.outputs.backend }}:${{ env.IMAGE_TAG }}
-            ${{ steps.names.outputs.backend }}:${{ github.event.workflow_run.event == 'pull_request' && format('pr-{0}', github.event.workflow_run.pull_requests[0].number) || github.event.workflow_run.head_branch }}
+            ${{ steps.names.outputs.backend }}:${{ inputs.head_branch }}
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
+            org.opencontainers.image.revision=${{ inputs.head_sha }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
 
@@ -110,10 +112,10 @@ jobs:
           push: true
           tags: |
             ${{ steps.names.outputs.frontend }}:${{ env.IMAGE_TAG }}
-            ${{ steps.names.outputs.frontend }}:${{ github.event.workflow_run.event == 'pull_request' && format('pr-{0}', github.event.workflow_run.pull_requests[0].number) || github.event.workflow_run.head_branch }}
+            ${{ steps.names.outputs.frontend }}:${{ inputs.head_branch }}
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
+            org.opencontainers.image.revision=${{ inputs.head_sha }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
 
@@ -122,16 +124,16 @@ jobs:
     needs: [changes, build-and-push-images]
     if: always() && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.web == 'true' || needs.changes.outputs.cloud == 'true')
     runs-on: ubuntu-latest
-    environment: ${{ github.event.workflow_run.head_branch }}
+    environment: ${{ inputs.head_branch }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ inputs.head_sha }}
           fetch-depth: 0
 
       - name: Set workspace and image tag
         run: |
-          case "${{ github.event.workflow_run.head_branch }}" in
+          case "${{ inputs.head_branch }}" in
             staging) 
               echo "TF_WORKSPACE=bfs-staging" >> $GITHUB_ENV
               ;;
@@ -139,15 +141,15 @@ jobs:
               echo "TF_WORKSPACE=bfs-production" >> $GITHUB_ENV
               ;;
             *) 
-              echo "Unsupported branch: ${{ github.event.workflow_run.head_branch }}"
+              echo "Unsupported branch: ${{ inputs.head_branch }}"
               exit 1
               ;;
           esac
           
           if [[ "${{ needs.changes.outputs.backend }}" == "true" || "${{ needs.changes.outputs.web }}" == "true" ]]; then
-            echo "IMAGE_TAG=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_ENV
+            echo "IMAGE_TAG=${{ inputs.head_sha }}" >> $GITHUB_ENV
           else
-            echo "IMAGE_TAG=${{ github.event.workflow_run.head_branch }}" >> $GITHUB_ENV
+            echo "IMAGE_TAG=${{ inputs.head_branch }}" >> $GITHUB_ENV
           fi
 
       - name: Terraform Cloud run (conditional apply)
@@ -155,11 +157,11 @@ jobs:
         with:
           token: ${{ secrets.TF_API_TOKEN }}
           workspace: ${{ env.TF_WORKSPACE }}
-          message: "${{ github.event.workflow_run.event == 'pull_request' && format('Deploy PR {0} to {1} - {2}', github.event.workflow_run.pull_requests[0].number, github.event.workflow_run.head_branch, env.IMAGE_TAG) || format('Deploy {0} - {1}', github.event.workflow_run.head_branch, env.IMAGE_TAG) }}"
-          wait-for-completion: ${{ github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'staging' }}
+          message: "Deploy ${{ inputs.head_branch }} - ${{ env.IMAGE_TAG }}"
+          wait-for-completion: ${{ inputs.head_branch == 'staging' }}
           tf-vars: |
             image_tag = "${{ env.IMAGE_TAG }}"
 
 concurrency:
-  group: deploy-${{ github.event.workflow_run.head_branch }}-${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.pull_requests[0].number || 'push' }}
+  group: deploy-${{ inputs.head_branch }}-push
   cancel-in-progress: true
