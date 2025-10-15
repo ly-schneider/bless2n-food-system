@@ -29,7 +29,7 @@ export async function apiRequest<T>(endpoint: string, options: RequestInit = {})
   if (!baseUrl) {
     throw new Error("API_BASE_URL is not configured")
   }
-  
+
   const url = `${baseUrl}${endpoint}`
 
   const response = await fetch(url, {
