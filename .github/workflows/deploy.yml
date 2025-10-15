@@ -17,7 +17,7 @@ jobs:
   changes:
     name: Detect changes
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' && contains('staging,production', github.event.workflow_run.head_branch) }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' && contains('staging,production', github.event.workflow_run.head_branch) && (github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'staging' || github.event.workflow_run.event == 'pull_request') }}
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       web: ${{ steps.filter.outputs.web }}
@@ -83,7 +83,7 @@ jobs:
           push: true
           tags: |
             ${{ steps.names.outputs.backend }}:${{ env.IMAGE_TAG }}
-            ${{ steps.names.outputs.backend }}:${{ github.event.workflow_run.head_branch }}
+            ${{ steps.names.outputs.backend }}:${{ github.event.workflow_run.event == 'pull_request' && format('pr-{0}', github.event.workflow_run.pull_requests[0].number) || github.event.workflow_run.head_branch }}
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
             org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
@@ -103,7 +103,7 @@ jobs:
           push: true
           tags: |
             ${{ steps.names.outputs.frontend }}:${{ env.IMAGE_TAG }}
-            ${{ steps.names.outputs.frontend }}:${{ github.event.workflow_run.head_branch }}
+            ${{ steps.names.outputs.frontend }}:${{ github.event.workflow_run.event == 'pull_request' && format('pr-{0}', github.event.workflow_run.pull_requests[0].number) || github.event.workflow_run.head_branch }}
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
             org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
@@ -143,16 +143,16 @@ jobs:
             echo "IMAGE_TAG=${{ github.event.workflow_run.head_branch }}" >> $GITHUB_ENV
           fi
 
-      - name: Terraform Cloud run (apply with inline tf-vars)
+      - name: Terraform Cloud run (conditional apply)
         uses: kvrhdn/tfe-run@v1
         with:
           token: ${{ secrets.TF_API_TOKEN }}
           workspace: ${{ env.TF_WORKSPACE }}
-          message: "Deploy ${{ github.event.workflow_run.head_branch }} - ${{ env.IMAGE_TAG }}"
-          wait-for-completion: true
+          message: "${{ github.event.workflow_run.event == 'pull_request' && format('Deploy PR {0} to {1} - {2}', github.event.workflow_run.pull_requests[0].number, github.event.workflow_run.head_branch, env.IMAGE_TAG) || format('Deploy {0} - {1}', github.event.workflow_run.head_branch, env.IMAGE_TAG) }}"
+          wait-for-completion: ${{ github.event.workflow_run.event == 'push' }}
           tf-vars: |
             image_tag = "${{ env.IMAGE_TAG }}"
 
 concurrency:
-  group: deploy-${{ github.event.workflow_run.head_branch }}
+  group: deploy-${{ github.event.workflow_run.head_branch }}-${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.pull_requests[0].number || 'push' }}
   cancel-in-progress: true

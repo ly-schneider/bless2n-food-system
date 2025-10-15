@@ -9,8 +9,8 @@ function resolveApiBase(): string {
   if (typeof window === "undefined") {
     return INTERNAL_API_BASE || PUBLIC_API_BASE || "http://backend:8080"
   }
-  // In the browser, use the public/base URL reachable from the user’s machine
-  return PUBLIC_API_BASE
+  // In the browser, use the public/base URL reachable from the user's machine
+  return PUBLIC_API_BASE || "/api"
 }
 
 export const API_BASE_URL = resolveApiBase()
@@ -25,7 +25,12 @@ export function createApiError(status: number, message: string): ApiError {
 }
 
 export async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`
+  const baseUrl = API_BASE_URL
+  if (!baseUrl) {
+    throw new Error("API_BASE_URL is not configured")
+  }
+  
+  const url = `${baseUrl}${endpoint}`
 
   const response = await fetch(url, {
     headers: {
