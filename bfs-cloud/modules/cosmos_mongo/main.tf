@@ -66,7 +66,6 @@ resource "azurerm_cosmosdb_mongo_database" "db" {
   name                = var.database_name
   resource_group_name = var.resource_group_name
   account_name        = azurerm_cosmosdb_account.this.name
-  throughput          = var.database_throughput
 }
 
 resource "azurerm_monitor_diagnostic_setting" "cosmos_diag" {
