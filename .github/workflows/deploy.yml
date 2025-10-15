@@ -130,37 +130,120 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Select environment directory
+      - name: Set workspace and image tag
         run: |
           case "${{ github.ref_name }}" in
-            staging) echo "ENV_DIR=staging" >> $GITHUB_ENV ;;
-            production) echo "ENV_DIR=production" >> $GITHUB_ENV ;;
-            *) echo "Unsupported branch: ${{ github.ref_name }}"; exit 1 ;;
+            staging) 
+              echo "TF_WORKSPACE=bfs-staging" >> $GITHUB_ENV
+              ;;
+            production) 
+              echo "TF_WORKSPACE=bfs-production" >> $GITHUB_ENV
+              ;;
+            *) 
+              echo "Unsupported branch: ${{ github.ref_name }}"
+              exit 1
+              ;;
           esac
+          
+          if [[ "${{ needs.changes.outputs.backend }}" == "true" || "${{ needs.changes.outputs.web }}" == "true" ]]; then
+            echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
+          else
+            echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
+          fi
 
-      - name: Choose image tag
-        if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.web == 'true' }}
-        run: echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
-
-      - name: Choose image tag (cloud-only changes)
-        if: ${{ needs.changes.outputs.backend != 'true' && needs.changes.outputs.web != 'true' }}
-        run: echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.8.5
-          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
-
-      - name: Terraform Init
-        working-directory: bfs-cloud/envs/${{ env.ENV_DIR }}
-        run: terraform init -input=false
-
-      - name: Terraform Apply
-        working-directory: bfs-cloud/envs/${{ env.ENV_DIR }}
+      - name: Get Terraform Cloud Workspace ID
+        id: workspace
         run: |
-          terraform apply -auto-approve -input=false \
-            -var "image_tag=${{ env.IMAGE_TAG }}"
+          WORKSPACE_ID=$(curl -s \
+            -H "Authorization: Bearer ${{ secrets.TF_API_TOKEN }}" \
+            -H "Content-Type: application/vnd.api+json" \
+            "https://app.terraform.io/api/v2/organizations/leys-services/workspaces/${{ env.TF_WORKSPACE }}" \
+            | jq -r '.data.id')
+          echo "workspace_id=$WORKSPACE_ID" >> $GITHUB_OUTPUT
+
+      - name: Create Terraform Cloud Run
+        id: run
+        run: |
+          RUN_ID=$(curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.TF_API_TOKEN }}" \
+            -H "Content-Type: application/vnd.api+json" \
+            -d '{
+              "data": {
+                "type": "runs",
+                "attributes": {
+                  "message": "Deploy ${{ github.ref_name }} - commit ${{ github.sha }}",
+                  "auto-apply": true
+                },
+                "relationships": {
+                  "workspace": {
+                    "data": {
+                      "type": "workspaces",
+                      "id": "${{ steps.workspace.outputs.workspace_id }}"
+                    }
+                  }
+                }
+              }
+            }' \
+            "https://app.terraform.io/api/v2/runs" \
+            | jq -r '.data.id')
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+
+      - name: Set Terraform Variables
+        run: |
+          # Set image_tag variable for this run
+          curl -X PATCH \
+            -H "Authorization: Bearer ${{ secrets.TF_API_TOKEN }}" \
+            -H "Content-Type: application/vnd.api+json" \
+            -d '{
+              "data": {
+                "type": "workspaces",
+                "attributes": {
+                  "terraform-variables": [
+                    {
+                      "key": "image_tag",
+                      "value": "${{ env.IMAGE_TAG }}",
+                      "category": "terraform",
+                      "hcl": false,
+                      "sensitive": false
+                    }
+                  ]
+                }
+              }
+            }' \
+            "https://app.terraform.io/api/v2/workspaces/${{ steps.workspace.outputs.workspace_id }}"
+
+      - name: Monitor Terraform Run
+        run: |
+          RUN_ID="${{ steps.run.outputs.run_id }}"
+          echo "Monitoring Terraform Cloud run: $RUN_ID"
+          
+          while true; do
+            STATUS=$(curl -s \
+              -H "Authorization: Bearer ${{ secrets.TF_API_TOKEN }}" \
+              "https://app.terraform.io/api/v2/runs/$RUN_ID" \
+              | jq -r '.data.attributes.status')
+            
+            echo "Run status: $STATUS"
+            
+            case $STATUS in
+              "applied")
+                echo "✅ Terraform run completed successfully!"
+                exit 0
+                ;;
+              "errored"|"canceled"|"force_canceled")
+                echo "❌ Terraform run failed with status: $STATUS"
+                exit 1
+                ;;
+              "planned_and_finished")
+                echo "ℹ️ Terraform run planned but no changes needed"
+                exit 0
+                ;;
+              *)
+                echo "⏳ Waiting for run to complete..."
+                sleep 30
+                ;;
+            esac
+          done
 
 concurrency:
   group: deploy-${{ github.ref_name }}
