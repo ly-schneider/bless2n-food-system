@@ -85,7 +85,7 @@ jobs:
       - name: Set ACR login server
         id: acr
         run: |
-          echo "login_server=${{ vars.ACR_LOGIN_SERVER }}" >> $GITHUB_OUTPUT
+          echo "login_server=${{ vars.ACR_NAME }}.azurecr.io" >> $GITHUB_OUTPUT
 
       - name: ACR Login
         run: az acr login -n "${{ vars.ACR_NAME }}"

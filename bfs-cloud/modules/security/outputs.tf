@@ -15,7 +15,7 @@ output "key_vault_uri" {
 
 output "cosmos_secret_uri" {
   description = "Cosmos DB connection string secret URI (if stored)"
-  value       = var.enable_key_vault && var.cosmos_connection_string != null ? azurerm_key_vault_secret.cosmos_connection_string[0].versionless_id : null
+  value       = var.enable_key_vault && var.cosmos_connection_string != null ? azurerm_key_vault_secret.cosmos_connection_string["cosmos"].versionless_id : null
 }
 
 output "cost_savings_summary" {
