@@ -17,6 +17,15 @@ type AdminUserHandler struct {
 
 func NewAdminUserHandler(users repository.UserRepository) *AdminUserHandler { return &AdminUserHandler{ users: users } }
 
+// List godoc
+// @Summary List users
+// @Tags admin-users
+// @Security BearerAuth
+// @Produce json
+// @Param limit query int false "Limit" minimum(1) maximum(200) default(50)
+// @Param offset query int false "Offset" minimum(0) default(0)
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/users [get]
 func (h *AdminUserHandler) List(w http.ResponseWriter, r *http.Request) {
     limit := 50; offset := 0
     if v := r.URL.Query().Get("limit"); v != "" { if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 200 { limit = n } }
@@ -50,7 +59,14 @@ func (h *AdminUserHandler) List(w http.ResponseWriter, r *http.Request) {
     response.WriteJSON(w, http.StatusOK, map[string]any{"items": out, "count": total})
 }
 
-// POST /v1/admin/users/{id}/promote - change role from customer to admin only
+// Promote godoc
+// @Summary Promote user to admin
+// @Tags admin-users
+// @Security BearerAuth
+// @Param id path string true "User ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Router /v1/admin/users/{id}/promote [post]
 func (h *AdminUserHandler) Promote(w http.ResponseWriter, r *http.Request) {
     id := chiURLParam(r, "id"); oid, err := primitive.ObjectIDFromHex(id); if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid id"); return }
     u, err := h.users.FindByID(r.Context(), oid)
@@ -62,7 +78,15 @@ func (h *AdminUserHandler) Promote(w http.ResponseWriter, r *http.Request) {
     response.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
-// GET /v1/admin/users/{id}
+// GetByID godoc
+// @Summary Get user by ID
+// @Tags admin-users
+// @Security BearerAuth
+// @Produce json
+// @Param id path string true "User ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /v1/admin/users/{id} [get]
 func (h *AdminUserHandler) GetByID(w http.ResponseWriter, r *http.Request) {
     id := chiURLParam(r, "id"); oid, err := primitive.ObjectIDFromHex(id); if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid id"); return }
     u, err := h.users.FindByID(r.Context(), oid)
@@ -89,7 +113,17 @@ func (h *AdminUserHandler) GetByID(w http.ResponseWriter, r *http.Request) {
     }})
 }
 
-// PATCH /v1/admin/users/{id}/role
+// PatchRole godoc
+// @Summary Update user role
+// @Tags admin-users
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Param payload body patchRoleBody true "Role payload"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Router /v1/admin/users/{id}/role [patch]
 type patchRoleBody struct { Role string `json:"role"` }
 func (h *AdminUserHandler) PatchRole(w http.ResponseWriter, r *http.Request) {
     id := chiURLParam(r, "id"); oid, err := primitive.ObjectIDFromHex(id); if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid id"); return }
@@ -102,7 +136,19 @@ func (h *AdminUserHandler) PatchRole(w http.ResponseWriter, r *http.Request) {
     response.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
-// PATCH /v1/admin/users/{id} - update profile fields (email, names, role, verified)
+// PatchProfile godoc
+// @Summary Update user profile
+// @Description Admin can update email, names, role, and verification
+// @Tags admin-users
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Param payload body adminPatchUserBody true "User payload"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /v1/admin/users/{id} [patch]
 type adminPatchUserBody struct {
     Email      *string `json:"email,omitempty"`
     FirstName  *string `json:"firstName,omitempty"`
@@ -172,7 +218,14 @@ func (h *AdminUserHandler) PatchProfile(w http.ResponseWriter, r *http.Request) 
     }})
 }
 
-// DELETE /v1/admin/users/{id}
+// Delete godoc
+// @Summary Delete user
+// @Tags admin-users
+// @Security BearerAuth
+// @Param id path string true "User ID"
+// @Success 204 "No Content"
+// @Failure 400 {object} map[string]interface{}
+// @Router /v1/admin/users/{id} [delete]
 func (h *AdminUserHandler) Delete(w http.ResponseWriter, r *http.Request) {
     id := chiURLParam(r, "id")
     oid, err := primitive.ObjectIDFromHex(id)

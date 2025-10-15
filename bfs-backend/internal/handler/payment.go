@@ -38,7 +38,15 @@ type CreateIntentResponse struct {
     OrderID         string `json:"orderId"`
 }
 
-// POST /v1/payments/create-intent
+// CreateIntent godoc
+// @Summary Create Payment Intent
+// @Tags payments
+// @Accept json
+// @Produce json
+// @Param payload body CreateIntentRequest true "Checkout payload"
+// @Success 200 {object} CreateIntentResponse
+// @Failure 400 {object} response.ProblemDetails
+// @Router /v1/payments/create-intent [post]
 func (h *PaymentHandler) CreateIntent(w http.ResponseWriter, r *http.Request) {
     var req CreateIntentRequest
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -132,7 +140,15 @@ type AttachEmailRequest struct {
     Email           *string `json:"email"`
 }
 
-// PATCH /v1/payments/attach-email
+// AttachEmail godoc
+// @Summary Attach email to Payment Intent
+// @Tags payments
+// @Accept json
+// @Produce json
+// @Param payload body AttachEmailRequest true "Email payload"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} response.ProblemDetails
+// @Router /v1/payments/attach-email [patch]
 func (h *PaymentHandler) AttachEmail(w http.ResponseWriter, r *http.Request) {
     var req AttachEmailRequest
     if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -156,7 +172,15 @@ func (h *PaymentHandler) AttachEmail(w http.ResponseWriter, r *http.Request) {
     })
 }
 
-// GET /v1/payments/{id}
+// GetPayment godoc
+// @Summary Get Payment Intent
+// @Tags payments
+// @Produce json
+// @Param id path string true "Payment Intent ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} response.ProblemDetails
+// @Failure 404 {object} response.ProblemDetails
+// @Router /v1/payments/{id} [get]
 func (h *PaymentHandler) GetPayment(w http.ResponseWriter, r *http.Request) {
     id := chi.URLParam(r, "id")
     if id == "" {
@@ -193,7 +217,13 @@ func (h *PaymentHandler) GetPayment(w http.ResponseWriter, r *http.Request) {
     })
 }
 
-// POST /v1/payments/webhook
+// Webhook godoc
+// @Summary Stripe webhook endpoint
+// @Tags payments
+// @Accept json
+// @Success 200 "OK"
+// @Failure 400 "Bad Request"
+// @Router /v1/payments/webhook [post]
 func (h *PaymentHandler) Webhook(w http.ResponseWriter, r *http.Request) {
 	const maxBodyBytes = int64(65536)
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)

@@ -79,6 +79,18 @@ terraform apply
 - Use `envs/staging` and `envs/production` to maintain separate Terraform states and configurations.
 - Each env has its own `backend.tf` (local by default); switch to a remote backend for team usage.
 
+Remote backend example (Terraform Cloud — recommended):
+```hcl
+terraform {
+  cloud {
+    organization = "leys-services"           # replace with your org
+    workspaces {
+      name = "bfs-staging"              # or bfs-production under envs/prod
+    }
+  }
+}
+```
+
 Remote backend example (AzureRM):
 ```hcl
 terraform {
@@ -92,34 +104,35 @@ terraform {
 ```
 Repeat with `key = "envs/production/terraform.tfstate"` for production.
 
-### CI/CD Deployment (GitHub Actions + GHCR)
+### CI/CD Deployment: Three-Phase Deployment with ACR
 
-Images are sourced from GHCR and the tag is injected via `image_tag`.
+The deployment workflow is split into three phases to ensure proper dependency order:
 
-Key variables for CI:
-- `registry_server` (default `ghcr.io`)
-- `registry_namespace` (e.g., your GitHub org/user)
-- `registry_username` (e.g., `${{ github.actor }}`)
-- `registry_token` (GHCR token; mark as secret)
-- `image_tag` (e.g., `${{ github.sha }}` or a release tag)
+1. **Deploy ACR Infrastructure**: Creates the Azure Container Registry first
+2. **Build & Push Images**: Builds and pushes images to the newly created ACR
+3. **Deploy Container Apps**: Deploys the application infrastructure that references the images
 
-Example Action step (assuming Azure credentials already set via OIDC/secrets):
+**Deployment Flow:**
+- **ACR Creation**: Terraform creates ACR using the `modules/acr` module on first run
+- **Image Build**: GitHub Actions builds and pushes images to ACR after ACR exists
+- **App Deployment**: Container Apps are deployed with references to ACR images
 
-```yaml
-    - name: Terraform Apply (staging)
-      working-directory: bfs-cloud/envs/staging
-      env:
-        TF_VAR_registry_server: ghcr.io
-        TF_VAR_registry_namespace: ${{ github.repository_owner }}
-        TF_VAR_registry_username: ${{ github.actor }}
-        TF_VAR_registry_token: ${{ secrets.GHCR_TOKEN }}
-        TF_VAR_image_tag: ${{ github.sha }}
-      run: |
-        terraform init -input=false
-        terraform apply -auto-approve -input=false
-```
+**Terraform Variables per Environment:**
+- `enable_acr` (bool): when true, creates ACR and grants `AcrPull` to Container Apps identities
+- `acr_name` (string): ACR name; images resolve to `<acr_name>.azurecr.io/<repo>:<tag>`
+- `image_tag` (string): image tag (commit SHA or branch)
 
-With this, Container Apps pull private images from GHCR using the provided credentials. The same secret is applied to all apps unless overridden per app.
+**For Development with GHCR:**
+If `enable_acr` is false, the env can use GHCR via:
+- `registry_server`, `registry_namespace`, `registry_username`, `registry_token`
+
+**Required GitHub Environment Configuration:**
+- `ACR_NAME`: the ACR resource name (e.g., "bfsstagingacr", "bfsprodacr")
+- Azure OIDC secrets: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
+
+**Terraform Cloud Configuration:**
+- Workspace variables: `enable_acr=true`, `acr_name=<your-acr-name>`
+- Provider credentials: `ARM_CLIENT_ID`, `ARM_CLIENT_SECRET`, `ARM_TENANT_ID`, `ARM_SUBSCRIPTION_ID`
 
 ### Providing App Secrets and Registries
 

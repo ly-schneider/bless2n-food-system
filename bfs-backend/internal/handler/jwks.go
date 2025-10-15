@@ -24,6 +24,12 @@ func NewJWKSHandler(jwtService service.JWTService, logger *zap.Logger) *JWKSHand
 	}
 }
 
+// GetJWKS godoc
+// @Summary JSON Web Key Set
+// @Tags auth
+// @Produce json
+// @Success 200 {object} domain.JWKS
+// @Router /.well-known/jwks.json [get]
 func (h *JWKSHandler) GetJWKS(w http.ResponseWriter, r *http.Request) {
 	publicKey, keyID, err := h.getPublicKeyInfo()
 	if err != nil {

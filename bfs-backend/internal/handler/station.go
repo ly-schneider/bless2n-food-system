@@ -14,6 +14,24 @@ import (
     "go.uber.org/zap"
 )
 
+// StationCreateRequestPayload represents a station verification request.
+type StationCreateRequestPayload struct {
+    Name      string `json:"name" validate:"required,min=2"`
+    Model     string `json:"model"`
+    OS        string `json:"os"`
+    DeviceKey string `json:"deviceKey" validate:"required,min=8"`
+}
+
+// StationVerifyPayload carries a QR code to verify.
+type StationVerifyPayload struct {
+    Code string `json:"code" validate:"required"`
+}
+
+// StationRedeemPayload carries a QR code to redeem.
+type StationRedeemPayload struct {
+    Code string `json:"code" validate:"required"`
+}
+
 type StationHandler struct {
     stationService service.StationService
     productRepo    repository.ProductRepository
@@ -32,15 +50,17 @@ func NewStationHandler(stationService service.StationService, productRepo reposi
     }
 }
 
-// POST /v1/stations/requests - anonymous station verification request (inline)
-// Body: { name: string, model?: string, os?: string, deviceKey: string }
+// CreateRequest godoc
+// @Summary Request station verification
+// @Tags stations
+// @Accept json
+// @Produce json
+// @Param payload body StationCreateRequestPayload true "Request payload"
+// @Success 202 {object} map[string]interface{}
+// @Failure 400 {object} response.ProblemDetails
+// @Router /v1/stations/requests [post]
 func (h *StationHandler) CreateRequest(w http.ResponseWriter, r *http.Request) {
-    var body struct {
-        Name      string `json:"name" validate:"required,min=2"`
-        Model     string `json:"model"`
-        OS        string `json:"os"`
-        DeviceKey string `json:"deviceKey" validate:"required,min=8"`
-    }
+    var body StationCreateRequestPayload
     if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
         response.WriteError(w, http.StatusBadRequest, "invalid json")
         return
@@ -58,7 +78,14 @@ func (h *StationHandler) CreateRequest(w http.ResponseWriter, r *http.Request) {
     response.WriteJSON(w, http.StatusAccepted, map[string]any{"status": "pending", "station": map[string]any{"approved": st.Approved}})
 }
 
-// GET /v1/stations/me - public; identify station by header X-Station-Key
+// Me godoc
+// @Summary Get current station by key
+// @Tags stations
+// @Produce json
+// @Param X-Station-Key header string true "Station key"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} response.ProblemDetails
+// @Router /v1/stations/me [get]
 func (h *StationHandler) Me(w http.ResponseWriter, r *http.Request) {
     key := r.Header.Get("X-Station-Key")
     if key == "" { response.WriteError(w, http.StatusBadRequest, "missing station key"); return }
@@ -70,15 +97,24 @@ func (h *StationHandler) Me(w http.ResponseWriter, r *http.Request) {
     response.WriteJSON(w, http.StatusOK, map[string]any{"exists": true, "approved": st.Approved, "name": st.Name})
 }
 
-// POST /v1/stations/verify-qr - validate QR payload and return orderId if valid
-// Body: { code: string }
+// VerifyQR godoc
+// @Summary Verify pickup QR code
+// @Tags stations
+// @Accept json
+// @Produce json
+// @Param X-Station-Key header string true "Station key"
+// @Param payload body StationVerifyPayload true "QR payload"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} response.ProblemDetails
+// @Failure 403 {object} response.ProblemDetails
+// @Router /v1/stations/verify-qr [post]
 func (h *StationHandler) VerifyQR(w http.ResponseWriter, r *http.Request) {
     if !h.limiter.allow("verify:"+r.RemoteAddr, 10, 10) { response.WriteError(w, http.StatusTooManyRequests, "rate_limited"); return }
     key := r.Header.Get("X-Station-Key")
     if key == "" { response.WriteError(w, http.StatusBadRequest, "missing station key"); return }
     st, err := h.stationService.GetStationByKey(r.Context(), key)
     if err != nil || st == nil || !st.Approved { response.WriteError(w, http.StatusForbidden, "station not approved"); return }
-    var body struct{ Code string `json:"code" validate:"required"` }
+    var body StationVerifyPayload
     if err := json.NewDecoder(r.Body).Decode(&body); err != nil { response.WriteError(w, http.StatusBadRequest, "invalid json"); return }
     if err := h.validator.Struct(body); err != nil { response.WriteProblem(w, response.NewValidationProblem(response.ConvertValidationErrors(err.(validator.ValidationErrors)), r.URL.Path)); return }
     oid, err := h.stationService.VerifyQR(r.Context(), body.Code)
@@ -139,16 +175,26 @@ func (h *StationHandler) VerifyQR(w http.ResponseWriter, r *http.Request) {
     response.WriteJSON(w, http.StatusOK, map[string]any{"orderId": oid.Hex(), "items": out})
 }
 
-// POST /v1/stations/redeem - idempotent redemption for assigned items
-// Headers: X-Station-Key, Idempotency-Key (optional)
-// Body: { code: string }
+// Redeem godoc
+// @Summary Redeem assigned items
+// @Description Idempotent. Requires station key.
+// @Tags stations
+// @Accept json
+// @Produce json
+// @Param X-Station-Key header string true "Station key"
+// @Param Idempotency-Key header string false "Idempotency key"
+// @Param payload body StationRedeemPayload true "QR payload"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} response.ProblemDetails
+// @Failure 403 {object} response.ProblemDetails
+// @Router /v1/stations/redeem [post]
 func (h *StationHandler) Redeem(w http.ResponseWriter, r *http.Request) {
     if !h.limiter.allow("redeem:"+r.RemoteAddr, 5, 10) { response.WriteError(w, http.StatusTooManyRequests, "rate_limited"); return }
     key := r.Header.Get("X-Station-Key")
     if key == "" { response.WriteError(w, http.StatusBadRequest, "missing station key"); return }
     st, err := h.stationService.GetStationByKey(r.Context(), key)
     if err != nil || st == nil || !st.Approved { response.WriteError(w, http.StatusForbidden, "station not approved"); return }
-    var body struct{ Code string `json:"code" validate:"required"` }
+    var body StationRedeemPayload
     if err := json.NewDecoder(r.Body).Decode(&body); err != nil { response.WriteError(w, http.StatusBadRequest, "invalid json"); return }
     if err := h.validator.Struct(body); err != nil { response.WriteProblem(w, response.NewValidationProblem(response.ConvertValidationErrors(err.(validator.ValidationErrors)), r.URL.Path)); return }
     oid, err := h.stationService.VerifyQR(r.Context(), body.Code)
@@ -182,7 +228,14 @@ func (r *rateLimiter) allow(key string, max int, windowSec int) bool {
     return true
 }
 
-// GET /v1/orders/{id}/pickup-qr - public signed QR payload
+// GetPickupQR godoc
+// @Summary Get pickup QR for order
+// @Tags orders
+// @Produce json
+// @Param id path string true "Order ID"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} response.ProblemDetails
+// @Router /v1/orders/{id}/pickup-qr [get]
 func (h *StationHandler) GetPickupQR(w http.ResponseWriter, r *http.Request) {
     idStr := chi.URLParam(r, "id")
     if idStr == "" { response.WriteError(w, http.StatusBadRequest, "missing id"); return }

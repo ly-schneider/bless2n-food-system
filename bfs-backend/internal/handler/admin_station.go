@@ -27,7 +27,14 @@ func NewAdminStationHandler(reqs repository.StationRequestRepository, stations r
     return &AdminStationHandler{ stationReqs: reqs, stations: stations, stationProds: stationProds, products: products, audit: audit, logger: logger }
 }
 
-// GET /v1/admin/stations/requests?status=pending|approved|rejected
+// ListRequests godoc
+// @Summary List station requests
+// @Tags admin-stations
+// @Security BearerAuth
+// @Produce json
+// @Param status query string false "Status filter"
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/stations/requests [get]
 func (h *AdminStationHandler) ListRequests(w http.ResponseWriter, r *http.Request) {
     var status *domain.StationRequestStatus
     if s := r.URL.Query().Get("status"); s != "" {
@@ -42,7 +49,13 @@ func (h *AdminStationHandler) ListRequests(w http.ResponseWriter, r *http.Reques
     response.WriteJSON(w, http.StatusOK, map[string]any{ "items": out })
 }
 
-// GET /v1/admin/stations - list all stations
+// ListStations godoc
+// @Summary List stations
+// @Tags admin-stations
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/stations [get]
 func (h *AdminStationHandler) ListStations(w http.ResponseWriter, r *http.Request) {
     items, err := h.stations.List(r.Context())
     if err != nil { response.WriteError(w, http.StatusInternalServerError, "failed to list stations"); return }
@@ -54,7 +67,14 @@ func (h *AdminStationHandler) ListStations(w http.ResponseWriter, r *http.Reques
     response.WriteJSON(w, http.StatusOK, map[string]any{ "items": out })
 }
 
-// GET /v1/admin/stations/{id}/products - list assigned products (ids + names)
+// ListStationProducts godoc
+// @Summary List station products
+// @Tags admin-stations
+// @Security BearerAuth
+// @Produce json
+// @Param id path string true "Station ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/stations/{id}/products [get]
 func (h *AdminStationHandler) ListStationProducts(w http.ResponseWriter, r *http.Request) {
     idStr := chi.URLParam(r, "id")
     oid, err := primitive.ObjectIDFromHex(idStr)
@@ -69,8 +89,15 @@ func (h *AdminStationHandler) ListStationProducts(w http.ResponseWriter, r *http
     response.WriteJSON(w, http.StatusOK, map[string]any{"items": out})
 }
 
-// POST /v1/admin/stations/{id}/products - assign products
-// Body: { productIds: string[] }
+// AssignProducts godoc
+// @Summary Assign products to station
+// @Tags admin-stations
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "Station ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/stations/{id}/products [post]
 func (h *AdminStationHandler) AssignProducts(w http.ResponseWriter, r *http.Request) {
     idStr := chi.URLParam(r, "id")
     oid, err := primitive.ObjectIDFromHex(idStr)
@@ -87,7 +114,14 @@ func (h *AdminStationHandler) AssignProducts(w http.ResponseWriter, r *http.Requ
     response.WriteJSON(w, http.StatusOK, map[string]any{"assigned": added})
 }
 
-// DELETE /v1/admin/stations/{id}/products/{productId}
+// RemoveProduct godoc
+// @Summary Remove product from station
+// @Tags admin-stations
+// @Security BearerAuth
+// @Param id path string true "Station ID"
+// @Param productId path string true "Product ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/stations/{id}/products/{productId} [delete]
 func (h *AdminStationHandler) RemoveProduct(w http.ResponseWriter, r *http.Request) {
     idStr := chi.URLParam(r, "id")
     pidStr := chi.URLParam(r, "productId")
@@ -102,7 +136,13 @@ func (h *AdminStationHandler) RemoveProduct(w http.ResponseWriter, r *http.Reque
     response.WriteJSON(w, http.StatusOK, map[string]any{"removed": ok})
 }
 
-// POST /v1/admin/stations/requests/{id}/approve
+// Approve godoc
+// @Summary Approve station request
+// @Tags admin-stations
+// @Security BearerAuth
+// @Param id path string true "Request ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/stations/requests/{id}/approve [post]
 func (h *AdminStationHandler) Approve(w http.ResponseWriter, r *http.Request) {
     id := chi.URLParam(r, "id")
     oid, err := primitive.ObjectIDFromHex(id)
@@ -120,7 +160,13 @@ func (h *AdminStationHandler) Approve(w http.ResponseWriter, r *http.Request) {
     response.WriteJSON(w, http.StatusOK, response.Ack{ Message: "approved" })
 }
 
-// POST /v1/admin/stations/requests/{id}/reject
+// Reject godoc
+// @Summary Reject station request
+// @Tags admin-stations
+// @Security BearerAuth
+// @Param id path string true "Request ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/stations/requests/{id}/reject [post]
 func (h *AdminStationHandler) Reject(w http.ResponseWriter, r *http.Request) {
     id := chi.URLParam(r, "id")
     oid, err := primitive.ObjectIDFromHex(id)

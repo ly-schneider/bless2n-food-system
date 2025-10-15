@@ -32,7 +32,16 @@ type OrderSummaryDTO struct {
     CreatedAt time.Time          `json:"createdAt"`
 }
 
-// GET /v1/orders - list orders for the authenticated user
+// ListMyOrders godoc
+// @Summary List my orders
+// @Tags orders
+// @Security BearerAuth
+// @Produce json
+// @Param limit query int false "Limit" minimum(1) maximum(100) default(50)
+// @Param offset query int false "Offset" minimum(0) default(0)
+// @Success 200 {object} domain.ListResponse[OrderSummaryDTO]
+// @Failure 401 {object} response.ProblemDetails
+// @Router /v1/orders [get]
 func (h *OrderHandler) ListMyOrders(w http.ResponseWriter, r *http.Request) {
     claims, ok := middleware.GetUserFromContext(r.Context())
     if !ok || claims == nil || claims.Subject == "" {
@@ -102,8 +111,16 @@ type PublicOrderDetailsDTO struct {
     Items      []PublicOrderItemDTO `json:"items"`
 }
 
-// GET /v1/orders/{id} - public read-only access to order details by id
-// Note: Intentionally does not return customer identifiers or contact email.
+// GetPublicByID godoc
+// @Summary Get public order details
+// @Description Public, read-only. Does not return customer identifiers.
+// @Tags orders
+// @Produce json
+// @Param id path string true "Order ID"
+// @Success 200 {object} PublicOrderDetailsDTO
+// @Failure 400 {object} response.ProblemDetails
+// @Failure 404 {object} response.ProblemDetails
+// @Router /v1/orders/{id} [get]
 func (h *OrderHandler) GetPublicByID(w http.ResponseWriter, r *http.Request) {
     // Parse {id}
     idStr := chi.URLParam(r, "id")

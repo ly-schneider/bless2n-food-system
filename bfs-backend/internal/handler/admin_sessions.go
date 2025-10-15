@@ -18,7 +18,15 @@ func NewAdminSessionsHandler(rts repository.RefreshTokenRepository, users reposi
     return &AdminSessionsHandler{ refresh: rts, users: users }
 }
 
-// GET /v1/admin/sessions - list active session families across users
+// List godoc
+// @Summary List active session families
+// @Tags admin-sessions
+// @Security BearerAuth
+// @Produce json
+// @Param limit query int false "Limit" minimum(1) maximum(200) default(50)
+// @Param offset query int false "Offset" minimum(0) default(0)
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/sessions [get]
 func (h *AdminSessionsHandler) List(w http.ResponseWriter, r *http.Request) {
     limit := 50; offset := 0
     if v := r.URL.Query().Get("limit"); v != "" { if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 200 { limit = n } }
@@ -40,7 +48,17 @@ func (h *AdminSessionsHandler) List(w http.ResponseWriter, r *http.Request) {
     response.WriteJSON(w, http.StatusOK, map[string]any{ "items": out, "count": total })
 }
 
-// POST /v1/admin/users/{id}/sessions/revoke - revoke a session family for user
+// RevokeFamily godoc
+// @Summary Revoke a session family for user
+// @Tags admin-sessions
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Param payload body revokeBody true "Family payload"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Router /v1/admin/users/{id}/sessions/revoke [post]
 type revokeBody struct { FamilyID string `json:"familyId"` }
 func (h *AdminSessionsHandler) RevokeFamily(w http.ResponseWriter, r *http.Request) {
     uid := chiURLParam(r, "id"); _, err := primitive.ObjectIDFromHex(uid); if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid user id"); return }
@@ -50,7 +68,14 @@ func (h *AdminSessionsHandler) RevokeFamily(w http.ResponseWriter, r *http.Reque
     response.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
-// POST /v1/admin/users/{id}/sessions/revoke-all - revoke all sessions for user
+// RevokeAll godoc
+// @Summary Revoke all sessions for user
+// @Tags admin-sessions
+// @Security BearerAuth
+// @Produce json
+// @Param id path string true "User ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/users/{id}/sessions/revoke-all [post]
 func (h *AdminSessionsHandler) RevokeAll(w http.ResponseWriter, r *http.Request) {
     uid := chiURLParam(r, "id"); uoid, err := primitive.ObjectIDFromHex(uid); if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid user id"); return }
     if err := h.refresh.RevokeAllByUser(r.Context(), uoid, "admin_revoked_all"); err != nil { response.WriteError(w, http.StatusInternalServerError, "failed to revoke all"); return }

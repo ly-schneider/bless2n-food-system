@@ -24,8 +24,14 @@ func NewUserHandler(userService service.UserService) *UserHandler {
 	}
 }
 
-// GetCurrent returns the authenticated user's full profile data.
-// GET /v1/users (auth required)
+// GetCurrent godoc
+// @Summary Get current user profile
+// @Tags users
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} response.ProblemDetails
+// @Router /v1/users/me [get]
 func (h *UserHandler) GetCurrent(w http.ResponseWriter, r *http.Request) {
 	claims, ok := middleware.GetUserFromContext(r.Context())
 	if !ok || claims == nil {
@@ -61,7 +67,17 @@ type requestEmailChangeBody struct {
 	NewEmail string `json:"newEmail" validate:"required,email"`
 }
 
-// RequestEmailChange starts the email change flow by sending a code to the new email
+// RequestEmailChange godoc
+// @Summary Request email change
+// @Tags users
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param payload body requestEmailChangeBody true "New email"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} response.ProblemDetails
+// @Failure 401 {object} response.ProblemDetails
+// @Router /v1/users/me/email-change [post]
 func (h *UserHandler) RequestEmailChange(w http.ResponseWriter, r *http.Request) {
 	claims, ok := middleware.GetUserFromContext(r.Context())
 	if !ok {
@@ -108,7 +124,17 @@ type confirmEmailChangeBody struct {
 	Code string `json:"code" validate:"required,len=6"`
 }
 
-// ConfirmEmailChange verifies the code and updates the user's email across systems
+// ConfirmEmailChange godoc
+// @Summary Confirm email change
+// @Tags users
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param payload body confirmEmailChangeBody true "Verification code"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} response.ProblemDetails
+// @Failure 401 {object} response.ProblemDetails
+// @Router /v1/users/me/email-change/confirm [post]
 func (h *UserHandler) ConfirmEmailChange(w http.ResponseWriter, r *http.Request) {
 	claims, ok := middleware.GetUserFromContext(r.Context())
 	if !ok {
@@ -151,7 +177,13 @@ func (h *UserHandler) ConfirmEmailChange(w http.ResponseWriter, r *http.Request)
 	_ = json.NewEncoder(w).Encode(map[string]any{"user": map[string]any{"id": u.ID.Hex(), "email": u.Email, "role": u.Role}})
 }
 
-// DeleteUser deletes the authenticated user's account and related auth artifacts.
+// DeleteUser godoc
+// @Summary Delete my account
+// @Tags users
+// @Security BearerAuth
+// @Success 204 "No Content"
+// @Failure 401 {object} response.ProblemDetails
+// @Router /v1/users/me [delete]
 func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	claims, ok := middleware.GetUserFromContext(r.Context())
 	if !ok {
@@ -171,7 +203,18 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// UpdateUser allows the authenticated user to update allowed fields. If email changes, a code is sent to confirm.
+// UpdateUser godoc
+// @Summary Update my profile
+// @Description If email changes, a verification code will be sent.
+// @Tags users
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param payload body updateUserBody true "Fields to update"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} response.ProblemDetails
+// @Failure 401 {object} response.ProblemDetails
+// @Router /v1/users/me [patch]
 type updateUserBody struct {
 	Email     *string `json:"email,omitempty" validate:"omitempty,email"`
 	FirstName *string `json:"firstName,omitempty"`

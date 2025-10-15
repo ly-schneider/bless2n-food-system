@@ -22,7 +22,14 @@ func NewAdminPOSHandler(reqs repository.PosRequestRepository, devices repository
     return &AdminPOSHandler{ requests: reqs, devices: devices }
 }
 
-// GET /v1/admin/pos/requests?status=pending|approved|rejected
+// ListRequests godoc
+// @Summary List POS requests
+// @Tags admin-pos
+// @Security BearerAuth
+// @Produce json
+// @Param status query string false "Status filter"
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/pos/requests [get]
 func (h *AdminPOSHandler) ListRequests(w http.ResponseWriter, r *http.Request) {
     var status *domain.PosRequestStatus
     if s := r.URL.Query().Get("status"); s != "" { st := domain.PosRequestStatus(s); status = &st }
@@ -34,7 +41,13 @@ func (h *AdminPOSHandler) ListRequests(w http.ResponseWriter, r *http.Request) {
     response.WriteJSON(w, http.StatusOK, map[string]any{ "items": out })
 }
 
-// GET /v1/admin/pos/devices
+// ListDevices godoc
+// @Summary List POS devices
+// @Tags admin-pos
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/pos/devices [get]
 func (h *AdminPOSHandler) ListDevices(w http.ResponseWriter, r *http.Request) {
     items, err := h.devices.List(r.Context())
     if err != nil { response.WriteError(w, http.StatusInternalServerError, "failed to list devices"); return }
@@ -44,7 +57,13 @@ func (h *AdminPOSHandler) ListDevices(w http.ResponseWriter, r *http.Request) {
     response.WriteJSON(w, http.StatusOK, map[string]any{ "items": out })
 }
 
-// POST /v1/admin/pos/requests/{id}/approve
+// Approve godoc
+// @Summary Approve POS request
+// @Tags admin-pos
+// @Security BearerAuth
+// @Param id path string true "Request ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/pos/requests/{id}/approve [post]
 func (h *AdminPOSHandler) Approve(w http.ResponseWriter, r *http.Request) {
     id := chi.URLParam(r, "id")
     oid, err := primitive.ObjectIDFromHex(id)
@@ -62,7 +81,13 @@ func (h *AdminPOSHandler) Approve(w http.ResponseWriter, r *http.Request) {
     response.WriteJSON(w, http.StatusOK, response.Ack{ Message: "approved" })
 }
 
-// POST /v1/admin/pos/requests/{id}/reject
+// Reject godoc
+// @Summary Reject POS request
+// @Tags admin-pos
+// @Security BearerAuth
+// @Param id path string true "Request ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/pos/requests/{id}/reject [post]
 func (h *AdminPOSHandler) Reject(w http.ResponseWriter, r *http.Request) {
     id := chi.URLParam(r, "id")
     oid, err := primitive.ObjectIDFromHex(id)
@@ -74,8 +99,15 @@ func (h *AdminPOSHandler) Reject(w http.ResponseWriter, r *http.Request) {
     response.WriteJSON(w, http.StatusOK, response.Ack{ Message: "rejected" })
 }
 
-// PATCH /v1/admin/pos/devices/{id}/config
-// Body: { cardCapable?: boolean, printerMac?: string, printerUuid?: string }
+// PatchConfig godoc
+// @Summary Update POS device config
+// @Tags admin-pos
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "Device ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/pos/devices/{id}/config [patch]
 func (h *AdminPOSHandler) PatchConfig(w http.ResponseWriter, r *http.Request) {
     id := chi.URLParam(r, "id")
     oid, err := primitive.ObjectIDFromHex(id)

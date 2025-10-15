@@ -1,10 +1,28 @@
 locals {
-  frontend_image = "${var.registry_server}/${var.registry_namespace}/frontend:${var.image_tag}"
-  backend_image  = "${var.registry_server}/${var.registry_namespace}/backend:${var.image_tag}"
+  registry_host = var.enable_acr && var.acr_name != null && var.acr_name != "" ? "${var.acr_name}.azurecr.io" : var.registry_server
+  frontend_repo = var.enable_acr && var.acr_name != null && var.acr_name != "" ? "frontend" : "${var.registry_namespace}/frontend"
+  backend_repo  = var.enable_acr && var.acr_name != null && var.acr_name != "" ? "backend"  : "${var.registry_namespace}/backend"
+
+  frontend_image = "${local.registry_host}/${local.frontend_repo}:${var.image_tag}"
+  backend_image  = "${local.registry_host}/${local.backend_repo}:${var.image_tag}"
+}
+
+# Create ACR
+module "acr" {
+  source = "../../modules/acr"
+  
+  name                = var.acr_name
+  resource_group_name = "bfs-staging-rg"
+  location            = var.location
+  sku                 = "Basic"
+  admin_enabled       = false
 }
 
 module "bfs_infrastructure" {
   source = "../../modules/stack"
+  
+  # Ensure ACR is created before the infrastructure
+  depends_on = [module.acr]
 
   environment   = "staging"
   location      = var.location
@@ -21,13 +39,15 @@ module "bfs_infrastructure" {
     law_name                     = "bfs-logs-workspace"
     appi_name                    = "bfs-staging-insights"
     enable_app_insights          = false
-    retention_days               = 14
+    retention_days               = 30
     cosmos_name                  = "bfs-staging-cosmos"
     database_throughput          = 400
     enable_alerts                = false
     requests_5xx_threshold       = 10
     enable_security_features     = true
     key_vault_name               = "bfs-staging-kv"
+    enable_acr                   = true
+    acr_name                     = "bfsstagingacr"
     
     apps = {
       frontend-staging = {
@@ -38,7 +58,7 @@ module "bfs_infrastructure" {
         min_replicas = 0
         max_replicas = 20
         # Optional: registry and secrets for private images (GHCR) plus per-app overrides
-        registries = concat(
+        registries = var.enable_acr ? lookup(var.app_registries, "frontend-staging", []) : concat(
           var.registry_token != null && var.registry_username != null ? [{
             server                = var.registry_server
             username              = var.registry_username
@@ -46,7 +66,7 @@ module "bfs_infrastructure" {
           }] : [],
           lookup(var.app_registries, "frontend-staging", [])
         )
-        secrets = merge(
+        secrets = var.enable_acr ? lookup(var.app_secrets, "frontend-staging", {}) : merge(
           var.registry_token != null ? { "ghcr-token" = var.registry_token } : {},
           lookup(var.app_secrets, "frontend-staging", {})
         )
@@ -66,7 +86,7 @@ module "bfs_infrastructure" {
         memory       = "1.0Gi"
         min_replicas = 0
         max_replicas = 20
-        registries = concat(
+        registries = var.enable_acr ? lookup(var.app_registries, "backend-staging", []) : concat(
           var.registry_token != null && var.registry_username != null ? [{
             server                = var.registry_server
             username              = var.registry_username
@@ -74,7 +94,7 @@ module "bfs_infrastructure" {
           }] : [],
           lookup(var.app_registries, "backend-staging", [])
         )
-        secrets = merge(
+        secrets = var.enable_acr ? lookup(var.app_secrets, "backend-staging", {}) : merge(
           var.registry_token != null ? { "ghcr-token" = var.registry_token } : {},
           lookup(var.app_secrets, "backend-staging", {})
         )

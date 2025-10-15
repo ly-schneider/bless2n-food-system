@@ -24,6 +24,19 @@ func NewAdminOrderHandler(orders repository.OrderRepository, orderItems reposito
     return &AdminOrderHandler{ orders: orders, orderItems: orderItems, products: products, audit: audit }
 }
 
+// List godoc
+// @Summary List orders (admin)
+// @Tags admin-orders
+// @Security BearerAuth
+// @Produce json
+// @Param status query string false "Filter by status"
+// @Param date_from query string false "From RFC3339"
+// @Param date_to query string false "To RFC3339"
+// @Param q query string false "Search"
+// @Param limit query int false "Limit" minimum(1) maximum(200) default(50)
+// @Param offset query int false "Offset" minimum(0) default(0)
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/orders [get]
 func (h *AdminOrderHandler) List(w http.ResponseWriter, r *http.Request) {
     // filters
     var status *domain.OrderStatus
@@ -108,6 +121,17 @@ func (h *AdminOrderHandler) List(w http.ResponseWriter, r *http.Request) {
     response.WriteJSON(w, http.StatusOK, map[string]any{"items": out, "count": total, "totals": map[string]any{"revenueCents": revenue}})
 }
 
+// ExportCSV godoc
+// @Summary Export orders CSV
+// @Tags admin-orders
+// @Security BearerAuth
+// @Produce text/csv
+// @Param status query string false "Filter by status"
+// @Param date_from query string false "From RFC3339"
+// @Param date_to query string false "To RFC3339"
+// @Param q query string false "Search"
+// @Success 200 {string} string "CSV"
+// @Router /v1/admin/orders/export.csv [get]
 func (h *AdminOrderHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
     // reuse filters
     var status *domain.OrderStatus
@@ -130,6 +154,17 @@ func (h *AdminOrderHandler) ExportCSV(w http.ResponseWriter, r *http.Request) {
 
 type patchOrderStatus struct { Status domain.OrderStatus `json:"status"` }
 
+// PatchStatus godoc
+// @Summary Update order status
+// @Tags admin-orders
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "Order ID"
+// @Param payload body patchOrderStatus true "Status payload"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Router /v1/admin/orders/{id}/status [patch]
 func (h *AdminOrderHandler) PatchStatus(w http.ResponseWriter, r *http.Request) {
     claims, ok := middleware.GetUserFromContext(r.Context())
     if !ok { response.WriteError(w, http.StatusUnauthorized, "unauthorized"); return }
@@ -167,7 +202,15 @@ type AdminOrderDetailsDTO struct {
     } `json:"posPayment,omitempty"`
 }
 
-// GET /v1/admin/orders/{id}
+// GetByID godoc
+// @Summary Get order details (admin)
+// @Tags admin-orders
+// @Security BearerAuth
+// @Produce json
+// @Param id path string true "Order ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /v1/admin/orders/{id} [get]
 func (h *AdminOrderHandler) GetByID(w http.ResponseWriter, r *http.Request) {
     id := chiURLParam(r, "id")
     oid, err := primitive.ObjectIDFromHex(id)

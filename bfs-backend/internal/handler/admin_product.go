@@ -27,6 +27,19 @@ func NewAdminProductHandler(prod repository.ProductRepository, inv repository.In
 
 type patchPriceBody struct{ PriceCents int64 `json:"priceCents" validate:"required,gte=0"` }
 
+// PatchPrice godoc
+// @Summary Update product price
+// @Tags admin-products
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "Product ID"
+// @Param payload body patchPriceBody true "Price payload"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} response.ProblemDetails
+// @Failure 401 {object} response.ProblemDetails
+// @Failure 404 {object} response.ProblemDetails
+// @Router /v1/admin/products/{id}/price [patch]
 func (h *AdminProductHandler) PatchPrice(w http.ResponseWriter, r *http.Request) {
     claims, ok := middleware.GetUserFromContext(r.Context())
     if !ok { response.WriteError(w, http.StatusUnauthorized, "unauthorized"); return }
@@ -55,6 +68,19 @@ func (h *AdminProductHandler) PatchPrice(w http.ResponseWriter, r *http.Request)
 
 type patchActiveBody struct{ IsActive bool `json:"isActive"` }
 
+// PatchActive godoc
+// @Summary Set product active flag
+// @Tags admin-products
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "Product ID"
+// @Param payload body patchActiveBody true "Active payload"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} response.ProblemDetails
+// @Failure 401 {object} response.ProblemDetails
+// @Failure 404 {object} response.ProblemDetails
+// @Router /v1/admin/products/{id}/active [patch]
 func (h *AdminProductHandler) PatchActive(w http.ResponseWriter, r *http.Request) {
     claims, ok := middleware.GetUserFromContext(r.Context())
     if !ok { response.WriteError(w, http.StatusUnauthorized, "unauthorized"); return }
@@ -73,6 +99,18 @@ func (h *AdminProductHandler) PatchActive(w http.ResponseWriter, r *http.Request
 
 type inventoryAdjustBody struct{ Delta int `json:"delta" validate:"required,ne=0"`; Reason domain.InventoryReason `json:"reason" validate:"required,oneof=opening_balance sale refund manual_adjust correction"` }
 
+// AdjustInventory godoc
+// @Summary Adjust product inventory
+// @Tags admin-products
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "Product ID"
+// @Param payload body inventoryAdjustBody true "Adjustment payload"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} response.ProblemDetails
+// @Failure 401 {object} response.ProblemDetails
+// @Router /v1/admin/products/{id}/inventory-adjust [post]
 func (h *AdminProductHandler) AdjustInventory(w http.ResponseWriter, r *http.Request) {
     claims, ok := middleware.GetUserFromContext(r.Context())
     if !ok { response.WriteError(w, http.StatusUnauthorized, "unauthorized"); return }
@@ -91,7 +129,16 @@ func (h *AdminProductHandler) AdjustInventory(w http.ResponseWriter, r *http.Req
     response.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
-// DELETE /v1/admin/products/{id} - hard delete; only allowed if product is not referenced in menu compositions
+// DeleteHard godoc
+// @Summary Hard delete product
+// @Description Only allowed if product is not referenced in menu compositions
+// @Tags admin-products
+// @Security BearerAuth
+// @Param id path string true "Product ID"
+// @Success 204 "No Content"
+// @Failure 400 {object} response.ProblemDetails
+// @Failure 404 {object} response.ProblemDetails
+// @Router /v1/admin/products/{id} [delete]
 func (h *AdminProductHandler) DeleteHard(w http.ResponseWriter, r *http.Request) {
     id := chiURLParam(r, "id")
     pid, err := primitive.ObjectIDFromHex(id)
@@ -106,7 +153,18 @@ func (h *AdminProductHandler) DeleteHard(w http.ResponseWriter, r *http.Request)
     response.WriteNoContent(w)
 }
 
-// PATCH /v1/admin/products/{id}/category - move product between categories
+// PatchCategory godoc
+// @Summary Move product to category
+// @Tags admin-products
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "Product ID"
+// @Param payload body patchCategoryBody true "Category payload"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} response.ProblemDetails
+// @Failure 404 {object} response.ProblemDetails
+// @Router /v1/admin/products/{id}/category [patch]
 type patchCategoryBody struct { CategoryID string `json:"categoryId"` }
 func (h *AdminProductHandler) PatchCategory(w http.ResponseWriter, r *http.Request) {
     id := chiURLParam(r, "id"); pid, err := primitive.ObjectIDFromHex(id); if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid id"); return }

@@ -19,7 +19,13 @@ func NewAdminCategoryHandler(categories repository.CategoryRepository, audit rep
 	return &AdminCategoryHandler{categories: categories, audit: audit}
 }
 
-// GET /v1/admin/categories
+// List godoc
+// @Summary List categories
+// @Tags admin-categories
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/categories [get]
 func (h *AdminCategoryHandler) List(w http.ResponseWriter, r *http.Request) {
 	// Minimal list; add filters later as needed
 	items, total, err := h.categories.List(r.Context(), nil, nil, 200, 0)
@@ -40,7 +46,16 @@ func (h *AdminCategoryHandler) List(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, map[string]any{"items": out, "count": total})
 }
 
-// POST /v1/admin/categories
+// Create godoc
+// @Summary Create category
+// @Tags admin-categories
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param payload body createCategoryBody true "Category payload"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} response.ProblemDetails
+// @Router /v1/admin/categories [post]
 type createCategoryBody struct {
 	Name     string `json:"name"`
 	Position int    `json:"position"`
@@ -69,7 +84,18 @@ func (h *AdminCategoryHandler) Create(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusCreated, map[string]any{"id": id.Hex()})
 }
 
-// PATCH /v1/admin/categories/{id}
+// Update godoc
+// @Summary Update category
+// @Tags admin-categories
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "Category ID"
+// @Param payload body updateCategoryBody true "Category payload"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} response.ProblemDetails
+// @Failure 404 {object} response.ProblemDetails
+// @Router /v1/admin/categories/{id} [patch]
 type updateCategoryBody struct {
 	Name     *string `json:"name,omitempty"`
 	IsActive *bool   `json:"isActive,omitempty"`
@@ -113,7 +139,14 @@ func (h *AdminCategoryHandler) Update(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
-// DELETE /v1/admin/categories/{id}
+// Delete godoc
+// @Summary Delete category
+// @Tags admin-categories
+// @Security BearerAuth
+// @Param id path string true "Category ID"
+// @Success 204 "No Content"
+// @Failure 400 {object} response.ProblemDetails
+// @Router /v1/admin/categories/{id} [delete]
 func (h *AdminCategoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chiURLParam(r, "id")
 	oid, err := primitive.ObjectIDFromHex(id)

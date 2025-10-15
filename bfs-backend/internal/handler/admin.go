@@ -20,6 +20,12 @@ func NewAdminHandler(adminService service.AdminService) *AdminHandler {
 }
 
 // Ping is a trivial protected endpoint for RBAC tests
+// @Summary Admin ping
+// @Tags admin
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/ping [get]
 func (h *AdminHandler) Ping(w http.ResponseWriter, r *http.Request) {
     w.Header().Set("Content-Type", "application/json")
     w.WriteHeader(http.StatusOK)

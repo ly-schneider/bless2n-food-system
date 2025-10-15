@@ -4,6 +4,7 @@ import (
     "backend/internal/domain"
     "backend/internal/middleware"
     "backend/internal/service"
+    "backend/internal/response"
     "backend/internal/utils"
     "encoding/json"
     "context"
@@ -17,6 +18,9 @@ import (
 
     "github.com/go-playground/validator/v10"
 )
+
+// Reference response types to satisfy imports for Swagger type resolution
+var _ = response.ProblemDetails{}
 
 type AuthHandler struct {
     authService service.AuthService
@@ -36,6 +40,15 @@ type requestOTPBody struct{
     Email string `json:"email" validate:"required,email"`
 }
 
+// RequestOTP godoc
+// @Summary Request OTP code
+// @Description Starts email OTP login flow. Always returns 202 to prevent user enumeration.
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param payload body requestOTPBody true "Request payload"
+// @Success 202 {object} map[string]string
+// @Router /v1/auth/otp/request [post]
 func (h *AuthHandler) RequestOTP(w http.ResponseWriter, r *http.Request) {
     var body requestOTPBody
     _ = json.NewDecoder(r.Body).Decode(&body)
@@ -57,6 +70,24 @@ type verifyOTPBody struct{
     OTP   string `json:"otp"`
 }
 
+// AuthTokenResponse represents the successful auth response.
+type AuthTokenResponse struct {
+    AccessToken  string       `json:"access_token"`
+    ExpiresIn    int64        `json:"expires_in"`
+    TokenType    string       `json:"token_type"`
+    User         *serviceUser `json:"user"`
+}
+
+// VerifyOTP godoc
+// @Summary Verify OTP code
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param payload body verifyOTPBody true "Verification payload"
+// @Success 200 {object} AuthTokenResponse
+// @Failure 400 {object} response.ProblemDetails
+// @Failure 401 {object} response.ProblemDetails
+// @Router /v1/auth/otp/verify [post]
 func (h *AuthHandler) VerifyOTP(w http.ResponseWriter, r *http.Request) {
     var body verifyOTPBody
     if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -111,6 +142,16 @@ type verifyGoogleCodeBody struct {
     Nonce        string `json:"nonce,omitempty"`
 }
 
+// GoogleCode godoc
+// @Summary Sign in with Google (Authorization Code + PKCE)
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param payload body verifyGoogleCodeBody true "Google code payload"
+// @Success 200 {object} AuthTokenResponse
+// @Failure 400 {object} response.ProblemDetails
+// @Failure 401 {object} response.ProblemDetails
+// @Router /v1/auth/google/code [post]
 func (h *AuthHandler) GoogleCode(w http.ResponseWriter, r *http.Request) {
     var body verifyGoogleCodeBody
     if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Code == "" || body.CodeVerifier == "" {
@@ -150,6 +191,14 @@ func (h *AuthHandler) GoogleCode(w http.ResponseWriter, r *http.Request) {
 
 // (Apple implementation removed)
 
+// Refresh godoc
+// @Summary Refresh access token
+// @Description Uses HttpOnly refresh cookie to mint new tokens and CSRF cookie
+// @Tags auth
+// @Produce json
+// @Success 200 {object} AuthTokenResponse
+// @Failure 401 {object} response.ProblemDetails
+// @Router /v1/auth/refresh [post]
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
     // NOTE: No CSRF protection required for refresh endpoint since:
     // 1. It's used to establish new CSRF tokens (chicken-egg problem)
@@ -197,6 +246,13 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
     _ = json.NewEncoder(w).Encode(resp)
 }
 
+// Logout godoc
+// @Summary Logout current session
+// @Description Clears refresh and CSRF cookies and revokes refresh token family.
+// @Tags auth
+// @Success 204 "No Content"
+// @Failure 403 {object} response.ProblemDetails
+// @Router /v1/auth/logout [post]
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
     csrfHeader := r.Header.Get(utils.CSRFHeaderName)
     csrfCookie, _ := r.Cookie("__Host-" + utils.CSRFCookieName)
@@ -232,6 +288,14 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 // RevokeSession revokes a session family by id
+// RevokeSession godoc
+// @Summary Revoke a session family
+// @Tags auth
+// @Security BearerAuth
+// @Param id path string true "Session family ID"
+// @Success 204 "No Content"
+// @Failure 401 {object} response.ProblemDetails
+// @Router /v1/users/me/sessions/{id} [delete]
 func (h *AuthHandler) RevokeSession(w http.ResponseWriter, r *http.Request) {
     claims, ok := middleware.GetUserFromContext(r.Context())
     if !ok { http.Error(w, "Unauthorized", http.StatusUnauthorized); return }
@@ -248,6 +312,13 @@ func (h *AuthHandler) RevokeSession(w http.ResponseWriter, r *http.Request) {
 }
 
 // RevokeAllSessions revokes all refresh token families for the authenticated user
+// RevokeAllSessions godoc
+// @Summary Revoke all sessions for user
+// @Tags auth
+// @Security BearerAuth
+// @Success 204 "No Content"
+// @Failure 401 {object} response.ProblemDetails
+// @Router /v1/users/me/sessions [delete]
 func (h *AuthHandler) RevokeAllSessions(w http.ResponseWriter, r *http.Request) {
     claims, ok := middleware.GetUserFromContext(r.Context())
     if !ok { http.Error(w, "Unauthorized", http.StatusUnauthorized); return }
@@ -260,6 +331,14 @@ func (h *AuthHandler) RevokeAllSessions(w http.ResponseWriter, r *http.Request) 
 
 // Sessions lists active session families (devices) for the authenticated user.
 // It groups refresh tokens by family and exposes minimal metadata.
+// Sessions godoc
+// @Summary List active sessions
+// @Tags auth
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} response.ProblemDetails
+// @Router /v1/users/me/sessions [get]
 func (h *AuthHandler) Sessions(w http.ResponseWriter, r *http.Request) {
     claims, ok := middleware.GetUserFromContext(r.Context())
     if !ok { http.Error(w, "Unauthorized", http.StatusUnauthorized); return }
@@ -277,6 +356,10 @@ func (h *AuthHandler) Sessions(w http.ResponseWriter, r *http.Request) {
 }
 
 // Me returns basic profile; assumes JWT middleware filled context
+// Me godoc
+// @Summary Current auth claims
+// @Tags auth
+// @Security BearerAuth
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
     claims, ok := middleware.GetUserFromContext(r.Context())
     if !ok { http.Error(w, "Unauthorized", http.StatusUnauthorized); return }

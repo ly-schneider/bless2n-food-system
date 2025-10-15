@@ -6,10 +6,16 @@ terraform {
       version = ">= 4.1.0"
     }
   }
-  backend "local" {}
+
+  cloud {
+    organization = "leys-services"
+
+    workspaces {
+      name = "bfs-staging"
+    }
+  }
 }
 
 provider "azurerm" {
   features {}
 }
-

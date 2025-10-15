@@ -25,7 +25,17 @@ func NewAdminMenuHandler(prod repository.ProductRepository, cat repository.Categ
     return &AdminMenuHandler{ products: prod, categories: cat, slots: slots, items: items, audit: audit }
 }
 
-// List menus (products of type menu)
+// List godoc
+// @Summary List menus
+// @Tags admin-menus
+// @Security BearerAuth
+// @Produce json
+// @Param active query bool false "Filter by active"
+// @Param q query string false "Search query"
+// @Param limit query int false "Limit" minimum(1) maximum(200) default(50)
+// @Param offset query int false "Offset" minimum(0) default(0)
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/menus [get]
 func (h *AdminMenuHandler) List(w http.ResponseWriter, r *http.Request) {
     var active *bool
     if v := r.URL.Query().Get("active"); v != "" {
@@ -45,7 +55,16 @@ func (h *AdminMenuHandler) List(w http.ResponseWriter, r *http.Request) {
     response.WriteJSON(w, http.StatusOK, map[string]any{"items": out, "count": total})
 }
 
-// Get menu detail with slots and items
+// Get godoc
+// @Summary Get menu by ID
+// @Tags admin-menus
+// @Security BearerAuth
+// @Produce json
+// @Param id path string true "Menu (product) ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /v1/admin/menus/{id} [get]
 func (h *AdminMenuHandler) Get(w http.ResponseWriter, r *http.Request) {
     id := chiURLParam(r, "id")
     oid, err := primitive.ObjectIDFromHex(id)
@@ -86,6 +105,16 @@ func (h *AdminMenuHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 type createMenuBody struct { Name string `json:"name"`; PriceCents int64 `json:"priceCents"`; CategoryID string `json:"categoryId"`; Image *string `json:"image,omitempty"`; IsActive *bool `json:"isActive,omitempty"` }
 
+// Create godoc
+// @Summary Create menu
+// @Tags admin-menus
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param payload body createMenuBody true "Menu payload"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Router /v1/admin/menus [post]
 func (h *AdminMenuHandler) Create(w http.ResponseWriter, r *http.Request) {
     claims, ok := middleware.GetUserFromContext(r.Context()); if !ok { response.WriteError(w, http.StatusUnauthorized, "unauthorized"); return }
     var body createMenuBody
@@ -101,6 +130,16 @@ func (h *AdminMenuHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 type updateMenuBody struct { Name *string `json:"name,omitempty"`; PriceCents *int64 `json:"priceCents,omitempty"`; Image *string `json:"image,omitempty"`; IsActive *bool `json:"isActive,omitempty"` }
 
+// Update godoc
+// @Summary Update menu
+// @Tags admin-menus
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "Menu ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Router /v1/admin/menus/{id} [patch]
 func (h *AdminMenuHandler) Update(w http.ResponseWriter, r *http.Request) {
     id := chiURLParam(r, "id")
     oid, err := primitive.ObjectIDFromHex(id); if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid id"); return }
@@ -129,6 +168,13 @@ func (h *AdminMenuHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 // PATCH /v1/admin/menus/{id}/active - toggle is_active
 type patchMenuActiveBody struct { IsActive bool `json:"isActive"` }
+// PatchActive godoc
+// @Summary Set menu active flag
+// @Tags admin-menus
+// @Security BearerAuth
+// @Param id path string true "Menu ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/menus/{id}/active [patch]
 func (h *AdminMenuHandler) PatchActive(w http.ResponseWriter, r *http.Request) {
     id := chiURLParam(r, "id"); oid, err := primitive.ObjectIDFromHex(id); if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid id"); return }
     var body patchMenuActiveBody
@@ -141,6 +187,13 @@ func (h *AdminMenuHandler) PatchActive(w http.ResponseWriter, r *http.Request) {
 }
 
 // DELETE /v1/admin/menus/{id}/hard - permanently delete the menu product and its slots/items
+// DeleteHard godoc
+// @Summary Hard delete menu
+// @Tags admin-menus
+// @Security BearerAuth
+// @Param id path string true "Menu ID"
+// @Success 204 "No Content"
+// @Router /v1/admin/menus/{id} [delete]
 func (h *AdminMenuHandler) DeleteHard(w http.ResponseWriter, r *http.Request) {
     id := chiURLParam(r, "id"); oid, err := primitive.ObjectIDFromHex(id); if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid id"); return }
     // delete slot items then slots then product
@@ -156,6 +209,13 @@ func (h *AdminMenuHandler) DeleteHard(w http.ResponseWriter, r *http.Request) {
 
 type createSlotBody struct { Name string `json:"name"`; Sequence *int `json:"sequence,omitempty"` }
 
+// CreateSlot godoc
+// @Summary Create menu slot
+// @Tags admin-menus
+// @Security BearerAuth
+// @Param id path string true "Menu ID"
+// @Success 201 {object} map[string]interface{}
+// @Router /v1/admin/menus/{id}/slots [post]
 func (h *AdminMenuHandler) CreateSlot(w http.ResponseWriter, r *http.Request) {
     id := chiURLParam(r, "id"); oid, err := primitive.ObjectIDFromHex(id); if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid id"); return }
     var body createSlotBody
@@ -170,6 +230,14 @@ func (h *AdminMenuHandler) CreateSlot(w http.ResponseWriter, r *http.Request) {
 
 type renameSlotBody struct { Name string `json:"name"` }
 
+// RenameSlot godoc
+// @Summary Rename menu slot
+// @Tags admin-menus
+// @Security BearerAuth
+// @Param id path string true "Menu ID"
+// @Param slotId path string true "Slot ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/menus/{id}/slots/{slotId} [patch]
 func (h *AdminMenuHandler) RenameSlot(w http.ResponseWriter, r *http.Request) {
     sid := chiURLParam(r, "slotId"); soid, err := primitive.ObjectIDFromHex(sid); if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid id"); return }
     var body renameSlotBody
@@ -181,6 +249,13 @@ func (h *AdminMenuHandler) RenameSlot(w http.ResponseWriter, r *http.Request) {
 
 type reorderSlotsBody struct { Order []struct{ SlotID string `json:"slotId"`; Sequence int `json:"sequence"` } `json:"order"` }
 
+// ReorderSlots godoc
+// @Summary Reorder menu slots
+// @Tags admin-menus
+// @Security BearerAuth
+// @Param id path string true "Menu ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/menus/{id}/slots/reorder [patch]
 func (h *AdminMenuHandler) ReorderSlots(w http.ResponseWriter, r *http.Request) {
     var body reorderSlotsBody
     if err := json.NewDecoder(r.Body).Decode(&body); err != nil || len(body.Order) == 0 { response.WriteError(w, http.StatusBadRequest, "invalid payload"); return }
@@ -191,6 +266,14 @@ func (h *AdminMenuHandler) ReorderSlots(w http.ResponseWriter, r *http.Request) 
     response.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
+// DeleteSlot godoc
+// @Summary Delete menu slot
+// @Tags admin-menus
+// @Security BearerAuth
+// @Param id path string true "Menu ID"
+// @Param slotId path string true "Slot ID"
+// @Success 204 "No Content"
+// @Router /v1/admin/menus/{id}/slots/{slotId} [delete]
 func (h *AdminMenuHandler) DeleteSlot(w http.ResponseWriter, r *http.Request) {
     sid := chiURLParam(r, "slotId"); soid, err := primitive.ObjectIDFromHex(sid); if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid id"); return }
     if err := h.items.DeleteByMenuSlotID(r.Context(), soid); err != nil { response.WriteError(w, http.StatusInternalServerError, "delete items failed"); return }
@@ -201,6 +284,14 @@ func (h *AdminMenuHandler) DeleteSlot(w http.ResponseWriter, r *http.Request) {
 
 type attachItemBody struct { ProductID string `json:"productId"` }
 
+// AttachItem godoc
+// @Summary Attach product to slot
+// @Tags admin-menus
+// @Security BearerAuth
+// @Param id path string true "Menu ID"
+// @Param slotId path string true "Slot ID"
+// @Success 201 {object} map[string]interface{}
+// @Router /v1/admin/menus/{id}/slots/{slotId}/items [post]
 func (h *AdminMenuHandler) AttachItem(w http.ResponseWriter, r *http.Request) {
     sid := chiURLParam(r, "slotId"); soid, err := primitive.ObjectIDFromHex(sid); if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid slot"); return }
     var body attachItemBody
@@ -216,6 +307,15 @@ func (h *AdminMenuHandler) AttachItem(w http.ResponseWriter, r *http.Request) {
     response.WriteJSON(w, http.StatusCreated, map[string]any{"ok": true})
 }
 
+// DetachItem godoc
+// @Summary Detach product from slot
+// @Tags admin-menus
+// @Security BearerAuth
+// @Param id path string true "Menu ID"
+// @Param slotId path string true "Slot ID"
+// @Param productId path string true "Product ID"
+// @Success 204 "No Content"
+// @Router /v1/admin/menus/{id}/slots/{slotId}/items/{productId} [delete]
 func (h *AdminMenuHandler) DetachItem(w http.ResponseWriter, r *http.Request) {
     sid := chiURLParam(r, "slotId"); soid, err := primitive.ObjectIDFromHex(sid); if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid slot"); return }
     pidStr := chiURLParam(r, "productId"); pid, err := primitive.ObjectIDFromHex(pidStr); if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid product"); return }

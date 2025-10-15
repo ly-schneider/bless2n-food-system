@@ -36,31 +36,84 @@ jobs:
             cloud:
               - 'bfs-cloud/**'
 
+  deploy-acr:
+    name: Deploy ACR Infrastructure
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name }}
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.web == 'true' || needs.changes.outputs.cloud == 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select environment directory
+        run: |
+          case "${{ github.ref_name }}" in
+            staging) echo "ENV_DIR=staging" >> $GITHUB_ENV ;;
+            production) echo "ENV_DIR=prod" >> $GITHUB_ENV ;;
+            *) echo "Unsupported branch: ${{ github.ref_name }}"; exit 1 ;;
+          esac
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Terraform Init
+        working-directory: bfs-cloud/envs/${{ env.ENV_DIR }}
+        run: terraform init -input=false
+
+      - name: Terraform Plan ACR
+        working-directory: bfs-cloud/envs/${{ env.ENV_DIR }}
+        run: |
+          terraform plan -target="module.acr" \
+            -var "enable_acr=true" \
+            -var "acr_name=${{ vars.ACR_NAME }}" \
+            -var "image_tag=${{ github.ref_name }}" \
+            -out=acr.tfplan
+
+      - name: Terraform Apply ACR
+        working-directory: bfs-cloud/envs/${{ env.ENV_DIR }}
+        run: terraform apply -auto-approve acr.tfplan
+
   build-and-push-images:
     name: Build & Push Images
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name }}
-    needs: changes
+    needs: [changes, deploy-acr]
     if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.web == 'true'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Set Image Names
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve ACR login server
+        id: acr
+        run: |
+          if [ -z "${{ vars.ACR_NAME }}" ]; then
+            echo "ACR_NAME not set in environment variables" >&2
+            exit 1
+          fi
+          LOGIN_SERVER=$(az acr show -n "${{ vars.ACR_NAME }}" --query loginServer -o tsv)
+          echo "login_server=$LOGIN_SERVER" >> $GITHUB_OUTPUT
+
+      - name: ACR Login
+        run: az acr login -n ${{ vars.ACR_NAME }}
+
+      - name: Set Image Names (ACR)
         id: names
         run: |
-          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          echo "owner_lc=$OWNER_LC" >> $GITHUB_OUTPUT
-          echo "backend=ghcr.io/$OWNER_LC/backend" >> $GITHUB_OUTPUT
-          echo "frontend=ghcr.io/$OWNER_LC/frontend" >> $GITHUB_OUTPUT
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          echo "backend=${{ steps.acr.outputs.login_server }}/backend" >> $GITHUB_OUTPUT
+          echo "frontend=${{ steps.acr.outputs.login_server }}/frontend" >> $GITHUB_OUTPUT
 
       - name: Build & Push backend image
         if: ${{ needs.changes.outputs.backend == 'true' }}
@@ -95,24 +148,15 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
 
   deploy-infra:
-    name: Terraform Deploy to Azure
-    needs: changes
-    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.web == 'true' || needs.changes.outputs.cloud == 'true'
+    name: Deploy Container Apps Infrastructure
+    needs: [changes, build-and-push-images]
+    if: always() && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.web == 'true' || needs.changes.outputs.cloud == 'true')
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name }}
-    defaults:
-      run:
-        working-directory: bfs-cloud/envs/${{ env.ENV_DIR }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Compute lowercased owner
-        id: owner
-        run: |
-          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          echo "value=$OWNER_LC" >> $GITHUB_OUTPUT
 
       - name: Select environment directory
         run: |
@@ -130,31 +174,23 @@ jobs:
         if: ${{ needs.changes.outputs.backend != 'true' && needs.changes.outputs.web != 'true' }}
         run: echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
 
-      - name: Azure Login (OIDC)
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.8.5
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
 
       - name: Terraform Init
+        working-directory: bfs-cloud/envs/${{ env.ENV_DIR }}
         run: terraform init -input=false
 
       - name: Terraform Apply
-        env:
-          TF_VAR_registry_server: ghcr.io
-          TF_VAR_registry_namespace: ${{ steps.owner.outputs.value }}
-          TF_VAR_registry_username: ${{ github.actor }}
-          TF_VAR_registry_token: ${{ secrets.GHCR_TOKEN }}
-          TF_VAR_image_tag: ${{ env.IMAGE_TAG }}
-          # Optional app-specific envs (example for frontend SSR)
-          # Use TF_VAR_app_secrets to pass sensitive values as container secrets if needed
-        run: terraform apply -auto-approve -input=false
+        working-directory: bfs-cloud/envs/${{ env.ENV_DIR }}
+        run: |
+          terraform apply -auto-approve -input=false \
+            -var "enable_acr=true" \
+            -var "acr_name=${{ vars.ACR_NAME }}" \
+            -var "image_tag=${{ env.IMAGE_TAG }}"
 
 concurrency:
   group: deploy-${{ github.ref_name }}

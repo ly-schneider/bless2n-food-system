@@ -38,6 +38,19 @@ variable "registry_token" {
   default     = null
 }
 
+# ACR options for staging/prod simplicity
+variable "enable_acr" {
+  description = "Use Azure Container Registry for images and managed identity pull"
+  type        = bool
+  default     = true
+}
+
+variable "acr_name" {
+  description = "Azure Container Registry name (without .azurecr.io)"
+  type        = string
+  default     = "bfsstagingacr"
+}
+
 variable "image_tag" {
   description = "Tag to use for images (commit SHA, tag, or branch)"
   type        = string
@@ -60,4 +73,3 @@ variable "app_registries" {
   })))
   default = {}
 }
-

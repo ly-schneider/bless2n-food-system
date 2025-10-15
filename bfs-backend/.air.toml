@@ -4,7 +4,7 @@ tmp_dir = "tmp"
 
 [build]
   bin = "./tmp/main"
-  cmd = "go tool swag init -g cmd/backend/main.go --output ./docs --parseDependency --parseInternal --generatedTime=false && go build -o ./tmp/main ./cmd/backend"
+  cmd = "go tool swag init -g cmd/backend/main.go --output ./docs --parseDependency --parseInternal --generatedTime=false && go build -tags docs -o ./tmp/main ./cmd/backend"
   include_dir = ["cmd", "internal"]
   include_ext = ["go", "tpl", "tmpl", "html"]
   exclude_dir = ["assets", "tmp", "vendor", "testdata", "docs"]

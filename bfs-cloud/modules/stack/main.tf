@@ -38,6 +38,10 @@ variable "config" {
     enable_alerts                = bool
     requests_5xx_threshold       = number
     enable_security_features     = optional(bool, true)
+    # Optional ACR support; when enabled, Container Apps identities receive AcrPull
+    enable_acr                   = optional(bool, false)
+    acr_name                     = optional(string)
+    acr_sku                      = optional(string, "Basic")
     key_vault_name               = optional(string)
     apps = map(object({
       port         = number
@@ -96,6 +100,12 @@ module "rg" {
   name     = var.config.rg_name
   location = var.location
   tags     = var.tags
+}
+
+data "azurerm_container_registry" "acr" {
+  count               = try(var.config.enable_acr, false) ? 1 : 0
+  name                = var.config.acr_name
+  resource_group_name = module.rg.name
 }
 
 module "net" {
@@ -178,6 +188,15 @@ module "apps" {
   azure_queue_scale_rules     = each.value.azure_queue_scale_rules
   custom_scale_rules          = each.value.custom_scale_rules
   tags                        = merge(var.tags, { app = each.key })
+}
+
+# Grant Container Apps managed identity pull access to ACR when enabled
+resource "azurerm_role_assignment" "acr_pull" {
+  for_each = try(var.config.enable_acr, false) ? { for k, m in module.apps : k => m.identity_principal_id } : {}
+
+  scope                = data.azurerm_container_registry.acr[0].id
+  role_definition_name = "AcrPull"
+  principal_id         = each.value
 }
 
 module "alerts" {

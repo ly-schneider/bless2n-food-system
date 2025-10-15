@@ -29,7 +29,17 @@ func NewAdminInviteHandler(invites repository.AdminInviteRepository, users repos
     return &AdminInviteHandler{ invites: invites, users: users, audit: audit, email: email, jwt: jwt, refresh: refresh }
 }
 
-// GET /v1/admin/invites
+// List godoc
+// @Summary List admin invites
+// @Tags admin-invites
+// @Security BearerAuth
+// @Produce json
+// @Param status query string false "Filter by status"
+// @Param email query string false "Filter by email"
+// @Param limit query int false "Limit" minimum(1) maximum(200) default(50)
+// @Param offset query int false "Offset" minimum(0) default(0)
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/invites [get]
 func (h *AdminInviteHandler) List(w http.ResponseWriter, r *http.Request) {
     var status *string
     if v := r.URL.Query().Get("status"); v != "" { status = &v }
@@ -64,7 +74,16 @@ func (h *AdminInviteHandler) List(w http.ResponseWriter, r *http.Request) {
     response.WriteJSON(w, http.StatusOK, map[string]any{"items": out, "count": total})
 }
 
-// POST /v1/admin/invites: create new ADMIN invite (admin-only)
+// Create godoc
+// @Summary Create admin invite
+// @Tags admin-invites
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param payload body createInviteBody true "Invite payload"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Router /v1/admin/invites [post]
 type createInviteBody struct { Email string `json:"email"`; ExpiresInSec *int `json:"expiresInSec,omitempty"` }
 
 func (h *AdminInviteHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -89,7 +108,14 @@ func (h *AdminInviteHandler) Create(w http.ResponseWriter, r *http.Request) {
     response.WriteJSON(w, http.StatusCreated, resp)
 }
 
-// POST /v1/admin/invites/{id}/revoke
+// Revoke godoc
+// @Summary Revoke admin invite
+// @Tags admin-invites
+// @Security BearerAuth
+// @Param id path string true "Invite ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Router /v1/admin/invites/{id}/revoke [post]
 func (h *AdminInviteHandler) Revoke(w http.ResponseWriter, r *http.Request) {
     id := chiURLParam(r, "id"); oid, err := primitive.ObjectIDFromHex(id); if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid id"); return }
     ok, err := h.invites.Revoke(r.Context(), oid); if err != nil { response.WriteError(w, http.StatusInternalServerError, "revoke failed"); return }
@@ -98,7 +124,16 @@ func (h *AdminInviteHandler) Revoke(w http.ResponseWriter, r *http.Request) {
     response.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
-// POST /v1/invites/accept (public)
+// Accept godoc
+// @Summary Accept admin invite
+// @Tags invites
+// @Accept json
+// @Produce json
+// @Param payload body acceptInviteBody true "Accept payload"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /v1/invites/accept [post]
 type acceptInviteBody struct { Token string `json:"token"`; FirstName *string `json:"firstName,omitempty"`; LastName *string `json:"lastName,omitempty"` }
 
 func (h *AdminInviteHandler) Accept(w http.ResponseWriter, r *http.Request) {
@@ -180,7 +215,16 @@ func (h *AdminInviteHandler) Accept(w http.ResponseWriter, r *http.Request) {
     response.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
-// POST /v1/invites/verify (public) - verify invite token and return metadata
+// Verify godoc
+// @Summary Verify admin invite token
+// @Tags invites
+// @Accept json
+// @Produce json
+// @Param payload body verifyInviteBody true "Verify payload"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /v1/invites/verify [post]
 type verifyInviteBody struct { Token string `json:"token"` }
 func (h *AdminInviteHandler) Verify(w http.ResponseWriter, r *http.Request) {
     var body verifyInviteBody
@@ -198,7 +242,14 @@ func (h *AdminInviteHandler) Verify(w http.ResponseWriter, r *http.Request) {
     })
 }
 
-// POST /v1/admin/invites/{id}/resend - rotate token and resend email
+// Resend godoc
+// @Summary Resend admin invite
+// @Tags admin-invites
+// @Security BearerAuth
+// @Param id path string true "Invite ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /v1/admin/invites/{id}/resend [post]
 func (h *AdminInviteHandler) Resend(w http.ResponseWriter, r *http.Request) {
     id := chiURLParam(r, "id"); oid, err := primitive.ObjectIDFromHex(id); if err != nil { response.WriteError(w, http.StatusBadRequest, "invalid id"); return }
     inv, err := h.invites.FindByID(r.Context(), oid)
@@ -212,7 +263,14 @@ func (h *AdminInviteHandler) Resend(w http.ResponseWriter, r *http.Request) {
     response.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
-// DELETE /v1/admin/invites/{id}
+// Delete godoc
+// @Summary Delete admin invite
+// @Tags admin-invites
+// @Security BearerAuth
+// @Param id path string true "Invite ID"
+// @Success 204 "No Content"
+// @Failure 400 {object} map[string]interface{}
+// @Router /v1/admin/invites/{id} [delete]
 func (h *AdminInviteHandler) Delete(w http.ResponseWriter, r *http.Request) {
     id := chiURLParam(r, "id")
     oid, err := primitive.ObjectIDFromHex(id)

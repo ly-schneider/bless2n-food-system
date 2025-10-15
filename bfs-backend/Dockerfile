@@ -29,7 +29,9 @@ RUN go mod download && go mod verify
 COPY --chown=appbuild:appbuild . .
 
 # Build with security hardening flags
+ARG BUILD_TAGS=""
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -tags="${BUILD_TAGS}" \
     -ldflags='-w -s -extldflags "-static"' \
     -a -installsuffix cgo \
     -o backend ./cmd/backend

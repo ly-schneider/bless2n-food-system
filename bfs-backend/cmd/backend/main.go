@@ -1,18 +1,18 @@
 package main
 
 import (
-	_ "backend/docs"
-	"backend/internal/app"
+    "backend/internal/app"
 
-	"go.uber.org/fx"
-	"go.uber.org/fx/fxevent"
-	"go.uber.org/zap"
+    "go.uber.org/fx"
+    "go.uber.org/fx/fxevent"
+    "go.uber.org/zap"
 )
 
 // @title Bless2n Food System API
 // @version 1.0
 // @description Internal BlessThun Food System API
 // @schemes http https
+// @BasePath /
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization

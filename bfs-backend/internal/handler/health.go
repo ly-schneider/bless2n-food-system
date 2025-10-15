@@ -28,6 +28,12 @@ func NewHealthHandler(logger *zap.Logger, db *mongo.Database, jwksClient interfa
 	}
 }
 
+// Healthz godoc
+// @Summary Liveness probe
+// @Tags health
+// @Produce json
+// @Success 200 {object} HealthResponse
+// @Router /healthz [get]
 func (h *HealthHandler) Healthz(w http.ResponseWriter, r *http.Request) {
 	healthResponse := HealthResponse{
 		Status:    "healthy",
@@ -37,6 +43,13 @@ func (h *HealthHandler) Healthz(w http.ResponseWriter, r *http.Request) {
 	response.WriteSuccess(w, http.StatusOK, healthResponse)
 }
 
+// Readyz godoc
+// @Summary Readiness probe
+// @Tags health
+// @Produce json
+// @Success 200 {object} HealthResponse
+// @Failure 503 {object} response.ProblemDetails
+// @Router /readyz [get]
 func (h *HealthHandler) Readyz(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()

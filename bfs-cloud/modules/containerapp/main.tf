@@ -120,11 +120,11 @@ resource "azurerm_container_app" "this" {
     dynamic "custom_scale_rule" {
       for_each = var.cpu_scale_rule != null ? [var.cpu_scale_rule] : []
       content {
-        name             = cpu_scale_rule.value.name
+        name             = custom_scale_rule.value.name
         custom_rule_type = "cpu"
         metadata = {
           type = "Utilization"
-          value = tostring(cpu_scale_rule.value.cpu_percentage)
+          value = tostring(custom_scale_rule.value.cpu_percentage)
         }
       }
     }
