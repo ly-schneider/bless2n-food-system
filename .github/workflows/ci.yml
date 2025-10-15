@@ -151,7 +151,6 @@ jobs:
 
   deploy:
     if: github.event_name == 'push' && contains(' staging production ', format(' {0} ', github.ref_name))
-    needs: [changes, backend, web-app, android]
     permissions:
       contents: read
       packages: read
