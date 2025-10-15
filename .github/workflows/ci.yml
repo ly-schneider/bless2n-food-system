@@ -63,6 +63,7 @@ jobs:
         with:
           go-version: '1.25'
           cache: true
+          cache-dependency-path: bfs-backend/go.sum
       - name: Lint
         run: make tools && make lint
       - name: Test
