@@ -7,6 +7,7 @@ on:
       - 'bfs-backend/**'
       - 'bfs-web-app/**'
       - 'bfs-android-app/**'
+      - 'bfs-cloud/**'
       - '.github/workflows/ci.yml'
       - '.github/workflows/deploy.yml'
   push:
@@ -15,6 +16,7 @@ on:
       - 'bfs-backend/**'
       - 'bfs-web-app/**'
       - 'bfs-android-app/**'
+      - 'bfs-cloud/**'
       - '.github/workflows/ci.yml'
       - '.github/workflows/deploy.yml'
   merge_group:
