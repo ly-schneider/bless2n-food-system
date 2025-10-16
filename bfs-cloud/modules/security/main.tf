@@ -75,7 +75,7 @@ resource "azurerm_key_vault" "basic" {
   soft_delete_retention_days = 7
 
   public_network_access_enabled = true
-  enable_rbac_authorization     = true
+  rbac_authorization_enabled    = true
 
   network_acls {
     default_action = "Allow"

@@ -43,6 +43,8 @@ module "bfs_infrastructure" {
         memory           = "0.5Gi"
         min_replicas     = 0
         max_replicas     = 20
+        # Use an internal health endpoint that does not depend on backend
+        health_check_path = "/api/health"
         # ACR configuration - no additional registries needed when using managed identity
         registries = []
         secrets    = lookup(var.app_secrets, "frontend-staging", {})

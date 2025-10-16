@@ -128,7 +128,7 @@ resource "azurerm_monitor_diagnostic_setting" "cosmos_diag" {
     category = "PartitionKeyStatistics"
   }
 
-  metric {
+  enabled_metric {
     category = "Requests"
   }
 }

@@ -18,7 +18,7 @@ resource "azurerm_monitor_diagnostic_setting" "this" {
     }
   }
 
-  dynamic "metric" {
+  dynamic "enabled_metric" {
     for_each = var.enable_metrics ? ["AllMetrics"] : []
     content {
       category = "AllMetrics"
