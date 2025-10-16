@@ -17,4 +17,14 @@ resource "azurerm_subnet" "aca" {
     "Microsoft.AzureCosmosDB",
     "Microsoft.Storage"
   ]
+
+  delegation {
+    name = "container-apps-delegation"
+    service_delegation {
+      name = "Microsoft.App/environments"
+      actions = [
+        "Microsoft.Network/virtualNetworks/subnets/join/action"
+      ]
+    }
+  }
 }

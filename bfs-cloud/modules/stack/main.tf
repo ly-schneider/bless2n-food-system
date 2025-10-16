@@ -43,6 +43,7 @@ variable "config" {
     acr_name                     = optional(string)
     acr_sku                      = optional(string, "Basic")
     key_vault_name               = optional(string)
+    allowed_ip_ranges            = optional(list(string), [])
     apps = map(object({
       port         = number
       image        = string
@@ -240,6 +241,7 @@ module "security" {
   subnet_id                  = module.net.subnet_id
   enable_key_vault           = true
   key_vault_name             = var.config.key_vault_name != null ? var.config.key_vault_name : "${var.config.cosmos_name}-kv"
+  allowed_ip_ranges          = var.config.allowed_ip_ranges != null ? var.config.allowed_ip_ranges : []
   key_vault_admins           = [data.azurerm_client_config.current.object_id]
   container_app_identities   = { for k, m in module.apps : k => m.identity_principal_id }
   cosmos_connection_string   = module.cosmos.connection_string

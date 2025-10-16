@@ -29,18 +29,32 @@ resource "azurerm_network_security_group" "aca_nsg" {
     destination_address_prefix = "*"
   }
 
-  # Block all other inbound traffic
+  # Allow Container Apps management traffic
   security_rule {
-    name                       = "DenyAllOtherInbound"
-    priority                   = 4000
+    name                       = "AllowContainerAppsInbound"
+    priority                   = 1003
     direction                  = "Inbound"
-    access                     = "Deny"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_ranges    = ["5671", "5672"]
+    source_address_prefix      = "AzureCloud"
+    destination_address_prefix = "*"
+  }
+
+  # Allow all outbound traffic for Container Apps
+  security_rule {
+    name                       = "AllowContainerAppsOutbound"
+    priority                   = 1004
+    direction                  = "Outbound"
+    access                     = "Allow"
     protocol                   = "*"
     source_port_range          = "*"
     destination_port_range     = "*"
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
+
 
   tags = var.tags
 }
@@ -64,9 +78,8 @@ resource "azurerm_key_vault" "basic" {
   rbac_authorization_enabled     = true
 
   network_acls {
-    default_action = "Deny"
+    default_action = "Allow"
     bypass         = "AzureServices"
-    ip_rules       = var.allowed_ip_ranges
   }
 
   tags = var.tags
