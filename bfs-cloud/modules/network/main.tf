@@ -28,3 +28,13 @@ resource "azurerm_subnet" "aca" {
     }
   }
 }
+
+resource "azurerm_subnet" "private_endpoints" {
+  name                 = var.private_endpoints_subnet_name
+  resource_group_name  = var.resource_group_name
+  virtual_network_name = azurerm_virtual_network.this.name
+  address_prefixes     = [var.private_endpoints_subnet_cidr]
+
+  # No delegation; Private Endpoints require a non-delegated subnet
+  service_endpoints = []
+}

@@ -28,6 +28,8 @@ variable "config" {
     subnet_name              = string
     vnet_cidr                = string
     subnet_cidr              = string
+    pe_subnet_name           = optional(string, "private-endpoints-subnet")
+    pe_subnet_cidr           = optional(string, "10.1.8.0/24")
     env_name                 = string
     law_name                 = string
     appi_name                = string
@@ -38,6 +40,7 @@ variable "config" {
     enable_alerts            = bool
     requests_5xx_threshold   = number
     enable_security_features = optional(bool, true)
+    enable_acr               = optional(bool, true)
     acr_name                 = optional(string)
     acr_sku                  = optional(string, "Basic")
     key_vault_name           = optional(string)
@@ -55,8 +58,9 @@ variable "config" {
       key_vault_secret_refs = optional(map(string), {})
       registries = optional(list(object({
         server               = string
-        username             = string
-        password_secret_name = string
+        username             = optional(string)
+        password_secret_name = optional(string)
+        identity             = optional(string)
       })), [])
       http_scale_rule = optional(object({
         name                = string
@@ -105,6 +109,7 @@ module "rg" {
 
 # Create ACR if enabled
 module "acr" {
+  count  = try(var.config.enable_acr, true) ? 1 : 0
   source = "../acr"
 
   name                = var.config.acr_name
@@ -119,8 +124,7 @@ module "acr" {
 data "azurerm_container_registry" "acr" {
   name                = var.config.acr_name
   resource_group_name = module.rg.name
-
-  depends_on = [module.acr]
+  depends_on          = try(var.config.enable_acr, true) ? [module.acr] : []
 }
 
 module "net" {
@@ -131,6 +135,8 @@ module "net" {
   vnet_cidr           = var.config.vnet_cidr
   subnet_name         = var.config.subnet_name
   subnet_cidr         = var.config.subnet_cidr
+  private_endpoints_subnet_name = try(var.config.pe_subnet_name, "private-endpoints-subnet")
+  private_endpoints_subnet_cidr = try(var.config.pe_subnet_cidr, "10.1.8.0/24")
   tags                = var.tags
 }
 
@@ -174,6 +180,7 @@ module "cosmos" {
   database_name              = "appdb"
   database_throughput        = var.config.database_throughput
   subnet_id                  = module.net.subnet_id
+  private_endpoint_subnet_id = module.net.private_endpoints_subnet_id
   vnet_id                    = module.net.vnet_id
   allowed_ip_ranges          = []
   log_analytics_workspace_id = module.obs.log_analytics_id
@@ -214,7 +221,15 @@ module "apps" {
       if contains(keys(module.security[0].key_vault_secret_ids), s)
     } : {}
   )
-  registries              = each.value.registries
+  registries = concat(
+    [
+      {
+        server   = data.azurerm_container_registry.acr.login_server
+        identity = azurerm_user_assigned_identity.aca_uami.id
+      }
+    ],
+    each.value.registries
+  )
   http_scale_rule         = each.value.http_scale_rule
   cpu_scale_rule          = each.value.cpu_scale_rule
   memory_scale_rule       = each.value.memory_scale_rule

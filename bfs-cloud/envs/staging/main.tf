@@ -21,6 +21,8 @@ module "bfs_infrastructure" {
     subnet_name              = "container-apps-subnet"
     vnet_cidr                = "10.1.0.0/16"
     subnet_cidr              = "10.1.0.0/21"
+    pe_subnet_name           = "private-endpoints-subnet"
+    pe_subnet_cidr           = "10.1.8.0/24"
     env_name                 = "bfs-staging-env"
     law_name                 = "bfs-logs-workspace"
     appi_name                = "bfs-staging-insights"
@@ -32,6 +34,7 @@ module "bfs_infrastructure" {
     requests_5xx_threshold   = 10
     enable_security_features = true
     key_vault_name           = "bfs-staging-kv"
+    enable_acr               = false
     acr_name                 = "bfsstagingacr"
 
     apps = {

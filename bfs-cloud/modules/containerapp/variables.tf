@@ -38,10 +38,11 @@ variable "secrets" {
 variable "registries" {
   type = list(object({
     server               = string
-    username             = string
-    password_secret_name = string
+    username             = optional(string)
+    password_secret_name = optional(string)
+    identity             = optional(string)
   }))
-  description = "Container registries for pulling private images"
+  description = "Container registries for pulling private images (supports username/password or managed identity via identity)"
   default     = []
 }
 variable "enable_system_identity" {

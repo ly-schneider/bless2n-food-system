@@ -21,6 +21,8 @@ resource "azurerm_container_app" "this" {
     content {
       name                = secret.key
       key_vault_secret_id = secret.value
+      # Required by AzureRM when referencing Key Vault secrets
+      identity            = local.kv_secret_identity
     }
   }
 
@@ -29,8 +31,11 @@ resource "azurerm_container_app" "this" {
     for_each = var.registries
     content {
       server               = registry.value.server
-      username             = registry.value.username
-      password_secret_name = registry.value.password_secret_name
+      # Support username/password-based registries (e.g., GHCR)
+      username             = try(registry.value.username, null)
+      password_secret_name = try(registry.value.password_secret_name, null)
+      # Support managed identity-based ACR pull
+      identity             = try(registry.value.identity, null)
     }
   }
 
@@ -182,4 +187,12 @@ module "diag" {
   categories                 = []
   category_groups            = ["allLogs"]
   enable_metrics             = true
+}
+locals {
+  kv_secret_identity = var.enable_system_identity && length(var.user_assigned_identity_ids) == 0
+    ? "System"
+    : (length(var.user_assigned_identity_ids) > 0 ? var.user_assigned_identity_ids[0] : null)
+
+  # Fail early if key_vault_secret_refs are provided without a usable identity
+  _kv_identity_guard = length(var.key_vault_secret_refs) == 0 || local.kv_secret_identity != null ? true : tomap({})["force_error"]
 }

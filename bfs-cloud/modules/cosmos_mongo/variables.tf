@@ -14,7 +14,11 @@ variable "database_throughput" {
   default = 400
 }
 variable "subnet_id" {
-  description = "Subnet ID for VNet integration"
+  description = "Subnet ID for VNet integration (not used for Private Endpoint)"
+  type        = string
+}
+variable "private_endpoint_subnet_id" {
+  description = "Subnet ID to place the Cosmos DB Private Endpoint (must NOT be delegated)"
   type        = string
 }
 variable "vnet_id" {

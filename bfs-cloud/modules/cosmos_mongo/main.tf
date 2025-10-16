@@ -34,14 +34,9 @@ resource "azurerm_cosmosdb_account" "this" {
     storage_redundancy  = "Geo"
   }
 
-  // Disable public access; access via VNet + Private Endpoint
+  // Disable public access; access only via Private Endpoint
   public_network_access_enabled     = false
-  is_virtual_network_filter_enabled = true
-
-  virtual_network_rule {
-    id                                   = var.subnet_id
-    ignore_missing_vnet_service_endpoint = false
-  }
+  is_virtual_network_filter_enabled = false
 
   ip_range_filter = var.allowed_ip_ranges
 
@@ -91,7 +86,7 @@ resource "azurerm_private_endpoint" "cosmos_mongo" {
   name                = "${var.name}-pe"
   location            = var.location
   resource_group_name = var.resource_group_name
-  subnet_id           = var.subnet_id
+  subnet_id           = var.private_endpoint_subnet_id
   tags                = var.tags
 
   private_service_connection {
