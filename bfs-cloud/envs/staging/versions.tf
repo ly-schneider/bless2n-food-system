@@ -3,7 +3,10 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 4.9.0"
+      # Pin to the minor version that originally created state to avoid
+      # provider/state decode issues observed with later 4.x (e.g., value_wo, enabled_metric).
+      # Upgrade incrementally after a successful plan.
+      version = "= 4.9.0"
     }
   }
 
