@@ -76,13 +76,9 @@ jobs:
 
       - name: Wait for CI • Terraform Validate
         if: ${{ needs.changes.outputs.cloud == 'true' }}
-        uses: lewagon/wait-on-check-action@v1.3.3
-        with:
-          ref: ${{ github.sha }}
-          check-name: 'CI • Terraform Validate'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 10
-          allowed-conclusions: success
+        run: |
+          echo "Skipping explicit wait-on-check.\n"
+          echo "Rely on required status check: 'Terraform CI Gate' before merge."
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
