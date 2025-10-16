@@ -180,9 +180,9 @@ module "cosmos" {
   tags                      = var.tags
 }
 
-  module "apps" {
-    for_each = var.config.apps
-    source   = "../containerapp"
+module "apps" {
+  for_each = var.config.apps
+  source   = "../containerapp"
 
     name                        = each.key
     resource_group_name         = module.rg.name
@@ -200,7 +200,20 @@ module "cosmos" {
   environment_variables       = merge(local.environment_variables, each.value.environment_variables)
   secrets                     = each.value.secrets
   key_vault_secrets           = each.value.key_vault_secrets
-  key_vault_secret_refs       = each.value.key_vault_secret_refs
+  # Resolve Key Vault secret IDs inside the stack to avoid referencing module outputs from the caller
+  key_vault_secret_refs       = try(
+    merge(
+      each.value.key_vault_secret_refs,
+      var.config.enable_security_features && length(module.security) > 0 ? {
+        for s in distinct(values(try(each.value.key_vault_secrets, {}))) : s => module.security[0].key_vault_secret_ids[s]
+        if contains(keys(module.security[0].key_vault_secret_ids), s)
+      } : {}
+    ),
+    var.config.enable_security_features && length(module.security) > 0 ? {
+      for s in distinct(values(try(each.value.key_vault_secrets, {}))) : s => module.security[0].key_vault_secret_ids[s]
+      if contains(keys(module.security[0].key_vault_secret_ids), s)
+    } : {}
+  )
   registries                  = each.value.registries
   http_scale_rule             = each.value.http_scale_rule
   cpu_scale_rule              = each.value.cpu_scale_rule

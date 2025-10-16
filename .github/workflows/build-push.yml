@@ -24,6 +24,7 @@ jobs:
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       web: ${{ steps.filter.outputs.web }}
+      cloud: ${{ steps.filter.outputs.cloud }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,6 +37,8 @@ jobs:
               - 'bfs-backend/**'
             web:
               - 'bfs-web-app/**'
+            cloud:
+              - 'bfs-cloud/**'
 
   build-and-push:
     name: Build & Push
@@ -70,6 +73,16 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 10
           allowed-conclusions: success,skipped,cancelled
+
+      - name: Wait for CI • Terraform Validate
+        if: ${{ needs.changes.outputs.cloud == 'true' }}
+        uses: lewagon/wait-on-check-action@v1.3.3
+        with:
+          ref: ${{ github.sha }}
+          check-name: 'CI • Terraform Validate'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+          allowed-conclusions: success
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0

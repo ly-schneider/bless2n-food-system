@@ -123,16 +123,7 @@ module "bfs_infrastructure" {
           STRIPE_WEBHOOK_SECRET = "stripe-webhook-secret"
           SMTP_PASSWORD = "smtp-password"
         }
-        key_vault_secret_refs = {
-          # Secret definitions with Key Vault secret IDs (populated after deployment)
-          "mongo-connection-string" = module.bfs_infrastructure.key_vault_secret_ids["mongo-connection-string"]
-          "jwt-private-key" = module.bfs_infrastructure.key_vault_secret_ids["jwt-private-key"] 
-          "jwt-public-key" = module.bfs_infrastructure.key_vault_secret_ids["jwt-public-key"]
-          "google-client-secret" = module.bfs_infrastructure.key_vault_secret_ids["google-client-secret"]
-          "stripe-secret-key" = module.bfs_infrastructure.key_vault_secret_ids["stripe-secret-key"]
-          "stripe-webhook-secret" = module.bfs_infrastructure.key_vault_secret_ids["stripe-webhook-secret"]
-          "smtp-password" = module.bfs_infrastructure.key_vault_secret_ids["smtp-password"]
-        }
+        # No explicit key_vault_secret_refs here; IDs are resolved inside the stack module from names
         http_scale_rule = {
           name                = "backend-http-scale"
           concurrent_requests = 40
