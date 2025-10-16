@@ -1,0 +1,61 @@
+name: CI • Web App (Next.js)
+
+on:
+  pull_request:
+    branches: [ staging, production ]
+    paths: [ 'bfs-web-app/**', '.github/workflows/ci-web-app.yml' ]
+  push:
+    branches: [ staging, production ]
+    paths: [ 'bfs-web-app/**', '.github/workflows/ci-web-app.yml' ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    environment: ${{ github.base_ref || github.ref_name }}
+    defaults:
+      run:
+        working-directory: bfs-web-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+          cache-dependency-path: bfs-web-app/pnpm-lock.yaml
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pnpm-store
+            bfs-web-app/.next/cache
+          key: ${{ runner.os }}-pnpm-next-${{ hashFiles('bfs-web-app/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-next-
+            ${{ runner.os }}-pnpm-
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Lint
+        run: pnpm lint
+      - name: Prettier check
+        run: pnpm prettier --check
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Test
+        run: pnpm test -- --run
+      - name: Build
+        env:
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
+          NEXT_TELEMETRY_DISABLED: '1'
+        run: pnpm build

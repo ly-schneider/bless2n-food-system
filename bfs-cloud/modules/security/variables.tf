@@ -41,10 +41,9 @@ variable "key_vault_admins" {
   default     = []
 }
 
-variable "container_app_identities" {
-  description = "Map of container app names to their managed identity principal IDs"
-  type        = map(string)
-  default     = {}
+variable "uami_principal_id" {
+  description = "User-assigned managed identity principal ID for container apps"
+  type        = string
 }
 
 variable "cosmos_connection_string" {

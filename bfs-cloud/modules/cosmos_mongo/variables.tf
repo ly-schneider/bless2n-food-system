@@ -17,6 +17,10 @@ variable "subnet_id" {
   description = "Subnet ID for VNet integration"
   type        = string
 }
+variable "vnet_id" {
+  description = "Virtual Network ID for Private DNS zone link"
+  type        = string
+}
 variable "allowed_ip_ranges" {
   description = "Allowed IP ranges for Cosmos DB access"
   type        = list(string)

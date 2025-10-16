@@ -3,6 +3,11 @@ variable "resource_group_name"         { type = string }
 variable "environment_id"              { type = string }
 variable "image"                       { type = string }
 variable "target_port"                 { type = number }
+variable "external_ingress" {
+  type        = bool
+  description = "Whether ingress is exposed externally (true) or internal-only (false)"
+  default     = true
+}
 variable "cpu" {
   type    = number
   default = 0.5
@@ -42,6 +47,12 @@ variable "registries" {
 variable "enable_system_identity" {
   type    = bool
   default = true
+}
+
+variable "user_assigned_identity_ids" {
+  type        = list(string)
+  description = "List of user-assigned managed identity IDs"
+  default     = []
 }
 variable "log_analytics_workspace_id" {
   type    = string
@@ -113,7 +124,13 @@ variable "custom_scale_rules" {
 
 variable "key_vault_secrets" {
   type        = map(string)
-  description = "Key Vault secrets to inject as environment variables"
+  description = "Key Vault secrets to inject as environment variables (env_var_name => secret_name)"
+  default     = {}
+}
+
+variable "key_vault_secret_refs" {
+  type        = map(string)
+  description = "Key Vault secret references with full resource IDs (secret_name => key_vault_secret_id)"
   default     = {}
 }
 

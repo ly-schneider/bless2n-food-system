@@ -1,0 +1,43 @@
+name: CI • Android
+
+on:
+  pull_request:
+    branches: [ staging, production ]
+    paths: [ 'bfs-android-app/**', '.github/workflows/ci-android.yml' ]
+  push:
+    branches: [ staging, production ]
+    paths: [ 'bfs-android-app/**', '.github/workflows/ci-android.yml' ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bfs-android-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+      - name: Lint, test, and build
+        uses: gradle/gradle-build-action@v3
+        with:
+          arguments: lint test assembleDebug --no-daemon
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-debug
+          path: bfs-android-app/app/build/outputs/apk/debug/*.apk

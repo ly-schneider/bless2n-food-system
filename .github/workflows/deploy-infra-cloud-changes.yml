@@ -1,0 +1,50 @@
+name: Deploy Infra via TFC (cloud-only changes)
+
+on:
+  push:
+    branches: [ staging, production ]
+    paths:
+      - 'bfs-cloud/**'
+      - '.github/workflows/deploy-infra-cloud-changes.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-infra-cloud-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  changes:
+    name: Detect changed areas
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      web: ${{ steps.filter.outputs.web }}
+      cloud: ${{ steps.filter.outputs.cloud }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'bfs-backend/**'
+            web:
+              - 'bfs-web-app/**'
+            cloud:
+              - 'bfs-cloud/**'
+
+  deploy:
+    name: Terraform Cloud apply (cloud-only)
+    needs: changes
+    if: >
+      ${{ needs.changes.outputs.cloud == 'true' && needs.changes.outputs.backend != 'true' && needs.changes.outputs.web != 'true' && (github.ref_name == 'staging' || github.ref_name == 'production') }}
+    uses: ./.github/workflows/reusable-tfc-apply.yml
+    secrets: inherit
+    with:
+      target_branch: ${{ github.ref_name }}
+      image_tag: ${{ github.ref_name }}
+      wait_for_completion: ${{ github.ref_name == 'staging' }}

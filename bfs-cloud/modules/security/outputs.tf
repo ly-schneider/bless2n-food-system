@@ -13,9 +13,16 @@ output "key_vault_uri" {
   value       = var.enable_key_vault ? azurerm_key_vault.basic[0].vault_uri : null
 }
 
-output "cosmos_secret_uri" {
-  description = "Cosmos DB connection string secret URI (if stored)"
-  value       = var.enable_key_vault && var.cosmos_connection_string != null ? azurerm_key_vault_secret.cosmos_connection_string["cosmos"].versionless_id : null
+output "key_vault_secret_ids" {
+  description = "Map of Key Vault secret names to their versionless IDs"
+  value = var.enable_key_vault ? merge(
+    {
+      "mongo-connection-string" = azurerm_key_vault_secret.cosmos_connection_string[0].versionless_id
+    },
+    {
+      for k, v in azurerm_key_vault_secret.placeholder_secrets : k => v.versionless_id
+    }
+  ) : {}
 }
 
 output "cost_savings_summary" {

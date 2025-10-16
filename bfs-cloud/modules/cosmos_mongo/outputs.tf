@@ -5,3 +5,9 @@ output "connection_string" {
   value = azurerm_cosmosdb_account.this.primary_mongodb_connection_string
   sensitive = true
 }
+output "private_endpoint_id" {
+  value = azurerm_private_endpoint.cosmos_mongo.id
+}
+output "private_dns_zone_name" {
+  value = azurerm_private_dns_zone.cosmos_mongo.name
+}

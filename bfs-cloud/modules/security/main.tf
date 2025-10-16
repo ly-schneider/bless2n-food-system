@@ -96,17 +96,35 @@ resource "azurerm_role_assignment" "kv_admin" {
 }
 
 resource "azurerm_role_assignment" "kv_secrets_user" {
-  for_each = var.enable_key_vault ? var.container_app_identities : {}
+  count = var.enable_key_vault ? 1 : 0
   
   scope                = azurerm_key_vault.basic[0].id
   role_definition_name = "Key Vault Secrets User"
-  principal_id         = each.value
+  principal_id         = var.uami_principal_id
 }
 
 resource "azurerm_key_vault_secret" "cosmos_connection_string" {
-  for_each = var.enable_key_vault ? { "cosmos" = var.cosmos_connection_string } : {}
+  count = var.enable_key_vault ? 1 : 0
   
-  name         = "cosmos-connection-string"
+  name         = "mongo-connection-string"
+  value        = var.cosmos_connection_string
+  key_vault_id = azurerm_key_vault.basic[0].id
+
+  depends_on = [azurerm_role_assignment.kv_admin]
+}
+
+# Placeholder secrets for staging - these should be populated manually or via CI/CD
+resource "azurerm_key_vault_secret" "placeholder_secrets" {
+  for_each = var.enable_key_vault ? {
+    "jwt-private-key"              = "placeholder-jwt-private-key"
+    "jwt-public-key"               = "placeholder-jwt-public-key"
+    "google-client-secret"         = "placeholder-google-client-secret"
+    "stripe-secret-key"            = "placeholder-stripe-secret-key"
+    "stripe-webhook-secret"        = "placeholder-stripe-webhook-secret"
+    "smtp-password"                = "placeholder-smtp-password"
+  } : {}
+  
+  name         = each.key
   value        = each.value
   key_vault_id = azurerm_key_vault.basic[0].id
 

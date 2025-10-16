@@ -38,8 +38,6 @@ variable "config" {
     enable_alerts                = bool
     requests_5xx_threshold       = number
     enable_security_features     = optional(bool, true)
-    # Optional ACR support; when enabled, Container Apps identities receive AcrPull
-    enable_acr                   = optional(bool, false)
     acr_name                     = optional(string)
     acr_sku                      = optional(string, "Basic")
     key_vault_name               = optional(string)
@@ -53,6 +51,8 @@ variable "config" {
       max_replicas = number
       environment_variables = optional(map(string), {})
       secrets      = optional(map(string), {})
+      key_vault_secrets = optional(map(string), {})
+      key_vault_secret_refs = optional(map(string), {})
       registries   = optional(list(object({
         server               = string
         username             = string
@@ -105,7 +105,6 @@ module "rg" {
 
 # Create ACR if enabled
 module "acr" {
-  count  = try(var.config.enable_acr, false) ? 1 : 0
   source = "../acr"
   
   name                = var.config.acr_name
@@ -118,7 +117,6 @@ module "acr" {
 }
 
 data "azurerm_container_registry" "acr" {
-  count               = try(var.config.enable_acr, false) ? 1 : 0
   name                = var.config.acr_name
   resource_group_name = module.rg.name
   
@@ -176,28 +174,33 @@ module "cosmos" {
   database_name             = "appdb"
   database_throughput       = var.config.database_throughput
   subnet_id                 = module.net.subnet_id
+  vnet_id                   = module.net.vnet_id
   allowed_ip_ranges         = []
   log_analytics_workspace_id = module.obs.log_analytics_id
   tags                      = var.tags
 }
 
-module "apps" {
-  for_each = var.config.apps
-  source   = "../containerapp"
+  module "apps" {
+    for_each = var.config.apps
+    source   = "../containerapp"
 
-  name                        = each.key
-  resource_group_name         = module.rg.name
-  environment_id              = module.aca_env.id
-  image                       = each.value.image
-  target_port                 = each.value.port
-  cpu                         = each.value.cpu
-  memory                      = each.value.memory
-  min_replicas                = each.value.min_replicas
-  max_replicas                = each.value.max_replicas
-  enable_system_identity      = true
+    name                        = each.key
+    resource_group_name         = module.rg.name
+    environment_id              = module.aca_env.id
+    image                       = each.value.image
+    target_port                 = each.value.port
+    external_ingress            = try(each.value.external_ingress, true)
+    cpu                         = each.value.cpu
+    memory                      = each.value.memory
+    min_replicas                = each.value.min_replicas
+    max_replicas                = each.value.max_replicas
+    enable_system_identity      = false
+    user_assigned_identity_ids   = [azurerm_user_assigned_identity.aca_uami.id]
   log_analytics_workspace_id  = module.obs.log_analytics_id
   environment_variables       = merge(local.environment_variables, each.value.environment_variables)
   secrets                     = each.value.secrets
+  key_vault_secrets           = each.value.key_vault_secrets
+  key_vault_secret_refs       = each.value.key_vault_secret_refs
   registries                  = each.value.registries
   http_scale_rule             = each.value.http_scale_rule
   cpu_scale_rule              = each.value.cpu_scale_rule
@@ -207,13 +210,11 @@ module "apps" {
   tags                        = merge(var.tags, { app = each.key })
 }
 
-# Grant Container Apps managed identity pull access to ACR when enabled
-resource "azurerm_role_assignment" "acr_pull" {
-  for_each = try(var.config.enable_acr, false) ? { for k, m in module.apps : k => m.identity_principal_id } : {}
-
-  scope                = data.azurerm_container_registry.acr[0].id
+# Grant UAMI pull access to ACR when enabled
+resource "azurerm_role_assignment" "uami_acr_pull" {
+  scope                = data.azurerm_container_registry.acr.id
   role_definition_name = "AcrPull"
-  principal_id         = each.value
+  principal_id         = azurerm_user_assigned_identity.aca_uami.principal_id
 }
 
 module "alerts" {
@@ -231,6 +232,14 @@ module "alerts" {
 
 data "azurerm_client_config" "current" {}
 
+# Create User-Assigned Managed Identity for Container Apps
+resource "azurerm_user_assigned_identity" "aca_uami" {
+  name                = "${var.environment}-aca-uami"
+  resource_group_name = module.rg.name
+  location            = var.location
+  tags                = var.tags
+}
+
 module "security" {
   count = var.config.enable_security_features ? 1 : 0
   
@@ -243,7 +252,7 @@ module "security" {
   key_vault_name             = var.config.key_vault_name != null ? var.config.key_vault_name : "${var.config.cosmos_name}-kv"
   allowed_ip_ranges          = var.config.allowed_ip_ranges != null ? var.config.allowed_ip_ranges : []
   key_vault_admins           = [data.azurerm_client_config.current.object_id]
-  container_app_identities   = { for k, m in module.apps : k => m.identity_principal_id }
+  uami_principal_id          = azurerm_user_assigned_identity.aca_uami.principal_id
   cosmos_connection_string   = module.cosmos.connection_string
   enable_basic_monitoring    = var.config.enable_alerts
   container_app_ids          = { for k, m in module.apps : k => m.id }

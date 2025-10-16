@@ -1,0 +1,52 @@
+name: Reusable • Terraform Cloud Apply
+
+on:
+  workflow_call:
+    inputs:
+      target_branch:
+        description: 'staging or production'
+        type: string
+        required: true
+      image_tag:
+        description: 'Image tag to deploy'
+        type: string
+        required: true
+      wait_for_completion:
+        description: 'Whether to wait for run completion'
+        type: boolean
+        required: false
+        default: true
+    secrets:
+      TF_API_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    name: TFC Apply (${{ inputs.target_branch }})
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target_branch }}
+    steps:
+      - name: Select workspace
+        id: ws
+        shell: bash
+        run: |
+          case "${{ inputs.target_branch }}" in
+            staging) echo "workspace=bfs-staging" >> $GITHUB_OUTPUT ;;
+            production) echo "workspace=bfs-production" >> $GITHUB_OUTPUT ;;
+            *) echo "Unsupported env: ${{ inputs.target_branch }}"; exit 1 ;;
+          esac
+
+      - name: Terraform Cloud apply
+        uses: kvrhdn/tfe-run@v1
+        with:
+          token: ${{ secrets.TF_API_TOKEN }}
+          organization: ${{ vars.TF_ORG_NAME }}
+          workspace: ${{ steps.ws.outputs.workspace }}
+          message: "Deploy ${{ inputs.target_branch }} - ${{ inputs.image_tag }}"
+          wait-for-completion: ${{ inputs.wait_for_completion }}
+          tf-vars: |
+            image_tag = "${{ inputs.image_tag }}"
+

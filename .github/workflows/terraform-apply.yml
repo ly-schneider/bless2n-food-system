@@ -1,0 +1,54 @@
+name: Terraform Apply (TFC)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        type: choice
+        options: [staging, production]
+        required: true
+      image_tag:
+        description: "Image tag to deploy (optional; defaults to branch)"
+        type: string
+        required: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  apply:
+    name: Apply via Terraform Cloud
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select TFC Workspace
+        id: ws
+        run: |
+          case "${{ inputs.environment }}" in
+            staging)
+              echo "workspace=bfs-staging" >> $GITHUB_OUTPUT ;;
+            production)
+              echo "workspace=bfs-production" >> $GITHUB_OUTPUT ;;
+            *) echo "Unsupported env: ${{ inputs.environment }}" ; exit 1 ;;
+          esac
+
+      - name: Terraform Cloud apply
+        uses: kvrhdn/tfe-run@v1
+        with:
+          token: ${{ secrets.TF_API_TOKEN }}
+          organization: ${{ vars.TF_ORG_NAME }}
+          workspace: ${{ steps.ws.outputs.workspace }}
+          message: "Apply infra for ${{ inputs.environment }}"
+          wait-for-completion: true
+          tf-vars: |
+            image_tag = "${{ inputs.image_tag || inputs.environment }}"
+
+concurrency:
+  group: tf-apply-${{ inputs.environment }}
+  cancel-in-progress: false

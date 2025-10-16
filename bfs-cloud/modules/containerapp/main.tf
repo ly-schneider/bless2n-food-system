@@ -15,6 +15,15 @@ resource "azurerm_container_app" "this" {
     }
   }
 
+  # Key Vault secret references
+  dynamic "secret" {
+    for_each = var.key_vault_secret_refs
+    content {
+      name                = secret.key
+      key_vault_secret_id = secret.value
+    }
+  }
+
   # Optional container registry credentials (e.g., GHCR)
   dynamic "registry" {
     for_each = var.registries
@@ -26,10 +35,10 @@ resource "azurerm_container_app" "this" {
   }
 
   ingress {
-    external_enabled           = true
-    target_port               = var.target_port
-    transport                 = "auto"
-    allow_insecure_connections = false
+    external_enabled            = var.external_ingress
+    target_port                 = var.target_port
+    transport                   = "auto"
+    allow_insecure_connections  = false
 
     traffic_weight {
       latest_revision = true
@@ -160,7 +169,8 @@ resource "azurerm_container_app" "this" {
   }
 
   identity {
-    type = var.enable_system_identity ? "SystemAssigned" : "None"
+    type         = var.enable_system_identity && length(var.user_assigned_identity_ids) == 0 ? "SystemAssigned" : length(var.user_assigned_identity_ids) > 0 ? "UserAssigned" : "None"
+    identity_ids = length(var.user_assigned_identity_ids) > 0 ? var.user_assigned_identity_ids : null
   }
 }
 

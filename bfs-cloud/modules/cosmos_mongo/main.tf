@@ -34,7 +34,8 @@ resource "azurerm_cosmosdb_account" "this" {
     storage_redundancy  = "Geo"
   }
 
-  public_network_access_enabled = true
+  // Disable public access; access via VNet + Private Endpoint
+  public_network_access_enabled     = false
   is_virtual_network_filter_enabled = true
 
   virtual_network_rule {
@@ -44,7 +45,7 @@ resource "azurerm_cosmosdb_account" "this" {
 
   ip_range_filter = var.allowed_ip_ranges
 
-  local_authentication_disabled = false
+  local_authentication_disabled = var.disable_local_auth
 
   cors_rule {
     allowed_origins    = var.cors_allowed_origins
@@ -66,6 +67,44 @@ resource "azurerm_cosmosdb_mongo_database" "db" {
   name                = var.database_name
   resource_group_name = var.resource_group_name
   account_name        = azurerm_cosmosdb_account.this.name
+}
+
+############################
+# Private Endpoint + DNS   #
+############################
+
+resource "azurerm_private_dns_zone" "cosmos_mongo" {
+  name                = "privatelink.mongo.cosmos.azure.com"
+  resource_group_name = var.resource_group_name
+  tags                = var.tags
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "cosmos_mongo_link" {
+  name                  = "${var.name}-mongo-vnet-link"
+  resource_group_name   = var.resource_group_name
+  private_dns_zone_name = azurerm_private_dns_zone.cosmos_mongo.name
+  virtual_network_id    = var.vnet_id
+  registration_enabled  = false
+}
+
+resource "azurerm_private_endpoint" "cosmos_mongo" {
+  name                = "${var.name}-pe"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  subnet_id           = var.subnet_id
+  tags                = var.tags
+
+  private_service_connection {
+    name                           = "${var.name}-mongo-psc"
+    private_connection_resource_id = azurerm_cosmosdb_account.this.id
+    is_manual_connection           = false
+    subresource_names              = ["MongoDB"]
+  }
+
+  private_dns_zone_group {
+    name                 = "cosmos-mongo-dns-group"
+    private_dns_zone_ids = [azurerm_private_dns_zone.cosmos_mongo.id]
+  }
 }
 
 resource "azurerm_monitor_diagnostic_setting" "cosmos_diag" {

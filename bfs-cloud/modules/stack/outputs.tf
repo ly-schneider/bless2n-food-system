@@ -40,3 +40,8 @@ output "app_urls" {
   value       = { for k, m in module.apps : k => m.url }
 }
 
+output "key_vault_secret_ids" {
+  description = "Map of Key Vault secret names to their versionless IDs"
+  value       = var.config.enable_security_features ? module.security[0].key_vault_secret_ids : {}
+}
+
