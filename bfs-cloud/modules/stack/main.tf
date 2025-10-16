@@ -124,19 +124,19 @@ module "acr" {
 }
 
 data "azurerm_container_registry" "acr" {
-  count               = var.config.acr_login_server == null && var.config.acr_name != null ? 1 : 0
+  count               = var.config.acr_login_server == null && var.config.acr_name != null && try(var.config.enable_acr, true) == false ? 1 : 0
   name                = var.config.acr_name
   resource_group_name = module.rg.name
 }
 
 locals {
-  acr_login_server = coalesce(
-    try(data.azurerm_container_registry.acr[0].login_server, null),
-    try(var.config.acr_login_server, null)
+  acr_login_server = try(
+    module.acr[0].login_server,
+    try(data.azurerm_container_registry.acr[0].login_server, var.config.acr_login_server)
   )
-  acr_scope_id = coalesce(
-    try(data.azurerm_container_registry.acr[0].id, null),
-    try(var.config.acr_resource_id, null)
+  acr_scope_id = try(
+    module.acr[0].id,
+    try(data.azurerm_container_registry.acr[0].id, var.config.acr_resource_id)
   )
 }
 
