@@ -1,0 +1,54 @@
+name: CI • Terraform Validate
+
+on:
+  pull_request:
+    branches: [ staging, production ]
+    paths:
+      - 'bfs-cloud/**'
+      - '.github/workflows/terraform-validate.yml'
+  push:
+    branches: [ staging, production ]
+    paths:
+      - 'bfs-cloud/**'
+      - '.github/workflows/terraform-validate.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  fmt-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform fmt (check)
+        run: terraform fmt -check -recursive
+
+      - name: Resolve environment directory
+        id: envdir
+        shell: bash
+        run: |
+          BRANCH="${{ github.base_ref || github.ref_name }}"
+          ENV_DIR="bfs-cloud/envs/$BRANCH"
+          if [ -d "$ENV_DIR" ]; then
+            echo "env_dir=$ENV_DIR" >> $GITHUB_OUTPUT
+            echo "env_name=$BRANCH" >> $GITHUB_OUTPUT
+          else
+            echo "env_dir=" >> $GITHUB_OUTPUT
+            echo "env_name=" >> $GITHUB_OUTPUT
+            echo "No specific env dir for branch '$BRANCH'; will validate all envs present."
+          fi
+
+      - name: Validate branch environment
+        if: ${{ steps.envdir.outputs.env_dir != '' }}
+        working-directory: ${{ steps.envdir.outputs.env_dir }}
+        run: |
+          terraform init -backend=false
+          terraform validate

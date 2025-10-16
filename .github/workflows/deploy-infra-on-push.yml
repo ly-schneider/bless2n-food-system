@@ -1,9 +1,14 @@
 name: Deploy Infra via TFC (on build)
 
 on:
+  # Normal path: run after Build & Push Images
   workflow_run:
     workflows: [ "Build & Push Images" ]
     types: [ completed ]
+  # Also run when this workflow file changes, so updates take effect immediately
+  push:
+    branches: [ staging, production ]
+    paths: [ '.github/workflows/deploy-infra-on-push.yml' ]
 
 permissions:
   contents: read
@@ -13,12 +18,21 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  from-build:
     if: >
-      ${{ github.event.workflow_run.conclusion == 'success' && (github.event.workflow_run.head_branch == 'staging' || github.event.workflow_run.head_branch == 'production') }}
+      ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && (github.event.workflow_run.head_branch == 'staging' || github.event.workflow_run.head_branch == 'production') }}
     uses: ./.github/workflows/reusable-tfc-apply.yml
     secrets: inherit
     with:
       target_branch: ${{ github.event.workflow_run.head_branch }}
       image_tag: ${{ github.event.workflow_run.head_sha }}
       wait_for_completion: ${{ github.event.workflow_run.head_branch == 'staging' }}
+
+  on-self-change:
+    if: ${{ github.event_name == 'push' }}
+    uses: ./.github/workflows/reusable-tfc-apply.yml
+    secrets: inherit
+    with:
+      target_branch: ${{ github.ref_name }}
+      image_tag: ${{ github.ref_name }}
+      wait_for_completion: ${{ github.ref_name == 'staging' }}
