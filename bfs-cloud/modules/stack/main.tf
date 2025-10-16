@@ -23,37 +23,37 @@ variable "alert_emails" {
 variable "config" {
   description = "Environment-specific configuration"
   type = object({
-    rg_name                      = string
-    vnet_name                    = string
-    subnet_name                  = string
-    vnet_cidr                    = string
-    subnet_cidr                  = string
-    env_name                     = string
-    law_name                     = string
-    appi_name                    = string
-    enable_app_insights          = bool
-    retention_days               = number
-    cosmos_name                  = string
-    database_throughput          = number
-    enable_alerts                = bool
-    requests_5xx_threshold       = number
-    enable_security_features     = optional(bool, true)
-    acr_name                     = optional(string)
-    acr_sku                      = optional(string, "Basic")
-    key_vault_name               = optional(string)
-    allowed_ip_ranges            = optional(list(string), [])
+    rg_name                  = string
+    vnet_name                = string
+    subnet_name              = string
+    vnet_cidr                = string
+    subnet_cidr              = string
+    env_name                 = string
+    law_name                 = string
+    appi_name                = string
+    enable_app_insights      = bool
+    retention_days           = number
+    cosmos_name              = string
+    database_throughput      = number
+    enable_alerts            = bool
+    requests_5xx_threshold   = number
+    enable_security_features = optional(bool, true)
+    acr_name                 = optional(string)
+    acr_sku                  = optional(string, "Basic")
+    key_vault_name           = optional(string)
+    allowed_ip_ranges        = optional(list(string), [])
     apps = map(object({
-      port         = number
-      image        = string
-      cpu          = number
-      memory       = string
-      min_replicas = number
-      max_replicas = number
+      port                  = number
+      image                 = string
+      cpu                   = number
+      memory                = string
+      min_replicas          = number
+      max_replicas          = number
       environment_variables = optional(map(string), {})
-      secrets      = optional(map(string), {})
-      key_vault_secrets = optional(map(string), {})
+      secrets               = optional(map(string), {})
+      key_vault_secrets     = optional(map(string), {})
       key_vault_secret_refs = optional(map(string), {})
-      registries   = optional(list(object({
+      registries = optional(list(object({
         server               = string
         username             = string
         password_secret_name = string
@@ -106,20 +106,20 @@ module "rg" {
 # Create ACR if enabled
 module "acr" {
   source = "../acr"
-  
+
   name                = var.config.acr_name
   resource_group_name = module.rg.name
   location            = var.location
   sku                 = var.config.acr_sku
   admin_enabled       = false
-  
+
   depends_on = [module.rg]
 }
 
 data "azurerm_container_registry" "acr" {
   name                = var.config.acr_name
   resource_group_name = module.rg.name
-  
+
   depends_on = [module.acr]
 }
 
@@ -135,73 +135,73 @@ module "net" {
 }
 
 module "obs" {
-  source               = "../observability"
-  resource_group_name  = module.rg.name
-  location             = var.location
-  law_name             = var.config.law_name
-  appi_name            = var.config.appi_name
-  enable_app_insights  = var.config.enable_app_insights
-  retention_days       = var.config.retention_days
-  tags                 = var.tags
+  source              = "../observability"
+  resource_group_name = module.rg.name
+  location            = var.location
+  law_name            = var.config.law_name
+  appi_name           = var.config.appi_name
+  enable_app_insights = var.config.enable_app_insights
+  retention_days      = var.config.retention_days
+  tags                = var.tags
 }
 
 module "aca_env" {
-  source                      = "../containerapps_env"
-  name                        = var.config.env_name
-  location                    = var.location
-  resource_group_name         = module.rg.name
-  subnet_id                   = module.net.subnet_id
-  logs_destination            = "azure-monitor"
-  log_analytics_workspace_id  = module.obs.log_analytics_id
-  tags                        = var.tags
+  source                     = "../containerapps_env"
+  name                       = var.config.env_name
+  location                   = var.location
+  resource_group_name        = module.rg.name
+  subnet_id                  = module.net.subnet_id
+  logs_destination           = "azure-monitor"
+  log_analytics_workspace_id = module.obs.log_analytics_id
+  tags                       = var.tags
 }
 
 module "env_diag" {
-  source                      = "../diagnostic_setting"
-  name                        = "${var.config.env_name}-diag"
-  target_resource_id          = module.aca_env.id
-  log_analytics_workspace_id  = module.obs.log_analytics_id
-  category_groups             = ["allLogs"]
-  enable_metrics              = true
+  source                     = "../diagnostic_setting"
+  name                       = "${var.config.env_name}-diag"
+  target_resource_id         = module.aca_env.id
+  log_analytics_workspace_id = module.obs.log_analytics_id
+  category_groups            = ["allLogs"]
+  enable_metrics             = true
 }
 
 module "cosmos" {
-  source                    = "../cosmos_mongo"
-  name                      = var.config.cosmos_name
-  location                  = var.location
-  resource_group_name       = module.rg.name
-  create_database           = true
-  database_name             = "appdb"
-  database_throughput       = var.config.database_throughput
-  subnet_id                 = module.net.subnet_id
-  vnet_id                   = module.net.vnet_id
-  allowed_ip_ranges         = []
+  source                     = "../cosmos_mongo"
+  name                       = var.config.cosmos_name
+  location                   = var.location
+  resource_group_name        = module.rg.name
+  create_database            = true
+  database_name              = "appdb"
+  database_throughput        = var.config.database_throughput
+  subnet_id                  = module.net.subnet_id
+  vnet_id                    = module.net.vnet_id
+  allowed_ip_ranges          = []
   log_analytics_workspace_id = module.obs.log_analytics_id
-  tags                      = var.tags
+  tags                       = var.tags
 }
 
 module "apps" {
   for_each = var.config.apps
   source   = "../containerapp"
 
-    name                        = each.key
-    resource_group_name         = module.rg.name
-    environment_id              = module.aca_env.id
-    image                       = each.value.image
-    target_port                 = each.value.port
-    external_ingress            = try(each.value.external_ingress, true)
-    cpu                         = each.value.cpu
-    memory                      = each.value.memory
-    min_replicas                = each.value.min_replicas
-    max_replicas                = each.value.max_replicas
-    enable_system_identity      = false
-    user_assigned_identity_ids   = [azurerm_user_assigned_identity.aca_uami.id]
-  log_analytics_workspace_id  = module.obs.log_analytics_id
-  environment_variables       = merge(local.environment_variables, each.value.environment_variables)
-  secrets                     = each.value.secrets
-  key_vault_secrets           = each.value.key_vault_secrets
+  name                       = each.key
+  resource_group_name        = module.rg.name
+  environment_id             = module.aca_env.id
+  image                      = each.value.image
+  target_port                = each.value.port
+  external_ingress           = try(each.value.external_ingress, true)
+  cpu                        = each.value.cpu
+  memory                     = each.value.memory
+  min_replicas               = each.value.min_replicas
+  max_replicas               = each.value.max_replicas
+  enable_system_identity     = false
+  user_assigned_identity_ids = [azurerm_user_assigned_identity.aca_uami.id]
+  log_analytics_workspace_id = module.obs.log_analytics_id
+  environment_variables      = merge(local.environment_variables, each.value.environment_variables)
+  secrets                    = each.value.secrets
+  key_vault_secrets          = each.value.key_vault_secrets
   # Resolve Key Vault secret IDs inside the stack to avoid referencing module outputs from the caller
-  key_vault_secret_refs       = try(
+  key_vault_secret_refs = try(
     merge(
       each.value.key_vault_secret_refs,
       var.config.enable_security_features && length(module.security) > 0 ? {
@@ -214,13 +214,13 @@ module "apps" {
       if contains(keys(module.security[0].key_vault_secret_ids), s)
     } : {}
   )
-  registries                  = each.value.registries
-  http_scale_rule             = each.value.http_scale_rule
-  cpu_scale_rule              = each.value.cpu_scale_rule
-  memory_scale_rule           = each.value.memory_scale_rule
-  azure_queue_scale_rules     = each.value.azure_queue_scale_rules
-  custom_scale_rules          = each.value.custom_scale_rules
-  tags                        = merge(var.tags, { app = each.key })
+  registries              = each.value.registries
+  http_scale_rule         = each.value.http_scale_rule
+  cpu_scale_rule          = each.value.cpu_scale_rule
+  memory_scale_rule       = each.value.memory_scale_rule
+  azure_queue_scale_rules = each.value.azure_queue_scale_rules
+  custom_scale_rules      = each.value.custom_scale_rules
+  tags                    = merge(var.tags, { app = each.key })
 }
 
 # Grant UAMI pull access to ACR when enabled
@@ -232,15 +232,15 @@ resource "azurerm_role_assignment" "uami_acr_pull" {
 
 module "alerts" {
   count = var.config.enable_alerts ? 1 : 0
-  
-  source               = "../alerts"
-  name                 = "${var.environment}-alerts"
-  short_name           = var.environment
-  resource_group_name  = module.rg.name
-  email_receivers      = var.alert_emails
-  container_app_ids    = { for k, m in module.apps : k => m.id }
+
+  source                 = "../alerts"
+  name                   = "${var.environment}-alerts"
+  short_name             = var.environment
+  resource_group_name    = module.rg.name
+  email_receivers        = var.alert_emails
+  container_app_ids      = { for k, m in module.apps : k => m.id }
   requests_5xx_threshold = var.config.requests_5xx_threshold
-  tags                 = var.tags
+  tags                   = var.tags
 }
 
 data "azurerm_client_config" "current" {}
@@ -255,7 +255,7 @@ resource "azurerm_user_assigned_identity" "aca_uami" {
 
 module "security" {
   count = var.config.enable_security_features ? 1 : 0
-  
+
   source                     = "../security"
   name_prefix                = var.environment
   location                   = var.location

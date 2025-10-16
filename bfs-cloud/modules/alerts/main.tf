@@ -21,9 +21,9 @@ resource "azurerm_monitor_metric_alert" "requests_5xx" {
   scopes              = [each.value]
   description         = "High HTTP 5xx on ${each.key}"
 
-  frequency   = "PT1M"
-  window_size = "PT5M"
-  severity    = 2
+  frequency     = "PT1M"
+  window_size   = "PT5M"
+  severity      = 2
   auto_mitigate = true
 
   criteria {

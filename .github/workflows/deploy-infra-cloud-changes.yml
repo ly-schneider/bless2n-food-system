@@ -39,7 +39,7 @@ jobs:
 
   deploy:
     name: Terraform Cloud apply (cloud-only)
-    needs: changes
+    needs: [changes, wait-terraform-validate]
     if: >
       ${{ needs.changes.outputs.cloud == 'true' && needs.changes.outputs.backend != 'true' && needs.changes.outputs.web != 'true' && (github.ref_name == 'staging' || github.ref_name == 'production') }}
     uses: ./.github/workflows/reusable-tfc-apply.yml
@@ -48,3 +48,18 @@ jobs:
       target_branch: ${{ github.ref_name }}
       image_tag: ${{ github.ref_name }}
       wait_for_completion: ${{ github.ref_name == 'staging' }}
+
+  wait-terraform-validate:
+    name: Wait for CI • Terraform Validate
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.cloud == 'true' }}
+    steps:
+      - name: Wait on 'CI • Terraform Validate' check
+        uses: lewagon/wait-on-check-action@v1.3.3
+        with:
+          ref: ${{ github.sha }}
+          check-name: 'CI • Terraform Validate'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+          allowed-conclusions: success

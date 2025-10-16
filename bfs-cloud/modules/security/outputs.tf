@@ -38,7 +38,7 @@ output "cost_savings_summary" {
     total_estimated_savings = "~$250/month"
     retained_security = [
       "Network Security Groups (free)",
-      "Managed Identities (free)", 
+      "Managed Identities (free)",
       "Basic Key Vault Standard (~$1/month)",
       "Container security contexts (free)",
       "Basic monitoring alerts (~$2/month)"

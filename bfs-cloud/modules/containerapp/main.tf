@@ -35,10 +35,10 @@ resource "azurerm_container_app" "this" {
   }
 
   ingress {
-    external_enabled            = var.external_ingress
-    target_port                 = var.target_port
-    transport                   = "auto"
-    allow_insecure_connections  = false
+    external_enabled           = var.external_ingress
+    target_port                = var.target_port
+    transport                  = "auto"
+    allow_insecure_connections = false
 
     traffic_weight {
       latest_revision = true
@@ -118,7 +118,7 @@ resource "azurerm_container_app" "this" {
         name         = azure_queue_scale_rule.value.name
         queue_name   = azure_queue_scale_rule.value.queue_name
         queue_length = azure_queue_scale_rule.value.queue_length
-        
+
         authentication {
           secret_name       = azure_queue_scale_rule.value.secret_name
           trigger_parameter = azure_queue_scale_rule.value.trigger_parameter
@@ -132,7 +132,7 @@ resource "azurerm_container_app" "this" {
         name             = custom_scale_rule.value.name
         custom_rule_type = "cpu"
         metadata = {
-          type = "Utilization"
+          type  = "Utilization"
           value = tostring(custom_scale_rule.value.cpu_percentage)
         }
       }
@@ -144,7 +144,7 @@ resource "azurerm_container_app" "this" {
         name             = memory_scale_rule.value.name
         custom_rule_type = "memory"
         metadata = {
-          type = "Utilization"
+          type  = "Utilization"
           value = tostring(memory_scale_rule.value.memory_percentage)
         }
       }
@@ -175,11 +175,11 @@ resource "azurerm_container_app" "this" {
 }
 
 module "diag" {
-  source                      = "../diagnostic_setting"
-  target_resource_id          = azurerm_container_app.this.id
-  name                        = "${var.name}-diag"
-  log_analytics_workspace_id  = var.log_analytics_workspace_id
-  categories                  = []
-  category_groups             = ["allLogs"]
-  enable_metrics              = true
+  source                     = "../diagnostic_setting"
+  target_resource_id         = azurerm_container_app.this.id
+  name                       = "${var.name}-diag"
+  log_analytics_workspace_id = var.log_analytics_workspace_id
+  categories                 = []
+  category_groups            = ["allLogs"]
+  enable_metrics             = true
 }

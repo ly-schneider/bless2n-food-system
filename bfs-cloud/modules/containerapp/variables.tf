@@ -1,8 +1,8 @@
-variable "name"                        { type = string }
-variable "resource_group_name"         { type = string }
-variable "environment_id"              { type = string }
-variable "image"                       { type = string }
-variable "target_port"                 { type = number }
+variable "name" { type = string }
+variable "resource_group_name" { type = string }
+variable "environment_id" { type = string }
+variable "image" { type = string }
+variable "target_port" { type = number }
 variable "external_ingress" {
   type        = bool
   description = "Whether ingress is exposed externally (true) or internal-only (false)"

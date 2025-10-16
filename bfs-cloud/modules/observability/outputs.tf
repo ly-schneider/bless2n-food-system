@@ -1,4 +1,4 @@
-output "log_analytics_id"   { value = azurerm_log_analytics_workspace.law.id }
+output "log_analytics_id" { value = azurerm_log_analytics_workspace.law.id }
 output "log_analytics_name" { value = azurerm_log_analytics_workspace.law.name }
 
 output "app_insights_id" {

@@ -108,8 +108,8 @@ resource "azurerm_private_endpoint" "cosmos_mongo" {
 }
 
 resource "azurerm_monitor_diagnostic_setting" "cosmos_diag" {
-  name               = "${var.name}-diag"
-  target_resource_id = azurerm_cosmosdb_account.this.id
+  name                       = "${var.name}-diag"
+  target_resource_id         = azurerm_cosmosdb_account.this.id
   log_analytics_workspace_id = var.log_analytics_workspace_id
 
   enabled_log {
@@ -128,7 +128,7 @@ resource "azurerm_monitor_diagnostic_setting" "cosmos_diag" {
     category = "PartitionKeyStatistics"
   }
 
-  enabled_metric {
+  metric {
     category = "Requests"
   }
 }
