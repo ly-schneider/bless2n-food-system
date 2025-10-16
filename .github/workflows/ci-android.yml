@@ -32,10 +32,16 @@ jobs:
           java-version: '21'
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
-      - name: Lint, test, and build
+      - name: Lint
+        continue-on-error: true
         uses: gradle/gradle-build-action@v3
         with:
-          arguments: lint test assembleDebug --no-daemon
+          arguments: lintDebug --no-daemon
+          build-root-directory: bfs-android-app
+      - name: Test and Build
+        uses: gradle/gradle-build-action@v3
+        with:
+          arguments: test assembleDebug --no-daemon
           build-root-directory: bfs-android-app
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

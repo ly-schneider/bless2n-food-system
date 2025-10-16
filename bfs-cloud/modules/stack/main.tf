@@ -254,9 +254,9 @@ module "security" {
   key_vault_admins           = [data.azurerm_client_config.current.object_id]
   uami_principal_id          = azurerm_user_assigned_identity.aca_uami.principal_id
   cosmos_connection_string   = module.cosmos.connection_string
-  enable_basic_monitoring    = var.config.enable_alerts
-  container_app_ids          = { for k, m in module.apps : k => m.id }
-  action_group_id            = var.config.enable_alerts ? module.alerts[0].action_group_id : null
+  enable_basic_monitoring    = false
+  container_app_ids          = {}
+  action_group_id            = null
   log_analytics_workspace_id = module.obs.log_analytics_id
   tags                       = var.tags
 }
