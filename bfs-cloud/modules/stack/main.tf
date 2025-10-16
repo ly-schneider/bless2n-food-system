@@ -41,6 +41,8 @@ variable "config" {
     requests_5xx_threshold   = number
     enable_security_features = optional(bool, true)
     enable_acr               = optional(bool, true)
+    acr_login_server         = optional(string)
+    acr_resource_id          = optional(string)
     acr_name                 = optional(string)
     acr_sku                  = optional(string, "Basic")
     key_vault_name           = optional(string)
