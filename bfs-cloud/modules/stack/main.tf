@@ -124,7 +124,6 @@ module "acr" {
 data "azurerm_container_registry" "acr" {
   name                = var.config.acr_name
   resource_group_name = module.rg.name
-  depends_on          = try(var.config.enable_acr, true) ? [module.acr] : []
 }
 
 module "net" {

@@ -1,3 +1,8 @@
+locals {
+  kv_secret_identity = var.enable_system_identity && length(var.user_assigned_identity_ids) == 0 ? "System" : (length(var.user_assigned_identity_ids) > 0 ? var.user_assigned_identity_ids[0] : null)
+  _kv_identity_guard = length(var.key_vault_secret_refs) == 0 || local.kv_secret_identity != null ? true : tomap({})["force_error"]
+}
+
 resource "azurerm_container_app" "this" {
   name                         = var.name
   resource_group_name          = var.resource_group_name
@@ -187,12 +192,4 @@ module "diag" {
   categories                 = []
   category_groups            = ["allLogs"]
   enable_metrics             = true
-}
-locals {
-  kv_secret_identity = var.enable_system_identity && length(var.user_assigned_identity_ids) == 0
-    ? "System"
-    : (length(var.user_assigned_identity_ids) > 0 ? var.user_assigned_identity_ids[0] : null)
-
-  # Fail early if key_vault_secret_refs are provided without a usable identity
-  _kv_identity_guard = length(var.key_vault_secret_refs) == 0 || local.kv_secret_identity != null ? true : tomap({})["force_error"]
 }
