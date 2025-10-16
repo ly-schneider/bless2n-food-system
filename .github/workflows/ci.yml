@@ -157,7 +157,7 @@ jobs:
     needs: [changes, backend, web-app, android]
     permissions:
       contents: read
-      packages: read
+      packages: write
       id-token: write
     uses: ./.github/workflows/deploy.yml
     with:
