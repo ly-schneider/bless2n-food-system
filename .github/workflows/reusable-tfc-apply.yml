@@ -29,6 +29,18 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.target_branch }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Ensure env directory exists (for tf-vars file)
+        shell: bash
+        run: |
+          case "${{ inputs.target_branch }}" in
+            staging) dir=bfs-cloud/envs/staging ;;
+            production) dir=bfs-cloud/envs/production ;;
+            *) echo "Unsupported env"; exit 1 ;;
+          esac
+          mkdir -p "$dir"
       - name: Select workspace
         id: ws
         shell: bash
@@ -49,4 +61,3 @@ jobs:
           wait-for-completion: ${{ inputs.wait_for_completion }}
           tf-vars: |
             image_tag = "${{ inputs.image_tag }}"
-

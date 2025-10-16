@@ -36,6 +36,7 @@ jobs:
         uses: gradle/gradle-build-action@v3
         with:
           arguments: lint test assembleDebug --no-daemon
+          build-root-directory: bfs-android-app
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:

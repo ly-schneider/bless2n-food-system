@@ -43,6 +43,33 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name }}
     steps:
+      - name: Wait for CI • Backend (Go)
+        if: ${{ needs.changes.outputs.backend == 'true' }}
+        uses: lewagon/wait-on-check-action@v1.3.3
+        with:
+          ref: ${{ github.sha }}
+          check-name: 'CI • Backend (Go)'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+          allowed-conclusions: success,skipped,cancelled
+      - name: Wait for CI • Web App (Next.js)
+        if: ${{ needs.changes.outputs.web == 'true' }}
+        uses: lewagon/wait-on-check-action@v1.3.3
+        with:
+          ref: ${{ github.sha }}
+          check-name: 'CI • Web App (Next.js)'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+          allowed-conclusions: success,skipped,cancelled
+      - name: Wait for CI • Android
+        if: ${{ false }}
+        uses: lewagon/wait-on-check-action@v1.3.3
+        with:
+          ref: ${{ github.sha }}
+          check-name: 'CI • Android'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+          allowed-conclusions: success,skipped,cancelled
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
