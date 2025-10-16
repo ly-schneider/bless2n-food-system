@@ -36,6 +36,7 @@ module "bfs_infrastructure" {
     key_vault_name           = "bfs-staging-kv"
     enable_acr               = false
     acr_name                 = "bfsstagingacr"
+    acr_login_server         = "${var.acr_name}.azurecr.io"
 
     apps = {
       frontend-staging = {

@@ -122,8 +122,20 @@ module "acr" {
 }
 
 data "azurerm_container_registry" "acr" {
+  count               = var.config.acr_login_server == null && var.config.acr_name != null ? 1 : 0
   name                = var.config.acr_name
   resource_group_name = module.rg.name
+}
+
+locals {
+  acr_login_server = coalesce(
+    try(data.azurerm_container_registry.acr[0].login_server, null),
+    try(var.config.acr_login_server, null)
+  )
+  acr_scope_id = coalesce(
+    try(data.azurerm_container_registry.acr[0].id, null),
+    try(var.config.acr_resource_id, null)
+  )
 }
 
 module "net" {
@@ -221,12 +233,12 @@ module "apps" {
     } : {}
   )
   registries = concat(
-    [
+    local.acr_login_server != null ? [
       {
-        server   = data.azurerm_container_registry.acr.login_server
+        server   = local.acr_login_server
         identity = azurerm_user_assigned_identity.aca_uami.id
       }
-    ],
+    ] : [],
     each.value.registries
   )
   http_scale_rule         = each.value.http_scale_rule
@@ -239,7 +251,8 @@ module "apps" {
 
 # Grant UAMI pull access to ACR when enabled
 resource "azurerm_role_assignment" "uami_acr_pull" {
-  scope                = data.azurerm_container_registry.acr.id
+  count                = local.acr_scope_id != null ? 1 : 0
+  scope                = local.acr_scope_id
   role_definition_name = "AcrPull"
   principal_id         = azurerm_user_assigned_identity.aca_uami.principal_id
 }
