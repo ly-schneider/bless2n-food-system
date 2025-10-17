@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
+import { API_BASE_URL } from "@/lib/api"
 
 type StationRequest = {
   id: string
@@ -40,14 +41,14 @@ export default function AdminStationRequestsPage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/stations/requests?status=pending`)
+      const res = await fetchAuth(`${API_BASE_URL}/v1/admin/stations/requests?status=pending`)
       const json = (await res.json()) as { items: StationRequest[] }
       setItems(json.items || [])
-      const rs = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/stations`)
+      const rs = await fetchAuth(`${API_BASE_URL}/v1/admin/stations`)
       const js = (await rs.json()) as { items: Station[] }
       setStations(js.items || [])
       // Load products for selection
-      const pr = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/products?limit=500`)
+      const pr = await fetchAuth(`${API_BASE_URL}/v1/products?limit=500`)
       const pj = (await pr.json()) as { items?: { id: string; name: string }[] }
       if (pj && Array.isArray(pj.items)) setAllProducts(pj.items.map((x) => ({ id: x.id, name: x.name })))
     } catch {
@@ -64,7 +65,7 @@ export default function AdminStationRequestsPage() {
   async function act(id: string, action: "approve" | "reject") {
     try {
       const res = await fetchAuth(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/stations/requests/${id}/${action}`,
+        `${API_BASE_URL}/v1/admin/stations/requests/${id}/${action}`,
         { method: "POST" }
       )
       if (!res.ok) {
@@ -82,7 +83,7 @@ export default function AdminStationRequestsPage() {
     setEditingId(next)
     if (next) {
       try {
-        const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/stations/${st.id}/products`)
+        const res = await fetchAuth(`${API_BASE_URL}/v1/admin/stations/${st.id}/products`)
         const j = (await res.json()) as { items: { productId: string; name: string }[] }
         setAssigned((prev) => ({ ...prev, [st.id]: j.items || [] }))
         setAddProductId(undefined)
@@ -92,19 +93,19 @@ export default function AdminStationRequestsPage() {
 
   async function addProductToStation(stationId: string) {
     if (!addProductId) return
-    await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/stations/${stationId}/products`, {
+    await fetchAuth(`${API_BASE_URL}/v1/admin/stations/${stationId}/products`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ productIds: [addProductId!] }),
     })
-    const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/stations/${stationId}/products`)
+    const res = await fetchAuth(`${API_BASE_URL}/v1/admin/stations/${stationId}/products`)
     const j = (await res.json()) as { items: { productId: string; name: string }[] }
     setAssigned((prev) => ({ ...prev, [stationId]: j.items || [] }))
     setAddProductId(undefined)
   }
 
   async function removeProductFromStation(stationId: string, productId: string) {
-    await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/stations/${stationId}/products/${productId}`, {
+    await fetchAuth(`${API_BASE_URL}/v1/admin/stations/${stationId}/products/${productId}`, {
       method: "DELETE",
     })
     setAssigned((prev) => ({ ...prev, [stationId]: (prev[stationId] || []).filter((x) => x.productId !== productId) }))

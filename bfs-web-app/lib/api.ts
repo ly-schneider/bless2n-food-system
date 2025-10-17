@@ -1,6 +1,6 @@
-// Public base used by the browser. Use relative "/api" by default so Next.js
-// can proxy to the backend (avoids WebView cross-origin and mixed-content issues).
-const PUBLIC_API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "/api"
+// Public base used by the browser. Always use relative "/api" so that
+// container runtime env can decide the backend target via API routes.
+const PUBLIC_API_BASE = "/api"
 // Internal base used by SSR/RSC inside the container to reach backend service name.
 const INTERNAL_API_BASE = process.env.BACKEND_INTERNAL_URL || process.env.INTERNAL_API_BASE_URL
 

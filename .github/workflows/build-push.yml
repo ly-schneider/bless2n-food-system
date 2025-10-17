@@ -47,6 +47,10 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name }}
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
@@ -118,3 +122,38 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
+
+      - name: Derive ACA resource names
+        id: aca
+        run: |
+          echo "rg=bfs-${{ github.ref_name }}-rg" >> $GITHUB_OUTPUT
+          echo "backend_app=backend-${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          echo "frontend_app=frontend-${{ github.ref_name }}" >> $GITHUB_OUTPUT
+
+      - name: Redeploy backend ACA to new image
+        if: ${{ needs.changes.outputs.backend == 'true' }}
+        run: |
+          set -euo pipefail
+          RG="${{ steps.aca.outputs.rg }}"
+          APP="${{ steps.aca.outputs.backend_app }}"
+          IMAGE="${{ steps.acr.outputs.login_server }}/backend:${{ github.ref_name }}"
+          if az containerapp show -g "$RG" -n "$APP" >/dev/null 2>&1; then
+            echo "Updating $APP to image $IMAGE"
+            az containerapp update -g "$RG" -n "$APP" --image "$IMAGE"
+          else
+            echo "Container App $APP not found in $RG. Skipping update."
+          fi
+
+      - name: Redeploy frontend ACA to new image
+        if: ${{ needs.changes.outputs.web == 'true' }}
+        run: |
+          set -euo pipefail
+          RG="${{ steps.aca.outputs.rg }}"
+          APP="${{ steps.aca.outputs.frontend_app }}"
+          IMAGE="${{ steps.acr.outputs.login_server }}/frontend:${{ github.ref_name }}"
+          if az containerapp show -g "$RG" -n "$APP" >/dev/null 2>&1; then
+            echo "Updating $APP to image $IMAGE"
+            az containerapp update -g "$RG" -n "$APP" --image "$IMAGE"
+          else
+            echo "Container App $APP not found in $RG. Skipping update."
+          fi

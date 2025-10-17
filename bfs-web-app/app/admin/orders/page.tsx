@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
+import { API_BASE_URL } from "@/lib/api"
 import { formatChf } from "@/lib/utils"
 
 // Minimal shape expected from the admin orders endpoint
@@ -36,7 +37,7 @@ export default function AdminOrdersPage() {
     let cancelled = false
     ;(async () => {
       try {
-        const base = process.env.NEXT_PUBLIC_API_BASE_URL || "/api"
+        const base = API_BASE_URL
         const qs = new URLSearchParams()
         if (status && status !== "all") qs.set("status", status)
         const url = `${base}/v1/admin/orders${qs.toString() ? `?${qs.toString()}` : ""}`

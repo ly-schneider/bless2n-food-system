@@ -31,16 +31,8 @@ export async function middleware(request: NextRequest) {
   response.headers.set("X-Content-Type-Options", "nosniff")
   response.headers.set("Referrer-Policy", "origin-when-cross-origin")
 
-  // CSP optimized for WebView, allow backend API origin in connect-src
-  // Use public API base if provided at build time; otherwise default to localhost for dev
-  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080"
-  let apiOrigin = ""
-  try {
-    apiOrigin = apiBase ? new URL(apiBase).origin : ""
-  } catch {}
-
+  // CSP optimized for WebView; API calls go through same-origin /api via Next route
   const connectSrc = ["'self'", "ws:", "wss:"]
-  if (apiOrigin) connectSrc.push(apiOrigin)
 
   const stripeScript = "https://js.stripe.com"
   const stripeConnect = ["https://api.stripe.com", "https://m.stripe.network", "https://r.stripe.com"]

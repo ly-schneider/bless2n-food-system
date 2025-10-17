@@ -5,6 +5,7 @@ import { useParams } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
+import { API_BASE_URL } from "@/lib/api"
 import { formatChf } from "@/lib/utils"
 
 type OrderItem = {
@@ -53,7 +54,7 @@ export default function AdminOrderDetailPage() {
       setLoading(true)
       setError(null)
       try {
-        const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/orders/${encodeURIComponent(id)}`)
+        const res = await fetchAuth(`${API_BASE_URL}/v1/admin/orders/${encodeURIComponent(id)}`)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = (await res.json()) as { order: AdminOrderDetails }
         if (!cancelled) setOrder(data.order)

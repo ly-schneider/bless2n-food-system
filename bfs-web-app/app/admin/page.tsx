@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/chart"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
+import { API_BASE_URL } from "@/lib/api"
 
 type OrderItem = { id: string; totalCents?: number | null; createdAt?: string }
 
@@ -58,11 +59,11 @@ export default function AdminDashboard() {
 
         const [ordersRes, productsRes] = await Promise.all([
           fetchAuth(
-            `${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/orders?date_from=${encodeURIComponent(
-              start.toISOString()
-            )}&date_to=${encodeURIComponent(end.toISOString())}&limit=10000`
+            `${API_BASE_URL}/v1/admin/orders?date_from=${encodeURIComponent(start.toISOString())}&date_to=${encodeURIComponent(
+              end.toISOString()
+            )}&limit=10000`
           ),
-          fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/products?limit=200`),
+          fetchAuth(`${API_BASE_URL}/v1/products?limit=200`),
         ])
 
         // Build timeseries for orders and revenue

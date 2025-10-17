@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
+import { API_BASE_URL } from "@/lib/api"
 
 type PosRequest = {
   id: string
@@ -36,10 +37,10 @@ export default function AdminPOSPage() {
     setLoading(true)
     setError(null)
     try {
-      const r1 = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/pos/requests?status=pending`)
+      const r1 = await fetchAuth(`${API_BASE_URL}/v1/admin/pos/requests?status=pending`)
       const j1 = (await r1.json()) as { items: PosRequest[] }
       setRequests(j1.items || [])
-      const r2 = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/pos/devices`)
+      const r2 = await fetchAuth(`${API_BASE_URL}/v1/admin/pos/devices`)
       const j2 = (await r2.json()) as { items: PosDevice[] }
       setDevices(j2.items || [])
     } catch {
@@ -55,7 +56,7 @@ export default function AdminPOSPage() {
 
   async function act(id: string, action: "approve" | "reject") {
     try {
-      const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/pos/requests/${id}/${action}`, {
+      const res = await fetchAuth(`${API_BASE_URL}/v1/admin/pos/requests/${id}/${action}`, {
         method: "POST",
       })
       if (!res.ok) {
@@ -65,7 +66,7 @@ export default function AdminPOSPage() {
       setRequests((prev) => prev.filter((x) => x.id !== id))
       if (action === "approve") {
         try {
-          const r = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/pos/devices`)
+          const r = await fetchAuth(`${API_BASE_URL}/v1/admin/pos/devices`)
           const j = (await r.json()) as { items: PosDevice[] }
           setDevices(j.items || [])
         } catch {}

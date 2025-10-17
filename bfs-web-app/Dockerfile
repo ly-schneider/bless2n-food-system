@@ -39,17 +39,9 @@ RUN --mount=type=cache,target=/home/nodejs/.npm,uid=1001,gid=1001 \
 # Copy source code
 COPY --chown=nodejs:nodejs . .
 
-# Accept runtime config as build args
-ARG NEXT_PUBLIC_API_BASE_URL
-ARG BACKEND_INTERNAL_URL
-ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-
-# Set production environment (and propagate envs used at build time)
+# Production build flags only; no app runtime env baked here
 ENV NODE_ENV=production \
-    NEXT_TELEMETRY_DISABLED=1 \
-    NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL} \
-    BACKEND_INTERNAL_URL=${BACKEND_INTERNAL_URL} \
-    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
+    NEXT_TELEMETRY_DISABLED=1
 
 # Build using the same package manager used for install; skip npm prune to avoid
 # unsupported protocols (e.g., link:) and because Next.js standalone bundles deps.
@@ -60,19 +52,12 @@ RUN if [ -f pnpm-lock.yaml ]; then pnpm run build; \
 # ---- 2) Runtime: Distroless with security hardening
 FROM gcr.io/distroless/nodejs24-debian12:nonroot AS runtime
 
-# Accept runtime config for SSR as well
-ARG NEXT_PUBLIC_API_BASE_URL
-ARG BACKEND_INTERNAL_URL
-ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
-
-# Set secure environment variables
+# Set secure environment variables (runtime env like BACKEND_INTERNAL_URL and
+# NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY are expected to be injected by the orchestrator at start)
 ENV NODE_ENV=production \
     NODE_OPTIONS="--max-old-space-size=2048 --no-deprecation" \
     NEXT_TELEMETRY_DISABLED=1 \
-    PORT=3000 \
-    NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL} \
-    BACKEND_INTERNAL_URL=${BACKEND_INTERNAL_URL} \
-    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
+    PORT=3000
 
 # Set working directory
 WORKDIR /app
@@ -84,7 +69,7 @@ COPY --from=builder --chown=nonroot:nonroot /app/public ./public
 
 # Health check for container orchestration
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
-    CMD ["node", "--eval", "require('http').get('http://localhost:3000/healthz', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+    CMD ["node", "--eval", "require('http').get('http://localhost:3000/api/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
 
 # Use non-root user (uid 65532 - nonroot)
 USER nonroot:nonroot

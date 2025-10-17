@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
+import { API_BASE_URL } from "@/lib/api"
 
 type Row = {
   userId: string
@@ -34,7 +35,7 @@ export default function AdminSessionDetailPage() {
       setLoading(true)
       setError(null)
       try {
-        const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/sessions`)
+        const res = await fetchAuth(`${API_BASE_URL}/v1/admin/sessions`)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = (await res.json()) as { items: Row[] }
         const found = (data.items || []).find((r) => r.userId === userId && r.familyId === familyId) || null
@@ -59,7 +60,7 @@ export default function AdminSessionDetailPage() {
       setRevoking(true)
       const csrf = getCSRFCookie()
       const res = await fetchAuth(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/users/${encodeURIComponent(userId)}/sessions/revoke`,
+        `${API_BASE_URL}/v1/admin/users/${encodeURIComponent(userId)}/sessions/revoke`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },

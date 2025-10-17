@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
+import { API_BASE_URL } from "@/lib/api"
 import { readErrorMessage } from "@/lib/http"
 
 type Category = { id: string; name: string; isActive: boolean; position: number }
@@ -21,7 +22,7 @@ export default function AdminCategoriesPage() {
 
   async function reload() {
     try {
-      const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/categories`)
+      const res = await fetchAuth(`${API_BASE_URL}/v1/admin/categories`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = (await res.json()) as { items: Category[] }
       const sorted = (data.items || []).slice().sort((a, b) => a.position - b.position || a.name.localeCompare(b.name))
@@ -39,7 +40,7 @@ export default function AdminCategoriesPage() {
       return
     }
     const csrf = getCSRFCookie()
-    const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/categories`, {
+    const res = await fetchAuth(`${API_BASE_URL}/v1/admin/categories`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
       body: JSON.stringify({ name: name.trim(), position }),
@@ -55,7 +56,7 @@ export default function AdminCategoriesPage() {
 
   async function rename(id: string, newName: string) {
     const csrf = getCSRFCookie()
-    const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/categories/${id}`, {
+    const res = await fetchAuth(`${API_BASE_URL}/v1/admin/categories/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
       body: JSON.stringify({ name: newName }),
@@ -73,7 +74,7 @@ export default function AdminCategoriesPage() {
       return
     }
     const csrf = getCSRFCookie()
-    const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/categories/${id}`, {
+    const res = await fetchAuth(`${API_BASE_URL}/v1/admin/categories/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
       body: JSON.stringify({ position: pos }),
@@ -87,7 +88,7 @@ export default function AdminCategoriesPage() {
 
   async function toggle(id: string, isActive: boolean) {
     const csrf = getCSRFCookie()
-    const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/categories/${id}`, {
+    const res = await fetchAuth(`${API_BASE_URL}/v1/admin/categories/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
       body: JSON.stringify({ isActive }),
@@ -102,7 +103,7 @@ export default function AdminCategoriesPage() {
   async function remove(id: string) {
     if (!confirm("Delete category?")) return
     const csrf = getCSRFCookie()
-    const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/categories/${id}`, {
+    const res = await fetchAuth(`${API_BASE_URL}/v1/admin/categories/${id}`, {
       method: "DELETE",
       headers: { "X-CSRF": csrf || "" },
     })

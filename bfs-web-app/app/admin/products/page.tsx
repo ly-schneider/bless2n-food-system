@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
+import { API_BASE_URL } from "@/lib/api"
 import { readErrorMessage } from "@/lib/http"
 
 type Product = {
@@ -47,9 +48,7 @@ export default function AdminProductsPage() {
     setError(null)
     ;(async () => {
       try {
-        const res = await fetchAuth(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/products?limit=${limit}&offset=${offset}`
-        )
+        const res = await fetchAuth(`${API_BASE_URL}/v1/products?limit=${limit}&offset=${offset}`)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = (await res.json()) as { items: Product[]; count: number }
         if (cancelled) return
@@ -75,7 +74,7 @@ export default function AdminProductsPage() {
     let cancelled = false
     ;(async () => {
       try {
-        const cr = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/categories`)
+        const cr = await fetchAuth(`${API_BASE_URL}/v1/admin/categories`)
         if (cr.ok) {
           const d = (await cr.json()) as { items: Category[] }
           if (!cancelled) setCats(d.items || [])
@@ -90,7 +89,7 @@ export default function AdminProductsPage() {
   async function updatePrice(id: string, priceCents: number) {
     const csrf = getCSRFCookie()
     const res = await fetchAuth(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/products/${encodeURIComponent(id)}/price`,
+      `${API_BASE_URL}/v1/admin/products/${encodeURIComponent(id)}/price`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
@@ -102,7 +101,7 @@ export default function AdminProductsPage() {
   async function moveCategory(id: string, categoryId: string) {
     const csrf = getCSRFCookie()
     const res = await fetchAuth(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/products/${encodeURIComponent(id)}/category`,
+      `${API_BASE_URL}/v1/admin/products/${encodeURIComponent(id)}/category`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
@@ -115,7 +114,7 @@ export default function AdminProductsPage() {
   async function setActive(id: string, isActive: boolean) {
     const csrf = getCSRFCookie()
     const res = await fetchAuth(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/products/${encodeURIComponent(id)}/active`,
+      `${API_BASE_URL}/v1/admin/products/${encodeURIComponent(id)}/active`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
@@ -127,7 +126,7 @@ export default function AdminProductsPage() {
 
   async function deleteHard(id: string) {
     const csrf = getCSRFCookie()
-    const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/products/${encodeURIComponent(id)}`, {
+    const res = await fetchAuth(`${API_BASE_URL}/v1/admin/products/${encodeURIComponent(id)}`, {
       method: "DELETE",
       headers: { "X-CSRF": csrf || "" },
     })
@@ -137,7 +136,7 @@ export default function AdminProductsPage() {
   async function adjustInventory(id: string, delta: number) {
     const csrf = getCSRFCookie()
     const res = await fetchAuth(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/products/${encodeURIComponent(id)}/inventory-adjust`,
+      `${API_BASE_URL}/v1/admin/products/${encodeURIComponent(id)}/inventory-adjust`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },

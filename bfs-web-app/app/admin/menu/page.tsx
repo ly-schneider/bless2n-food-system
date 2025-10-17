@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
+import { API_BASE_URL } from "@/lib/api"
 import { Category, ProductDTO } from "@/types"
 
 type DirtyProduct = {
@@ -93,8 +94,8 @@ export default function AdminMenuPage() {
     setError(null)
     try {
       const [pr, cr] = await Promise.all([
-        fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/products?limit=200`),
-        fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/categories`),
+        fetchAuth(`${API_BASE_URL}/v1/products?limit=200`),
+        fetchAuth(`${API_BASE_URL}/v1/admin/categories`),
       ])
       if (cr.ok) {
         const d = (await cr.json()) as { items: Category[] }
@@ -487,7 +488,7 @@ async function saveChanges(fetchAuth: ReturnType<typeof useAuthorizedFetch>, ite
   // Price
   if (original && original.priceCents !== p.priceCents) {
     const res = await fetchAuth(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/products/${encodeURIComponent(p.id)}/price`,
+      `${API_BASE_URL}/v1/admin/products/${encodeURIComponent(p.id)}/price`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
@@ -500,7 +501,7 @@ async function saveChanges(fetchAuth: ReturnType<typeof useAuthorizedFetch>, ite
   // Category
   if (original && (original.category?.id ?? null) !== (p.categoryId ?? null)) {
     const res = await fetchAuth(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/products/${encodeURIComponent(p.id)}/category`,
+      `${API_BASE_URL}/v1/admin/products/${encodeURIComponent(p.id)}/category`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
@@ -516,7 +517,7 @@ async function saveChanges(fetchAuth: ReturnType<typeof useAuthorizedFetch>, ite
     const delta = p.stock - currentStock
     if (delta !== 0) {
       const res = await fetchAuth(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/products/${encodeURIComponent(p.id)}/inventory-adjust`,
+        `${API_BASE_URL}/v1/admin/products/${encodeURIComponent(p.id)}/inventory-adjust`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
+import { API_BASE_URL } from "@/lib/api"
 import { readErrorMessage } from "@/lib/http"
 
 type Invite = {
@@ -28,7 +29,7 @@ export default function AdminInvitesPage() {
 
   async function reload() {
     try {
-      const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/invites`)
+      const res = await fetchAuth(`${API_BASE_URL}/v1/admin/invites`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = (await res.json()) as { items: Invite[] }
       setItems(data.items || [])
@@ -41,7 +42,7 @@ export default function AdminInvitesPage() {
   async function createInvite() {
     if (!email.trim()) return
     const csrf = getCSRFCookie()
-    const res = await fetchAuth(`${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/invites`, {
+    const res = await fetchAuth(`${API_BASE_URL}/v1/admin/invites`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
       body: JSON.stringify({ email: email.trim() }),
@@ -58,7 +59,7 @@ export default function AdminInvitesPage() {
     try {
       const csrf = getCSRFCookie()
       const res = await fetchAuth(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/v1/admin/invites/${encodeURIComponent(id)}`,
+        `${API_BASE_URL}/v1/admin/invites/${encodeURIComponent(id)}`,
         {
           method: "DELETE",
           headers: { "X-CSRF": csrf || "" },
