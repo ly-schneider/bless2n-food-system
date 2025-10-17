@@ -34,9 +34,12 @@ module "bfs_infrastructure" {
     requests_5xx_threshold   = 10
     enable_security_features = true
     key_vault_name           = "bfs-staging-kv"
-    enable_acr               = false
-    acr_name                 = "bfsstagingacr"
-    acr_login_server         = "${var.acr_name}.azurecr.io"
+    # Provision an ACR for this environment and grant UAMI AcrPull.
+    # This fixes image pull failures like: failed to resolve registry '...azurecr.io'.
+    enable_acr               = true
+    acr_name                 = var.acr_name
+    # Let the stack derive login_server from the created ACR; no explicit override needed.
+    # acr_login_server       = "${var.acr_name}.azurecr.io"
 
     apps = {
       frontend-staging = {
