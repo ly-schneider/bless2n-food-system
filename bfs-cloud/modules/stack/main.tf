@@ -269,12 +269,7 @@ module "apps_backend" {
   tags                    = merge(var.tags, { app = each.key })
 }
 
-# Read stable FQDNs for backends via data source so we can inject into frontend env vars
-data "azurerm_container_app" "backend" {
-  for_each = local.backend_apps
-  name                = module.apps_backend[each.key].name
-  resource_group_name = module.rg.name
-}
+# Backend app FQDNs are available from the module output; no data source needed
 
 module "apps_frontend" {
   for_each = local.frontend_apps

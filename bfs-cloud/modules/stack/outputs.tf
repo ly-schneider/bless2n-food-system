@@ -45,7 +45,7 @@ output "app_urls" {
 
 output "backend_fqdns" {
   description = "Stable FQDNs (ingress.fqdn) for backend apps"
-  value       = { for k, d in data.azurerm_container_app.backend : k => d.ingress[0].fqdn }
+  value       = { for k, m in module.apps_backend : k => m.fqdn }
 }
 
 output "key_vault_secret_ids" {
