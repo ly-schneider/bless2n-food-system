@@ -9,8 +9,8 @@ function backendBase(): string {
   )
 }
 
-async function handle(req: NextRequest, params: { path?: string[] }) {
-  const { path = [] } = params
+async function handle(req: NextRequest, params: { path: string[] }) {
+  const { path } = params
   const target = new URL(path.join("/"), backendBase())
 
   const method = req.method
@@ -57,25 +57,24 @@ async function handle(req: NextRequest, params: { path?: string[] }) {
 
 export const dynamic = "force-dynamic"
 
-export async function GET(req: NextRequest, { params }: { params: { path?: string[] } }) {
-  return handle(req, params)
+export async function GET(req: NextRequest, ctx: { params: { path: string[] } }) {
+  return handle(req, ctx.params)
 }
-export async function POST(req: NextRequest, { params }: { params: { path?: string[] } }) {
-  return handle(req, params)
+export async function POST(req: NextRequest, ctx: { params: { path: string[] } }) {
+  return handle(req, ctx.params)
 }
-export async function PUT(req: NextRequest, { params }: { params: { path?: string[] } }) {
-  return handle(req, params)
+export async function PUT(req: NextRequest, ctx: { params: { path: string[] } }) {
+  return handle(req, ctx.params)
 }
-export async function PATCH(req: NextRequest, { params }: { params: { path?: string[] } }) {
-  return handle(req, params)
+export async function PATCH(req: NextRequest, ctx: { params: { path: string[] } }) {
+  return handle(req, ctx.params)
 }
-export async function DELETE(req: NextRequest, { params }: { params: { path?: string[] } }) {
-  return handle(req, params)
+export async function DELETE(req: NextRequest, ctx: { params: { path: string[] } }) {
+  return handle(req, ctx.params)
 }
-export async function OPTIONS(req: NextRequest, { params }: { params: { path?: string[] } }) {
-  return handle(req, params)
+export async function OPTIONS(req: NextRequest, ctx: { params: { path: string[] } }) {
+  return handle(req, ctx.params)
 }
-export async function HEAD(req: NextRequest, { params }: { params: { path?: string[] } }) {
-  return handle(req, params)
+export async function HEAD(req: NextRequest, ctx: { params: { path: string[] } }) {
+  return handle(req, ctx.params)
 }
-
