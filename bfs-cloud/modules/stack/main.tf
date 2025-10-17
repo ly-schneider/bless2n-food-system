@@ -138,6 +138,17 @@ locals {
     module.acr[0].id,
     try(data.azurerm_container_registry.acr[0].id, var.config.acr_resource_id)
   )
+  # Enable ACR pull role assignment when we can determine ACR by inputs alone.
+  # This avoids making `count` depend on computed values that are unknown at plan time.
+  enable_uami_acr_pull = (
+    try(var.config.enable_acr, true)
+    || var.config.acr_resource_id != null
+    || (
+      var.config.acr_login_server == null &&
+      var.config.acr_name != null &&
+      try(var.config.enable_acr, true) == false
+    )
+  )
 }
 
 module "net" {
@@ -253,7 +264,8 @@ module "apps" {
 
 # Grant UAMI pull access to ACR when enabled
 resource "azurerm_role_assignment" "uami_acr_pull" {
-  count                = local.acr_scope_id != null ? 1 : 0
+  # Use a boolean derived only from input variables so `count` is known during plan.
+  count                = local.enable_uami_acr_pull ? 1 : 0
   scope                = local.acr_scope_id
   role_definition_name = "AcrPull"
   principal_id         = azurerm_user_assigned_identity.aca_uami.principal_id
