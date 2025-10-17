@@ -110,6 +110,9 @@ resource "azurerm_key_vault_secret" "cosmos_connection_string" {
   value        = var.cosmos_connection_string
   key_vault_id = azurerm_key_vault.basic[0].id
 
+  # NOTE: Terraform stores secret values in state. Ensure your state backend is secured
+  # and access is restricted. Mark inputs as sensitive (see variables.tf).
+
   depends_on = [azurerm_role_assignment.kv_admin]
 }
 
@@ -122,6 +125,10 @@ resource "azurerm_key_vault_secret" "placeholder_secrets" {
     "stripe-secret-key"     = "placeholder-stripe-secret-key"
     "stripe-webhook-secret" = "placeholder-stripe-webhook-secret"
     "smtp-password"         = "placeholder-smtp-password"
+    "station-qr-secret"     = "placeholder-station-qr-secret"
+    # Break circular dependency between apps by storing FQDNs as editable KV secrets
+    "backend-url"           = "https://change-me-backend"
+    "frontend-url"          = "https://change-me-frontend"
   } : {}
 
   name         = each.key

@@ -75,6 +75,13 @@ terraform init
 terraform apply
 ```
 
+### App URLs via Key Vault
+- Terraform provisions a Key Vault with editable placeholder secrets for cross-app URLs:
+  - `backend-url`: public HTTPS URL for the backend (used by frontend `NEXT_PUBLIC_API_BASE_URL` and `BACKEND_INTERNAL_URL`).
+  - `frontend-url`: public HTTPS URL for the frontend (used by backend `SECURITY_TRUSTED_ORIGINS`, `JWT_ISSUER`, `PUBLIC_BASE_URL`).
+- Update these values in Azure Portal > Key Vaults > `<kv-name>` > Secrets to avoid circular dependencies on FQDNs.
+- The previous `shared_config` module and its separate env have been removed; no extra Terraform step is required.
+
 ### Two-State Layout (Staging & Prod)
 - Use `envs/staging` and `envs/production` to maintain separate Terraform states and configurations.
 - Each env has its own `backend.tf` (local by default); switch to a remote backend for team usage.

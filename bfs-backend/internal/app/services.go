@@ -28,6 +28,6 @@ func NewServices() fx.Option {
 }
 
 func NewJWTService(cfg config.Config, logger *zap.Logger) service.JWTService {
-	logger.Info("Using file-based JWT service")
-	return service.NewJWTService(cfg.App.JWTPrivPEMPath, cfg.App.JWTPubPEMPath, cfg.App.JWTIssuer)
+    logger.Info("Using PEM-based JWT service from env")
+    return service.NewJWTService(cfg.App.JWTPrivPEM, cfg.App.JWTPubPEM, cfg.App.JWTIssuer)
 }

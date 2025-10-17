@@ -22,12 +22,12 @@ type Config struct {
 }
 
 type AppConfig struct {
-	AppEnv         string
-	AppPort        string
-	JWTIssuer      string
-	JWTPrivPEMPath string
-	JWTPubPEMPath  string
-	PublicBaseURL  string
+    AppEnv         string
+    AppPort        string
+    JWTIssuer      string
+    JWTPrivPEM     string
+    JWTPubPEM      string
+    PublicBaseURL  string
 }
 
 type MongoConfig struct {
@@ -92,15 +92,15 @@ func Load() Config {
         }
     }
 
-	cfg := Config{
-		App: AppConfig{
-			AppEnv:         getEnv("APP_ENV"),
-			AppPort:        getEnv("APP_PORT"),
-			JWTIssuer:      getEnv("JWT_ISSUER"),
-			JWTPrivPEMPath: getEnvOptional("JWT_PRIV_PEM_PATH"),
-			JWTPubPEMPath:  getEnvOptional("JWT_PUB_PEM_PATH"),
-			PublicBaseURL:  getEnv("PUBLIC_BASE_URL"),
-		},
+    cfg := Config{
+        App: AppConfig{
+            AppEnv:         getEnv("APP_ENV"),
+            AppPort:        getEnv("APP_PORT"),
+            JWTIssuer:      getEnv("JWT_ISSUER"),
+            JWTPrivPEM:     getEnv("JWT_PRIV_PEM"),
+            JWTPubPEM:      getEnv("JWT_PUB_PEM"),
+            PublicBaseURL:  getEnv("PUBLIC_BASE_URL"),
+        },
 		Mongo: MongoConfig{
 			URI:      getEnv("MONGO_URI"),
 			Database: getEnv("MONGO_DATABASE"),

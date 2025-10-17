@@ -149,6 +149,11 @@ locals {
       try(var.config.enable_acr, true) == false
     )
   )
+
+  # Split apps by convention to allow ordering: backends first, then frontends
+  # This enables wiring frontend -> backend using the backend's stable FQDN via data.azurerm_container_app
+  backend_apps  = { for k, v in var.config.apps : k => v if can(regex("^backend", k)) }
+  frontend_apps = { for k, v in var.config.apps : k => v if can(regex("^frontend", k)) }
 }
 
 module "net" {
@@ -213,8 +218,8 @@ module "cosmos" {
   tags                       = var.tags
 }
 
-module "apps" {
-  for_each = var.config.apps
+module "apps_backend" {
+  for_each = local.backend_apps
   source   = "../containerapp"
 
   name                       = each.key
@@ -235,17 +240,76 @@ module "apps" {
   secrets                    = each.value.secrets
   key_vault_secrets          = each.value.key_vault_secrets
   # Resolve Key Vault secret IDs inside the stack to avoid referencing module outputs from the caller
-  key_vault_secret_refs = try(
-    merge(
-      each.value.key_vault_secret_refs,
-      var.config.enable_security_features && length(module.security) > 0 ? {
-        for s in distinct(values(try(each.value.key_vault_secrets, {}))) : s => module.security[0].key_vault_secret_ids[s]
-        if contains(keys(module.security[0].key_vault_secret_ids), s)
-      } : {}
-    ),
+  # Prefer module.security-provided versionless IDs; otherwise, construct versionless IDs from the vault ID.
+  key_vault_secret_refs = merge(
+    try(each.value.key_vault_secret_refs, {}),
     var.config.enable_security_features && length(module.security) > 0 ? {
       for s in distinct(values(try(each.value.key_vault_secrets, {}))) : s => module.security[0].key_vault_secret_ids[s]
       if contains(keys(module.security[0].key_vault_secret_ids), s)
+    } : {},
+    var.config.enable_security_features && length(module.security) > 0 ? {
+      for s in distinct(values(try(each.value.key_vault_secrets, {}))) : s => format("%s/secrets/%s", module.security[0].key_vault_id, s)
+      if !contains(keys(module.security[0].key_vault_secret_ids), s)
+    } : {}
+  )
+  registries = concat(
+    local.acr_login_server != null ? [
+      {
+        server   = local.acr_login_server
+        identity = azurerm_user_assigned_identity.aca_uami.id
+      }
+    ] : [],
+    each.value.registries
+  )
+  http_scale_rule         = each.value.http_scale_rule
+  cpu_scale_rule          = each.value.cpu_scale_rule
+  memory_scale_rule       = each.value.memory_scale_rule
+  azure_queue_scale_rules = each.value.azure_queue_scale_rules
+  custom_scale_rules      = each.value.custom_scale_rules
+  tags                    = merge(var.tags, { app = each.key })
+}
+
+# Read stable FQDNs for backends via data source so we can inject into frontend env vars
+data "azurerm_container_app" "backend" {
+  for_each = local.backend_apps
+  name                = module.apps_backend[each.key].name
+  resource_group_name = module.rg.name
+}
+
+module "apps_frontend" {
+  for_each = local.frontend_apps
+  source   = "../containerapp"
+
+  name                       = each.key
+  resource_group_name        = module.rg.name
+  environment_id             = module.aca_env.id
+  image                      = each.value.image
+  target_port                = each.value.port
+  health_check_path          = lookup(each.value, "health_check_path", "/health")
+  external_ingress           = try(each.value.external_ingress, true)
+  cpu                        = each.value.cpu
+  memory                     = each.value.memory
+  min_replicas               = each.value.min_replicas
+  max_replicas               = each.value.max_replicas
+  enable_system_identity     = false
+  user_assigned_identity_ids = [azurerm_user_assigned_identity.aca_uami.id]
+  log_analytics_workspace_id = module.obs.log_analytics_id
+  environment_variables = merge(
+    local.environment_variables,
+    each.value.environment_variables
+  )
+  secrets           = each.value.secrets
+  key_vault_secrets = each.value.key_vault_secrets
+  # Resolve Key Vault secret IDs inside the stack to avoid referencing module outputs from the caller
+  key_vault_secret_refs = merge(
+    try(each.value.key_vault_secret_refs, {}),
+    var.config.enable_security_features && length(module.security) > 0 ? {
+      for s in distinct(values(try(each.value.key_vault_secrets, {}))) : s => module.security[0].key_vault_secret_ids[s]
+      if contains(keys(module.security[0].key_vault_secret_ids), s)
+    } : {},
+    var.config.enable_security_features && length(module.security) > 0 ? {
+      for s in distinct(values(try(each.value.key_vault_secrets, {}))) : s => format("%s/secrets/%s", module.security[0].key_vault_id, s)
+      if !contains(keys(module.security[0].key_vault_secret_ids), s)
     } : {}
   )
   registries = concat(
@@ -282,7 +346,10 @@ module "alerts" {
   short_name             = var.environment
   resource_group_name    = module.rg.name
   email_receivers        = var.alert_emails
-  container_app_ids      = { for k, m in module.apps : k => m.id }
+  container_app_ids = merge(
+    { for k, m in module.apps_backend : k => m.id },
+    { for k, m in module.apps_frontend : k => m.id }
+  )
   requests_5xx_threshold = var.config.requests_5xx_threshold
   tags                   = var.tags
 }

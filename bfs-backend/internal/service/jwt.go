@@ -1,17 +1,16 @@
 package service
 
 import (
-	"crypto/ed25519"
-	"crypto/rand"
-	"crypto/x509"
-	"encoding/pem"
-	"fmt"
-	"os"
-	"time"
+    "crypto/ed25519"
+    "crypto/rand"
+    "crypto/x509"
+    "encoding/pem"
+    "fmt"
+    "time"
 
-	"github.com/golang-jwt/jwt/v5"
+    "github.com/golang-jwt/jwt/v5"
 
-	"backend/internal/domain"
+    "backend/internal/domain"
 )
 
 const (
@@ -49,61 +48,17 @@ type jwtService struct {
 	audience   string
 }
 
-func NewJWTService(jwtPrivPemPath string, jwtPubPemPath string, issuer string) JWTService {
-	priv, pub, err := loadEd25519Keys(jwtPrivPemPath, jwtPubPemPath)
-	if err != nil {
-		panic(fmt.Sprintf("failed to load Ed25519 keys: %v", err))
-	}
-	return &jwtService{
-		privateKey: priv,
-		publicKey:  pub,
-		issuer:     issuer,
-		audience:   defaultAudience,
-	}
-}
-
-func loadEd25519Keys(privPath, pubPath string) (ed25519.PrivateKey, ed25519.PublicKey, error) {
-	privPEM, err := os.ReadFile(privPath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("read private key: %w", err)
-	}
-	block, _ := pem.Decode(privPEM)
-	if block == nil || block.Type != "PRIVATE KEY" {
-		return nil, nil, fmt.Errorf("invalid private key PEM: got %v", block)
-	}
-	anyKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-	if err != nil {
-		return nil, nil, fmt.Errorf("parse PKCS#8 private key: %w", err)
-	}
-	priv, ok := anyKey.(ed25519.PrivateKey)
-	if !ok {
-		return nil, nil, fmt.Errorf("not an Ed25519 private key")
-	}
-	if l := len(priv); l != ed25519.PrivateKeySize {
-		return nil, nil, fmt.Errorf("bad ed25519 key length: %d", l)
-	}
-
-	pubPEM, err := os.ReadFile(pubPath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("read public key: %w", err)
-	}
-	pb, _ := pem.Decode(pubPEM)
-	if pb == nil || pb.Type != "PUBLIC KEY" {
-		return nil, nil, fmt.Errorf("invalid public key PEM: got %v", pb)
-	}
-	anyPub, err := x509.ParsePKIXPublicKey(pb.Bytes)
-	if err != nil {
-		return nil, nil, fmt.Errorf("parse PKIX public key: %w", err)
-	}
-	pub, ok2 := anyPub.(ed25519.PublicKey)
-	if !ok2 {
-		return nil, nil, fmt.Errorf("not an Ed25519 public key")
-	}
-	if l := len(pub); l != ed25519.PublicKeySize {
-		return nil, nil, fmt.Errorf("bad ed25519 key length: %d", l)
-	}
-
-	return priv, pub, nil
+func NewJWTService(jwtPrivPEM string, jwtPubPEM string, issuer string) JWTService {
+    priv, pub, err := ParseEd25519Keys([]byte(jwtPrivPEM), []byte(jwtPubPEM))
+    if err != nil {
+        panic(fmt.Sprintf("failed to parse Ed25519 keys: %v", err))
+    }
+    return &jwtService{
+        privateKey: priv,
+        publicKey:  pub,
+        issuer:     issuer,
+        audience:   defaultAudience,
+    }
 }
 
 func (j *jwtService) GenerateAccessToken(user *domain.User) (string, error) {
