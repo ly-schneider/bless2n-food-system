@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 
 // Backend base the server can reach; fall back to localhost in dev
-const BACKEND_BASE =
-  process.env.BACKEND_INTERNAL_URL || process.env.INTERNAL_API_BASE_URL || "http://backend:8080"
+const BACKEND_BASE = process.env.BACKEND_INTERNAL_URL || process.env.INTERNAL_API_BASE_URL || "http://backend:8080"
 
 export async function POST(req: NextRequest) {
   try {

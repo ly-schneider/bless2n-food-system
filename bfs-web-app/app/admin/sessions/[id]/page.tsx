@@ -59,14 +59,11 @@ export default function AdminSessionDetailPage() {
     try {
       setRevoking(true)
       const csrf = getCSRFCookie()
-      const res = await fetchAuth(
-        `${API_BASE_URL}/v1/admin/users/${encodeURIComponent(userId)}/sessions/revoke`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
-          body: JSON.stringify({ familyId }),
-        }
-      )
+      const res = await fetchAuth(`${API_BASE_URL}/v1/admin/users/${encodeURIComponent(userId)}/sessions/revoke`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
+        body: JSON.stringify({ familyId }),
+      })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       router.push("/admin/sessions")
     } catch (e: unknown) {

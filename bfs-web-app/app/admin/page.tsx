@@ -59,9 +59,9 @@ export default function AdminDashboard() {
 
         const [ordersRes, productsRes] = await Promise.all([
           fetchAuth(
-            `${API_BASE_URL}/v1/admin/orders?date_from=${encodeURIComponent(start.toISOString())}&date_to=${encodeURIComponent(
-              end.toISOString()
-            )}&limit=10000`
+            `${API_BASE_URL}/v1/admin/orders?date_from=${encodeURIComponent(
+              start.toISOString()
+            )}&date_to=${encodeURIComponent(end.toISOString())}&limit=10000`
           ),
           fetchAuth(`${API_BASE_URL}/v1/products?limit=200`),
         ])

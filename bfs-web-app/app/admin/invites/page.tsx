@@ -58,13 +58,10 @@ export default function AdminInvitesPage() {
   async function deleteInvite(id: string) {
     try {
       const csrf = getCSRFCookie()
-      const res = await fetchAuth(
-        `${API_BASE_URL}/v1/admin/invites/${encodeURIComponent(id)}`,
-        {
-          method: "DELETE",
-          headers: { "X-CSRF": csrf || "" },
-        }
-      )
+      const res = await fetchAuth(`${API_BASE_URL}/v1/admin/invites/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: { "X-CSRF": csrf || "" },
+      })
       if (!res.ok && res.status !== 204) throw new Error(await readErrorMessage(res))
       await reload()
     } catch (e: unknown) {

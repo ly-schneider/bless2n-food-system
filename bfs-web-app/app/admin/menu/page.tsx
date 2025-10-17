@@ -487,27 +487,21 @@ async function saveChanges(fetchAuth: ReturnType<typeof useAuthorizedFetch>, ite
 
   // Price
   if (original && original.priceCents !== p.priceCents) {
-    const res = await fetchAuth(
-      `${API_BASE_URL}/v1/admin/products/${encodeURIComponent(p.id)}/price`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
-        body: JSON.stringify({ priceCents: p.priceCents }),
-      }
-    )
+    const res = await fetchAuth(`${API_BASE_URL}/v1/admin/products/${encodeURIComponent(p.id)}/price`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
+      body: JSON.stringify({ priceCents: p.priceCents }),
+    })
     if (!res.ok) throw new Error("Preis aktualisieren fehlgeschlagen")
   }
 
   // Category
   if (original && (original.category?.id ?? null) !== (p.categoryId ?? null)) {
-    const res = await fetchAuth(
-      `${API_BASE_URL}/v1/admin/products/${encodeURIComponent(p.id)}/category`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
-        body: JSON.stringify({ categoryId: p.categoryId }),
-      }
-    )
+    const res = await fetchAuth(`${API_BASE_URL}/v1/admin/products/${encodeURIComponent(p.id)}/category`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
+      body: JSON.stringify({ categoryId: p.categoryId }),
+    })
     if (!res.ok) throw new Error("Kategorie aktualisieren fehlgeschlagen")
   }
 
@@ -516,14 +510,11 @@ async function saveChanges(fetchAuth: ReturnType<typeof useAuthorizedFetch>, ite
   if (currentStock != null && p.stock != null && currentStock !== p.stock) {
     const delta = p.stock - currentStock
     if (delta !== 0) {
-      const res = await fetchAuth(
-        `${API_BASE_URL}/v1/admin/products/${encodeURIComponent(p.id)}/inventory-adjust`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
-          body: JSON.stringify({ delta, reason: "manual_adjust" }),
-        }
-      )
+      const res = await fetchAuth(`${API_BASE_URL}/v1/admin/products/${encodeURIComponent(p.id)}/inventory-adjust`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
+        body: JSON.stringify({ delta, reason: "manual_adjust" }),
+      })
       if (!res.ok) throw new Error("Bestand aktualisieren fehlgeschlagen")
     }
   }

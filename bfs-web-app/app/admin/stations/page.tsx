@@ -64,10 +64,7 @@ export default function AdminStationRequestsPage() {
 
   async function act(id: string, action: "approve" | "reject") {
     try {
-      const res = await fetchAuth(
-        `${API_BASE_URL}/v1/admin/stations/requests/${id}/${action}`,
-        { method: "POST" }
-      )
+      const res = await fetchAuth(`${API_BASE_URL}/v1/admin/stations/requests/${id}/${action}`, { method: "POST" })
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { detail?: string; message?: string }
         throw new Error(j.detail || j.message || `Error ${res.status}`)

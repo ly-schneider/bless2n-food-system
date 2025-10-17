@@ -1,15 +1,13 @@
-import { NextRequest, NextResponse } from "next/server"
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { cookies, headers } from "next/headers"
+import { NextResponse } from "next/server"
 
 // Backend base the server can reach; resolved at runtime in container
 function backendBase(): string {
-  return (
-    process.env.BACKEND_INTERNAL_URL ||
-    process.env.INTERNAL_API_BASE_URL ||
-    "http://backend:8080"
-  )
+  return process.env.BACKEND_INTERNAL_URL || process.env.INTERNAL_API_BASE_URL || "http://backend:8080"
 }
 
-async function handle(req: NextRequest, params: { path: string[] }) {
+async function handle(req: Request, params: { path: string[] }) {
   const { path } = params
   const target = new URL(path.join("/"), backendBase())
 
@@ -23,7 +21,11 @@ async function handle(req: NextRequest, params: { path: string[] }) {
 
   // CSRF: validate header matches cookie; then forward header + only csrf cookie
   const headerToken = inHeaders.get("x-csrf") || inHeaders.get("X-CSRF") || undefined
-  const cookieToken = req.cookies.get((req.nextUrl.protocol === "https:" ? "__Host-" : "") + "csrf")?.value
+  const hdrs = await headers()
+  const proto = (hdrs.get("x-forwarded-proto") || "").toLowerCase()
+  const rtCookieName = (proto === "https" ? "__Host-" : "") + "csrf"
+  const ck = await cookies()
+  const cookieToken = ck.get(rtCookieName)?.value
   if ((method !== "GET" && method !== "HEAD" && method !== "OPTIONS") as boolean) {
     if (!headerToken || !cookieToken || headerToken !== cookieToken) {
       return NextResponse.json({ error: true, message: "Invalid CSRF token" }, { status: 403 })
@@ -57,24 +59,24 @@ async function handle(req: NextRequest, params: { path: string[] }) {
 
 export const dynamic = "force-dynamic"
 
-export async function GET(req: NextRequest, ctx: { params: { path: string[] } }) {
+export async function GET(req: Request, ctx: any) {
   return handle(req, ctx.params)
 }
-export async function POST(req: NextRequest, ctx: { params: { path: string[] } }) {
+export async function POST(req: Request, ctx: any) {
   return handle(req, ctx.params)
 }
-export async function PUT(req: NextRequest, ctx: { params: { path: string[] } }) {
+export async function PUT(req: Request, ctx: any) {
   return handle(req, ctx.params)
 }
-export async function PATCH(req: NextRequest, ctx: { params: { path: string[] } }) {
+export async function PATCH(req: Request, ctx: any) {
   return handle(req, ctx.params)
 }
-export async function DELETE(req: NextRequest, ctx: { params: { path: string[] } }) {
+export async function DELETE(req: Request, ctx: any) {
   return handle(req, ctx.params)
 }
-export async function OPTIONS(req: NextRequest, ctx: { params: { path: string[] } }) {
+export async function OPTIONS(req: Request, ctx: any) {
   return handle(req, ctx.params)
 }
-export async function HEAD(req: NextRequest, ctx: { params: { path: string[] } }) {
+export async function HEAD(req: Request, ctx: any) {
   return handle(req, ctx.params)
 }

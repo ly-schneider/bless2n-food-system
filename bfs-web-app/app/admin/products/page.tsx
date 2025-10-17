@@ -88,39 +88,30 @@ export default function AdminProductsPage() {
 
   async function updatePrice(id: string, priceCents: number) {
     const csrf = getCSRFCookie()
-    const res = await fetchAuth(
-      `${API_BASE_URL}/v1/admin/products/${encodeURIComponent(id)}/price`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
-        body: JSON.stringify({ priceCents }),
-      }
-    )
+    const res = await fetchAuth(`${API_BASE_URL}/v1/admin/products/${encodeURIComponent(id)}/price`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
+      body: JSON.stringify({ priceCents }),
+    })
     if (!res.ok) throw new Error(await readErrorMessage(res))
   }
   async function moveCategory(id: string, categoryId: string) {
     const csrf = getCSRFCookie()
-    const res = await fetchAuth(
-      `${API_BASE_URL}/v1/admin/products/${encodeURIComponent(id)}/category`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
-        body: JSON.stringify({ categoryId }),
-      }
-    )
+    const res = await fetchAuth(`${API_BASE_URL}/v1/admin/products/${encodeURIComponent(id)}/category`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
+      body: JSON.stringify({ categoryId }),
+    })
     if (!res.ok) throw new Error("Kategorie verschieben fehlgeschlagen")
   }
 
   async function setActive(id: string, isActive: boolean) {
     const csrf = getCSRFCookie()
-    const res = await fetchAuth(
-      `${API_BASE_URL}/v1/admin/products/${encodeURIComponent(id)}/active`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
-        body: JSON.stringify({ isActive }),
-      }
-    )
+    const res = await fetchAuth(`${API_BASE_URL}/v1/admin/products/${encodeURIComponent(id)}/active`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
+      body: JSON.stringify({ isActive }),
+    })
     if (!res.ok) throw new Error(await readErrorMessage(res))
   }
 
@@ -135,14 +126,11 @@ export default function AdminProductsPage() {
 
   async function adjustInventory(id: string, delta: number) {
     const csrf = getCSRFCookie()
-    const res = await fetchAuth(
-      `${API_BASE_URL}/v1/admin/products/${encodeURIComponent(id)}/inventory-adjust`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
-        body: JSON.stringify({ delta, reason: "manual_adjust" }),
-      }
-    )
+    const res = await fetchAuth(`${API_BASE_URL}/v1/admin/products/${encodeURIComponent(id)}/inventory-adjust`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
+      body: JSON.stringify({ delta, reason: "manual_adjust" }),
+    })
     if (!res.ok) throw new Error(await readErrorMessage(res))
   }
 

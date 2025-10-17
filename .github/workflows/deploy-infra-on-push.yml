@@ -5,6 +5,7 @@ on:
   workflow_run:
     workflows: [ "Build & Push Images" ]
     types: [ completed ]
+    conclusion: [ success ]
   # Also run when this workflow file changes, so updates take effect immediately
   push:
     branches: [ staging, production ]
