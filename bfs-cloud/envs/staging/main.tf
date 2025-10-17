@@ -43,7 +43,8 @@ module "bfs_infrastructure" {
 
     apps = {
       frontend-staging = {
-        port             = 80
+        # Next.js image listens on port 3000 internally; match target_port.
+        port             = 3000
         image            = local.frontend_image
         external_ingress = true
         cpu              = 0.25
@@ -86,6 +87,8 @@ module "bfs_infrastructure" {
         port             = 8080
         image            = local.backend_image
         external_ingress = false
+        # Backend exposes /healthz (see router). Use that for probes.
+        health_check_path = "/healthz"
         cpu              = 0.5
         memory           = "1.0Gi"
         min_replicas     = 0

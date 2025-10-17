@@ -190,6 +190,8 @@ module "diag" {
   name                       = "${var.name}-diag"
   log_analytics_workspace_id = var.log_analytics_workspace_id
   categories                 = []
-  category_groups            = ["allLogs"]
+  # Azure Container Apps do not support category_group "allLogs".
+  # Keep logs empty for now and enable metrics only to avoid API errors.
+  category_groups            = []
   enable_metrics             = true
 }

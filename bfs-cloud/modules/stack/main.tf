@@ -191,7 +191,9 @@ module "env_diag" {
   name                       = "${var.config.env_name}-diag"
   target_resource_id         = module.aca_env.id
   log_analytics_workspace_id = module.obs.log_analytics_id
-  category_groups            = ["allLogs"]
+  # Container Apps Environment does not support category_group "allLogs".
+  # Use metrics only for now to avoid API errors.
+  category_groups            = []
   enable_metrics             = true
 }
 
@@ -220,6 +222,7 @@ module "apps" {
   environment_id             = module.aca_env.id
   image                      = each.value.image
   target_port                = each.value.port
+  health_check_path          = lookup(each.value, "health_check_path", "/health")
   external_ingress           = try(each.value.external_ingress, true)
   cpu                        = each.value.cpu
   memory                     = each.value.memory
