@@ -5,9 +5,11 @@ const PUBLIC_API_BASE = "/api"
 const INTERNAL_API_BASE = process.env.BACKEND_INTERNAL_URL || process.env.INTERNAL_API_BASE_URL
 
 function resolveApiBase(): string {
-  // On the server (SSR/RSC), prefer the internal URL on the Docker network
+  // On the server (SSR/RSC), prefer the internal URL on the Docker network.
+  // Never fall back to a relative path here because Node's fetch requires
+  // absolute URLs and build-time prerender would fail to parse.
   if (typeof window === "undefined") {
-    return INTERNAL_API_BASE || PUBLIC_API_BASE || "http://backend:8080"
+    return INTERNAL_API_BASE || "http://backend:8080"
   }
   // In the browser, use the public/base URL reachable from the user's machine
   return PUBLIC_API_BASE || "/api"

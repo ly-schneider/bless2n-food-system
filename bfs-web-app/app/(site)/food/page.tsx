@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   description: "Explore our delicious menu of fresh, carefully prepared meals.",
 }
 
+export const dynamic = "force-dynamic"
+
 export default async function HomePage() {
   let products: ListResponse<ProductDTO>
   try {
