@@ -19,9 +19,11 @@ jobs:
   preflight:
     if: >
       ${{
-        github.event_name == 'workflow_run' &&
-        github.event.workflow_run.conclusion == 'success' &&
-        (github.event.workflow_run.head_branch == 'staging' || github.event.workflow_run.head_branch == 'production')
+        (github.event_name == 'workflow_run' &&
+         github.event.workflow_run.conclusion == 'success' &&
+         (github.event.workflow_run.head_branch == 'staging' || github.event.workflow_run.head_branch == 'production')) ||
+        (github.event_name == 'push' &&
+         (github.ref_name == 'staging' || github.ref_name == 'production'))
       }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -33,19 +35,17 @@ jobs:
         id: envdir
         shell: bash
         run: |
-          case "${{ github.event.workflow_run.head_branch }}" in
+          # Use workflow_run head_branch if available, otherwise fall back to ref_name
+          BRANCH="${{ github.event.workflow_run.head_branch || github.ref_name }}"
+          case "$BRANCH" in
             staging)   echo "dir=bfs-cloud/envs/staging"   >> $GITHUB_OUTPUT ;;
             production) echo "dir=bfs-cloud/envs/production" >> $GITHUB_OUTPUT ;;
-            *) echo "Unsupported env: ${{ github.event.workflow_run.head_branch }}" ; exit 1 ;;
+            *) echo "Unsupported env: $BRANCH (workflow_run.head_branch='${{ github.event.workflow_run.head_branch }}', ref_name='${{ github.ref_name }}')" ; exit 1 ;;
           esac
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with: { terraform_version: 1.8.5 }
-
-      - name: terraform fmt (check)
-        working-directory: ${{ steps.envdir.outputs.dir }}
-        run: terraform fmt -check -recursive
 
       - name: terraform validate (no backend)
         working-directory: ${{ steps.envdir.outputs.dir }}
@@ -60,10 +60,10 @@ jobs:
     uses: ./.github/workflows/reusable-tfc-apply.yml
     secrets: inherit
     with:
-      target_branch: ${{ github.event.workflow_run.head_branch }}
-      image_tag: ${{ github.event.workflow_run.head_branch }}
-      revision_suffix: ${{ github.event.workflow_run.head_sha }}
-      wait_for_completion: ${{ github.event.workflow_run.head_branch == 'staging' }}
+      target_branch: ${{ github.event.workflow_run.head_branch || github.ref_name }}
+      image_tag: ${{ github.event.workflow_run.head_branch || github.ref_name }}
+      revision_suffix: ${{ github.event.workflow_run.head_sha || github.sha }}
+      wait_for_completion: ${{ (github.event.workflow_run.head_branch || github.ref_name) == 'staging' }}
 
   on-self-change:
     if: ${{ github.event_name == 'push' }}

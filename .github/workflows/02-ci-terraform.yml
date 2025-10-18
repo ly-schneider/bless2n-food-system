@@ -24,6 +24,7 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with: { terraform_version: 1.8.5 }
       - name: Terraform fmt (check, recursive)
+        working-directory: bfs-cloud
         run: terraform fmt -check -recursive
 
   discover:

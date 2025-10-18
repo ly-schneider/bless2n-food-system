@@ -39,15 +39,12 @@ jobs:
           case "${{ inputs.target_branch }}" in
             staging)   echo "dir=bfs-cloud/envs/staging"   >> $GITHUB_OUTPUT ;;
             production) echo "dir=bfs-cloud/envs/production" >> $GITHUB_OUTPUT ;;
+            *) echo "Unsupported target branch: ${{ inputs.target_branch }}" ; exit 1 ;;
           esac
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with: { terraform_version: 1.8.5 }
-
-      - name: terraform fmt (check)
-        working-directory: ${{ steps.envdir.outputs.dir }}
-        run: terraform fmt -check -recursive
 
       - name: terraform validate (no backend)
         working-directory: ${{ steps.envdir.outputs.dir }}
