@@ -37,15 +37,15 @@ output "cosmos_connection_string" {
 
 output "app_urls" {
   description = "URLs of the deployed applications (latest revision FQDNs)"
-  value = merge(
+  value = jsonencode(merge(
     { for k, m in module.apps_backend : k => m.url },
     { for k, m in module.apps_frontend : k => m.url }
-  )
+  ))
 }
 
 output "backend_fqdns" {
   description = "Stable FQDNs (ingress.fqdn) for backend apps"
-  value       = { for k, m in module.apps_backend : k => m.fqdn }
+  value       = jsonencode({ for k, m in module.apps_backend : k => m.fqdn })
 }
 
 output "key_vault_id" {
@@ -55,5 +55,5 @@ output "key_vault_id" {
 
 output "key_vault_secret_ids" {
   description = "Map of Key Vault secret names to their versionless IDs"
-  value       = var.config.enable_security_features ? module.security[0].key_vault_secret_ids : {}
+  value       = jsonencode(var.config.enable_security_features ? module.security[0].key_vault_secret_ids : {})
 }

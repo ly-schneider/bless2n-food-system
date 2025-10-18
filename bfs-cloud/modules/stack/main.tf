@@ -214,7 +214,7 @@ module "cosmos" {
   subnet_id                  = module.net.subnet_id
   private_endpoint_subnet_id = module.net.private_endpoints_subnet_id
   vnet_id                    = module.net.vnet_id
-  allowed_ip_ranges          = []
+  allowed_ip_ranges          = ["0.0.0.0/0"]
   log_analytics_workspace_id = module.obs.log_analytics_id
   tags                       = var.tags
 }

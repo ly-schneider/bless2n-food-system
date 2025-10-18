@@ -80,7 +80,7 @@ func (s *productService) ListProducts(
 		return nil, fmt.Errorf("failed to list products: %w", err)
 	}
 	if len(products) == 0 {
-		return &domain.ListResponse[domain.ProductDTO]{Items: nil, Count: 0}, nil
+		return &domain.ListResponse[domain.ProductDTO]{Items: []domain.ProductDTO{}, Count: 0}, nil
 	}
 
 	baseCatIDs := make(map[primitive.ObjectID]struct{}, len(products))
