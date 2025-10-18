@@ -127,7 +127,8 @@ The deployment workflow is split into three phases to ensure proper dependency o
 **Terraform Variables per Environment:**
 - `enable_acr` (bool): when true, creates ACR and grants `AcrPull` to Container Apps identities
 - `acr_name` (string): ACR name; images resolve to `<acr_name>.azurecr.io/<repo>:<tag>`
-- `image_tag` (string): branch tag to deploy (e.g., `staging`, `production`). Images referenced in ACA are tag-based, not SHA-based.
+- `image_tag` (string): branch tag to deploy (e.g., `staging`, `production`).
+- `frontend_digest` / `backend_digest` (string, optional): when provided, deployment references images by immutable digest (`<repo>@sha256:...`) instead of mutable tags. Prefer digest-first in CI to guarantee exact images roll out (Buildx outputs digests; Actions exposes them as outputs).
 - `revision_suffix` (string, optional): unique value to force a new Container Apps revision (e.g., commit SHA). Keeps image references tag-based while ensuring rollout on each build.
 
 **For Development with GHCR:**
@@ -145,7 +146,7 @@ If `enable_acr` is false, the env can use GHCR via:
 ### Providing App Secrets and Registries
 
 Provide secrets and registries via env variables or tfvars at the env root:
-- Use `TF_VAR_registry_*`, `TF_VAR_image_tag` (branch), and optionally `TF_VAR_revision_suffix` (commit SHA) in CI.
+- Use `TF_VAR_registry_*`, `TF_VAR_image_tag` (branch), and optionally `TF_VAR_frontend_digest` / `TF_VAR_backend_digest` (immutable digests) and `TF_VAR_revision_suffix` (commit SHA) in CI.
 - Optionally pass per-app overrides via `TF_VAR_app_secrets` and `TF_VAR_app_registries`.
   - Example: `TF_VAR_app_secrets='{"frontend-staging":{"API_KEY":"..."}}'`
 These propagate to Azure Container Apps as `secret {}` and `registry {}` blocks.

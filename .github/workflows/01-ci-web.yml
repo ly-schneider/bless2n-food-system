@@ -3,10 +3,10 @@ name: CI • Web App (Next.js)
 on:
   pull_request:
     branches: [staging, production]
-    paths: ['bfs-web-app/**', '.github/workflows/ci-web-app.yml']
+    paths: ['bfs-web-app/**', '.github/workflows/01-ci-web.yml']
   push:
     branches: [staging, production]
-    paths: ['bfs-web-app/**', '.github/workflows/ci-web-app.yml']
+    paths: ['bfs-web-app/**', '.github/workflows/01-ci-web.yml']
 
 permissions:
   contents: read
@@ -20,8 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ github.base_ref || github.ref_name }}
     defaults:
-      run:
-        working-directory: bfs-web-app
+      run: { working-directory: bfs-web-app }
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -53,7 +52,5 @@ jobs:
         run: pnpm test -- --run
       - name: Build
         env:
-          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-          NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
           NEXT_TELEMETRY_DISABLED: '1'
         run: pnpm build

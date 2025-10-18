@@ -1,4 +1,4 @@
-name: Deploy Infra via TFC (on build)
+name: Deploy • Auto (after Build)
 
 on:
   workflow_run:
@@ -6,7 +6,7 @@ on:
     types: [completed]
   push:
     branches: [staging, production]
-    paths: ['.github/workflows/deploy-infra-on-push.yml']
+    paths: ['.github/workflows/20-deploy-auto.yml']
 
 permissions:
   contents: read

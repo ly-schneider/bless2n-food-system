@@ -6,7 +6,7 @@ on:
     paths:
       - 'bfs-backend/**'
       - 'bfs-web-app/**'
-      - '.github/workflows/build-push.yml'
+      - '.github/workflows/10-build-push-images.yml'
 
 permissions:
   contents: read
@@ -20,15 +20,13 @@ concurrency:
 
 jobs:
   changes:
-    name: Detect changes
     runs-on: ubuntu-latest
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       web: ${{ steps.filter.outputs.web }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+        with: { fetch-depth: 0 }
       - id: filter
         uses: dorny/paths-filter@v3
         with:
@@ -39,11 +37,11 @@ jobs:
               - 'bfs-web-app/**'
 
   build:
-    name: Build & Push (matrix)
     needs: changes
     if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.web == 'true' }}
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -61,7 +59,6 @@ jobs:
               BACKEND_INTERNAL_URL=${{ vars.BACKEND_INTERNAL_URL }}
               NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
             changed: ${{ needs.changes.outputs.web }}
-    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -73,11 +70,8 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Setup QEMU (for optional multi-arch)
-        uses: docker/setup-qemu-action@v3
-
-      - name: Setup Buildx
-        uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
 
       - name: Login GHCR
         uses: docker/login-action@v3
@@ -86,14 +80,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: ACR Login (via Azure session)
+      - name: ACR Login
         run: az acr login -n "${{ vars.ACR_NAME }}"
 
       - name: Resolve registries
         id: reg
         run: echo "acr=${{ vars.ACR_NAME }}.azurecr.io" >> $GITHUB_OUTPUT
 
-      - name: Docker metadata (tags & labels)
+      - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:

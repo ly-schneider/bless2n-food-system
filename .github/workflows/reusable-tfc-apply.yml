@@ -3,22 +3,12 @@ name: Reusable • Terraform Cloud Apply
 on:
   workflow_call:
     inputs:
-      target_branch:
-        type: string
-        required: true
-      image_tag:
-        type: string
-        required: true
-      revision_suffix:
-        type: string
-        required: false
-      wait_for_completion:
-        type: boolean
-        required: false
-        default: true
+      target_branch: { type: string, required: true }
+      image_tag:     { type: string, required: true }
+      revision_suffix: { type: string, required: false }
+      wait_for_completion: { type: boolean, required: false, default: true }
     secrets:
-      TF_API_TOKEN:
-        required: true
+      TF_API_TOKEN: { required: true }
 
 permissions:
   contents: read
@@ -33,34 +23,32 @@ jobs:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
 
-      - name: Select TFC Workspace
-        id: ws
+      - id: ws
         shell: bash
         run: |
           case "${{ inputs.target_branch }}" in
             staging) echo "workspace=bfs-staging" >> $GITHUB_OUTPUT ;;
             production) echo "workspace=bfs-production" >> $GITHUB_OUTPUT ;;
-            *) echo "Unsupported env: ${{ inputs.target_branch }}"; exit 1 ;;
+            *) echo "Unsupported env: ${{ inputs.target_branch }}" ; exit 1 ;;
           esac
 
-      # Securely pull artifacts from the triggering build workflow run
-      # Use dawidd6/action-download-artifact to fetch cross-workflow artifacts
-      - name: Download image digests from Build workflow
+      - name: Download image digests from triggering Build run
         if: ${{ github.event_name == 'workflow_run' }}
-        uses: dawidd6/action-download-artifact@v8
+        uses: dawidd6/action-download-artifact@v11
         with:
-          workflow: build-push.yml
+          workflow: 10-build-push-images.yml
           run_id: ${{ github.event.workflow_run.id }}
           name: image-digests
           path: ./digests
+          if_no_artifact_found: warn
 
-      - name: Read digests (if present)
+      - name: Read digests
         id: dig
         shell: bash
         run: |
           BACKEND_DIGEST=$(grep -h '^backend=' ./digests/* 2>/dev/null | tail -n1 | cut -d= -f2 || true)
           FRONTEND_DIGEST=$(grep -h '^frontend=' ./digests/* 2>/dev/null | tail -n1 | cut -d= -f2 || true)
-          echo "backend_digest=$BACKEND_DIGEST" >> $GITHUB_OUTPUT
+          echo "backend_digest=$BACKEND_DIGEST"   >> $GITHUB_OUTPUT
           echo "frontend_digest=$FRONTEND_DIGEST" >> $GITHUB_OUTPUT
 
       - name: Terraform Cloud apply

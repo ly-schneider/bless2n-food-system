@@ -1,17 +1,17 @@
-name: Deploy Infra via TFC (cloud-only changes)
+name: Deploy • Cloud-only (TFC)
 
 on:
   push:
     branches: [staging, production]
     paths:
       - 'bfs-cloud/**'
-      - '.github/workflows/deploy-infra-cloud-changes.yml'
+      - '.github/workflows/21-deploy-cloud-only.yml'
 
 permissions:
   contents: read
 
 concurrency:
-  group: deploy-infra-cloud-${{ github.ref }}
+  group: deploy-cloud-only-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -36,12 +36,10 @@ jobs:
               - 'bfs-cloud/**'
 
   validate:
-    name: Terraform validate (target env)
-    runs-on: ubuntu-latest
     if: ${{ needs.changes.outputs.cloud == 'true' }}
     needs: changes
-    env:
-      TF_VERSION: 1.8.5
+    runs-on: ubuntu-latest
+    env: { TF_VERSION: 1.8.5 }
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -64,8 +62,7 @@ jobs:
         run: terraform validate
 
   deploy:
-    name: Terraform Cloud apply (cloud-only)
-    runs-on: ubuntu-latest
+    name: TFC apply (cloud-only)
     needs: [changes, validate]
     if: >
       ${{

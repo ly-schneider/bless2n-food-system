@@ -1,16 +1,16 @@
-name: CI • Terraform Validate
+name: CI • Terraform (fmt/validate/plan)
 
 on:
   pull_request:
     branches: [staging, production]
     paths:
       - 'bfs-cloud/**'
-      - '.github/workflows/terraform-validate.yml'
+      - '.github/workflows/02-ci-terraform.yml'
   push:
     branches: [staging, production]
     paths:
       - 'bfs-cloud/**'
-      - '.github/workflows/terraform-validate.yml'
+      - '.github/workflows/02-ci-terraform.yml'
 
 permissions:
   contents: read
@@ -72,16 +72,28 @@ jobs:
         working-directory: ${{ matrix.dir }}
         run: terraform validate
 
-  gate:
-    needs: [fmt, validate]
+  plan:
+    name: Speculative Plan (TFC)
+    if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
-    if: ${{ always() }}
+    env: 
+      TF_ORG_NAME: ${{ vars.TF_ORG_NAME }}
     steps:
-      - name: Summarize results
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - id: ws
         run: |
-          echo "Terraform fmt: ${{ needs.fmt.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "Terraform validate: ${{ needs.validate.result }}" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ needs.fmt.result }}" != "success" ] || [ "${{ needs.validate.result }}" != "success" ]; then
-            echo "One or more Terraform checks failed." >&2
-            exit 1
-          fi
+          case "${{ github.base_ref }}" in
+            staging) echo "workspace=bfs-staging" >> $GITHUB_OUTPUT ;;
+            production) echo "workspace=bfs-production" >> $GITHUB_OUTPUT ;;
+            *) echo "Unsupported base ref: ${{ github.base_ref }}" ; exit 1 ;;
+          esac
+      - name: Terraform Cloud Speculative Plan
+        uses: kvrhdn/tfe-run@v1
+        with:
+          token: ${{ secrets.TF_API_TOKEN }}
+          organization: ${{ env.TF_ORG_NAME }}
+          workspace: ${{ steps.ws.outputs.workspace }}
+          message: "Speculative plan for PR #${{ github.event.pull_request.number }}"
+          plan-only: true
+          wait-for-completion: true

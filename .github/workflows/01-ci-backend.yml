@@ -3,10 +3,10 @@ name: CI • Backend (Go)
 on:
   pull_request:
     branches: [staging, production]
-    paths: ['bfs-backend/**', '.github/workflows/ci-backend.yml']
+    paths: ['bfs-backend/**', '.github/workflows/01-ci-backend.yml']
   push:
     branches: [staging, production]
-    paths: ['bfs-backend/**', '.github/workflows/ci-backend.yml']
+    paths: ['bfs-backend/**', '.github/workflows/01-ci-backend.yml']
 
 permissions:
   contents: read
@@ -19,8 +19,7 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     defaults:
-      run:
-        working-directory: bfs-backend
+      run: { working-directory: bfs-backend }
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
