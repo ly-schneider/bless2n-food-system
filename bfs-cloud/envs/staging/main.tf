@@ -68,10 +68,7 @@ module "bfs_infrastructure" {
         }
         key_vault_secrets = merge(
           lookup(var.app_secrets, "frontend-staging", {}),
-          {
-            NEXT_PUBLIC_API_BASE_URL = "backend-url"
-            BACKEND_INTERNAL_URL     = "backend-url"
-          }
+          {}
         )
         http_scale_rule = {
           name                = "frontend-http-scale"
@@ -119,17 +116,7 @@ module "bfs_infrastructure" {
         key_vault_secrets = merge(
           lookup(var.app_secrets, "backend-staging", {}),
           {
-            MONGO_URI                = "mongo-connection-string"
-            JWT_PRIV_PEM             = "jwt-private-key"
-            JWT_PUB_PEM              = "jwt-public-key"
-            GOOGLE_CLIENT_SECRET     = "google-client-secret"
-            STRIPE_SECRET_KEY        = "stripe-secret-key"
-            STRIPE_WEBHOOK_SECRET    = "stripe-webhook-secret"
-            SMTP_PASSWORD            = "smtp-password"
-            STATION_QR_SECRET        = "station-qr-secret"
-            SECURITY_TRUSTED_ORIGINS = "frontend-url"
-            JWT_ISSUER               = "frontend-url"
-            PUBLIC_BASE_URL          = "frontend-url"
+            MONGO_URI = "mongo-connection-string"
           }
         )
         http_scale_rule = {

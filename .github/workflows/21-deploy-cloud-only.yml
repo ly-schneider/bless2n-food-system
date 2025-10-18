@@ -21,6 +21,7 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       web: ${{ steps.filter.outputs.web }}
       cloud: ${{ steps.filter.outputs.cloud }}
+      workflows: ${{ steps.filter.outputs.workflows }}
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -34,9 +35,11 @@ jobs:
               - 'bfs-web-app/**'
             cloud:
               - 'bfs-cloud/**'
+            workflows:
+              - '.github/workflows/**'
 
   validate:
-    if: ${{ needs.changes.outputs.cloud == 'true' }}
+    if: ${{ needs.changes.outputs.cloud == 'true' && needs.changes.outputs.workflows != 'true' }}
     needs: changes
     runs-on: ubuntu-latest
     env: { TF_VERSION: 1.8.5 }
@@ -68,7 +71,8 @@ jobs:
       ${{
         needs.changes.outputs.cloud == 'true' &&
         needs.changes.outputs.backend != 'true' &&
-        needs.changes.outputs.web != 'true'
+        needs.changes.outputs.web != 'true' &&
+        needs.changes.outputs.workflows != 'true'
       }}
     uses: ./.github/workflows/reusable-tfc-apply.yml
     secrets: inherit
