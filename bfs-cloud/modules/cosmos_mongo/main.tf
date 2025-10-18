@@ -37,7 +37,7 @@ resource "azurerm_cosmosdb_account" "this" {
   public_network_access_enabled     = true
   is_virtual_network_filter_enabled = false
 
-  ip_range_filter = var.allowed_ip_ranges
+  ip_range_filter = length(var.allowed_ip_ranges) > 0 ? join(",", var.allowed_ip_ranges) : ""
 
   local_authentication_disabled = var.disable_local_auth
 
