@@ -104,10 +104,10 @@ module "bfs_infrastructure" {
           SECURITY_ENABLE_HSTS = "true"
           SECURITY_ENABLE_CSP  = "true"
 
-          SMTP_HOST       = "your-smtp-host"
+          SMTP_HOST       = "mail.infomaniak.com"
           SMTP_PORT       = "587"
-          SMTP_USERNAME   = "staging@yourdomain.com"
-          SMTP_FROM       = "noreply@yourdomain.com"
+          SMTP_USERNAME   = "levyn.schneider@rentro.ch"
+          SMTP_FROM       = "BlessThun Food <levyn.schneider@rentro.ch>"
           SMTP_TLS_POLICY = "require"
 
           GOOGLE_CLIENT_ID = "728225904671-h9cp0badsuvamscrn6k2lnkksiinld99.apps.googleusercontent.com"
