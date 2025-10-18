@@ -246,12 +246,10 @@ module "apps_backend" {
   key_vault_secret_refs = merge(
     try(each.value.key_vault_secret_refs, {}),
     var.config.enable_security_features && length(module.security) > 0 ? {
-      for s in distinct(values(try(each.value.key_vault_secrets, {}))) : s => module.security[0].key_vault_secret_ids[s]
-      if contains(keys(module.security[0].key_vault_secret_ids), s)
-    } : {},
-    var.config.enable_security_features && length(module.security) > 0 ? {
-      for s in distinct(values(try(each.value.key_vault_secrets, {}))) : s => format("%s/secrets/%s", module.security[0].key_vault_id, s)
-      if !contains(keys(module.security[0].key_vault_secret_ids), s)
+      for env_var, secret_name in try(each.value.key_vault_secrets, {}) : 
+        lower(replace(env_var, "_", "-")) => contains(keys(module.security[0].key_vault_secret_ids), secret_name) ? 
+          module.security[0].key_vault_secret_ids[secret_name] : 
+          format("%s/secrets/%s", module.security[0].key_vault_id, secret_name)
     } : {}
   )
   registries = concat(
@@ -302,12 +300,10 @@ module "apps_frontend" {
   key_vault_secret_refs = merge(
     try(each.value.key_vault_secret_refs, {}),
     var.config.enable_security_features && length(module.security) > 0 ? {
-      for s in distinct(values(try(each.value.key_vault_secrets, {}))) : s => module.security[0].key_vault_secret_ids[s]
-      if contains(keys(module.security[0].key_vault_secret_ids), s)
-    } : {},
-    var.config.enable_security_features && length(module.security) > 0 ? {
-      for s in distinct(values(try(each.value.key_vault_secrets, {}))) : s => format("%s/secrets/%s", module.security[0].key_vault_id, s)
-      if !contains(keys(module.security[0].key_vault_secret_ids), s)
+      for env_var, secret_name in try(each.value.key_vault_secrets, {}) : 
+        lower(replace(env_var, "_", "-")) => contains(keys(module.security[0].key_vault_secret_ids), secret_name) ? 
+          module.security[0].key_vault_secret_ids[secret_name] : 
+          format("%s/secrets/%s", module.security[0].key_vault_id, secret_name)
     } : {}
   )
   registries = concat(
