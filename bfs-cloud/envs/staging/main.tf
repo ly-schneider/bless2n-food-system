@@ -113,16 +113,18 @@ module "bfs_infrastructure" {
 
           STATION_QR_MAX_AGE_SECONDS = "86400"
         }
-        key_vault_secrets = lookup(var.app_secrets, "backend-staging", {})
-        key_vault_secret_refs = {
-          MONGO_URI            = "${module.bfs_infrastructure.key_vault_id}/secrets/mongo-connection-string"
-          JWT_PRIV_PEM         = "${module.bfs_infrastructure.key_vault_id}/secrets/jwt-private-key"
-          JWT_PUB_PEM          = "${module.bfs_infrastructure.key_vault_id}/secrets/jwt-public-key"
-          STATION_QR_SECRET    = "${module.bfs_infrastructure.key_vault_id}/secrets/station-qr-secret"
-          GOOGLE_CLIENT_SECRET = "${module.bfs_infrastructure.key_vault_id}/secrets/google-client-secret"
-          STRIPE_SECRET_KEY    = "${module.bfs_infrastructure.key_vault_id}/secrets/stripe-secret-key"
-          STRIPE_WEBHOOK_SECRET = "${module.bfs_infrastructure.key_vault_id}/secrets/stripe-webhook-secret"
-        }
+        key_vault_secrets = merge(
+          lookup(var.app_secrets, "backend-staging", {}),
+          {
+            "mongo-connection-string" = "MONGO_URI"
+            "jwt-private-key"         = "JWT_PRIV_PEM"
+            "jwt-public-key"          = "JWT_PUB_PEM"
+            "station-qr-secret"       = "STATION_QR_SECRET"
+            "google-client-secret"    = "GOOGLE_CLIENT_SECRET"
+            "stripe-secret-key"       = "STRIPE_SECRET_KEY"
+            "stripe-webhook-secret"   = "STRIPE_WEBHOOK_SECRET"
+          }
+        )
         http_scale_rule = {
           name                = "backend-http-scale"
           concurrent_requests = 40

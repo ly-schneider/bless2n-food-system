@@ -1,7 +1,7 @@
 locals {
   kv_secret_identity = var.enable_system_identity && length(var.user_assigned_identity_ids) == 0 ? "System" : (length(var.user_assigned_identity_ids) > 0 ? var.user_assigned_identity_ids[0] : null)
   _kv_identity_guard = length(var.key_vault_secret_refs) == 0 || local.kv_secret_identity != null ? true : tomap({})["force_error"]
-  
+
   # Azure Container Apps revision names have format: {app-name}--{revision-suffix}
   # Total length must be ≤54 characters, alphanumeric + hyphens only
   # Calculate max suffix length: 54 - length(app_name) - 2 (for '--')
