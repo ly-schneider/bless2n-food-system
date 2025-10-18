@@ -242,14 +242,14 @@ module "apps_backend" {
   key_vault_secrets          = each.value.key_vault_secrets
   revision_suffix            = try(each.value.revision_suffix, null)
   # Resolve Key Vault secret IDs inside the stack to avoid referencing module outputs from the caller
-  # Prefer module.security-provided versionless IDs; otherwise, construct versionless IDs from the vault ID.
+  # Prefer module.security-provided versionless IDs; otherwise, construct proper Key Vault URI format.
   key_vault_secret_refs = merge(
     try(each.value.key_vault_secret_refs, {}),
     var.config.enable_security_features && length(module.security) > 0 ? {
       for env_var, secret_name in try(each.value.key_vault_secrets, {}) : 
         lower(replace(env_var, "_", "-")) => contains(keys(module.security[0].key_vault_secret_ids), secret_name) ? 
           module.security[0].key_vault_secret_ids[secret_name] : 
-          format("%s/secrets/%s", module.security[0].key_vault_id, secret_name)
+          format("%ssecrets/%s", module.security[0].key_vault_uri, secret_name)
     } : {}
   )
   registries = concat(
@@ -297,13 +297,14 @@ module "apps_frontend" {
   key_vault_secrets = each.value.key_vault_secrets
   revision_suffix   = try(each.value.revision_suffix, null)
   # Resolve Key Vault secret IDs inside the stack to avoid referencing module outputs from the caller
+  # Prefer module.security-provided versionless IDs; otherwise, construct proper Key Vault URI format.
   key_vault_secret_refs = merge(
     try(each.value.key_vault_secret_refs, {}),
     var.config.enable_security_features && length(module.security) > 0 ? {
       for env_var, secret_name in try(each.value.key_vault_secrets, {}) : 
         lower(replace(env_var, "_", "-")) => contains(keys(module.security[0].key_vault_secret_ids), secret_name) ? 
           module.security[0].key_vault_secret_ids[secret_name] : 
-          format("%s/secrets/%s", module.security[0].key_vault_id, secret_name)
+          format("%ssecrets/%s", module.security[0].key_vault_uri, secret_name)
     } : {}
   )
   registries = concat(
