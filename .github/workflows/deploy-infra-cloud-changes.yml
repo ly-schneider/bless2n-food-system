@@ -2,7 +2,7 @@ name: Deploy Infra via TFC (cloud-only changes)
 
 on:
   push:
-    branches: [ staging, production ]
+    branches: [staging, production]
     paths:
       - 'bfs-cloud/**'
       - '.github/workflows/deploy-infra-cloud-changes.yml'
@@ -16,7 +16,6 @@ concurrency:
 
 jobs:
   changes:
-    name: Detect changed areas
     runs-on: ubuntu-latest
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
@@ -24,10 +23,9 @@ jobs:
       cloud: ${{ steps.filter.outputs.cloud }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: dorny/paths-filter@v3
-        id: filter
+        with: { fetch-depth: 0 }
+      - id: filter
+        uses: dorny/paths-filter@v3
         with:
           filters: |
             backend:
@@ -37,32 +35,20 @@ jobs:
             cloud:
               - 'bfs-cloud/**'
 
-  deploy:
-    name: Terraform Cloud apply (cloud-only)
-    needs: [changes, validate]
-    if: >
-      ${{ needs.changes.outputs.cloud == 'true' && needs.changes.outputs.backend != 'true' && needs.changes.outputs.web != 'true' && (github.ref_name == 'staging' || github.ref_name == 'production') }}
-    uses: ./.github/workflows/reusable-tfc-apply.yml
-    secrets: inherit
-    with:
-      target_branch: ${{ github.ref_name }}
-      image_tag: ${{ github.ref_name }}
-      revision_suffix: ${{ github.sha }}
-      wait_for_completion: ${{ github.ref_name == 'staging' }}
-
   validate:
     name: Terraform validate (target env)
     runs-on: ubuntu-latest
-    needs: changes
     if: ${{ needs.changes.outputs.cloud == 'true' }}
+    needs: changes
     env:
       TF_VERSION: 1.8.5
     steps:
       - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: hashicorp/setup-terraform@v3
         with:
-          fetch-depth: 0
-      - name: Determine env directory
-        id: envdir
+          terraform_version: ${{ env.TF_VERSION }}
+      - id: envdir
         shell: bash
         run: |
           case "${{ github.ref_name }}" in
@@ -70,13 +56,27 @@ jobs:
             production) echo "dir=bfs-cloud/envs/production" >> $GITHUB_OUTPUT ;;
             *) echo "Unsupported branch: ${{ github.ref_name }}" >&2 ; exit 1 ;;
           esac
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
       - name: terraform init (-backend=false)
         working-directory: ${{ steps.envdir.outputs.dir }}
         run: terraform init -backend=false
       - name: terraform validate
         working-directory: ${{ steps.envdir.outputs.dir }}
         run: terraform validate
+
+  deploy:
+    name: Terraform Cloud apply (cloud-only)
+    runs-on: ubuntu-latest
+    needs: [changes, validate]
+    if: >
+      ${{
+        needs.changes.outputs.cloud == 'true' &&
+        needs.changes.outputs.backend != 'true' &&
+        needs.changes.outputs.web != 'true'
+      }}
+    uses: ./.github/workflows/reusable-tfc-apply.yml
+    secrets: inherit
+    with:
+      target_branch: ${{ github.ref_name }}
+      image_tag: ${{ github.ref_name }}
+      revision_suffix: ${{ github.sha }}
+      wait_for_completion: ${{ github.ref_name == 'staging' }}

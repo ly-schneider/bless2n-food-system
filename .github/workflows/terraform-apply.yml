@@ -1,4 +1,4 @@
-name: Terraform Apply (TFC)
+name: Deploy • Terraform Cloud (manual)
 
 on:
   workflow_dispatch:
@@ -8,52 +8,101 @@ on:
         type: choice
         options: [staging, production]
         required: true
+      use_latest_digests:
+        description: "Fetch latest image digests from the most recent successful Build & Push run on this branch?"
+        type: boolean
+        default: true
+        required: true
       image_tag:
-        description: "Image tag to deploy (optional; defaults to branch)"
+        description: "Fallback image tag (used when digests are not found or you disable fetching)"
         type: string
         required: false
       revision_suffix:
-        description: "Unique suffix to force new revision (optional; defaults to commit SHA)"
+        description: "Optional unique suffix for rollout (e.g., commit SHA); defaults to the current SHA"
         type: string
         required: false
 
 permissions:
   contents: read
-  id-token: write
+
+concurrency:
+  # Only one manual apply per env at a time (don't cancel in-progress deployments)
+  group: manual-tfc-apply-${{ inputs.environment }}
+  cancel-in-progress: false
 
 jobs:
   apply:
-    name: Apply via Terraform Cloud
+    name: "TFC Apply → ${{ inputs.environment }}"
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment: ${{ inputs.environment }}   # GitHub Environments → approvals & wait rules
+    timeout-minutes: 30
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Select TFC Workspace
         id: ws
+        shell: bash
         run: |
           case "${{ inputs.environment }}" in
-            staging)
-              echo "workspace=bfs-staging" >> $GITHUB_OUTPUT ;;
-            production)
-              echo "workspace=bfs-production" >> $GITHUB_OUTPUT ;;
+            staging)   echo "workspace=bfs-staging"   >> $GITHUB_OUTPUT ;;
+            production) echo "workspace=bfs-production" >> $GITHUB_OUTPUT ;;
             *) echo "Unsupported env: ${{ inputs.environment }}" ; exit 1 ;;
           esac
 
-      - name: Terraform Cloud apply
+      # Optionally fetch the most recent successful 'Build & Push Images' digests for this branch
+      - name: Download image digests from latest Build & Push
+        if: ${{ inputs.use_latest_digests }}
+        uses: dawidd6/action-download-artifact@v11
+        with:
+          workflow: build-push.yml
+          branch: ${{ inputs.environment }}          # your branch names match envs
+          workflow_conclusion: success
+          name: image-digests
+          path: ./digests
+          if_no_artifact_found: warn
+
+      - name: Read digests (if present)
+        id: dig
+        shell: bash
+        run: |
+          set -euo pipefail
+          BACKEND_DIGEST=""
+          FRONTEND_DIGEST=""
+          if [ -d "./digests" ]; then
+            BACKEND_DIGEST=$(grep -h '^backend=' ./digests/* 2>/dev/null | tail -n1 | cut -d= -f2 || true)
+            FRONTEND_DIGEST=$(grep -h '^frontend=' ./digests/* 2>/dev/null | tail -n1 | cut -d= -f2 || true)
+          fi
+          echo "backend_digest=$BACKEND_DIGEST"   >> $GITHUB_OUTPUT
+          echo "frontend_digest=$FRONTEND_DIGEST" >> $GITHUB_OUTPUT
+          echo "Found backend_digest=${BACKEND_DIGEST:-<none>}"
+          echo "Found frontend_digest=${FRONTEND_DIGEST:-<none>}"
+
+      - name: Determine rollout parameters
+        id: roll
+        shell: bash
+        run: |
+          # Prefer immutable digests when available; otherwise fall back to tag
+          IMG_TAG="${{ inputs.image_tag || inputs.environment }}"
+          REV_SUFFIX="${{ inputs.revision_suffix || github.sha }}"
+          echo "image_tag=$IMG_TAG"            >> $GITHUB_OUTPUT
+          echo "revision_suffix=$REV_SUFFIX"   >> $GITHUB_OUTPUT
+
+      - name: Queue Terraform Cloud Apply (via API)
         uses: kvrhdn/tfe-run@v1
         with:
           token: ${{ secrets.TF_API_TOKEN }}
           organization: ${{ vars.TF_ORG_NAME }}
           workspace: ${{ steps.ws.outputs.workspace }}
-          message: "Apply infra for ${{ inputs.environment }}"
+          message: "Manual apply • env=${{ inputs.environment }} • tag=${{ steps.roll.outputs.image_tag }}"
           wait-for-completion: true
           tf-vars: |
-            image_tag = "${{ inputs.image_tag || inputs.environment }}"
-            revision_suffix = "${{ inputs.revision_suffix || github.sha }}"
-
-concurrency:
-  group: tf-apply-${{ inputs.environment }}
-  cancel-in-progress: false
+            # Always send tag + revision
+            image_tag        = "${{ steps.roll.outputs.image_tag }}"
+            revision_suffix  = "${{ steps.roll.outputs.revision_suffix }}"
+            # Send digests when available; your TF module should prefer digest if non-empty
+            backend_digest   = "${{ steps.dig.outputs.backend_digest }}"
+            frontend_digest  = "${{ steps.dig.outputs.frontend_digest }}"

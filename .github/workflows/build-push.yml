@@ -2,7 +2,7 @@ name: Build & Push Images
 
 on:
   push:
-    branches: [ staging, production ]
+    branches: [staging, production]
     paths:
       - 'bfs-backend/**'
       - 'bfs-web-app/**'
@@ -25,32 +25,47 @@ jobs:
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       web: ${{ steps.filter.outputs.web }}
-      cloud: ${{ steps.filter.outputs.cloud }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: dorny/paths-filter@v3
-        id: filter
+      - id: filter
+        uses: dorny/paths-filter@v3
         with:
           filters: |
             backend:
               - 'bfs-backend/**'
             web:
               - 'bfs-web-app/**'
-            cloud:
-              - 'bfs-cloud/**'
 
-  build-and-push:
-    name: Build & Push
+  build:
+    name: Build & Push (matrix)
     needs: changes
+    if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.web == 'true' }}
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend
+            context: bfs-backend
+            dockerfile: bfs-backend/Dockerfile
+            buildargs: ""
+            changed: ${{ needs.changes.outputs.backend }}
+          - name: frontend
+            context: bfs-web-app
+            dockerfile: bfs-web-app/Dockerfile
+            buildargs: |
+              NEXT_PUBLIC_API_BASE_URL=${{ vars.NEXT_PUBLIC_API_BASE_URL }}
+              BACKEND_INTERNAL_URL=${{ vars.BACKEND_INTERNAL_URL }}
+              NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+            changed: ${{ needs.changes.outputs.web }}
+    timeout-minutes: 45
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
@@ -58,102 +73,64 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Setup Docker Buildx
+      - name: Setup QEMU (for optional multi-arch)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Setup Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Set ACR login server
-        id: acr
-        run: echo "login_server=${{ vars.ACR_NAME }}.azurecr.io" >> $GITHUB_OUTPUT
-
-      - name: ACR Login
-        run: az acr login -n "${{ vars.ACR_NAME }}"
-
-      - name: GHCR Login
+      - name: Login GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set Image Names
-        id: names
-        run: |
-          echo "backend_acr=${{ steps.acr.outputs.login_server }}/backend" >> $GITHUB_OUTPUT
-          echo "frontend_acr=${{ steps.acr.outputs.login_server }}/frontend" >> $GITHUB_OUTPUT
-          echo "backend_ghcr=ghcr.io/${{ github.repository }}/backend" >> $GITHUB_OUTPUT
-          echo "frontend_ghcr=ghcr.io/${{ github.repository }}/frontend" >> $GITHUB_OUTPUT
+      - name: ACR Login (via Azure session)
+        run: az acr login -n "${{ vars.ACR_NAME }}"
 
-      - name: Build & Push backend image
-        if: ${{ needs.changes.outputs.backend == 'true' }}
-        uses: docker/build-push-action@v6
+      - name: Resolve registries
+        id: reg
+        run: echo "acr=${{ vars.ACR_NAME }}.azurecr.io" >> $GITHUB_OUTPUT
+
+      - name: Docker metadata (tags & labels)
+        id: meta
+        uses: docker/metadata-action@v5
         with:
-          context: bfs-backend
-          file: bfs-backend/Dockerfile
-          push: true
+          images: |
+            ${{ steps.reg.outputs.acr }}/${{ matrix.name }}
+            ghcr.io/${{ github.repository }}/${{ matrix.name }}
           tags: |
-            ${{ steps.names.outputs.backend_acr }}:${{ github.sha }}
-            ${{ steps.names.outputs.backend_acr }}:${{ github.ref_name }}
-            ${{ steps.names.outputs.backend_ghcr }}:${{ github.sha }}
-            ${{ steps.names.outputs.backend_ghcr }}:${{ github.ref_name }}
+            type=raw,value=${{ github.ref_name }}
+            type=sha,format=long
           labels: |
             org.opencontainers.image.source=${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
-          cache-from: type=gha,scope=backend
-          cache-to: type=gha,mode=max,scope=backend
 
-      - name: Build & Push frontend image
-        if: ${{ needs.changes.outputs.web == 'true' }}
+      - name: Build & Push ${{ matrix.name }}
+        if: ${{ matrix.changed == 'true' }}
+        id: build
         uses: docker/build-push-action@v6
         with:
-          context: bfs-web-app
-          file: bfs-web-app/Dockerfile
-          build-args: |
-            NEXT_PUBLIC_API_BASE_URL=${{ vars.NEXT_PUBLIC_API_BASE_URL }}
-            BACKEND_INTERNAL_URL=${{ vars.BACKEND_INTERNAL_URL }}
-            NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ vars.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
           push: true
-          tags: |
-            ${{ steps.names.outputs.frontend_acr }}:${{ github.sha }}
-            ${{ steps.names.outputs.frontend_acr }}:${{ github.ref_name }}
-            ${{ steps.names.outputs.frontend_ghcr }}:${{ github.sha }}
-            ${{ steps.names.outputs.frontend_ghcr }}:${{ github.ref_name }}
-          labels: |
-            org.opencontainers.image.source=${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
-          cache-from: type=gha,scope=frontend
-          cache-to: type=gha,mode=max,scope=frontend
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ matrix.buildargs }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+          provenance: true
+          sbom: true
 
-      - name: Derive ACA resource names
-        id: aca
+      - name: Publish image digest artifact
+        if: ${{ matrix.changed == 'true' }}
         run: |
-          echo "rg=bfs-${{ github.ref_name }}-rg" >> $GITHUB_OUTPUT
-          echo "backend_app=backend-${{ github.ref_name }}" >> $GITHUB_OUTPUT
-          echo "frontend_app=frontend-${{ github.ref_name }}" >> $GITHUB_OUTPUT
-
-      - name: Redeploy backend ACA to new image
-        if: ${{ needs.changes.outputs.backend == 'true' }}
-        run: |
-          set -euo pipefail
-          RG="${{ steps.aca.outputs.rg }}"
-          APP="${{ steps.aca.outputs.backend_app }}"
-          IMAGE="${{ steps.acr.outputs.login_server }}/backend:${{ github.ref_name }}"
-          if az containerapp show -g "$RG" -n "$APP" >/dev/null 2>&1; then
-            echo "Updating $APP to image $IMAGE"
-            az containerapp update -g "$RG" -n "$APP" --image "$IMAGE"
-          else
-            echo "Container App $APP not found in $RG. Skipping update."
-          fi
-
-      - name: Redeploy frontend ACA to new image
-        if: ${{ needs.changes.outputs.web == 'true' }}
-        run: |
-          set -euo pipefail
-          RG="${{ steps.aca.outputs.rg }}"
-          APP="${{ steps.aca.outputs.frontend_app }}"
-          IMAGE="${{ steps.acr.outputs.login_server }}/frontend:${{ github.ref_name }}"
-          if az containerapp show -g "$RG" -n "$APP" >/dev/null 2>&1; then
-            echo "Updating $APP to image $IMAGE"
-            az containerapp update -g "$RG" -n "$APP" --image "$IMAGE"
-          else
-            echo "Container App $APP not found in $RG. Skipping update."
-          fi
+          mkdir -p digests
+          echo "${{ matrix.name }}=${{ steps.build.outputs.digest }}" > "digests/${{ matrix.name }}.digest"
+      - name: Upload digests
+        if: ${{ matrix.changed == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-digests
+          path: digests/*
+          if-no-files-found: error

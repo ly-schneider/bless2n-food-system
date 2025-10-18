@@ -2,7 +2,7 @@ name: Terraform Plan (TFC)
 
 on:
   pull_request:
-    branches: [ staging, production ]
+    branches: [staging, production]
     paths:
       - 'bfs-cloud/**'
       - '.github/workflows/terraform-plan.yml'
@@ -18,20 +18,14 @@ jobs:
       TF_ORG_NAME: ${{ vars.TF_ORG_NAME }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Select TFC Workspace
-        id: ws
+        with: { fetch-depth: 0 }
+      - id: ws
         run: |
           case "${{ github.base_ref }}" in
-            staging)
-              echo "workspace=bfs-staging" >> $GITHUB_OUTPUT ;;
-            production)
-              echo "workspace=bfs-production" >> $GITHUB_OUTPUT ;;
+            staging) echo "workspace=bfs-staging" >> $GITHUB_OUTPUT ;;
+            production) echo "workspace=bfs-production" >> $GITHUB_OUTPUT ;;
             *) echo "Unsupported base ref: ${{ github.base_ref }}" ; exit 1 ;;
           esac
-
       - name: Terraform Cloud Speculative Plan
         uses: kvrhdn/tfe-run@v1
         with:

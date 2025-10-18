@@ -2,11 +2,11 @@ name: CI • Web App (Next.js)
 
 on:
   pull_request:
-    branches: [ staging, production ]
-    paths: [ 'bfs-web-app/**', '.github/workflows/ci-web-app.yml' ]
+    branches: [staging, production]
+    paths: ['bfs-web-app/**', '.github/workflows/ci-web-app.yml']
   push:
-    branches: [ staging, production ]
-    paths: [ 'bfs-web-app/**', '.github/workflows/ci-web-app.yml' ]
+    branches: [staging, production]
+    paths: ['bfs-web-app/**', '.github/workflows/ci-web-app.yml']
 
 permissions:
   contents: read
@@ -24,15 +24,13 @@ jobs:
         working-directory: bfs-web-app
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+        with: { fetch-depth: 0 }
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
+        with: { version: 10 }
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm'
+          cache: pnpm
           cache-dependency-path: bfs-web-app/pnpm-lock.yaml
       - uses: actions/cache@v4
         with:

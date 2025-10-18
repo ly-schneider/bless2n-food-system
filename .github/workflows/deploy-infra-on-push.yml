@@ -1,27 +1,28 @@
 name: Deploy Infra via TFC (on build)
 
 on:
-  # Normal path: run after Build & Push Images
   workflow_run:
-    workflows: [ "Build & Push Images" ]
-    types: [ completed ]
-    conclusion: [ success ]
-  # Also run when this workflow file changes, so updates take effect immediately
+    workflows: ["Build & Push Images"]
+    types: [completed]
   push:
-    branches: [ staging, production ]
-    paths: [ '.github/workflows/deploy-infra-on-push.yml' ]
+    branches: [staging, production]
+    paths: ['.github/workflows/deploy-infra-on-push.yml']
 
 permissions:
   contents: read
 
 concurrency:
-  group: deploy-infra-${{ github.event.workflow_run.head_branch }}
+  group: deploy-infra-${{ github.event.workflow_run.head_branch || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
   from-build:
     if: >
-      ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && (github.event.workflow_run.head_branch == 'staging' || github.event.workflow_run.head_branch == 'production') }}
+      ${{
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        (github.event.workflow_run.head_branch == 'staging' || github.event.workflow_run.head_branch == 'production')
+      }}
     uses: ./.github/workflows/reusable-tfc-apply.yml
     secrets: inherit
     with:

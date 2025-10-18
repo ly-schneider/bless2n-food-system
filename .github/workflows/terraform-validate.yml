@@ -2,12 +2,12 @@ name: CI • Terraform Validate
 
 on:
   pull_request:
-    branches: [ staging, production ]
+    branches: [staging, production]
     paths:
       - 'bfs-cloud/**'
       - '.github/workflows/terraform-validate.yml'
   push:
-    branches: [ staging, production ]
+    branches: [staging, production]
     paths:
       - 'bfs-cloud/**'
       - '.github/workflows/terraform-validate.yml'
@@ -17,68 +17,54 @@ permissions:
 
 jobs:
   fmt:
-    name: Terraform fmt
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.8.5
+        with: { fetch-depth: 0 }
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.8.5 }
       - name: Terraform fmt (check, recursive)
         run: terraform fmt -check -recursive
 
   discover:
-    name: Discover env dirs
     runs-on: ubuntu-latest
     outputs:
-      dirs: ${{ steps.set.outputs.dirs }}
+      dirs: ${{ steps.out.outputs.dirs }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - id: set
+        with: { fetch-depth: 0 }
+      - id: out
         shell: bash
         run: |
-          BRANCH="${{ github.base_ref || github.ref_name }}"
+          BR="${{ github.base_ref || github.ref_name }}"
           BASE="bfs-cloud/envs"
-          if [ -d "$BASE/$BRANCH" ]; then
-            printf 'dirs=["%s/%s"]\n' "$BASE" "$BRANCH" >> "$GITHUB_OUTPUT"
+          if [ -d "$BASE/$BR" ]; then
+            printf 'dirs=["%s/%s"]\n' "$BASE" "$BR" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # Fallback: all envs under bfs-cloud/envs/* that contain any .tf files
           mapfile -t found < <(find "$BASE" -mindepth 1 -maxdepth 1 -type d | sort)
           json="["
           sep=""
           for d in "${found[@]}"; do
             if compgen -G "$d/*.tf" > /dev/null; then
-              json+="$sep\"$d\""; sep=",";
+              json+="$sep\"$d\""; sep=","
             fi
           done
           json+="]"
           echo "dirs=$json" >> "$GITHUB_OUTPUT"
 
   validate:
-    name: Validate (${{ matrix.dir }})
-    runs-on: ubuntu-latest
     needs: [fmt, discover]
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         dir: ${{ fromJson(needs.discover.outputs.dirs) }}
-    defaults:
-      run:
-        shell: bash
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.8.5
+        with: { fetch-depth: 0 }
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.8.5 }
       - name: terraform init (-backend=false)
         working-directory: ${{ matrix.dir }}
         run: terraform init -backend=false
@@ -87,19 +73,15 @@ jobs:
         run: terraform validate
 
   gate:
-    name: Terraform CI Gate
-    runs-on: ubuntu-latest
     needs: [fmt, validate]
+    runs-on: ubuntu-latest
     if: ${{ always() }}
     steps:
       - name: Summarize results
-        shell: bash
         run: |
-          fmt_result='${{ needs.fmt.result }}'
-          val_result='${{ needs.validate.result }}'
-          echo "Terraform fmt: $fmt_result" >> $GITHUB_STEP_SUMMARY
-          echo "Terraform validate (matrix): $val_result" >> $GITHUB_STEP_SUMMARY
-          if [ "$fmt_result" != "success" ] || [ "$val_result" != "success" ]; then
+          echo "Terraform fmt: ${{ needs.fmt.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "Terraform validate: ${{ needs.validate.result }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ needs.fmt.result }}" != "success" ] || [ "${{ needs.validate.result }}" != "success" ]; then
             echo "One or more Terraform checks failed." >&2
             exit 1
           fi

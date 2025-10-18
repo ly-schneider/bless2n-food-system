@@ -4,19 +4,15 @@ on:
   workflow_call:
     inputs:
       target_branch:
-        description: 'staging or production'
         type: string
         required: true
       image_tag:
-        description: 'Image tag to deploy'
         type: string
         required: true
       revision_suffix:
-        description: 'Unique suffix to force new revision (e.g., commit SHA)'
         type: string
         required: false
       wait_for_completion:
-        description: 'Whether to wait for run completion'
         type: boolean
         required: false
         default: true
@@ -32,20 +28,12 @@ jobs:
     name: TFC Apply (${{ inputs.target_branch }})
     runs-on: ubuntu-latest
     environment: ${{ inputs.target_branch }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Ensure env directory exists (for tf-vars file)
-        shell: bash
-        run: |
-          case "${{ inputs.target_branch }}" in
-            staging) dir=bfs-cloud/envs/staging ;;
-            production) dir=bfs-cloud/envs/production ;;
-            *) echo "Unsupported env"; exit 1 ;;
-          esac
-          mkdir -p "$dir"
-      - name: Select workspace
+        with: { fetch-depth: 0 }
+
+      - name: Select TFC Workspace
         id: ws
         shell: bash
         run: |
@@ -55,14 +43,36 @@ jobs:
             *) echo "Unsupported env: ${{ inputs.target_branch }}"; exit 1 ;;
           esac
 
+      # Securely pull artifacts from the triggering build workflow run
+      # Use dawidd6/action-download-artifact to fetch cross-workflow artifacts
+      - name: Download image digests from Build workflow
+        if: ${{ github.event_name == 'workflow_run' }}
+        uses: dawidd6/action-download-artifact@v8
+        with:
+          workflow: build-push.yml
+          run_id: ${{ github.event.workflow_run.id }}
+          name: image-digests
+          path: ./digests
+
+      - name: Read digests (if present)
+        id: dig
+        shell: bash
+        run: |
+          BACKEND_DIGEST=$(grep -h '^backend=' ./digests/* 2>/dev/null | tail -n1 | cut -d= -f2 || true)
+          FRONTEND_DIGEST=$(grep -h '^frontend=' ./digests/* 2>/dev/null | tail -n1 | cut -d= -f2 || true)
+          echo "backend_digest=$BACKEND_DIGEST" >> $GITHUB_OUTPUT
+          echo "frontend_digest=$FRONTEND_DIGEST" >> $GITHUB_OUTPUT
+
       - name: Terraform Cloud apply
         uses: kvrhdn/tfe-run@v1
         with:
           token: ${{ secrets.TF_API_TOKEN }}
           organization: ${{ vars.TF_ORG_NAME }}
           workspace: ${{ steps.ws.outputs.workspace }}
-          message: "Deploy ${{ inputs.target_branch }} - ${{ inputs.image_tag }}"
+          message: "Deploy ${{ inputs.target_branch }} (${{ inputs.image_tag }})"
           wait-for-completion: ${{ inputs.wait_for_completion }}
           tf-vars: |
-            image_tag = "${{ inputs.image_tag }}"
-            revision_suffix = "${{ inputs.revision_suffix }}"
+            image_tag        = "${{ inputs.image_tag }}"
+            revision_suffix  = "${{ inputs.revision_suffix }}"
+            backend_digest   = "${{ steps.dig.outputs.backend_digest }}"
+            frontend_digest  = "${{ steps.dig.outputs.frontend_digest }}"
