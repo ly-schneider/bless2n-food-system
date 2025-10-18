@@ -106,7 +106,7 @@ resource "azurerm_role_assignment" "kv_secrets_user" {
 resource "azurerm_key_vault_secret" "cosmos_connection_string" {
   count = var.enable_key_vault ? 1 : 0
 
-  name         = "mongo-connection-string"
+  name         = "mongo-uri"
   value        = var.cosmos_connection_string
   key_vault_id = azurerm_key_vault.basic[0].id
 

@@ -116,7 +116,7 @@ module "bfs_infrastructure" {
         key_vault_secrets = merge(
           lookup(var.app_secrets, "backend-staging", {}),
           {
-            "MONGO_URI"             = "mongo-connection-string"
+            "MONGO_URI"             = "mongo-uri"
             "JWT_PRIV_PEM"          = "jwt-priv-pem"
             "JWT_PUB_PEM"           = "jwt-pub-pem"
             "STATION_QR_SECRET"     = "station-qr-secret"
