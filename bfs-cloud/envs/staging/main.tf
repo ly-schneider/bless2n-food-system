@@ -128,7 +128,7 @@ module "bfs_infrastructure" {
             "STRIPE_WEBHOOK_SECRET"    = "stripe-webhook-secret"
             "SMTP_PASSWORD"            = "smtp-password"
             "SECURITY_TRUSTED_ORIGINS" = "security-trusted-origins"
-            "PUBLIC_BASE_URL"          = "public-base-url-staging"
+            "PUBLIC_BASE_URL"          = "public-base-url"
           }
         )
         http_scale_rule = {
