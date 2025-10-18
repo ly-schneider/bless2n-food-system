@@ -6,12 +6,10 @@ resource "azurerm_cosmosdb_account" "this" {
   offer_type = "Standard"
   kind       = "MongoDB"
 
-  capabilities {
-    name = "EnableMongo"
-  }
+  mongo_server_version = 7.0
 
   capabilities {
-    name = "MongoDBv3.4"
+    name = "EnableMongo"
   }
 
   capabilities {
@@ -38,8 +36,6 @@ resource "azurerm_cosmosdb_account" "this" {
   is_virtual_network_filter_enabled = false
 
   ip_range_filter = var.allowed_ip_ranges
-
-  local_authentication_disabled = var.disable_local_auth
 
   cors_rule {
     allowed_origins    = var.cors_allowed_origins

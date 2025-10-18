@@ -35,11 +35,6 @@ variable "cors_allowed_origins" {
   type        = list(string)
   default     = ["*"]
 }
-variable "disable_local_auth" {
-  description = "Disable local authentication and use AAD only"
-  type        = bool
-  default     = false
-}
 variable "log_analytics_workspace_id" {
   description = "Log Analytics workspace ID for diagnostics"
   type        = string
