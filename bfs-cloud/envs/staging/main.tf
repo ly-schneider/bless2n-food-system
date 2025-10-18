@@ -117,8 +117,8 @@ module "bfs_infrastructure" {
           lookup(var.app_secrets, "backend-staging", {}),
           {
             "MONGO_URI"             = "mongo-connection-string"
-            "JWT_PRIV_PEM"          = "jwt-private-key"
-            "JWT_PUB_PEM"           = "jwt-public-key"
+            "JWT_PRIV_PEM"          = "jwt-priv-pem"
+            "JWT_PUB_PEM"           = "jwt-pub-pem"
             "STATION_QR_SECRET"     = "station-qr-secret"
             "GOOGLE_CLIENT_SECRET"  = "google-client-secret"
             "STRIPE_SECRET_KEY"     = "stripe-secret-key"
