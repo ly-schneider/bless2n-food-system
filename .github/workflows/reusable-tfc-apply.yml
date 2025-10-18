@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       target_branch: { type: string, required: true }
-      image_tag:     { type: string, required: true }
+      image_tag: { type: string, required: true }
       revision_suffix: { type: string, required: false }
       wait_for_completion: { type: boolean, required: false, default: true }
     secrets:
@@ -27,10 +27,33 @@ jobs:
         shell: bash
         run: |
           case "${{ inputs.target_branch }}" in
-            staging) echo "workspace=bfs-staging" >> $GITHUB_OUTPUT ;;
+            staging)   echo "workspace=bfs-staging"   >> $GITHUB_OUTPUT ;;
             production) echo "workspace=bfs-production" >> $GITHUB_OUTPUT ;;
             *) echo "Unsupported env: ${{ inputs.target_branch }}" ; exit 1 ;;
           esac
+
+      - name: Determine env dir
+        id: envdir
+        shell: bash
+        run: |
+          case "${{ inputs.target_branch }}" in
+            staging)   echo "dir=bfs-cloud/envs/staging"   >> $GITHUB_OUTPUT ;;
+            production) echo "dir=bfs-cloud/envs/production" >> $GITHUB_OUTPUT ;;
+          esac
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.8.5 }
+
+      - name: terraform fmt (check)
+        working-directory: ${{ steps.envdir.outputs.dir }}
+        run: terraform fmt -check -recursive
+
+      - name: terraform validate (no backend)
+        working-directory: ${{ steps.envdir.outputs.dir }}
+        run: |
+          terraform init -backend=false
+          terraform validate
 
       - name: Download image digests from triggering Build run
         if: ${{ github.event_name == 'workflow_run' }}
@@ -51,7 +74,7 @@ jobs:
           echo "backend_digest=$BACKEND_DIGEST"   >> $GITHUB_OUTPUT
           echo "frontend_digest=$FRONTEND_DIGEST" >> $GITHUB_OUTPUT
 
-      - name: Terraform Cloud apply
+      - name: Queue Terraform Cloud apply
         uses: kvrhdn/tfe-run@v1
         with:
           token: ${{ secrets.TF_API_TOKEN }}

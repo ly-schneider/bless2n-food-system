@@ -4,13 +4,9 @@ locals {
   backend_repo  = "backend"
 
   # Prefer digests when provided to ensure immutable rollouts
-  frontend_image = var.frontend_digest != "" ?
-    "${local.registry_host}/${local.frontend_repo}@${var.frontend_digest}" :
-    "${local.registry_host}/${local.frontend_repo}:${var.image_tag}"
+  frontend_image = var.frontend_digest != "" ? "${local.registry_host}/${local.frontend_repo}@${var.frontend_digest}" : "${local.registry_host}/${local.frontend_repo}:${var.image_tag}"
 
-  backend_image = var.backend_digest != "" ?
-    "${local.registry_host}/${local.backend_repo}@${var.backend_digest}" :
-    "${local.registry_host}/${local.backend_repo}:${var.image_tag}"
+  backend_image = var.backend_digest != "" ? "${local.registry_host}/${local.backend_repo}@${var.backend_digest}" : "${local.registry_host}/${local.backend_repo}:${var.image_tag}"
 }
 
 module "bfs_infrastructure" {

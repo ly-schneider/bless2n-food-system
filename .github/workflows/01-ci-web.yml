@@ -3,10 +3,10 @@ name: CI • Web App (Next.js)
 on:
   pull_request:
     branches: [staging, production]
-    paths: ['bfs-web-app/**', '.github/workflows/01-ci-web.yml']
+    paths: ["bfs-web-app/**", ".github/workflows/01-ci-web.yml"]
   push:
     branches: [staging, production]
-    paths: ['bfs-web-app/**', '.github/workflows/01-ci-web.yml']
+    paths: ["bfs-web-app/**", ".github/workflows/01-ci-web.yml"]
 
 permissions:
   contents: read
@@ -52,5 +52,5 @@ jobs:
         run: pnpm test -- --run
       - name: Build
         env:
-          NEXT_TELEMETRY_DISABLED: '1'
+          NEXT_TELEMETRY_DISABLED: "1"
         run: pnpm build

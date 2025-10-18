@@ -4,8 +4,8 @@ on:
   push:
     branches: [staging, production]
     paths:
-      - 'bfs-cloud/**'
-      - '.github/workflows/21-deploy-cloud-only.yml'
+      - "bfs-cloud/**"
+      - ".github/workflows/21-deploy-cloud-only.yml"
 
 permissions:
   contents: read

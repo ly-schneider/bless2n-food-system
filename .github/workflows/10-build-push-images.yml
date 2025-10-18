@@ -4,9 +4,9 @@ on:
   push:
     branches: [staging, production]
     paths:
-      - 'bfs-backend/**'
-      - 'bfs-web-app/**'
-      - '.github/workflows/10-build-push-images.yml'
+      - "bfs-backend/**"
+      - "bfs-web-app/**"
+      - ".github/workflows/10-build-push-images.yml"
 
 permissions:
   contents: read

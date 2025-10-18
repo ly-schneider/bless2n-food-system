@@ -6,7 +6,7 @@ on:
     types: [completed]
   push:
     branches: [staging, production]
-    paths: ['.github/workflows/20-deploy-auto.yml']
+    paths: [".github/workflows/20-deploy-auto.yml"]
 
 permissions:
   contents: read
@@ -16,13 +16,47 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  from-build:
+  preflight:
     if: >
       ${{
         github.event_name == 'workflow_run' &&
         github.event.workflow_run.conclusion == 'success' &&
         (github.event.workflow_run.head_branch == 'staging' || github.event.workflow_run.head_branch == 'production')
       }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Determine env dir
+        id: envdir
+        shell: bash
+        run: |
+          case "${{ github.event.workflow_run.head_branch }}" in
+            staging)   echo "dir=bfs-cloud/envs/staging"   >> $GITHUB_OUTPUT ;;
+            production) echo "dir=bfs-cloud/envs/production" >> $GITHUB_OUTPUT ;;
+            *) echo "Unsupported env: ${{ github.event.workflow_run.head_branch }}" ; exit 1 ;;
+          esac
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.8.5 }
+
+      - name: terraform fmt (check)
+        working-directory: ${{ steps.envdir.outputs.dir }}
+        run: terraform fmt -check -recursive
+
+      - name: terraform validate (no backend)
+        working-directory: ${{ steps.envdir.outputs.dir }}
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+  from-build:
+    name: Reusable TFC apply (after Build)
+    needs: preflight
+    if: ${{ needs.preflight.result == 'success' }}
     uses: ./.github/workflows/reusable-tfc-apply.yml
     secrets: inherit
     with:
