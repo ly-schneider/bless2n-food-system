@@ -14,7 +14,7 @@ variable "cpu" {
 }
 variable "memory" {
   type    = string
-  default = "1.0Gi"
+  default = "1Gi"
 }
 variable "min_replicas" {
   type    = number
@@ -139,6 +139,24 @@ variable "health_check_path" {
   type        = string
   description = "Health check path for liveness and readiness probes"
   default     = "/health"
+}
+
+variable "liveness_path" {
+  type        = string
+  description = "HTTP path for liveness probe"
+  default     = "/health"
+}
+
+variable "liveness_interval_seconds" {
+  type        = number
+  description = "Interval in seconds between liveness checks"
+  default     = 60
+}
+
+variable "liveness_initial_delay_seconds" {
+  type        = number
+  description = "Initial delay in seconds before starting liveness checks"
+  default     = 20
 }
 
 variable "read_only_filesystem" {

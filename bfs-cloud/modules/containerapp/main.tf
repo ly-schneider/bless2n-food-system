@@ -85,9 +85,11 @@ resource "azurerm_container_app" "this" {
 
 
       liveness_probe {
-        path      = var.health_check_path
-        port      = var.target_port
-        transport = "HTTP"
+        path                   = var.liveness_path
+        port                   = var.target_port
+        transport              = "HTTP"
+        interval_seconds       = var.liveness_interval_seconds
+        initial_delay          = var.liveness_initial_delay_seconds
       }
 
       readiness_probe {

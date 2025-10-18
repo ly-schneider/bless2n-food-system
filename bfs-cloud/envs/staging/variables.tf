@@ -24,6 +24,12 @@ variable "image_tag" {
   default     = "staging"
 }
 
+variable "revision_suffix" {
+  description = "Unique suffix to force a new Container Apps revision (e.g., commit SHA)"
+  type        = string
+  default     = null
+}
+
 variable "app_secrets" {
   description = "Map of app name => map of secret name => value"
   type        = map(map(string))

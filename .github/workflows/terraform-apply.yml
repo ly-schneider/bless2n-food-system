@@ -12,6 +12,10 @@ on:
         description: "Image tag to deploy (optional; defaults to branch)"
         type: string
         required: false
+      revision_suffix:
+        description: "Unique suffix to force new revision (optional; defaults to commit SHA)"
+        type: string
+        required: false
 
 permissions:
   contents: read
@@ -48,6 +52,7 @@ jobs:
           wait-for-completion: true
           tf-vars: |
             image_tag = "${{ inputs.image_tag || inputs.environment }}"
+            revision_suffix = "${{ inputs.revision_suffix || github.sha }}"
 
 concurrency:
   group: tf-apply-${{ inputs.environment }}

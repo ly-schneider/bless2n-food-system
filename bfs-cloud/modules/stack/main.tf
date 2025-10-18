@@ -54,6 +54,7 @@ variable "config" {
       memory                = string
       min_replicas          = number
       max_replicas          = number
+      revision_suffix       = optional(string)
       environment_variables = optional(map(string), {})
       secrets               = optional(map(string), {})
       key_vault_secrets     = optional(map(string), {})
@@ -239,6 +240,7 @@ module "apps_backend" {
   environment_variables      = merge(local.environment_variables, each.value.environment_variables)
   secrets                    = each.value.secrets
   key_vault_secrets          = each.value.key_vault_secrets
+  revision_suffix            = try(each.value.revision_suffix, null)
   # Resolve Key Vault secret IDs inside the stack to avoid referencing module outputs from the caller
   # Prefer module.security-provided versionless IDs; otherwise, construct versionless IDs from the vault ID.
   key_vault_secret_refs = merge(
@@ -280,7 +282,7 @@ module "apps_frontend" {
   environment_id             = module.aca_env.id
   image                      = each.value.image
   target_port                = each.value.port
-  health_check_path          = lookup(each.value, "health_check_path", "/health")
+  health_check_path          = lookup(each.value, "health_check_path", "/api/health")
   external_ingress           = try(each.value.external_ingress, true)
   cpu                        = each.value.cpu
   memory                     = each.value.memory
@@ -295,6 +297,7 @@ module "apps_frontend" {
   )
   secrets           = each.value.secrets
   key_vault_secrets = each.value.key_vault_secrets
+  revision_suffix   = try(each.value.revision_suffix, null)
   # Resolve Key Vault secret IDs inside the stack to avoid referencing module outputs from the caller
   key_vault_secret_refs = merge(
     try(each.value.key_vault_secret_refs, {}),

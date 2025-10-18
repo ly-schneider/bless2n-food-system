@@ -26,7 +26,8 @@ jobs:
     secrets: inherit
     with:
       target_branch: ${{ github.event.workflow_run.head_branch }}
-      image_tag: ${{ github.event.workflow_run.head_sha }}
+      image_tag: ${{ github.event.workflow_run.head_branch }}
+      revision_suffix: ${{ github.event.workflow_run.head_sha }}
       wait_for_completion: ${{ github.event.workflow_run.head_branch == 'staging' }}
 
   on-self-change:
@@ -36,4 +37,5 @@ jobs:
     with:
       target_branch: ${{ github.ref_name }}
       image_tag: ${{ github.ref_name }}
+      revision_suffix: ${{ github.sha }}
       wait_for_completion: ${{ github.ref_name == 'staging' }}

@@ -3,14 +3,16 @@ model: environment
 id: ev_2rGvriKsHa
 workspaceId: wk_wnN8iaCncF
 createdAt: 2025-05-07T09:39:43.744401
-updatedAt: 2025-07-01T12:57:04.017621
+updatedAt: 2025-10-17T22:07:17.566029
 name: Global Variables
 public: true
 base: true
+parentModel: workspace
+parentId: null
 variables:
 - enabled: true
   name: BASE_URL
-  value: localhost:8080
+  value: https://backend-staging.icyflower-8ca6e8ee.northeurope.azurecontainerapps.io
   id: 5MRxwUyCwm
 - enabled: true
   name: API_URL

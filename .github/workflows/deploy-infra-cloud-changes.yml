@@ -47,6 +47,7 @@ jobs:
     with:
       target_branch: ${{ github.ref_name }}
       image_tag: ${{ github.ref_name }}
+      revision_suffix: ${{ github.sha }}
       wait_for_completion: ${{ github.ref_name == 'staging' }}
 
   validate:

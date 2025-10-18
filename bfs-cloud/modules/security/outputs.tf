@@ -15,14 +15,9 @@ output "key_vault_uri" {
 
 output "key_vault_secret_ids" {
   description = "Map of Key Vault secret names to their versionless IDs"
-  value = var.enable_key_vault ? merge(
-    {
-      "mongo-connection-string" = azurerm_key_vault_secret.cosmos_connection_string[0].versionless_id
-    },
-    {
-      for k, v in azurerm_key_vault_secret.placeholder_secrets : k => v.versionless_id
-    }
-  ) : {}
+  value = var.enable_key_vault ? {
+    "mongo-connection-string" = azurerm_key_vault_secret.cosmos_connection_string[0].versionless_id
+  } : {}
 }
 
 output "cost_savings_summary" {

@@ -34,8 +34,7 @@ resource "azurerm_cosmosdb_account" "this" {
     storage_redundancy  = "Geo"
   }
 
-  // Disable public access; access only via Private Endpoint
-  public_network_access_enabled     = false
+  public_network_access_enabled     = true
   is_virtual_network_filter_enabled = false
 
   ip_range_filter = var.allowed_ip_ranges
@@ -63,10 +62,6 @@ resource "azurerm_cosmosdb_mongo_database" "db" {
   resource_group_name = var.resource_group_name
   account_name        = azurerm_cosmosdb_account.this.name
 }
-
-############################
-# Private Endpoint + DNS   #
-############################
 
 resource "azurerm_private_dns_zone" "cosmos_mongo" {
   name                = "privatelink.mongo.cosmos.azure.com"

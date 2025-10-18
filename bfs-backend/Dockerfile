@@ -56,8 +56,8 @@ USER nonroot:nonroot
 # Set working directory
 WORKDIR /app
 
-# Health check for container orchestration
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+# Health check for container orchestration (liveness)
+HEALTHCHECK --interval=60s --timeout=5s --start-period=20s --retries=3 \
     CMD ["/app/backend", "--healthcheck"]
 
 # Expose port (non-privileged)

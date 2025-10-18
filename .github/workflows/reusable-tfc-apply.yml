@@ -11,6 +11,10 @@ on:
         description: 'Image tag to deploy'
         type: string
         required: true
+      revision_suffix:
+        description: 'Unique suffix to force new revision (e.g., commit SHA)'
+        type: string
+        required: false
       wait_for_completion:
         description: 'Whether to wait for run completion'
         type: boolean
@@ -61,3 +65,4 @@ jobs:
           wait-for-completion: ${{ inputs.wait_for_completion }}
           tf-vars: |
             image_tag = "${{ inputs.image_tag }}"
+            revision_suffix = "${{ inputs.revision_suffix }}"

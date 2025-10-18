@@ -71,9 +71,8 @@ func NewRouter(
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Heartbeat("/ping"))
 
-	// Health check endpoints (Docker/K8s probes)
-	r.Get("/healthz", healthHandler.Healthz)
-	r.Get("/readyz", healthHandler.Readyz)
+	// Health check endpoint
+	r.Get("/health", healthHandler.Health)
 
 	// JWKS endpoint (public access for JWT verification)
 	r.Get("/.well-known/jwks.json", jwksHandler.GetJWKS)

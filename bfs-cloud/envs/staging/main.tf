@@ -34,45 +34,36 @@ module "bfs_infrastructure" {
     requests_5xx_threshold   = 10
     enable_security_features = true
     key_vault_name           = "bfs-staging-kv"
-    # Provision an ACR for this environment and grant UAMI AcrPull.
-    # This fixes image pull failures like: failed to resolve registry '...azurecr.io'.
     enable_acr = true
     acr_name   = var.acr_name
-    # Let the stack derive login_server from the created ACR; no explicit override needed.
-    # acr_login_server       = "${var.acr_name}.azurecr.io"
-
     apps = {
       frontend-staging = {
-        # Next.js image listens on port 3000 internally; match target_port.
         port             = 3000
         image            = local.frontend_image
+        revision_suffix  = var.revision_suffix
         external_ingress = true
         cpu              = 0.25
         memory           = "0.5Gi"
         min_replicas     = 0
         max_replicas     = 20
-        # Use an internal health endpoint that does not depend on backend
-        health_check_path = "/api/health"
-        # ACR configuration - no additional registries needed when using managed identity
+        health_check_path = "/health"
+        liveness_path     = "/health"
         registries = []
         secrets    = lookup(var.app_secrets, "frontend-staging", {})
         environment_variables = {
-          # Application configuration
           NODE_ENV                 = "production"
-          LOG_LEVEL                = "info"
 
-          # POS configuration
+          LOG_LEVEL                = "info"
+          
           NEXT_PUBLIC_POS_PIN          = "0000"
           NEXT_PUBLIC_POS_IDLE_TIMEOUT = "300000"
-
-          # Analytics (to be configured)
+          
           NEXT_PUBLIC_GA_MEASUREMENT_ID = "G-9W8S03MJEM"
-
-          # Public keys (safe to be in environment variables)
+          
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = "pk_test_51RQl9ZRqpUl5qfpdqiu8nhU6h5N1YyEXWoOxqUsPb8UouZqPMubOZtESdFa4KHTWM71GhAbbddlS3a6aTFu1vIDe00p1DqQTG9"
+          
           NEXT_PUBLIC_GOOGLE_CLIENT_ID       = "728225904671-h9cp0badsuvamscrn6k2lnkksiinld99.apps.googleusercontent.com"
         }
-        # Wire API base URLs via Key Vault secrets (editable in Azure UI)
         key_vault_secrets = merge(
           lookup(var.app_secrets, "frontend-staging", {}),
           {
@@ -92,11 +83,12 @@ module "bfs_infrastructure" {
       backend-staging = {
         port             = 8080
         image            = local.backend_image
-        # Must be external to have a public stable FQDN (Application URL)
+        revision_suffix  = var.revision_suffix
         external_ingress = true
-        health_check_path = "/healthz"
+        health_check_path = "/health"
+        liveness_path     = "/ping"
         cpu               = 0.5
-        memory            = "1.0Gi"
+        memory            = "1Gi"
         min_replicas      = 0
         max_replicas      = 20
         registries = []
@@ -133,7 +125,6 @@ module "bfs_infrastructure" {
           STRIPE_WEBHOOK_SECRET = "stripe-webhook-secret"
           SMTP_PASSWORD         = "smtp-password"
           STATION_QR_SECRET     = "station-qr-secret"
-          # Backend consumes frontend-url from Key Vault for issuer/trusted origins
           SECURITY_TRUSTED_ORIGINS = "frontend-url"
           JWT_ISSUER               = "frontend-url"
           PUBLIC_BASE_URL          = "frontend-url"

@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_MXsfHwiwFb
 createdAt: 2025-05-28T09:31:45.324145
-updatedAt: 2025-08-27T22:06:27.828647
+updatedAt: 2025-10-17T22:07:26.976305
 workspaceId: wk_wnN8iaCncF
 folderId: fl_AxXSj5YeMR
 authentication:
@@ -27,5 +27,5 @@ headers:
 method: POST
 name: Register Customer
 sortPriority: 250.0
-url: ${[ API_URL ]}/auth/register/customer
+url: ${[ API_URL ]}/auth/otp/request
 urlParameters: []
