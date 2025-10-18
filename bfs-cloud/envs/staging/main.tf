@@ -45,10 +45,12 @@ module "bfs_infrastructure" {
         external_ingress  = true
         cpu               = 0.25
         memory            = "0.5Gi"
-        min_replicas      = 1
+        min_replicas      = 0
         max_replicas      = 20
         health_check_path = "/health"
         liveness_path     = "/health"
+        liveness_interval_seconds      = 30
+        liveness_initial_delay_seconds = 20
         registries        = []
         secrets           = lookup(var.app_secrets, "frontend-staging", {})
         environment_variables = {
@@ -88,9 +90,11 @@ module "bfs_infrastructure" {
         external_ingress  = true
         health_check_path = "/health"
         liveness_path     = "/ping"
+        liveness_interval_seconds      = 60
+        liveness_initial_delay_seconds = 30
         cpu               = 0.5
         memory            = "1Gi"
-        min_replicas      = 1
+        min_replicas      = 0
         max_replicas      = 20
         registries        = []
         secrets           = lookup(var.app_secrets, "backend-staging", {})

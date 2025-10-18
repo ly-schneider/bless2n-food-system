@@ -55,6 +55,11 @@ variable "config" {
       min_replicas          = number
       max_replicas          = number
       revision_suffix       = optional(string)
+      # Probes
+      health_check_path               = optional(string)
+      liveness_path                   = optional(string)
+      liveness_interval_seconds       = optional(number)
+      liveness_initial_delay_seconds  = optional(number)
       environment_variables = optional(map(string), {})
       secrets               = optional(map(string), {})
       key_vault_secrets     = optional(map(string), {})
@@ -229,6 +234,9 @@ module "apps_backend" {
   image                      = each.value.image
   target_port                = each.value.port
   health_check_path          = lookup(each.value, "health_check_path", "/health")
+  liveness_path              = lookup(each.value, "liveness_path", "/health")
+  liveness_interval_seconds  = lookup(each.value, "liveness_interval_seconds", 60)
+  liveness_initial_delay_seconds = lookup(each.value, "liveness_initial_delay_seconds", 20)
   external_ingress           = try(each.value.external_ingress, true)
   cpu                        = each.value.cpu
   memory                     = each.value.memory
@@ -281,6 +289,9 @@ module "apps_frontend" {
   image                      = each.value.image
   target_port                = each.value.port
   health_check_path          = lookup(each.value, "health_check_path", "/api/health")
+  liveness_path              = lookup(each.value, "liveness_path", "/api/health")
+  liveness_interval_seconds  = lookup(each.value, "liveness_interval_seconds", 30)
+  liveness_initial_delay_seconds = lookup(each.value, "liveness_initial_delay_seconds", 20)
   external_ingress           = try(each.value.external_ingress, true)
   cpu                        = each.value.cpu
   memory                     = each.value.memory
