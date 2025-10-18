@@ -1,6 +1,13 @@
 locals {
   kv_secret_identity = var.enable_system_identity && length(var.user_assigned_identity_ids) == 0 ? "System" : (length(var.user_assigned_identity_ids) > 0 ? var.user_assigned_identity_ids[0] : null)
   _kv_identity_guard = length(var.key_vault_secret_refs) == 0 || local.kv_secret_identity != null ? true : tomap({})["force_error"]
+  
+  # Azure Container Apps revision names have format: {app-name}--{revision-suffix}
+  # Total length must be ≤54 characters, alphanumeric + hyphens only
+  # Calculate max suffix length: 54 - length(app_name) - 2 (for '--')
+  max_suffix_length = max(0, 54 - length(var.name) - 2)
+  # Truncate and sanitize revision suffix to comply with Azure naming rules
+  safe_revision_suffix = var.revision_suffix != null ? substr(replace(var.revision_suffix, "/[^a-z0-9-]/", ""), 0, local.max_suffix_length) : null
 }
 
 resource "azurerm_container_app" "this" {
@@ -59,7 +66,7 @@ resource "azurerm_container_app" "this" {
   template {
     min_replicas    = var.min_replicas
     max_replicas    = var.max_replicas
-    revision_suffix = var.revision_suffix
+    revision_suffix = local.safe_revision_suffix
 
     container {
       name   = "app"
