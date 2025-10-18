@@ -129,6 +129,7 @@ module "bfs_infrastructure" {
             "SMTP_PASSWORD"            = "smtp-password"
             "SECURITY_TRUSTED_ORIGINS" = "security-trusted-origins"
             "PUBLIC_BASE_URL"          = "public-base-url"
+            "JWT_ISSUER"               = "jwt-issuer"
           }
         )
         http_scale_rule = {
