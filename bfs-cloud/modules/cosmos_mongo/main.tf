@@ -6,7 +6,7 @@ resource "azurerm_cosmosdb_account" "this" {
   offer_type = "Standard"
   kind       = "MongoDB"
 
-  mongo_server_version = 7.0
+  mongo_server_version = "7.0"
 
   capabilities {
     name = "EnableMongo"
