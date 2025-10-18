@@ -50,8 +50,8 @@ jobs:
         shell: bash
         run: |
           case "${{ github.ref_name }}" in
-            staging) echo "dir=bfs-cloud/envs/staging" >> $GITHUB_OUTPUT ;;
-            production) echo "dir=bfs-cloud/envs/production" >> $GITHUB_OUTPUT ;;
+            staging) echo "dir=bfs-cloud/envs/staging" >> "$GITHUB_OUTPUT" ;;
+            production) echo "dir=bfs-cloud/envs/production" >> "$GITHUB_OUTPUT" ;;
             *) echo "Unsupported branch: ${{ github.ref_name }}" >&2 ; exit 1 ;;
           esac
       - name: terraform init (-backend=false)

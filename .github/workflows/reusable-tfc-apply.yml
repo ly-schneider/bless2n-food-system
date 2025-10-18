@@ -27,8 +27,8 @@ jobs:
         shell: bash
         run: |
           case "${{ inputs.target_branch }}" in
-            staging)   echo "workspace=bfs-staging"   >> $GITHUB_OUTPUT ;;
-            production) echo "workspace=bfs-production" >> $GITHUB_OUTPUT ;;
+            staging)   echo "workspace=bfs-staging"   >> "$GITHUB_OUTPUT" ;;
+            production) echo "workspace=bfs-production" >> "$GITHUB_OUTPUT" ;;
             *) echo "Unsupported env: ${{ inputs.target_branch }}" ; exit 1 ;;
           esac
 
@@ -37,8 +37,8 @@ jobs:
         shell: bash
         run: |
           case "${{ inputs.target_branch }}" in
-            staging)   echo "dir=bfs-cloud/envs/staging"   >> $GITHUB_OUTPUT ;;
-            production) echo "dir=bfs-cloud/envs/production" >> $GITHUB_OUTPUT ;;
+            staging)   echo "dir=bfs-cloud/envs/staging"   >> "$GITHUB_OUTPUT" ;;
+            production) echo "dir=bfs-cloud/envs/production" >> "$GITHUB_OUTPUT" ;;
             *) echo "Unsupported target branch: ${{ inputs.target_branch }}" ; exit 1 ;;
           esac
 
@@ -68,11 +68,11 @@ jobs:
         run: |
           BACKEND_DIGEST=$(grep -h '^backend=' ./digests/* 2>/dev/null | tail -n1 | cut -d= -f2 || true)
           FRONTEND_DIGEST=$(grep -h '^frontend=' ./digests/* 2>/dev/null | tail -n1 | cut -d= -f2 || true)
-          echo "backend_digest=$BACKEND_DIGEST"   >> $GITHUB_OUTPUT
-          echo "frontend_digest=$FRONTEND_DIGEST" >> $GITHUB_OUTPUT
+          echo "backend_digest=$BACKEND_DIGEST"   >> "$GITHUB_OUTPUT"
+          echo "frontend_digest=$FRONTEND_DIGEST" >> "$GITHUB_OUTPUT"
 
       - name: Queue Terraform Cloud apply
-        uses: kvrhdn/tfe-run@v1
+        uses: kvrhdn/tfe-run@v1.0.9
         with:
           token: ${{ secrets.TF_API_TOKEN }}
           organization: ${{ vars.TF_ORG_NAME }}

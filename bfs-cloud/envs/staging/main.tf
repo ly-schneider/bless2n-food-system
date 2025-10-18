@@ -3,7 +3,6 @@ locals {
   frontend_repo = "frontend"
   backend_repo  = "backend"
 
-  # Prefer digests when provided to ensure immutable rollouts
   frontend_image = var.frontend_digest != "" ? "${local.registry_host}/${local.frontend_repo}@${var.frontend_digest}" : "${local.registry_host}/${local.frontend_repo}:${var.image_tag}"
 
   backend_image = var.backend_digest != "" ? "${local.registry_host}/${local.backend_repo}@${var.backend_digest}" : "${local.registry_host}/${local.backend_repo}:${var.image_tag}"
@@ -68,7 +67,10 @@ module "bfs_infrastructure" {
         }
         key_vault_secrets = merge(
           lookup(var.app_secrets, "frontend-staging", {}),
-          {}
+          {
+            "NEXT_PUBLIC_API_BASE_URL" = "next-public-api-base-url"
+            "BACKEND_INTERNAL_URL"     = "backend-internal-url"
+          }
         )
         http_scale_rule = {
           name                = "frontend-http-scale"
@@ -93,8 +95,9 @@ module "bfs_infrastructure" {
         registries        = []
         secrets           = lookup(var.app_secrets, "backend-staging", {})
         environment_variables = {
-          APP_ENV         = "staging"
-          APP_PORT        = "8080"
+          APP_ENV  = "staging"
+          APP_PORT = "8080"
+
           LOG_LEVEL       = "info"
           LOG_DEVELOPMENT = "false"
 
@@ -116,13 +119,16 @@ module "bfs_infrastructure" {
         key_vault_secrets = merge(
           lookup(var.app_secrets, "backend-staging", {}),
           {
-            "MONGO_URI"             = "mongo-uri"
-            "JWT_PRIV_PEM"          = "jwt-priv-pem"
-            "JWT_PUB_PEM"           = "jwt-pub-pem"
-            "STATION_QR_SECRET"     = "station-qr-secret"
-            "GOOGLE_CLIENT_SECRET"  = "google-client-secret"
-            "STRIPE_SECRET_KEY"     = "stripe-secret-key"
-            "STRIPE_WEBHOOK_SECRET" = "stripe-webhook-secret"
+            "MONGO_URI"                = "mongo-uri"
+            "JWT_PRIV_PEM"             = "jwt-priv-pem"
+            "JWT_PUB_PEM"              = "jwt-pub-pem"
+            "STATION_QR_SECRET"        = "station-qr-secret"
+            "GOOGLE_CLIENT_SECRET"     = "google-client-secret"
+            "STRIPE_SECRET_KEY"        = "stripe-secret-key"
+            "STRIPE_WEBHOOK_SECRET"    = "stripe-webhook-secret"
+            "SMTP_PASSWORD"            = "smtp-password"
+            "SECURITY_TRUSTED_ORIGINS" = "security-trusted-origins"
+            "PUBLIC_BASE_URL"          = "public-base-url-staging"
           }
         )
         http_scale_rule = {
