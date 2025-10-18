@@ -116,13 +116,13 @@ module "bfs_infrastructure" {
         key_vault_secrets = merge(
           lookup(var.app_secrets, "backend-staging", {}),
           {
-            "mongo-connection-string" = "MONGO_URI"
-            "jwt-private-key"         = "JWT_PRIV_PEM"
-            "jwt-public-key"          = "JWT_PUB_PEM"
-            "station-qr-secret"       = "STATION_QR_SECRET"
-            "google-client-secret"    = "GOOGLE_CLIENT_SECRET"
-            "stripe-secret-key"       = "STRIPE_SECRET_KEY"
-            "stripe-webhook-secret"   = "STRIPE_WEBHOOK_SECRET"
+            "MONGO_URI"             = "mongo-connection-string"
+            "JWT_PRIV_PEM"          = "jwt-private-key"
+            "JWT_PUB_PEM"           = "jwt-public-key"
+            "STATION_QR_SECRET"     = "station-qr-secret"
+            "GOOGLE_CLIENT_SECRET"  = "google-client-secret"
+            "STRIPE_SECRET_KEY"     = "stripe-secret-key"
+            "STRIPE_WEBHOOK_SECRET" = "stripe-webhook-secret"
           }
         )
         http_scale_rule = {
