@@ -27,7 +27,7 @@ resource "azurerm_container_app" "this" {
       name                = secret.key
       key_vault_secret_id = secret.value
       # Required by AzureRM when referencing Key Vault secrets
-      identity            = local.kv_secret_identity
+      identity = local.kv_secret_identity
     }
   }
 
@@ -35,12 +35,12 @@ resource "azurerm_container_app" "this" {
   dynamic "registry" {
     for_each = var.registries
     content {
-      server               = registry.value.server
+      server = registry.value.server
       # Support username/password-based registries (e.g., GHCR)
       username             = try(registry.value.username, null)
       password_secret_name = try(registry.value.password_secret_name, null)
       # Support managed identity-based ACR pull
-      identity             = try(registry.value.identity, null)
+      identity = try(registry.value.identity, null)
     }
   }
 
@@ -85,11 +85,11 @@ resource "azurerm_container_app" "this" {
 
 
       liveness_probe {
-        path                   = var.liveness_path
-        port                   = var.target_port
-        transport              = "HTTP"
-        interval_seconds       = var.liveness_interval_seconds
-        initial_delay          = var.liveness_initial_delay_seconds
+        path             = var.liveness_path
+        port             = var.target_port
+        transport        = "HTTP"
+        interval_seconds = var.liveness_interval_seconds
+        initial_delay    = var.liveness_initial_delay_seconds
       }
 
       readiness_probe {
@@ -194,6 +194,6 @@ module "diag" {
   categories                 = []
   # Azure Container Apps do not support category_group "allLogs".
   # Keep logs empty for now and enable metrics only to avoid API errors.
-  category_groups            = []
-  enable_metrics             = true
+  category_groups = []
+  enable_metrics  = true
 }

@@ -36,35 +36,35 @@ module "bfs_infrastructure" {
     requests_5xx_threshold   = 10
     enable_security_features = true
     key_vault_name           = "bfs-staging-kv"
-    enable_acr = true
-    acr_name   = var.acr_name
+    enable_acr               = true
+    acr_name                 = var.acr_name
     apps = {
       frontend-staging = {
-        port             = 3000
-        image            = local.frontend_image
-        revision_suffix  = var.revision_suffix
-        external_ingress = true
-        cpu              = 0.25
-        memory           = "0.5Gi"
-        min_replicas     = 0
-        max_replicas     = 20
+        port              = 3000
+        image             = local.frontend_image
+        revision_suffix   = var.revision_suffix
+        external_ingress  = true
+        cpu               = 0.25
+        memory            = "0.5Gi"
+        min_replicas      = 0
+        max_replicas      = 20
         health_check_path = "/health"
         liveness_path     = "/health"
-        registries = []
-        secrets    = lookup(var.app_secrets, "frontend-staging", {})
+        registries        = []
+        secrets           = lookup(var.app_secrets, "frontend-staging", {})
         environment_variables = {
-          NODE_ENV                 = "production"
+          NODE_ENV = "production"
 
-          LOG_LEVEL                = "info"
-          
+          LOG_LEVEL = "info"
+
           NEXT_PUBLIC_POS_PIN          = "0000"
           NEXT_PUBLIC_POS_IDLE_TIMEOUT = "300000"
-          
+
           NEXT_PUBLIC_GA_MEASUREMENT_ID = "G-9W8S03MJEM"
-          
+
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = "pk_test_51RQl9ZRqpUl5qfpdqiu8nhU6h5N1YyEXWoOxqUsPb8UouZqPMubOZtESdFa4KHTWM71GhAbbddlS3a6aTFu1vIDe00p1DqQTG9"
-          
-          NEXT_PUBLIC_GOOGLE_CLIENT_ID       = "728225904671-h9cp0badsuvamscrn6k2lnkksiinld99.apps.googleusercontent.com"
+
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID = "728225904671-h9cp0badsuvamscrn6k2lnkksiinld99.apps.googleusercontent.com"
         }
         key_vault_secrets = merge(
           lookup(var.app_secrets, "frontend-staging", {}),
@@ -83,26 +83,26 @@ module "bfs_infrastructure" {
         }
       }
       backend-staging = {
-        port             = 8080
-        image            = local.backend_image
-        revision_suffix  = var.revision_suffix
-        external_ingress = true
+        port              = 8080
+        image             = local.backend_image
+        revision_suffix   = var.revision_suffix
+        external_ingress  = true
         health_check_path = "/health"
         liveness_path     = "/ping"
         cpu               = 0.5
         memory            = "1Gi"
         min_replicas      = 0
         max_replicas      = 20
-        registries = []
-        secrets    = lookup(var.app_secrets, "backend-staging", {})
+        registries        = []
+        secrets           = lookup(var.app_secrets, "backend-staging", {})
         environment_variables = {
           APP_ENV         = "staging"
           APP_PORT        = "8080"
           LOG_LEVEL       = "info"
           LOG_DEVELOPMENT = "false"
 
-          SECURITY_ENABLE_HSTS     = "true"
-          SECURITY_ENABLE_CSP      = "true"
+          SECURITY_ENABLE_HSTS = "true"
+          SECURITY_ENABLE_CSP  = "true"
 
           SMTP_HOST       = "your-smtp-host"
           SMTP_PORT       = "587"
@@ -119,17 +119,17 @@ module "bfs_infrastructure" {
         key_vault_secrets = merge(
           lookup(var.app_secrets, "backend-staging", {}),
           {
-          MONGO_URI             = "mongo-connection-string"
-          JWT_PRIV_PEM          = "jwt-private-key"
-          JWT_PUB_PEM           = "jwt-public-key"
-          GOOGLE_CLIENT_SECRET  = "google-client-secret"
-          STRIPE_SECRET_KEY     = "stripe-secret-key"
-          STRIPE_WEBHOOK_SECRET = "stripe-webhook-secret"
-          SMTP_PASSWORD         = "smtp-password"
-          STATION_QR_SECRET     = "station-qr-secret"
-          SECURITY_TRUSTED_ORIGINS = "frontend-url"
-          JWT_ISSUER               = "frontend-url"
-          PUBLIC_BASE_URL          = "frontend-url"
+            MONGO_URI                = "mongo-connection-string"
+            JWT_PRIV_PEM             = "jwt-private-key"
+            JWT_PUB_PEM              = "jwt-public-key"
+            GOOGLE_CLIENT_SECRET     = "google-client-secret"
+            STRIPE_SECRET_KEY        = "stripe-secret-key"
+            STRIPE_WEBHOOK_SECRET    = "stripe-webhook-secret"
+            SMTP_PASSWORD            = "smtp-password"
+            STATION_QR_SECRET        = "station-qr-secret"
+            SECURITY_TRUSTED_ORIGINS = "frontend-url"
+            JWT_ISSUER               = "frontend-url"
+            PUBLIC_BASE_URL          = "frontend-url"
           }
         )
         http_scale_rule = {

@@ -158,16 +158,16 @@ locals {
 }
 
 module "net" {
-  source              = "../network"
-  resource_group_name = module.rg.name
-  location            = var.location
-  vnet_name           = var.config.vnet_name
-  vnet_cidr           = var.config.vnet_cidr
-  subnet_name         = var.config.subnet_name
-  subnet_cidr         = var.config.subnet_cidr
+  source                        = "../network"
+  resource_group_name           = module.rg.name
+  location                      = var.location
+  vnet_name                     = var.config.vnet_name
+  vnet_cidr                     = var.config.vnet_cidr
+  subnet_name                   = var.config.subnet_name
+  subnet_cidr                   = var.config.subnet_cidr
   private_endpoints_subnet_name = try(var.config.pe_subnet_name, "private-endpoints-subnet")
   private_endpoints_subnet_cidr = try(var.config.pe_subnet_cidr, "10.1.8.0/24")
-  tags                = var.tags
+  tags                          = var.tags
 }
 
 module "obs" {
@@ -199,8 +199,8 @@ module "env_diag" {
   log_analytics_workspace_id = module.obs.log_analytics_id
   # Container Apps Environment does not support category_group "allLogs".
   # Use metrics only for now to avoid API errors.
-  category_groups            = []
-  enable_metrics             = true
+  category_groups = []
+  enable_metrics  = true
 }
 
 module "cosmos" {
@@ -339,11 +339,11 @@ resource "azurerm_role_assignment" "uami_acr_pull" {
 module "alerts" {
   count = var.config.enable_alerts ? 1 : 0
 
-  source                 = "../alerts"
-  name                   = "${var.environment}-alerts"
-  short_name             = var.environment
-  resource_group_name    = module.rg.name
-  email_receivers        = var.alert_emails
+  source              = "../alerts"
+  name                = "${var.environment}-alerts"
+  short_name          = var.environment
+  resource_group_name = module.rg.name
+  email_receivers     = var.alert_emails
   container_app_ids = merge(
     { for k, m in module.apps_backend : k => m.id },
     { for k, m in module.apps_frontend : k => m.id }
