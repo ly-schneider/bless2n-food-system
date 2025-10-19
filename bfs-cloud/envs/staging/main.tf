@@ -39,6 +39,7 @@ module "bfs_infrastructure" {
     enable_acr               = true
     acr_name                 = var.acr_name
     budget_amount            = var.budget_amount
+    budget_start_date        = "2025-10-20T00:00:00+02:00"
     apps = {
       frontend-staging = {
         port                           = 3000
