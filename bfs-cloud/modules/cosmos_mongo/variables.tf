@@ -17,6 +17,11 @@ variable "subnet_id" {
   description = "Subnet ID for VNet integration (not used for Private Endpoint)"
   type        = string
 }
+variable "enable_private_endpoint" {
+  description = "Whether to create a Private Endpoint and Private DNS for Cosmos"
+  type        = bool
+  default     = false
+}
 variable "private_endpoint_subnet_id" {
   description = "Subnet ID to place the Cosmos DB Private Endpoint (must NOT be delegated)"
   type        = string

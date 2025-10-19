@@ -1,4 +1,9 @@
+locals {
+  use_external_ag = var.action_group_id != null && var.action_group_id != ""
+}
+
 resource "azurerm_monitor_action_group" "this" {
+  count               = local.use_external_ag ? 0 : 1
   name                = var.name
   resource_group_name = var.resource_group_name
   short_name          = var.short_name
@@ -41,7 +46,7 @@ resource "azurerm_monitor_metric_alert" "requests_5xx" {
   }
 
   action {
-    action_group_id = azurerm_monitor_action_group.this.id
+    action_group_id = local.use_external_ag ? var.action_group_id : azurerm_monitor_action_group.this[0].id
   }
 
   tags = var.tags

@@ -6,8 +6,8 @@ output "connection_string" {
   sensitive = true
 }
 output "private_endpoint_id" {
-  value = azurerm_private_endpoint.cosmos_mongo.id
+  value = length(azurerm_private_endpoint.cosmos_mongo) > 0 ? azurerm_private_endpoint.cosmos_mongo[0].id : null
 }
 output "private_dns_zone_name" {
-  value = azurerm_private_dns_zone.cosmos_mongo.name
+  value = length(azurerm_private_dns_zone.cosmos_mongo) > 0 ? azurerm_private_dns_zone.cosmos_mongo[0].name : null
 }

@@ -46,24 +46,27 @@ variable "config" {
     acr_name                 = optional(string)
     acr_sku                  = optional(string, "Basic")
     key_vault_name           = optional(string)
+    enable_private_endpoint  = optional(bool, false)
     allowed_ip_ranges        = optional(list(string), [])
+    budget_amount            = optional(number)
+    budget_start_date        = optional(string, "2025-01-01T00:00:00Z")
     apps = map(object({
-      port                  = number
-      image                 = string
-      cpu                   = number
-      memory                = string
-      min_replicas          = number
-      max_replicas          = number
-      revision_suffix       = optional(string)
+      port            = number
+      image           = string
+      cpu             = number
+      memory          = string
+      min_replicas    = number
+      max_replicas    = number
+      revision_suffix = optional(string)
       # Probes
-      health_check_path               = optional(string)
-      liveness_path                   = optional(string)
-      liveness_interval_seconds       = optional(number)
-      liveness_initial_delay_seconds  = optional(number)
-      environment_variables = optional(map(string), {})
-      secrets               = optional(map(string), {})
-      key_vault_secrets     = optional(map(string), {})
-      key_vault_secret_refs = optional(map(string), {})
+      health_check_path              = optional(string)
+      liveness_path                  = optional(string)
+      liveness_interval_seconds      = optional(number)
+      liveness_initial_delay_seconds = optional(number)
+      environment_variables          = optional(map(string), {})
+      secrets                        = optional(map(string), {})
+      key_vault_secrets              = optional(map(string), {})
+      key_vault_secret_refs          = optional(map(string), {})
       registries = optional(list(object({
         server               = string
         username             = optional(string)
@@ -220,6 +223,7 @@ module "cosmos" {
   private_endpoint_subnet_id = module.net.private_endpoints_subnet_id
   vnet_id                    = module.net.vnet_id
   allowed_ip_ranges          = []
+  enable_private_endpoint    = try(var.config.enable_private_endpoint, false)
   log_analytics_workspace_id = module.obs.log_analytics_id
   tags                       = var.tags
 }
@@ -228,36 +232,34 @@ module "apps_backend" {
   for_each = local.backend_apps
   source   = "../containerapp"
 
-  name                       = each.key
-  resource_group_name        = module.rg.name
-  environment_id             = module.aca_env.id
-  image                      = each.value.image
-  target_port                = each.value.port
-  health_check_path          = lookup(each.value, "health_check_path", "/health")
-  liveness_path              = lookup(each.value, "liveness_path", "/health")
-  liveness_interval_seconds  = lookup(each.value, "liveness_interval_seconds", 60)
+  name                           = each.key
+  resource_group_name            = module.rg.name
+  environment_id                 = module.aca_env.id
+  image                          = each.value.image
+  target_port                    = each.value.port
+  health_check_path              = lookup(each.value, "health_check_path", "/health")
+  liveness_path                  = lookup(each.value, "liveness_path", "/health")
+  liveness_interval_seconds      = lookup(each.value, "liveness_interval_seconds", 60)
   liveness_initial_delay_seconds = lookup(each.value, "liveness_initial_delay_seconds", 20)
-  external_ingress           = try(each.value.external_ingress, true)
-  cpu                        = each.value.cpu
-  memory                     = each.value.memory
-  min_replicas               = each.value.min_replicas
-  max_replicas               = each.value.max_replicas
-  enable_system_identity     = false
-  user_assigned_identity_ids = [azurerm_user_assigned_identity.aca_uami.id]
-  log_analytics_workspace_id = module.obs.log_analytics_id
-  environment_variables      = merge(local.environment_variables, each.value.environment_variables)
-  secrets                    = each.value.secrets
-  key_vault_secrets          = each.value.key_vault_secrets
-  revision_suffix            = try(each.value.revision_suffix, null)
-  # Resolve Key Vault secret IDs inside the stack to avoid referencing module outputs from the caller
-  # Prefer module.security-provided versionless IDs; otherwise, construct proper Key Vault URI format.
+  external_ingress               = try(each.value.external_ingress, true)
+  cpu                            = each.value.cpu
+  memory                         = each.value.memory
+  min_replicas                   = each.value.min_replicas
+  max_replicas                   = each.value.max_replicas
+  enable_system_identity         = false
+  user_assigned_identity_ids     = [azurerm_user_assigned_identity.aca_uami.id]
+  log_analytics_workspace_id     = module.obs.log_analytics_id
+  environment_variables          = merge(local.environment_variables, each.value.environment_variables)
+  secrets                        = each.value.secrets
+  key_vault_secrets              = each.value.key_vault_secrets
+  revision_suffix                = try(each.value.revision_suffix, null)
   key_vault_secret_refs = merge(
     try(each.value.key_vault_secret_refs, {}),
     var.config.enable_security_features && length(module.security) > 0 ? {
-      for env_var, secret_name in try(each.value.key_vault_secrets, {}) : 
-        lower(replace(env_var, "_", "-")) => contains(keys(module.security[0].key_vault_secret_ids), secret_name) ? 
-          module.security[0].key_vault_secret_ids[secret_name] : 
-          format("%ssecrets/%s", module.security[0].key_vault_uri, secret_name)
+      for env_var, secret_name in try(each.value.key_vault_secrets, {}) :
+      lower(replace(env_var, "_", "-")) => contains(keys(module.security[0].key_vault_secret_ids), secret_name) ?
+      module.security[0].key_vault_secret_ids[secret_name] :
+      format("%ssecrets/%s", module.security[0].key_vault_uri, secret_name)
     } : {}
   )
   registries = concat(
@@ -283,23 +285,23 @@ module "apps_frontend" {
   for_each = local.frontend_apps
   source   = "../containerapp"
 
-  name                       = each.key
-  resource_group_name        = module.rg.name
-  environment_id             = module.aca_env.id
-  image                      = each.value.image
-  target_port                = each.value.port
-  health_check_path          = lookup(each.value, "health_check_path", "/api/health")
-  liveness_path              = lookup(each.value, "liveness_path", "/api/health")
-  liveness_interval_seconds  = lookup(each.value, "liveness_interval_seconds", 30)
+  name                           = each.key
+  resource_group_name            = module.rg.name
+  environment_id                 = module.aca_env.id
+  image                          = each.value.image
+  target_port                    = each.value.port
+  health_check_path              = lookup(each.value, "health_check_path", "/api/health")
+  liveness_path                  = lookup(each.value, "liveness_path", "/api/health")
+  liveness_interval_seconds      = lookup(each.value, "liveness_interval_seconds", 30)
   liveness_initial_delay_seconds = lookup(each.value, "liveness_initial_delay_seconds", 20)
-  external_ingress           = try(each.value.external_ingress, true)
-  cpu                        = each.value.cpu
-  memory                     = each.value.memory
-  min_replicas               = each.value.min_replicas
-  max_replicas               = each.value.max_replicas
-  enable_system_identity     = false
-  user_assigned_identity_ids = [azurerm_user_assigned_identity.aca_uami.id]
-  log_analytics_workspace_id = module.obs.log_analytics_id
+  external_ingress               = try(each.value.external_ingress, true)
+  cpu                            = each.value.cpu
+  memory                         = each.value.memory
+  min_replicas                   = each.value.min_replicas
+  max_replicas                   = each.value.max_replicas
+  enable_system_identity         = false
+  user_assigned_identity_ids     = [azurerm_user_assigned_identity.aca_uami.id]
+  log_analytics_workspace_id     = module.obs.log_analytics_id
   environment_variables = merge(
     local.environment_variables,
     each.value.environment_variables
@@ -312,10 +314,10 @@ module "apps_frontend" {
   key_vault_secret_refs = merge(
     try(each.value.key_vault_secret_refs, {}),
     var.config.enable_security_features && length(module.security) > 0 ? {
-      for env_var, secret_name in try(each.value.key_vault_secrets, {}) : 
-        lower(replace(env_var, "_", "-")) => contains(keys(module.security[0].key_vault_secret_ids), secret_name) ? 
-          module.security[0].key_vault_secret_ids[secret_name] : 
-          format("%ssecrets/%s", module.security[0].key_vault_uri, secret_name)
+      for env_var, secret_name in try(each.value.key_vault_secrets, {}) :
+      lower(replace(env_var, "_", "-")) => contains(keys(module.security[0].key_vault_secret_ids), secret_name) ?
+      module.security[0].key_vault_secret_ids[secret_name] :
+      format("%ssecrets/%s", module.security[0].key_vault_uri, secret_name)
     } : {}
   )
   registries = concat(
@@ -352,6 +354,7 @@ module "alerts" {
   short_name          = var.environment
   resource_group_name = module.rg.name
   email_receivers     = var.alert_emails
+  action_group_id     = module.ag.id
   container_app_ids = merge(
     { for k, m in module.apps_backend : k => m.id },
     { for k, m in module.apps_frontend : k => m.id }
@@ -389,4 +392,26 @@ module "security" {
   action_group_id            = null
   log_analytics_workspace_id = module.obs.log_analytics_id
   tags                       = var.tags
+}
+
+module "rg_budget" {
+  count  = try(var.config.budget_amount, null) != null ? 1 : 0
+  source = "../budget"
+
+  name              = "${var.environment}-rg-budget"
+  resource_group_id = module.rg.id
+  amount            = var.config.budget_amount
+  start_date        = try(var.config.budget_start_date, "2025-01-01T00:00:00Z")
+  action_group_id   = module.ag.id
+  tags              = var.tags
+}
+
+module "ag" {
+  source = "../action_group"
+
+  name                = "${var.environment}-ag"
+  short_name          = var.environment
+  resource_group_name = module.rg.name
+  email_receivers     = var.alert_emails
+  tags                = var.tags
 }

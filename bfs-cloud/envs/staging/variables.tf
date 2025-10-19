@@ -8,8 +8,10 @@ variable "tags" {
 }
 
 variable "alert_emails" {
-  type    = map(string)
-  default = {}
+  type = map(string)
+  default = {
+    dev = "levyn.schneider@leys.ch"
+  }
 }
 
 variable "acr_name" {
@@ -47,4 +49,10 @@ variable "app_secrets" {
   description = "Map of app name => map of secret name => value"
   type        = map(map(string))
   default     = {}
+}
+
+variable "budget_amount" {
+  description = "Monthly cost budget amount for the staging resource group (billing currency)"
+  type        = number
+  default     = 10
 }

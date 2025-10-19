@@ -35,7 +35,8 @@ resource "azurerm_cosmosdb_account" "this" {
   public_network_access_enabled     = true
   is_virtual_network_filter_enabled = false
 
-  ip_range_filter = var.allowed_ip_ranges
+  # Only apply IP filtering if caller provided ranges; otherwise use empty set
+  ip_range_filter = length(var.allowed_ip_ranges) > 0 ? toset(var.allowed_ip_ranges) : []
 
   cors_rule {
     allowed_origins    = var.cors_allowed_origins
@@ -60,20 +61,23 @@ resource "azurerm_cosmosdb_mongo_database" "db" {
 }
 
 resource "azurerm_private_dns_zone" "cosmos_mongo" {
+  count               = var.enable_private_endpoint ? 1 : 0
   name                = "privatelink.mongo.cosmos.azure.com"
   resource_group_name = var.resource_group_name
   tags                = var.tags
 }
 
 resource "azurerm_private_dns_zone_virtual_network_link" "cosmos_mongo_link" {
+  count                 = var.enable_private_endpoint ? 1 : 0
   name                  = "${var.name}-mongo-vnet-link"
   resource_group_name   = var.resource_group_name
-  private_dns_zone_name = azurerm_private_dns_zone.cosmos_mongo.name
+  private_dns_zone_name = azurerm_private_dns_zone.cosmos_mongo[0].name
   virtual_network_id    = var.vnet_id
   registration_enabled  = false
 }
 
 resource "azurerm_private_endpoint" "cosmos_mongo" {
+  count               = var.enable_private_endpoint ? 1 : 0
   name                = "${var.name}-pe"
   location            = var.location
   resource_group_name = var.resource_group_name
@@ -89,7 +93,7 @@ resource "azurerm_private_endpoint" "cosmos_mongo" {
 
   private_dns_zone_group {
     name                 = "cosmos-mongo-dns-group"
-    private_dns_zone_ids = [azurerm_private_dns_zone.cosmos_mongo.id]
+    private_dns_zone_ids = [azurerm_private_dns_zone.cosmos_mongo[0].id]
   }
 }
 

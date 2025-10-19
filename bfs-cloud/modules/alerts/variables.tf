@@ -15,6 +15,12 @@ variable "email_receivers" {
   default = {}
 }
 
+variable "action_group_id" {
+  description = "Use an existing Action Group instead of creating a new one"
+  type        = string
+  default     = null
+}
+
 variable "container_app_ids" {
   type = map(string)
 }

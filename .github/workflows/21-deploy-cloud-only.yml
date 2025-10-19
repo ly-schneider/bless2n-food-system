@@ -40,7 +40,7 @@ jobs:
     if: ${{ needs.changes.outputs.cloud == 'true' }}
     needs: changes
     runs-on: ubuntu-latest
-    env: { TF_VERSION: 1.8.5 }
+    env: { TF_VERSION: 1.13.3 }
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
