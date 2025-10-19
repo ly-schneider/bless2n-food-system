@@ -1,23 +1,4 @@
-locals {
-  use_external_ag = var.action_group_id != null && var.action_group_id != ""
-}
-
-resource "azurerm_monitor_action_group" "this" {
-  count               = local.use_external_ag ? 0 : 1
-  name                = var.name
-  resource_group_name = var.resource_group_name
-  short_name          = var.short_name
-
-  dynamic "email_receiver" {
-    for_each = var.email_receivers
-    content {
-      name          = email_receiver.key
-      email_address = email_receiver.value
-    }
-  }
-
-  tags = var.tags
-}
+// Action Group is provided by the caller (stack) to avoid count-on-unknown problems
 
 resource "azurerm_monitor_metric_alert" "requests_5xx" {
   for_each            = var.container_app_ids
@@ -46,7 +27,7 @@ resource "azurerm_monitor_metric_alert" "requests_5xx" {
   }
 
   action {
-    action_group_id = local.use_external_ag ? var.action_group_id : azurerm_monitor_action_group.this[0].id
+    action_group_id = var.action_group_id
   }
 
   tags = var.tags
