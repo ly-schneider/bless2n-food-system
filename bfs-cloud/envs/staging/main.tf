@@ -115,7 +115,7 @@ module "bfs_infrastructure" {
           SMTP_PORT       = "587"
           SMTP_USERNAME   = "levyn.schneider@rentro.ch"
           SMTP_FROM       = "BlessThun Food <levyn.schneider@rentro.ch>"
-          SMTP_TLS_POLICY = "require"
+          SMTP_TLS_POLICY = "starttls"
 
           GOOGLE_CLIENT_ID = "728225904671-h9cp0badsuvamscrn6k2lnkksiinld99.apps.googleusercontent.com"
 

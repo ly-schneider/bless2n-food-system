@@ -348,12 +348,7 @@ func loadBaselineData(ctx context.Context, db *mongo.Database, baselineDir strin
 
 func generateBulkData(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {
 	// Generate healthy amounts of data:
-	// 20 customers, 3 admins, 10 simple products, 2 menu products with slots, 0 orders
-
-	// Generate customers
-	if err := generateCustomers(ctx, db, logger); err != nil {
-		return fmt.Errorf("failed to generate customers: %w", err)
-	}
+	// 2 admins, 10 simple products, 2 menu products with slots, 0 orders
 
 	// Generate admins
 	if err := generateAdmins(ctx, db, logger); err != nil {
@@ -468,51 +463,9 @@ func seedInventoryOpeningBalance(ctx context.Context, db *mongo.Database, logger
 	return nil
 }
 
-func generateCustomers(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {
-	collection := db.Collection("users")
-	customerCount := 20
-
-	var operations []mongo.WriteModel
-
-	for i := 0; i < customerCount; i++ {
-		now := time.Now()
-		customer := map[string]interface{}{
-			"_id":         primitive.NewObjectID(),
-			"email":       gofakeit.Email(),
-			"role":        "customer",
-			"is_verified": gofakeit.Bool(),
-			"created_at":  now.Add(-time.Duration(gofakeit.Number(0, 365*24)) * time.Hour),
-			"updated_at":  now,
-		}
-
-		// Use upsert for idempotency
-		filter := bson.D{{Key: "_id", Value: customer["_id"]}}
-		update := bson.D{{Key: "$setOnInsert", Value: customer}}
-		operations = append(operations, mongo.NewUpdateOneModel().
-			SetFilter(filter).
-			SetUpdate(update).
-			SetUpsert(true))
-	}
-
-	if len(operations) > 0 {
-		result, err := collection.BulkWrite(ctx, operations)
-		if err != nil {
-			return fmt.Errorf("failed to insert customers: %w", err)
-		}
-
-		logger.Info("Generated customers",
-			zap.Int("count", customerCount),
-			zap.Int64("inserted", result.InsertedCount),
-			zap.Int64("upserted", result.UpsertedCount),
-		)
-	}
-
-	return nil
-}
-
 func generateAdmins(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {
 	collection := db.Collection("users")
-	adminCount := 3
+	adminCount := 2
 
 	var operations []mongo.WriteModel
 
