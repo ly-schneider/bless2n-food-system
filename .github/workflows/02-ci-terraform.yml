@@ -75,7 +75,8 @@ jobs:
 
   plan:
     name: Speculative Plan (TFC)
-    if: ${{ github.event_name == 'pull_request' }}
+    # Run only for PRs from same repo so secrets are available
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     env:
       TF_ORG_NAME: ${{ vars.TF_ORG_NAME }}
@@ -96,5 +97,5 @@ jobs:
           organization: ${{ env.TF_ORG_NAME }}
           workspace: ${{ steps.ws.outputs.workspace }}
           message: "Speculative plan for PR #${{ github.event.pull_request.number }}"
-          plan-only: true
+          speculative: true
           wait-for-completion: true
