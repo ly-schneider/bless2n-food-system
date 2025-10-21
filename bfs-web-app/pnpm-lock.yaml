@@ -350,7 +350,7 @@ importers:
         version: 0.11.6(eslint@9.26.0(jiti@2.4.2))(typescript@5.8.3)
       eslint-plugin-tailwindcss:
         specifier: ^3.18.0
-        version: 3.18.0(tailwindcss@4.1.5)
+        version: 3.18.2(tailwindcss@4.1.5)
       fetch-mock:
         specifier: ^9.11.0
         version: 9.11.0(node-fetch@2.7.0)
@@ -5829,8 +5829,8 @@ packages:
     peerDependencies:
       eslint: '>=8'
 
-  eslint-plugin-tailwindcss@3.18.0:
-    resolution: {integrity: sha512-PQDU4ZMzFH0eb2DrfHPpbgo87Zgg2EXSMOj1NSfzdZm+aJzpuwGerfowMIaVehSREEa0idbf/eoNYAOHSJoDAQ==}
+  eslint-plugin-tailwindcss@3.18.2:
+    resolution: {integrity: sha512-QbkMLDC/OkkjFQ1iz/5jkMdHfiMu/uwujUHLAJK5iwNHD8RTxVTlsUezE0toTZ6VhybNBsk+gYGPDq2agfeRNA==}
     engines: {node: '>=18.12.0'}
     peerDependencies:
       tailwindcss: ^3.4.0
@@ -15813,7 +15813,7 @@ snapshots:
       - supports-color
       - typescript
 
-  eslint-plugin-tailwindcss@3.18.0(tailwindcss@4.1.5):
+  eslint-plugin-tailwindcss@3.18.2(tailwindcss@4.1.5):
     dependencies:
       fast-glob: 3.3.3
       postcss: 8.5.3
