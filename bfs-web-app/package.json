@@ -161,7 +161,7 @@
     "typescript-eslint": "^8.32.0",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4",
-    "webpack": "5.94.0"
+    "webpack": "5.102.1"
   },
   "engines": {
     "node": ">=20.0.0"
