@@ -9,7 +9,7 @@ resource "azurerm_monitor_metric_alert" "requests_5xx" {
 
   frequency     = "PT1M"
   window_size   = "PT5M"
-  severity      = 2
+  severity      = 1
   auto_mitigate = true
 
   criteria {

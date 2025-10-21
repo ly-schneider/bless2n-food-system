@@ -7,8 +7,8 @@ function backendBase(): string {
   return process.env.BACKEND_INTERNAL_URL || process.env.INTERNAL_API_BASE_URL || "http://backend:8080"
 }
 
-async function handle(req: Request, params: { path: string[] }) {
-  const { path } = params
+async function handle(req: Request, params: Promise<{ path: string[] }>) {
+  const { path } = await params
   const target = new URL(path.join("/"), backendBase())
 
   const method = req.method

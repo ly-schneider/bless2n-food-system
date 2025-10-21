@@ -6,19 +6,21 @@ import (
 	"crypto/tls"
 	"fmt"
 	"html/template"
+	"log"
 	"net"
+	netmail "net/mail"
 	"net/smtp"
 	"strings"
 	"time"
 )
 
 type EmailService interface {
-    SendLoginEmail(ctx context.Context, to, code, ip, ua string, codeTTL time.Duration) error
-    PreviewLoginEmail(ctx context.Context, to, code, ip, ua string, codeTTL time.Duration) (subject, text, html string, err error)
-    SendEmailChangeVerification(ctx context.Context, toNewEmail, code, ip, ua string, codeTTL time.Duration) error
-    PreviewEmailChangeVerification(ctx context.Context, toNewEmail, code, ip, ua string, codeTTL time.Duration) (subject, text, html string, err error)
-    SendAdminInvite(ctx context.Context, to, token string, expiresAt time.Time) error
-    PreviewAdminInvite(ctx context.Context, token string, ttl time.Duration) (subject, text, html string, err error)
+	SendLoginEmail(ctx context.Context, to, code, ip, ua string, codeTTL time.Duration) error
+	PreviewLoginEmail(ctx context.Context, to, code, ip, ua string, codeTTL time.Duration) (subject, text, html string, err error)
+	SendEmailChangeVerification(ctx context.Context, toNewEmail, code, ip, ua string, codeTTL time.Duration) error
+	PreviewEmailChangeVerification(ctx context.Context, toNewEmail, code, ip, ua string, codeTTL time.Duration) (subject, text, html string, err error)
+	SendAdminInvite(ctx context.Context, to, token string, expiresAt time.Time) error
+	PreviewAdminInvite(ctx context.Context, token string, ttl time.Duration) (subject, text, html string, err error)
 }
 
 type emailService struct {
@@ -159,41 +161,54 @@ func (e *emailService) SendAdminInvite(ctx context.Context, to, token string, ex
 	if err := textT.Execute(&textBody, data); err != nil {
 		return err
 	}
-    return e.send(ctx, to, "Einladung als Admin", textBody.String(), htmlBody.String())
+	return e.send(ctx, to, "Einladung als Admin", textBody.String(), htmlBody.String())
 }
 
 func (e *emailService) PreviewAdminInvite(ctx context.Context, token string, ttl time.Duration) (string, string, string, error) {
-    if token == "" {
-        token = "preview-token"
-    }
-    base := strings.TrimRight(e.cfg.App.PublicBaseURL, "/")
-    acceptURL := base + "/invite/accept?token=" + token
-    data := inviteData{Brand: "BlessThun Food", AcceptURL: acceptURL, TTL: friendlyTTL(ttl)}
-    htmlT := template.Must(template.New("invite_html").Parse(adminInviteHTML))
-    textT := template.Must(template.New("invite_text").Parse(adminInviteText))
-    var htmlBody, textBody strings.Builder
-    if err := htmlT.Execute(&htmlBody, data); err != nil {
-        return "", "", "", err
-    }
-    if err := textT.Execute(&textBody, data); err != nil {
-        return "", "", "", err
-    }
-    return "Einladung als Admin", textBody.String(), htmlBody.String(), nil
+	if token == "" {
+		token = "preview-token"
+	}
+	base := strings.TrimRight(e.cfg.App.PublicBaseURL, "/")
+	acceptURL := base + "/invite/accept?token=" + token
+	data := inviteData{Brand: "BlessThun Food", AcceptURL: acceptURL, TTL: friendlyTTL(ttl)}
+	htmlT := template.Must(template.New("invite_html").Parse(adminInviteHTML))
+	textT := template.Must(template.New("invite_text").Parse(adminInviteText))
+	var htmlBody, textBody strings.Builder
+	if err := htmlT.Execute(&htmlBody, data); err != nil {
+		return "", "", "", err
+	}
+	if err := textT.Execute(&textBody, data); err != nil {
+		return "", "", "", err
+	}
+	return "Einladung als Admin", textBody.String(), htmlBody.String(), nil
 }
 
 func (e *emailService) send(ctx context.Context, to, subject, textBody, htmlBody string) error {
-	from := e.cfg.Smtp.From
+	// Parse friendly From into header and envelope components
+	fromRaw := e.cfg.Smtp.From
+	var fromHeader string
+	var fromEnvelope string
+	if addr, err := netmail.ParseAddress(fromRaw); err == nil {
+		fromHeader = addr.String()   // "Name <email@domain>"
+		fromEnvelope = addr.Address  // "email@domain"
+	} else {
+		// Fallback: treat as bare address in both
+		fromHeader = fromRaw
+		fromEnvelope = fromRaw
+	}
 	host := e.cfg.Smtp.Host
 	port := e.cfg.Smtp.Port
 	user := e.cfg.Smtp.Username
 	pass := e.cfg.Smtp.Password
 	tlsPolicy := strings.ToLower(e.cfg.Smtp.TLSPolicy)
 
+	log.Printf("Sending email to %s via SMTP %s:%s (user=%s, tls=%s)", to, host, port, user, tlsPolicy)
+
 	addr := fmt.Sprintf("%s:%s", host, port)
 	// Build MIME message with multipart/alternative
 	boundary := "bfs-mime-" + fmt.Sprint(time.Now().UnixNano())
 	headers := []string{
-		fmt.Sprintf("From: %s", from),
+		fmt.Sprintf("From: %s", fromHeader),
 		fmt.Sprintf("To: %s", to),
 		fmt.Sprintf("Subject: %s", subject),
 		"MIME-Version: 1.0",
@@ -235,7 +250,7 @@ func (e *emailService) send(ctx context.Context, to, subject, textBody, htmlBody
 				return err
 			}
 		}
-		if err := c.Mail(from); err != nil {
+		if err := c.Mail(fromEnvelope); err != nil {
 			return err
 		}
 		if err := c.Rcpt(to); err != nil {
@@ -252,7 +267,8 @@ func (e *emailService) send(ctx context.Context, to, subject, textBody, htmlBody
 		return wc.Close()
 	case "none":
 		// No TLS (dev/Mailpit)
-		return smtp.SendMail(addr, auth, from, []string{to}, []byte(msg.String()))
+		log.Printf("Sending email to %s via SMTP (unsecure) %s:%s (user=%s, tls=%s)", to, host, port, user, tlsPolicy)
+		return smtp.SendMail(addr, auth, fromEnvelope, []string{to}, []byte(msg.String()))
 	default:
 		// STARTTLS (default)
 		c, err := smtp.Dial(addr)
@@ -272,7 +288,7 @@ func (e *emailService) send(ctx context.Context, to, subject, textBody, htmlBody
 				return err
 			}
 		}
-		if err := c.Mail(from); err != nil {
+		if err := c.Mail(fromEnvelope); err != nil {
 			return err
 		}
 		if err := c.Rcpt(to); err != nil {
@@ -296,34 +312,34 @@ func tlsDial(addr, serverName string) (*tls.Conn, error) {
 }
 
 func friendlyTTL(d time.Duration) string {
-    // Make output human friendly for emails: include days, hours, minutes; drop seconds.
-    if d < 0 {
-        d = -d
-    }
-    // Avoid ugly fractional seconds like 59.997s
-    d = d.Truncate(time.Minute)
+	// Make output human friendly for emails: include days, hours, minutes; drop seconds.
+	if d < 0 {
+		d = -d
+	}
+	// Avoid ugly fractional seconds like 59.997s
+	d = d.Truncate(time.Minute)
 
-    days := int(d / (24 * time.Hour))
-    d -= time.Duration(days) * 24 * time.Hour
-    hours := int(d / time.Hour)
-    d -= time.Duration(hours) * time.Hour
-    minutes := int(d / time.Minute)
+	days := int(d / (24 * time.Hour))
+	d -= time.Duration(days) * 24 * time.Hour
+	hours := int(d / time.Hour)
+	d -= time.Duration(hours) * time.Hour
+	minutes := int(d / time.Minute)
 
-    parts := make([]string, 0, 3)
-    if days > 0 {
-        if days == 1 {
-            parts = append(parts, "1 Tag")
-        } else {
-            // Dative plural because templates use "in {{.TTL}}"
-            parts = append(parts, fmt.Sprintf("%d Tagen", days))
-        }
-    }
-    if hours > 0 {
-        parts = append(parts, fmt.Sprintf("%d Std", hours))
-    }
-    if minutes > 0 || len(parts) == 0 {
-        // Show minutes even if zero when there are no larger units
-        parts = append(parts, fmt.Sprintf("%d Min", minutes))
-    }
-    return strings.Join(parts, " ")
+	parts := make([]string, 0, 3)
+	if days > 0 {
+		if days == 1 {
+			parts = append(parts, "1 Tag")
+		} else {
+			// Dative plural because templates use "in {{.TTL}}"
+			parts = append(parts, fmt.Sprintf("%d Tagen", days))
+		}
+	}
+	if hours > 0 {
+		parts = append(parts, fmt.Sprintf("%d Std", hours))
+	}
+	if minutes > 0 || len(parts) == 0 {
+		// Show minutes even if zero when there are no larger units
+		parts = append(parts, fmt.Sprintf("%d Min", minutes))
+	}
+	return strings.Join(parts, " ")
 }

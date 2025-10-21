@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"backend/db/seeds/dev"
@@ -46,6 +47,11 @@ func main() {
 }
 
 func seedMongo(ctx context.Context, cfg config.Config, reset, force bool, logger *zap.Logger) error {
+	isLocal := strings.Contains(cfg.Mongo.URI, "localhost") || strings.Contains(cfg.Mongo.URI, "127.0.0.1")
+	if !isLocal && !force {
+		return fmt.Errorf("seeding refused: not localhost (use --force to override)")
+	}
+
 	// Create MongoDB client
 	clientOptions := options.Client().ApplyURI(cfg.Mongo.URI)
 	client, err := mongo.Connect(ctx, clientOptions)
