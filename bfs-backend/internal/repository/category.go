@@ -11,6 +11,7 @@ import (
     "go.mongodb.org/mongo-driver/bson/primitive"
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/mongo/options"
+    "go.uber.org/zap"
 )
 
 type CategoryRepository interface {
@@ -72,7 +73,11 @@ func (r *categoryRepository) List(ctx context.Context, active *bool, q *string, 
     if active != nil { filter["is_active"] = *active }
     if q != nil && *q != "" { filter["name"] = primitive.M{"$regex": *q, "$options": "i"} }
     total, err := r.collection.CountDocuments(ctx, filter)
-    if err != nil { return nil, 0, err }
+    if err != nil {
+        // Graceful fallback for environments where count may fail (e.g., certain compat layers)
+        zap.L().Warn("categories count failed; falling back to page count", zap.Error(err))
+        total = -1 // sentinel to recompute after fetch
+    }
     // Sort by explicit position first, fallback by name for stability (ordered)
     opts := options.Find().SetSort(bson.D{{Key: "position", Value: 1}, {Key: "name", Value: 1}})
     if limit > 0 { opts.SetLimit(int64(limit)) }
@@ -87,6 +92,7 @@ func (r *categoryRepository) List(ctx context.Context, active *bool, q *string, 
         out = append(out, mapRawToCategory(raw))
     }
     if err := cur.Err(); err != nil { return nil, 0, err }
+    if total < 0 { total = int64(len(out)) }
     return out, total, nil
 }
 

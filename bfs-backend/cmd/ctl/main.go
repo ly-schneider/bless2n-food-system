@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"backend/db/seeds/dev"
+	"backend/db/seed"
 	"backend/internal/config"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -70,14 +70,14 @@ func seedMongo(ctx context.Context, cfg config.Config, reset, force bool, logger
 	}
 
 	// Configure seeding with fixed healthy amounts
-	seedConfig := dev.MongoConfig{
+	seedConfig := seed.MongoConfig{
 		DatabaseName:       cfg.Mongo.Database,
 		ResetBeforeSeeding: reset,
-		BaselineDir:        "./db/seeds/dev",
+		BaselineDir:        "./db/seed",
 	}
 
 	// Run seeding
-	return dev.SeedMongo(ctx, client, seedConfig, logger, force)
+	return seed.SeedMongo(ctx, client, seedConfig, logger, force)
 }
 
 func initLogger() *zap.Logger {

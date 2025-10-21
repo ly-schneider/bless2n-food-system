@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"go.uber.org/zap"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -27,12 +28,14 @@ func NewAdminCategoryHandler(categories repository.CategoryRepository, audit rep
 // @Success 200 {object} map[string]interface{}
 // @Router /v1/admin/categories [get]
 func (h *AdminCategoryHandler) List(w http.ResponseWriter, r *http.Request) {
-	// Minimal list; add filters later as needed
-	items, total, err := h.categories.List(r.Context(), nil, nil, 200, 0)
-	if err != nil {
-		response.WriteError(w, http.StatusInternalServerError, "failed to list categories")
-		return
-	}
+    // Minimal list; add filters later as needed
+    items, total, err := h.categories.List(r.Context(), nil, nil, 200, 0)
+    if err != nil {
+        // Log underlying error for traceability of 5xx
+        zap.L().Error("admin list categories failed", zap.Error(err), zap.String("method", r.Method), zap.String("path", r.URL.Path))
+        response.WriteError(w, http.StatusInternalServerError, "failed to list categories")
+        return
+    }
 	type CatDTO struct {
 		ID       string `json:"id"`
 		Name     string `json:"name"`

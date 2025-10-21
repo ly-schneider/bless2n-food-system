@@ -1,4 +1,4 @@
-package dev
+package seed
 
 import (
 	"backend/internal/database"
@@ -21,7 +21,7 @@ import (
 type MongoConfig struct {
 	DatabaseName       string
 	ResetBeforeSeeding bool
-	BaselineDir        string // default: ./db/seeds/dev
+	BaselineDir        string // default: ./db/seed
 }
 
 // SeedMongo seeds the MongoDB database with baseline and generated data
@@ -34,7 +34,7 @@ func SeedMongo(ctx context.Context, client *mongo.Client, cfg MongoConfig, logge
 
 	// Set default baseline directory if not provided
 	if cfg.BaselineDir == "" {
-		cfg.BaselineDir = "./db/seeds/dev"
+		cfg.BaselineDir = "./db/seed"
 	}
 
 	logger.Info("Starting MongoDB seeding",
@@ -160,6 +160,7 @@ func ensureIndexes(ctx context.Context, db *mongo.Database, logger *zap.Logger) 
 		{Keys: bson.D{{Key: "name", Value: 1}}, Options: options.Index().SetUnique(true)},
 		{Keys: bson.D{{Key: "is_active", Value: 1}}},
 		{Keys: bson.D{{Key: "position", Value: 1}}},
+		{Keys: bson.D{{Key: "position", Value: 1}, {Key: "name", Value: 1}}},
 	}
 
 	if _, err := categoriesCollection.Indexes().CreateMany(ctx, categoryIndexes); err != nil {

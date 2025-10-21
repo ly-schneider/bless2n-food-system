@@ -70,6 +70,7 @@ func NewRouter(
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Heartbeat("/ping"))
+	r.Use(jwtMiddleware.LogServerErrors)
 
 	// Health check endpoint
 	r.Get("/health", healthHandler.Health)
