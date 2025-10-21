@@ -1,15 +1,13 @@
-import { cookies, headers } from "next/headers"
+import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { API_BASE_URL } from "@/lib/api"
+import { randomUrlSafe } from "@/lib/crypto"
+import { clearAuthCookies, resolveCookieNames, setCsrfCookie, setRefreshCookie } from "@/lib/server/cookies"
 
 export async function POST(_req: Request) {
   const cookieStore = await cookies()
-  const hdrs = await headers()
-  const proto = (hdrs.get("x-forwarded-proto") || "").toLowerCase()
-  const secure = proto === "https"
-  const rtName = secure ? "__Host-rt" : "rt"
-  const csrfName = secure ? "__Host-csrf" : "csrf"
-  const rt = cookieStore.get(rtName)?.value
+  const names = await resolveCookieNames()
+  const rt = cookieStore.get(names.rtName)?.value
 
   if (!rt) {
     return NextResponse.json({ error: true, message: "Unauthorized" }, { status: 401 })
@@ -22,14 +20,12 @@ export async function POST(_req: Request) {
       "Content-Type": "application/json",
       "X-Internal-Call": "1",
       // Forward refresh cookie for validation
-      Cookie: `${rtName}=${encodeURIComponent(rt)}`,
+      Cookie: `${names.rtName}=${encodeURIComponent(rt)}`,
     },
   })
 
   if (!res.ok) {
-    // Clear cookies on failure (reuse/invalid)
-    cookieStore.set({ name: rtName, value: "", path: "/", httpOnly: true, secure, sameSite: "lax", maxAge: -1 })
-    cookieStore.set({ name: csrfName, value: "", path: "/", httpOnly: false, secure, sameSite: "lax", maxAge: -1 })
+    clearAuthCookies(cookieStore, names)
     return NextResponse.json({ error: true, message: "Unauthorized" }, { status: 401 })
   }
 
@@ -43,27 +39,9 @@ export async function POST(_req: Request) {
   }
 
   // Set cookies directly from response body (reliable for internal calls)
-  if (data.refresh_token) {
-    cookieStore.set({
-      name: rtName,
-      value: data.refresh_token,
-      httpOnly: true,
-      secure,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 7 * 24 * 60 * 60,
-    })
-  }
-  const csrf = data.csrf_token || generateRandom(16)
-  cookieStore.set({
-    name: csrfName,
-    value: csrf,
-    httpOnly: false,
-    secure,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 7 * 24 * 60 * 60,
-  })
+  if (data.refresh_token) setRefreshCookie(cookieStore, names, data.refresh_token)
+  const csrf = data.csrf_token || randomUrlSafe(16)
+  setCsrfCookie(cookieStore, names, csrf)
 
   return NextResponse.json({
     access_token: data.access_token,
@@ -71,15 +49,4 @@ export async function POST(_req: Request) {
     token_type: data.token_type,
     user: data.user,
   })
-}
-
-function generateRandom(n: number) {
-  const bytes = crypto.getRandomValues(new Uint8Array(n))
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_" // URL-safe
-  let out = ""
-  for (let i = 0; i < bytes.length; i++) {
-    const b = bytes[i] ?? 0
-    out += chars[b % chars.length]
-  }
-  return out
 }

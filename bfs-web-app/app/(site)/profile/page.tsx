@@ -16,7 +16,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/contexts/auth-context"
-import { API_BASE_URL } from "@/lib/api"
 
 import type { UserRole } from "@/types"
 
@@ -45,7 +44,7 @@ export default function ProfilePage() {
           token = getToken()
         }
         if (!token) throw new Error("Not authenticated")
-        const res = await fetch(`${API_BASE_URL}/v1/users/me`, { headers: { Authorization: `Bearer ${token}` } })
+        const res = await fetch(`/api/v1/users/me`, { headers: { Authorization: `Bearer ${token}` } })
         if (!res.ok) throw new Error("Failed to load profile")
         const data = (await res.json()) as {
           user?: { email?: string; firstName?: string; lastName?: string; role?: UserRole }
@@ -78,7 +77,7 @@ export default function ProfilePage() {
       if (!token) throw new Error("Not authenticated")
       // 1) Update names (admin only)
       if (role === "admin") {
-        const res = await fetch(`${API_BASE_URL}/v1/users/me`, {
+        const res = await fetch(`/api/v1/users/me`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ firstName, lastName }),
@@ -90,7 +89,7 @@ export default function ProfilePage() {
       }
       // 2) Initiate email change only if changed
       if (email && initialEmail && email.toLowerCase() !== initialEmail.toLowerCase()) {
-        const res2 = await fetch(`${API_BASE_URL}/v1/users/me/email-change`, {
+        const res2 = await fetch(`/api/v1/users/me/email-change`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ newEmail: email }),
@@ -120,7 +119,7 @@ export default function ProfilePage() {
         if (ok) token = getToken()
       }
       if (!token) throw new Error("Not authenticated")
-      const res = await fetch(`${API_BASE_URL}/v1/users/me/email-change/confirm`, {
+      const res = await fetch(`/api/v1/users/me/email-change/confirm`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ code: verificationCode }),
@@ -132,7 +131,7 @@ export default function ProfilePage() {
       try {
         const token = getToken()
         if (token) {
-          const r = await fetch(`${API_BASE_URL}/v1/users/me`, { headers: { Authorization: `Bearer ${token}` } })
+          const r = await fetch(`/api/v1/users/me`, { headers: { Authorization: `Bearer ${token}` } })
           if (r.ok) {
             const d = (await r.json()) as { user?: { email?: string } }
             if (d.user?.email) {
@@ -164,7 +163,7 @@ export default function ProfilePage() {
         if (ok) token = getToken()
       }
       if (!token) throw new Error("Not authenticated")
-      const res = await fetch(`${API_BASE_URL}/v1/users/me`, {
+      const res = await fetch(`/api/v1/users/me`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       })

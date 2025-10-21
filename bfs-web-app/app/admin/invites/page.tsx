@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
-import { API_BASE_URL } from "@/lib/api"
+
+import { getCSRFToken } from "@/lib/csrf"
 import { readErrorMessage } from "@/lib/http"
 
 type Invite = {
@@ -29,7 +30,7 @@ export default function AdminInvitesPage() {
 
   async function reload() {
     try {
-      const res = await fetchAuth(`${API_BASE_URL}/v1/admin/invites`)
+      const res = await fetchAuth(`/api/v1/admin/invites`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = (await res.json()) as { items: Invite[] }
       setItems(data.items || [])
@@ -41,8 +42,8 @@ export default function AdminInvitesPage() {
 
   async function createInvite() {
     if (!email.trim()) return
-    const csrf = getCSRFCookie()
-    const res = await fetchAuth(`${API_BASE_URL}/v1/admin/invites`, {
+    const csrf = getCSRFToken()
+    const res = await fetchAuth(`/api/v1/admin/invites`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
       body: JSON.stringify({ email: email.trim() }),
@@ -57,8 +58,8 @@ export default function AdminInvitesPage() {
 
   async function deleteInvite(id: string) {
     try {
-      const csrf = getCSRFCookie()
-      const res = await fetchAuth(`${API_BASE_URL}/v1/admin/invites/${encodeURIComponent(id)}`, {
+      const csrf = getCSRFToken()
+      const res = await fetchAuth(`/api/v1/admin/invites/${encodeURIComponent(id)}`, {
         method: "DELETE",
         headers: { "X-CSRF": csrf || "" },
       })
@@ -148,9 +149,4 @@ export default function AdminInvitesPage() {
   )
 }
 
-function getCSRFCookie(): string | null {
-  if (typeof document === "undefined") return null
-  const name = (document.location.protocol === "https:" ? "__Host-" : "") + "csrf"
-  const m = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/([.$?*|{}()\[\]\\/+^])/g, "\\$1") + "=([^;]*)"))
-  return m && m[1] ? decodeURIComponent(m[1]!) : null
-}
+// CSRF helper now centralized in lib/csrf

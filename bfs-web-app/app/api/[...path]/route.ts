@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { cookies, headers } from "next/headers"
+import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
+import { resolveCookieNames } from "@/lib/server/cookies"
 
-// Backend base the server can reach; resolved at runtime in container
 function backendBase(): string {
   return process.env.BACKEND_INTERNAL_URL || process.env.INTERNAL_API_BASE_URL || "http://backend:8080"
 }
@@ -15,30 +14,40 @@ async function handle(req: Request, params: Promise<{ path: string[] }>) {
   const inHeaders = new Headers(req.headers)
   const outHeaders = new Headers()
 
-  // Forward Authorization if present
   const auth = inHeaders.get("authorization")
   if (auth) outHeaders.set("authorization", auth)
+  const contentType = inHeaders.get("content-type")
+  if (contentType) outHeaders.set("content-type", contentType)
+  const cookieIn = inHeaders.get("cookie")
+  if (cookieIn) outHeaders.set("cookie", cookieIn)
+  // Forward custom headers needed by backend endpoints
+  const xPosToken = inHeaders.get("x-pos-token") || inHeaders.get("X-Pos-Token")
+  if (xPosToken) outHeaders.set("X-Pos-Token", xPosToken)
+  const xStationKey = inHeaders.get("x-station-key") || inHeaders.get("X-Station-Key")
+  if (xStationKey) outHeaders.set("X-Station-Key", xStationKey)
+  const idempotencyKey = inHeaders.get("idempotency-key") || inHeaders.get("Idempotency-Key")
+  if (idempotencyKey) outHeaders.set("Idempotency-Key", idempotencyKey)
 
-  // CSRF: validate header matches cookie; then forward header + only csrf cookie
   const headerToken = inHeaders.get("x-csrf") || inHeaders.get("X-CSRF") || undefined
-  const hdrs = await headers()
-  const proto = (hdrs.get("x-forwarded-proto") || "").toLowerCase()
-  const rtCookieName = (proto === "https" ? "__Host-" : "") + "csrf"
+  const { csrfName } = await resolveCookieNames()
   const ck = await cookies()
-  const cookieToken = ck.get(rtCookieName)?.value
-  if ((method !== "GET" && method !== "HEAD" && method !== "OPTIONS") as boolean) {
+  const cookieToken = ck.get(csrfName)?.value
+  const isMutating = !(method === "GET" || method === "HEAD" || method === "OPTIONS")
+
+  const pathName = target.pathname
+  const csrfExempt =
+    pathName.startsWith("/v1/pos/") ||
+    pathName.startsWith("/v1/stations/") ||
+    pathName.startsWith("/v1/health") ||
+    pathName.startsWith("/v1/public/")
+
+  if (isMutating && !csrfExempt) {
     if (!headerToken || !cookieToken || headerToken !== cookieToken) {
       return NextResponse.json({ error: true, message: "Invalid CSRF token" }, { status: 403 })
     }
     outHeaders.set("X-CSRF", headerToken)
-    outHeaders.set("cookie", `csrf=${cookieToken}; __Host-csrf=${cookieToken}`)
   }
 
-  // Copy content-type for body forwarding
-  const ctype = inHeaders.get("content-type")
-  if (ctype) outHeaders.set("content-type", ctype)
-
-  // Build body if present
   let body: BodyInit | undefined
   if (method !== "GET" && method !== "HEAD") {
     const ab = await req.arrayBuffer()
@@ -50,8 +59,6 @@ async function handle(req: Request, params: Promise<{ path: string[] }>) {
   const res = await fetch(target.toString(), { method, headers: outHeaders, body, redirect: "manual" })
 
   const respHeaders = new Headers(res.headers)
-  // Strip Set-Cookie from backend to avoid third-party cookie issues
-  respHeaders.delete("set-cookie")
 
   const buf = Buffer.from(await res.arrayBuffer())
   return new NextResponse(buf, { status: res.status, headers: respHeaders })
@@ -59,24 +66,24 @@ async function handle(req: Request, params: Promise<{ path: string[] }>) {
 
 export const dynamic = "force-dynamic"
 
-export async function GET(req: Request, ctx: any) {
+export async function GET(req: Request, ctx: { params: Promise<{ path: string[] }> }) {
   return handle(req, ctx.params)
 }
-export async function POST(req: Request, ctx: any) {
+export async function POST(req: Request, ctx: { params: Promise<{ path: string[] }> }) {
   return handle(req, ctx.params)
 }
-export async function PUT(req: Request, ctx: any) {
+export async function PUT(req: Request, ctx: { params: Promise<{ path: string[] }> }) {
   return handle(req, ctx.params)
 }
-export async function PATCH(req: Request, ctx: any) {
+export async function PATCH(req: Request, ctx: { params: Promise<{ path: string[] }> }) {
   return handle(req, ctx.params)
 }
-export async function DELETE(req: Request, ctx: any) {
+export async function DELETE(req: Request, ctx: { params: Promise<{ path: string[] }> }) {
   return handle(req, ctx.params)
 }
-export async function OPTIONS(req: Request, ctx: any) {
+export async function OPTIONS(req: Request, ctx: { params: Promise<{ path: string[] }> }) {
   return handle(req, ctx.params)
 }
-export async function HEAD(req: Request, ctx: any) {
+export async function HEAD(req: Request, ctx: { params: Promise<{ path: string[] }> }) {
   return handle(req, ctx.params)
 }

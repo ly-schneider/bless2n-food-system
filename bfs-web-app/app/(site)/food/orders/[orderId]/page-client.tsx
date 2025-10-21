@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import QRCode from "@/components/qrcode"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/contexts/cart-context"
-import { API_BASE_URL } from "@/lib/api"
+
 import { getOrderPublicById, type PublicOrderDetailsDTO } from "@/lib/api/orders"
 import { addOrder, getOrder } from "@/lib/orders-storage"
 import { formatChf } from "@/lib/utils"
@@ -41,7 +41,7 @@ export default function OrderPageClient() {
         const res = await getOrderPublicById(orderId)
         if (!cancelled) setServerOrder(res)
         // Fetch signed pickup QR payload for stations
-        const q = await fetch(`${API_BASE_URL}/v1/orders/${encodeURIComponent(orderId)}/pickup-qr`)
+        const q = await fetch(`/api/v1/orders/${encodeURIComponent(orderId)}/pickup-qr`)
         if (q.ok) {
           const data = (await q.json()) as { code?: string }
           if (!cancelled) setPickupCode(data.code || null)

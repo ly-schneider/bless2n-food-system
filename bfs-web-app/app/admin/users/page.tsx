@@ -4,7 +4,6 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
-import { API_BASE_URL } from "@/lib/api"
 
 type User = {
   id: string
@@ -26,7 +25,7 @@ export default function AdminUsersPage() {
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetchAuth(`${API_BASE_URL}/v1/admin/users`)
+        const res = await fetchAuth(`/api/v1/admin/users`)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = (await res.json()) as { items: User[] }
         if (!cancelled) setItems(data.items || [])

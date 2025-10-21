@@ -11,7 +11,7 @@ import {
   DialogTitle as ModalTitle,
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { API_BASE_URL } from "@/lib/api"
+
 import { getClientInfo } from "@/lib/client-info"
 
 type StationStatus = { exists: boolean; approved: boolean; name?: string }
@@ -88,7 +88,7 @@ export default function StationPage() {
     ;(async () => {
       try {
         log("GET /v1/stations/me")
-        const res = await fetch(`${API_BASE_URL}/v1/stations/me`, { headers: { "X-Station-Key": stationKey } })
+        const res = await fetch(`/api/v1/stations/me`, { headers: { "X-Station-Key": stationKey } })
         const json = await res.json()
         setStatus(json as StationStatus)
         log("status", json)
@@ -213,7 +213,7 @@ export default function StationPage() {
     setBusy(true)
     try {
       log("verify-qr start")
-      const verify = await fetch(`${API_BASE_URL}/v1/stations/verify-qr`, {
+      const verify = await fetch(`/api/v1/stations/verify-qr`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Station-Key": stationKey },
         body: JSON.stringify({ code }),
@@ -248,7 +248,7 @@ export default function StationPage() {
     log("redeem start", { count })
     try {
       const idem = `idem_${Date.now()}_${Math.random().toString(36).slice(2)}`
-      const res = await fetch(`${API_BASE_URL}/v1/stations/redeem`, {
+      const res = await fetch(`/api/v1/stations/redeem`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Station-Key": stationKey, "Idempotency-Key": idem },
         body: JSON.stringify({ code: scanned }),
@@ -276,14 +276,14 @@ export default function StationPage() {
     setBusy(true)
     try {
       log("request verification", { name, os, model: info.model })
-      await fetch(`${API_BASE_URL}/v1/stations/requests`, {
+      await fetch(`/api/v1/stations/requests`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, model: info.model, os, deviceKey: stationKey }),
       })
       setRequestSubmitted(true)
       // refresh status
-      const r = await fetch(`${API_BASE_URL}/v1/stations/me`, { headers: { "X-Station-Key": stationKey } })
+      const r = await fetch(`/api/v1/stations/me`, { headers: { "X-Station-Key": stationKey } })
       const js = await r.json()
       setStatus(js as StationStatus)
       log("status after request", js)

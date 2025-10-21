@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useCart } from "@/contexts/cart-context"
-import { API_BASE_URL } from "@/lib/api"
+
 import { formatChf } from "@/lib/utils"
 
 type Tender = "cash" | "card" | null
@@ -138,7 +138,7 @@ export function BasketPanel({ token }: { token: string }) {
               quantity: it.quantity,
               configuration: it.configuration || undefined,
             }))
-            const resOrder = await fetch(`${API_BASE_URL}/v1/pos/orders`, {
+            const resOrder = await fetch(`/api/v1/pos/orders`, {
               method: "POST",
               headers: { "Content-Type": "application/json", "X-Pos-Token": token },
               body: JSON.stringify({ items: itemsBody }),
@@ -148,7 +148,7 @@ export function BasketPanel({ token }: { token: string }) {
             const orderId = jOrder.orderId
 
             // Attach card payment result (SumUp)
-            await fetch(`${API_BASE_URL}/v1/pos/orders/${orderId}/pay-card`, {
+            await fetch(`/api/v1/pos/orders/${orderId}/pay-card`, {
               method: "POST",
               headers: { "Content-Type": "application/json", "X-Pos-Token": token },
               body: JSON.stringify({ processor: "sumup", transactionId: d.txId || null, status: "succeeded" }),
@@ -157,7 +157,7 @@ export function BasketPanel({ token }: { token: string }) {
             // Fetch pickup QR
             let pickupQr: string | null = null
             try {
-              const r = await fetch(`${API_BASE_URL}/v1/orders/${orderId}/pickup-qr`)
+              const r = await fetch(`/api/v1/orders/${orderId}/pickup-qr`)
               const q = (await r.json()) as { code?: string }
               pickupQr = q.code || null
             } catch {}
@@ -219,7 +219,7 @@ export function BasketPanel({ token }: { token: string }) {
     }
     window.addEventListener("bfs:sumup:result", onSumup as EventListener)
     return () => window.removeEventListener("bfs:sumup:result", onSumup as EventListener)
-  }, [API_BASE_URL, cart.items, token, total, showCard, cardRef, clearCart])
+  }, [cart.items, token, total, showCard, cardRef, clearCart])
 
   useEffect(() => {
     try {
@@ -283,7 +283,7 @@ export function BasketPanel({ token }: { token: string }) {
         quantity: it.quantity,
         configuration: it.configuration || undefined,
       }))
-      const resOrder = await fetch(`${API_BASE_URL}/v1/pos/orders`, {
+      const resOrder = await fetch(`/api/v1/pos/orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Pos-Token": token },
         body: JSON.stringify({ items }),
@@ -294,7 +294,7 @@ export function BasketPanel({ token }: { token: string }) {
       if (!resOrder.ok) throw new Error(orderJson.detail || "order failed")
       const orderId = orderJson.orderId
 
-      const resPay = await fetch(`${API_BASE_URL}/v1/pos/orders/${orderId}/pay-cash`, {
+      const resPay = await fetch(`/api/v1/pos/orders/${orderId}/pay-cash`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Pos-Token": token },
         body: JSON.stringify({ amountReceivedCents: receivedCents }),
@@ -324,7 +324,7 @@ export function BasketPanel({ token }: { token: string }) {
       // Fetch official pickup QR before printing (best-effort)
       let pickupQr: string | null = null
       try {
-        const qrRes = await fetch(`${API_BASE_URL}/v1/orders/${orderId}/pickup-qr`)
+        const qrRes = await fetch(`/api/v1/orders/${orderId}/pickup-qr`)
         const qrJson = (await qrRes.json()) as { code?: string }
         pickupQr = qrJson?.code || null
       } catch {}

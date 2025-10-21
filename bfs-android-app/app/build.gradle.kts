@@ -38,6 +38,25 @@ android {
         buildConfig = true
     }
 
+    signingConfigs {
+        create("release") {
+            // Read signing from env or Gradle props; keep empty in dev machines
+            val storeFilePath = (System.getenv("BFS_UPLOAD_STORE_FILE")
+                ?: project.findProperty("BFS_UPLOAD_STORE_FILE") as String?) ?: ""
+            val storePasswordVal = (System.getenv("BFS_UPLOAD_STORE_PASSWORD")
+                ?: project.findProperty("BFS_UPLOAD_STORE_PASSWORD") as String?) ?: ""
+            val keyAliasVal = (System.getenv("BFS_UPLOAD_KEY_ALIAS")
+                ?: project.findProperty("BFS_UPLOAD_KEY_ALIAS") as String?) ?: ""
+            val keyPasswordVal = (System.getenv("BFS_UPLOAD_KEY_PASSWORD")
+                ?: project.findProperty("BFS_UPLOAD_KEY_PASSWORD") as String?) ?: ""
+
+            if (storeFilePath.isNotBlank()) storeFile = file(storeFilePath)
+            if (storePasswordVal.isNotBlank()) storePassword = storePasswordVal
+            if (keyAliasVal.isNotBlank()) keyAlias = keyAliasVal
+            if (keyPasswordVal.isNotBlank()) keyPassword = keyPasswordVal
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -45,6 +64,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Use CI-provided signing if available
+            signingConfig = signingConfigs.getByName("release")
             // Configure production POS URL via gradle property or env
             val buildingRelease = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
             val posUrlReleaseProp = (project.findProperty("posUrlRelease") as String?) ?: System.getenv("POS_URL_RELEASE")

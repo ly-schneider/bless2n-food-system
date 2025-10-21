@@ -1,17 +1,15 @@
 import { cookies, headers } from "next/headers"
 import { NextResponse } from "next/server"
 import { API_BASE_URL } from "@/lib/api"
+import { clearAuthCookies, resolveCookieNames } from "@/lib/server/cookies"
 
 export async function POST() {
   const cookieStore = await cookies()
   const hdrs = await headers()
-  const proto = (hdrs.get("x-forwarded-proto") || "").toLowerCase()
-  const secure = proto === "https"
-  const rtName = secure ? "__Host-rt" : "rt"
-  const csrfName = secure ? "__Host-csrf" : "csrf"
+  const names = await resolveCookieNames()
 
-  const rt = cookieStore.get(rtName)?.value
-  const csrfCookie = cookieStore.get(csrfName)?.value
+  const rt = cookieStore.get(names.rtName)?.value
+  const csrfCookie = cookieStore.get(names.csrfName)?.value
   const csrfHeader = hdrs.get("X-CSRF") || hdrs.get("x-csrf")
 
   if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
@@ -20,8 +18,8 @@ export async function POST() {
 
   if (rt) {
     const cookieHeader = [
-      `${rtName}=${encodeURIComponent(rt)}`,
-      csrfCookie ? `${csrfName}=${encodeURIComponent(csrfCookie)}` : null,
+      `${names.rtName}=${encodeURIComponent(rt)}`,
+      csrfCookie ? `${names.csrfName}=${encodeURIComponent(csrfCookie)}` : null,
     ]
       .filter(Boolean)
       .join("; ")
@@ -32,8 +30,7 @@ export async function POST() {
   }
 
   // Clear local cookies regardless
-  cookieStore.set({ name: rtName, value: "", path: "/", httpOnly: true, secure, sameSite: "lax", maxAge: -1 })
-  cookieStore.set({ name: csrfName, value: "", path: "/", httpOnly: false, secure, sameSite: "lax", maxAge: -1 })
+  clearAuthCookies(cookieStore, names)
 
   return NextResponse.json({ ok: true })
 }

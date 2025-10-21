@@ -9,7 +9,6 @@ import { ProductGrid } from "@/components/pos/product-grid"
 import { RequestAccess } from "@/components/pos/request-access"
 import { usePosToken } from "@/components/pos/use-pos-token"
 import { CartProvider } from "@/contexts/cart-context"
-import { API_BASE_URL } from "@/lib/api"
 import { listProducts } from "@/lib/api/products"
 import type { ListResponse, ProductDTO } from "@/types"
 
@@ -35,7 +34,7 @@ function PosInner() {
   useEffect(() => {
     ;(async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/v1/pos/me`, { headers: { "X-Pos-Token": token } })
+        const res = await fetch(`/api/v1/pos/me`, { headers: { "X-Pos-Token": token } })
         const json = await res.json()
         setStatus(json as PosStatus)
       } catch {
@@ -60,7 +59,7 @@ function PosInner() {
           setProducts(await listProducts())
         } catch {}
         try {
-          const res = await fetch(`${API_BASE_URL}/v1/pos/me`, { headers: { "X-Pos-Token": token } })
+          const res = await fetch(`/api/v1/pos/me`, { headers: { "X-Pos-Token": token } })
           const json = await res.json()
           setStatus(json as PosStatus)
         } catch {}
@@ -78,7 +77,7 @@ function PosInner() {
           token={token}
           onRefresh={async () => {
             try {
-              const res = await fetch(`${API_BASE_URL}/v1/pos/me`, { headers: { "X-Pos-Token": token } })
+              const res = await fetch(`/api/v1/pos/me`, { headers: { "X-Pos-Token": token } })
               const json = await res.json()
               setStatus(json as PosStatus)
             } catch {}

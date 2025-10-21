@@ -1,15 +1,14 @@
 import { cookies, headers } from "next/headers"
 import { NextResponse } from "next/server"
 import { API_BASE_URL } from "@/lib/api"
+import { randomUrlSafe } from "@/lib/crypto"
+import { resolveCookieNames, setCsrfCookie, setRefreshCookie } from "@/lib/server/cookies"
 
 type VerifyBody = { email: string; otp: string }
 
 export async function POST(req: Request) {
   const hdrs = await headers()
-  const proto = (hdrs.get("x-forwarded-proto") || "").toLowerCase()
-  const secure = proto === "https"
-  const rtName = secure ? "__Host-rt" : "rt"
-  const csrfName = secure ? "__Host-csrf" : "csrf"
+  const names = await resolveCookieNames()
   const body = (await req.json()) as VerifyBody
   const ua = hdrs.get("user-agent") || ""
   const xff = hdrs.get("x-forwarded-for") || ""
@@ -41,27 +40,9 @@ export async function POST(req: Request) {
   }
 
   // Set cookies directly from response body (reliable for internal calls)
-  if (data.refresh_token) {
-    cookieStore.set({
-      name: rtName,
-      value: data.refresh_token,
-      httpOnly: true,
-      secure,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 7 * 24 * 60 * 60,
-    })
-  }
-  const csrf = data.csrf_token || generateRandom(16)
-  cookieStore.set({
-    name: csrfName,
-    value: csrf,
-    httpOnly: false,
-    secure,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 7 * 24 * 60 * 60,
-  })
+  if (data.refresh_token) setRefreshCookie(cookieStore, names, data.refresh_token)
+  const csrf = data.csrf_token || randomUrlSafe(16)
+  setCsrfCookie(cookieStore, names, csrf)
 
   return NextResponse.json({
     access_token: data.access_token,
@@ -71,15 +52,4 @@ export async function POST(req: Request) {
     roles: data.roles,
     is_new: data.is_new,
   })
-}
-
-function generateRandom(n: number) {
-  const bytes = crypto.getRandomValues(new Uint8Array(n))
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_" // URL-safe
-  let out = ""
-  for (let i = 0; i < bytes.length; i++) {
-    const b = bytes[i] ?? 0
-    out += chars[b % chars.length]
-  }
-  return out
 }

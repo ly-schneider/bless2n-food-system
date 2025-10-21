@@ -4,7 +4,8 @@ import { useParams, useRouter } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
-import { API_BASE_URL } from "@/lib/api"
+
+import { getCSRFToken } from "@/lib/csrf"
 
 type Row = {
   userId: string
@@ -35,7 +36,7 @@ export default function AdminSessionDetailPage() {
       setLoading(true)
       setError(null)
       try {
-        const res = await fetchAuth(`${API_BASE_URL}/v1/admin/sessions`)
+        const res = await fetchAuth(`/api/v1/admin/sessions`)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = (await res.json()) as { items: Row[] }
         const found = (data.items || []).find((r) => r.userId === userId && r.familyId === familyId) || null
@@ -58,8 +59,8 @@ export default function AdminSessionDetailPage() {
     if (!confirm("Diese Sitzung wirklich widerrufen?")) return
     try {
       setRevoking(true)
-      const csrf = getCSRFCookie()
-      const res = await fetchAuth(`${API_BASE_URL}/v1/admin/users/${encodeURIComponent(userId)}/sessions/revoke`, {
+      const csrf = getCSRFToken()
+      const res = await fetchAuth(`/api/v1/admin/users/${encodeURIComponent(userId)}/sessions/revoke`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
         body: JSON.stringify({ familyId }),
@@ -132,9 +133,4 @@ export default function AdminSessionDetailPage() {
   )
 }
 
-function getCSRFCookie(): string | null {
-  if (typeof document === "undefined") return null
-  const name = (document.location.protocol === "https:" ? "__Host-" : "") + "csrf"
-  const m = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/([.$?*|{}()\[\]\\/+^])/g, "\\$1") + "=([^;]*)"))
-  return m && m[1] ? decodeURIComponent(m[1]!) : null
-}
+// CSRF helper now centralized in lib/csrf

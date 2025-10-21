@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
-import { API_BASE_URL } from "@/lib/api"
+
 import { readErrorMessage } from "@/lib/http"
 
 type Row = {
@@ -27,7 +27,7 @@ export default function AdminSessionsPage() {
 
   async function reload() {
     try {
-      const res = await fetchAuth(`${API_BASE_URL}/v1/admin/sessions`)
+      const res = await fetchAuth(`/api/v1/admin/sessions`)
       if (!res.ok) throw new Error(await readErrorMessage(res))
       const data = (await res.json()) as { items: Row[] }
       setItems(data.items || [])

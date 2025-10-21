@@ -26,7 +26,7 @@ export default function LoginClient() {
     setLoading(true)
     setError(null)
     try {
-      await fetch("/api/auth/otp/request", {
+      await fetch("/api/v1/auth/otp/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -82,7 +82,7 @@ export default function LoginClient() {
     setResending(true)
     setError(null)
     try {
-      await fetch("/api/auth/otp/request", {
+      await fetch("/api/v1/auth/otp/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),

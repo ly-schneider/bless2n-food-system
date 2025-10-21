@@ -1,14 +1,14 @@
 import { cookies, headers } from "next/headers"
 import { NextResponse } from "next/server"
 import { API_BASE_URL } from "@/lib/api"
+import { randomUrlSafe } from "@/lib/crypto"
+import { resolveCookieNames, setCsrfCookie, setRefreshCookie } from "@/lib/server/cookies"
 
 export async function GET(req: Request) {
   const cookieStore = await cookies()
   const hdrs = await headers()
-  const proto = (hdrs.get("x-forwarded-proto") || "").toLowerCase()
-  const secure = proto === "https"
-  const rtName = secure ? "__Host-rt" : "rt"
-  const csrfName = secure ? "__Host-csrf" : "csrf"
+  const names = await resolveCookieNames()
+  const secure = names.secure
 
   const url = new URL(req.url)
   const origin = hdrs.get("x-forwarded-host")
@@ -53,27 +53,9 @@ export async function GET(req: Request) {
     csrf_token?: string
   }
   // Set cookies
-  if (data.refresh_token) {
-    cookieStore.set({
-      name: rtName,
-      value: data.refresh_token,
-      httpOnly: true,
-      secure,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 7 * 24 * 60 * 60,
-    })
-  }
-  const csrf = data.csrf_token || randomURLSafe(16)
-  cookieStore.set({
-    name: csrfName,
-    value: csrf,
-    httpOnly: false,
-    secure,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 7 * 24 * 60 * 60,
-  })
+  if (data.refresh_token) setRefreshCookie(cookieStore, names, data.refresh_token)
+  const csrf = data.csrf_token || randomUrlSafe(16)
+  setCsrfCookie(cookieStore, names, csrf)
 
   // clear temp cookies
   cookieStore.set({ name: "g_oauth_state", value: "", httpOnly: true, secure, sameSite: "lax", path: "/", maxAge: -1 })
@@ -91,15 +73,4 @@ export async function GET(req: Request) {
 
   const safeNext = next && !/^https?:/i.test(next) ? next : "/"
   return NextResponse.redirect(mkAbs(safeNext))
-}
-
-function randomURLSafe(n: number) {
-  const bytes = crypto.getRandomValues(new Uint8Array(n))
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_" // URL-safe
-  let out = ""
-  for (let i = 0; i < bytes.length; i++) {
-    const b = bytes[i]!
-    out += chars[b % chars.length]
-  }
-  return out
 }

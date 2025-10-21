@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
-import { API_BASE_URL } from "@/lib/api"
+
+import { getCSRFToken } from "@/lib/csrf"
 import { readErrorMessage } from "@/lib/http"
 
 type Product = {
@@ -48,7 +49,7 @@ export default function AdminProductsPage() {
     setError(null)
     ;(async () => {
       try {
-        const res = await fetchAuth(`${API_BASE_URL}/v1/products?limit=${limit}&offset=${offset}`)
+        const res = await fetchAuth(`/api/v1/products?limit=${limit}&offset=${offset}`)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = (await res.json()) as { items: Product[]; count: number }
         if (cancelled) return
@@ -74,7 +75,7 @@ export default function AdminProductsPage() {
     let cancelled = false
     ;(async () => {
       try {
-        const cr = await fetchAuth(`${API_BASE_URL}/v1/admin/categories`)
+        const cr = await fetchAuth(`/api/v1/admin/categories`)
         if (cr.ok) {
           const d = (await cr.json()) as { items: Category[] }
           if (!cancelled) setCats(d.items || [])
@@ -87,8 +88,8 @@ export default function AdminProductsPage() {
   }, [fetchAuth])
 
   async function updatePrice(id: string, priceCents: number) {
-    const csrf = getCSRFCookie()
-    const res = await fetchAuth(`${API_BASE_URL}/v1/admin/products/${encodeURIComponent(id)}/price`, {
+    const csrf = getCSRFToken()
+    const res = await fetchAuth(`/api/v1/admin/products/${encodeURIComponent(id)}/price`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
       body: JSON.stringify({ priceCents }),
@@ -96,8 +97,8 @@ export default function AdminProductsPage() {
     if (!res.ok) throw new Error(await readErrorMessage(res))
   }
   async function moveCategory(id: string, categoryId: string) {
-    const csrf = getCSRFCookie()
-    const res = await fetchAuth(`${API_BASE_URL}/v1/admin/products/${encodeURIComponent(id)}/category`, {
+    const csrf = getCSRFToken()
+    const res = await fetchAuth(`/api/v1/admin/products/${encodeURIComponent(id)}/category`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
       body: JSON.stringify({ categoryId }),
@@ -106,8 +107,8 @@ export default function AdminProductsPage() {
   }
 
   async function setActive(id: string, isActive: boolean) {
-    const csrf = getCSRFCookie()
-    const res = await fetchAuth(`${API_BASE_URL}/v1/admin/products/${encodeURIComponent(id)}/active`, {
+    const csrf = getCSRFToken()
+    const res = await fetchAuth(`/api/v1/admin/products/${encodeURIComponent(id)}/active`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
       body: JSON.stringify({ isActive }),
@@ -116,8 +117,8 @@ export default function AdminProductsPage() {
   }
 
   async function deleteHard(id: string) {
-    const csrf = getCSRFCookie()
-    const res = await fetchAuth(`${API_BASE_URL}/v1/admin/products/${encodeURIComponent(id)}`, {
+    const csrf = getCSRFToken()
+    const res = await fetchAuth(`/api/v1/admin/products/${encodeURIComponent(id)}`, {
       method: "DELETE",
       headers: { "X-CSRF": csrf || "" },
     })
@@ -125,8 +126,8 @@ export default function AdminProductsPage() {
   }
 
   async function adjustInventory(id: string, delta: number) {
-    const csrf = getCSRFCookie()
-    const res = await fetchAuth(`${API_BASE_URL}/v1/admin/products/${encodeURIComponent(id)}/inventory-adjust`, {
+    const csrf = getCSRFToken()
+    const res = await fetchAuth(`/api/v1/admin/products/${encodeURIComponent(id)}/inventory-adjust`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
       body: JSON.stringify({ delta, reason: "manual_adjust" }),
@@ -359,9 +360,4 @@ function InlineInventory({ value, onAdjust }: { value: number | null; onAdjust: 
   )
 }
 
-function getCSRFCookie(): string | null {
-  if (typeof document === "undefined") return null
-  const name = (document.location.protocol === "https:" ? "__Host-" : "") + "csrf"
-  const m = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/([.$?*|{}()\[\]\\/+^])/g, "\\$1") + "=([^;]*)"))
-  return m && m[1] ? decodeURIComponent(m[1]!) : null
-}
+// CSRF helper now centralized in lib/csrf

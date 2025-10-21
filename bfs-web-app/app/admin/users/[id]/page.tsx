@@ -14,7 +14,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
-import { API_BASE_URL } from "@/lib/api"
+
+import { getCSRFToken } from "@/lib/csrf"
 
 type UserDetails = {
   id: string
@@ -50,7 +51,7 @@ export default function AdminUserDetailPage() {
       setLoading(true)
       setError(null)
       try {
-        const res = await fetchAuth(`${API_BASE_URL}/v1/admin/users/${encodeURIComponent(id)}`)
+        const res = await fetchAuth(`/api/v1/admin/users/${encodeURIComponent(id)}`)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = (await res.json()) as { user: UserDetails }
         if (!cancelled) {
@@ -81,7 +82,7 @@ export default function AdminUserDetailPage() {
     try {
       setSaving(true)
       setError(null)
-      const csrf = getCSRFCookie()
+      const csrf = getCSRFToken()
       type UpdateUserPayload = {
         email: string
         firstName?: string
@@ -96,7 +97,7 @@ export default function AdminUserDetailPage() {
         role,
         isVerified: typeof isVerified === "boolean" ? isVerified : undefined,
       }
-      const res = await fetchAuth(`${API_BASE_URL}/v1/admin/users/${encodeURIComponent(id)}`, {
+      const res = await fetchAuth(`/api/v1/admin/users/${encodeURIComponent(id)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
         body: JSON.stringify(body),
@@ -115,8 +116,8 @@ export default function AdminUserDetailPage() {
   async function deleteUser() {
     if (!confirm("Benutzer wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.")) return
     try {
-      const csrf = getCSRFCookie()
-      const res = await fetchAuth(`${API_BASE_URL}/v1/admin/users/${encodeURIComponent(id)}`, {
+      const csrf = getCSRFToken()
+      const res = await fetchAuth(`/api/v1/admin/users/${encodeURIComponent(id)}`, {
         method: "DELETE",
         headers: { "X-CSRF": csrf || "" },
       })
@@ -281,9 +282,4 @@ export default function AdminUserDetailPage() {
   )
 }
 
-function getCSRFCookie(): string | null {
-  if (typeof document === "undefined") return null
-  const name = (document.location.protocol === "https:" ? "__Host-" : "") + "csrf"
-  const m = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/([.$?*|{}()\[\]\\/+^])/g, "\\$1") + "=([^;]*)"))
-  return m && m[1] ? decodeURIComponent(m[1]!) : null
-}
+// CSRF helper now centralized in lib/csrf

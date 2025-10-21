@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
-import { API_BASE_URL } from "@/lib/api"
+
+import { getCSRFToken } from "@/lib/csrf"
 import { Category, ProductDTO } from "@/types"
 
 type DirtyProduct = {
@@ -94,8 +95,8 @@ export default function AdminMenuPage() {
     setError(null)
     try {
       const [pr, cr] = await Promise.all([
-        fetchAuth(`${API_BASE_URL}/v1/products?limit=200`),
-        fetchAuth(`${API_BASE_URL}/v1/admin/categories`),
+        fetchAuth(`/api/v1/products?limit=200`),
+        fetchAuth(`/api/v1/admin/categories`),
       ])
       if (cr.ok) {
         const d = (await cr.json()) as { items: Category[] }
@@ -479,7 +480,7 @@ function EditDialog({
 }
 
 async function saveChanges(fetchAuth: ReturnType<typeof useAuthorizedFetch>, items: ProductDTO[], p: DirtyProduct) {
-  const csrf = getCSRFCookie()
+  const csrf = getCSRFToken()
   const original = items.find((it) => it.id === p.id)
 
   // Create not implemented yet (depends on backend). Placeholder.
@@ -487,7 +488,7 @@ async function saveChanges(fetchAuth: ReturnType<typeof useAuthorizedFetch>, ite
 
   // Price
   if (original && original.priceCents !== p.priceCents) {
-    const res = await fetchAuth(`${API_BASE_URL}/v1/admin/products/${encodeURIComponent(p.id)}/price`, {
+    const res = await fetchAuth(`/api/v1/admin/products/${encodeURIComponent(p.id)}/price`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
       body: JSON.stringify({ priceCents: p.priceCents }),
@@ -497,7 +498,7 @@ async function saveChanges(fetchAuth: ReturnType<typeof useAuthorizedFetch>, ite
 
   // Category
   if (original && (original.category?.id ?? null) !== (p.categoryId ?? null)) {
-    const res = await fetchAuth(`${API_BASE_URL}/v1/admin/products/${encodeURIComponent(p.id)}/category`, {
+    const res = await fetchAuth(`/api/v1/admin/products/${encodeURIComponent(p.id)}/category`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
       body: JSON.stringify({ categoryId: p.categoryId }),
@@ -510,7 +511,7 @@ async function saveChanges(fetchAuth: ReturnType<typeof useAuthorizedFetch>, ite
   if (currentStock != null && p.stock != null && currentStock !== p.stock) {
     const delta = p.stock - currentStock
     if (delta !== 0) {
-      const res = await fetchAuth(`${API_BASE_URL}/v1/admin/products/${encodeURIComponent(p.id)}/inventory-adjust`, {
+      const res = await fetchAuth(`/api/v1/admin/products/${encodeURIComponent(p.id)}/inventory-adjust`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
         body: JSON.stringify({ delta, reason: "manual_adjust" }),
@@ -520,9 +521,4 @@ async function saveChanges(fetchAuth: ReturnType<typeof useAuthorizedFetch>, ite
   }
 }
 
-function getCSRFCookie(): string | null {
-  if (typeof document === "undefined") return null
-  const name = (document.location.protocol === "https:" ? "__Host-" : "") + "csrf"
-  const m = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/([.$?*|{}()\[\]\\/+^])/g, "\\$1") + "=([^;]*)"))
-  return m && m[1] ? decodeURIComponent(m[1]!) : null
-}
+// CSRF helper now centralized in lib/csrf

@@ -4,7 +4,6 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { API_BASE_URL } from "@/lib/api"
 import { getClientInfo } from "@/lib/client-info"
 
 export function RequestAccess({ token, onRefresh: _onRefresh }: { token: string; onRefresh: () => void }) {
@@ -20,7 +19,7 @@ export function RequestAccess({ token, onRefresh: _onRefresh }: { token: string;
         os: client.os,
         deviceToken: token,
       }
-      const res = await fetch(`${API_BASE_URL}/v1/pos/requests`, {
+      const res = await fetch(`/api/v1/pos/requests`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

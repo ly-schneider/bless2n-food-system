@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  if (pathname.startsWith("/_next/") || pathname.startsWith("/api/health") || pathname.includes(".")) {
+  if (pathname.startsWith("/_next/") || pathname.startsWith("/api/") || pathname.includes(".")) {
     return NextResponse.next()
   }
 
@@ -55,6 +55,29 @@ export async function middleware(request: NextRequest) {
   ].join("; ")
 
   response.headers.set("Content-Security-Policy", csp)
+
+  // Ensure a CSRF cookie exists for double-submit pattern (for guests too)
+  try {
+    const proto = (request.headers.get("x-forwarded-proto") || "").toLowerCase()
+    const secure = proto === "https"
+    const csrfName = secure ? "__Host-csrf" : "csrf"
+    const hasCsrf = request.cookies.get(csrfName)?.value
+    if (!hasCsrf) {
+      const bytes = crypto.getRandomValues(new Uint8Array(16))
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+      let token = ""
+      for (let i = 0; i < bytes.length; i++) token += chars[bytes[i]! % chars.length]
+      response.cookies.set({
+        name: csrfName,
+        value: token,
+        httpOnly: false,
+        secure,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 7 * 24 * 60 * 60,
+      })
+    }
+  } catch {}
 
   return response
 }

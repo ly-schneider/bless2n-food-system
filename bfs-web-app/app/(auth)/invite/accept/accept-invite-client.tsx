@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/contexts/auth-context"
-import { API_BASE_URL } from "@/lib/api"
+
 import type { User } from "@/types"
 
 export default function AcceptInviteClient() {
@@ -32,7 +32,7 @@ export default function AcceptInviteClient() {
         return
       }
       try {
-        const res = await fetch(`${API_BASE_URL}/v1/invites/verify`, {
+        const res = await fetch(`/api/v1/invites/verify`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token }),

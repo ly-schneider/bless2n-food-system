@@ -1,17 +1,10 @@
-// Public base used by the browser. Always use relative "/api" so that
-// container runtime env can decide the backend target via API routes.
 const PUBLIC_API_BASE = "/api"
-// Internal base used by SSR/RSC inside the container to reach backend service name.
 const INTERNAL_API_BASE = process.env.BACKEND_INTERNAL_URL || process.env.INTERNAL_API_BASE_URL
 
 function resolveApiBase(): string {
-  // On the server (SSR/RSC), prefer the internal URL on the Docker network.
-  // Never fall back to a relative path here because Node's fetch requires
-  // absolute URLs and build-time prerender would fail to parse.
   if (typeof window === "undefined") {
     return INTERNAL_API_BASE || "http://backend:8080"
   }
-  // In the browser, use the public/base URL reachable from the user's machine
   return PUBLIC_API_BASE || "/api"
 }
 
@@ -33,14 +26,23 @@ export async function apiRequest<T>(endpoint: string, options: RequestInit = {})
   }
 
   const url = `${baseUrl}${endpoint}`
+  const isBrowser = typeof window !== "undefined"
+  const method = (options.method || "GET").toUpperCase()
+  const mutating = !(method === "GET" || method === "HEAD" || method === "OPTIONS")
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string> | undefined),
+  }
 
-  const response = await fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-    ...options,
-  })
+  if (isBrowser && mutating && String(baseUrl).startsWith("/api") && !("X-CSRF" in headers) && !("x-csrf" in headers)) {
+    try {
+      const { getCSRFToken } = await import("./csrf")
+      const csrf = getCSRFToken()
+      if (csrf) headers["X-CSRF"] = csrf
+    } catch {}
+  }
+
+  const response = await fetch(url, { ...options, headers })
 
   if (!response.ok) {
     const errorData = (await response.json().catch(() => ({}))) as { message?: string; detail?: string }

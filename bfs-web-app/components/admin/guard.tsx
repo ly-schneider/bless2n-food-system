@@ -2,7 +2,6 @@
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
-import { API_BASE_URL } from "@/lib/api"
 
 export function AdminGuard({ children }: { children: React.ReactNode }) {
   const fetchAuth = useAuthorizedFetch()
@@ -13,7 +12,7 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetchAuth(`${API_BASE_URL}/v1/users/me`, { method: "GET" })
+        const res = await fetchAuth(`/api/v1/users/me`, { method: "GET" })
         if (!res.ok) throw new Error("Unauthorized")
         const data = (await res.json()) as { user?: { role?: string } }
         if (!cancelled) setOk(data?.user?.role === "admin")
