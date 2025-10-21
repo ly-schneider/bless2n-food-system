@@ -162,8 +162,8 @@ importers:
         specifier: ^4.17.21
         version: 4.17.21
       lucide-react:
-        specifier: ^0.544.0
-        version: 0.544.0(react@19.1.0)
+        specifier: ^0.546.0
+        version: 0.546.0(react@19.1.0)
       next:
         specifier: 15.3.3
         version: 15.3.3(@babel/core@7.27.1)(@opentelemetry/api@1.7.0)(@playwright/test@1.52.0)(babel-plugin-macros@3.1.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -7286,8 +7286,8 @@ packages:
   lru-queue@0.1.0:
     resolution: {integrity: sha512-BpdYkt9EvGl8OfWHDQPISVpcl5xZthb+XPsbELj5AQXxIC8IriDZIQYjBJPEm5rS420sjZ0TLEzRcq5KdBhYrQ==}
 
-  lucide-react@0.544.0:
-    resolution: {integrity: sha512-t5tS44bqd825zAW45UQxpG2CvcC4urOwn2TrwSH8u+MjeE+1NnWl6QqeQ/6NdjMqdOygyiT9p3Ev0p1NJykxjw==}
+  lucide-react@0.546.0:
+    resolution: {integrity: sha512-Z94u6fKT43lKeYHiVyvyR8fT7pwCzDu7RyMPpTvh054+xahSgj4HFQ+NmflvzdXsoAjYGdCguGaFKYuvq0ThCQ==}
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
@@ -17596,7 +17596,7 @@ snapshots:
     dependencies:
       es5-ext: 0.10.64
 
-  lucide-react@0.544.0(react@19.1.0):
+  lucide-react@0.546.0(react@19.1.0):
     dependencies:
       react: 19.1.0
 
