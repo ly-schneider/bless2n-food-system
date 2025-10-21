@@ -1,11 +1,11 @@
 package repository
 
 import (
-	"backend/internal/database"
-	"backend/internal/domain"
-	"context"
-	"strings"
-	"time"
+    "backend/internal/database"
+    "backend/internal/domain"
+    "context"
+    "strings"
+    "time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -36,6 +36,11 @@ func NewUserRepository(db *database.MongoDB) UserRepository {
 	}
 }
 
+// normalizeEmail trims spaces and lowercases the email for consistent storage and lookup.
+func normalizeEmail(email string) string {
+    return strings.ToLower(strings.TrimSpace(email))
+}
+
 func (r *userRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*domain.User, error) {
 	var u domain.User
 	if err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&u); err != nil {
@@ -45,29 +50,30 @@ func (r *userRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*
 }
 
 func (r *userRepository) FindByEmail(ctx context.Context, email string) (*domain.User, error) {
-	var u domain.User
-	if err := r.collection.FindOne(ctx, bson.M{"email": strings.ToLower(email)}).Decode(&u); err != nil {
-		return nil, err
-	}
-	return &u, nil
+    email = normalizeEmail(email)
+    var u domain.User
+    if err := r.collection.FindOne(ctx, bson.M{"email": email}).Decode(&u); err != nil {
+        return nil, err
+    }
+    return &u, nil
 }
 
 // UpsertCustomerByEmail finds or creates a customer user by email.
 func (r *userRepository) UpsertCustomerByEmail(ctx context.Context, email string) (*domain.User, error) {
-	now := time.Now().UTC()
-	email = strings.ToLower(email)
-	// Try find first
-	if u, err := r.FindByEmail(ctx, email); err == nil {
-		return u, nil
-	}
-	u := &domain.User{
-		ID:         primitive.NewObjectID(),
-		Email:      email,
-		Role:       domain.UserRoleCustomer,
-		IsVerified: true,
-		CreatedAt:  now,
-		UpdatedAt:  now,
-	}
+    now := time.Now().UTC()
+    email = normalizeEmail(email)
+    // Try find first
+    if u, err := r.FindByEmail(ctx, email); err == nil {
+        return u, nil
+    }
+    u := &domain.User{
+        ID:         primitive.NewObjectID(),
+        Email:      email,
+        Role:       domain.UserRoleCustomer,
+        IsVerified: true,
+        CreatedAt:  now,
+        UpdatedAt:  now,
+    }
 	if _, err := r.collection.InsertOne(ctx, u); err != nil {
 		return nil, err
 	}
@@ -87,16 +93,17 @@ func (r *userRepository) UpdateStripeCustomerID(ctx context.Context, id primitiv
 }
 
 func (r *userRepository) UpdateEmail(ctx context.Context, id primitive.ObjectID, newEmail string, isVerified bool) error {
-	now := time.Now().UTC()
-	update := bson.M{
-		"$set": bson.M{
-			"email":       strings.ToLower(newEmail),
-			"is_verified": isVerified,
-			"updated_at":  now,
-		},
-	}
-	_, err := r.collection.UpdateByID(ctx, id, update)
-	return err
+    now := time.Now().UTC()
+    newEmail = normalizeEmail(newEmail)
+    update := bson.M{
+        "$set": bson.M{
+            "email":       newEmail,
+            "is_verified": isVerified,
+            "updated_at":  now,
+        },
+    }
+    _, err := r.collection.UpdateByID(ctx, id, update)
+    return err
 }
 
 func (r *userRepository) UpdateNames(ctx context.Context, id primitive.ObjectID, firstName, lastName *string) error {
@@ -155,12 +162,12 @@ func (r *userRepository) List(ctx context.Context, limit, offset int) ([]*domain
 }
 
 func (r *userRepository) UpsertByEmailWithRole(ctx context.Context, email string, role domain.UserRole, isVerified bool, firstName, lastName *string) (*domain.User, error) {
-	now := time.Now().UTC()
-	email = strings.ToLower(email)
-	// Try find first
-	if u, err := r.FindByEmail(ctx, email); err == nil && u != nil {
-		// Upgrade role if needed, update verified and optional names
-		set := bson.M{"updated_at": now}
+    now := time.Now().UTC()
+    email = normalizeEmail(email)
+    // Try find first
+    if u, err := r.FindByEmail(ctx, email); err == nil && u != nil {
+        // Upgrade role if needed, update verified and optional names
+        set := bson.M{"updated_at": now}
 		if u.Role != role {
 			set["role"] = role
 		}

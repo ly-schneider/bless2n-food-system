@@ -24,6 +24,9 @@ export async function POST(req: Request) {
     body: JSON.stringify(body),
   })
 
+  console.log("OTP verify request body:", body)
+  console.log("OTP verify response status:", res.status)
+
   if (!res.ok) {
     return NextResponse.json({ error: true, message: "Invalid code" }, { status: 401 })
   }

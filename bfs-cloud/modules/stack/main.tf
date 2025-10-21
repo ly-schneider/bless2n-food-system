@@ -409,7 +409,7 @@ module "rg_budget" {
 module "ag" {
   source = "../action_group"
 
-  name                = "${var.environment}-ag"
+  name                = "bfs-${var.environment}-ag"
   short_name          = var.environment
   resource_group_name = module.rg.name
   email_receivers     = var.alert_emails

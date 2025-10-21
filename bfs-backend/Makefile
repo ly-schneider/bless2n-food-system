@@ -37,6 +37,10 @@ docker-up-backend docker-restart-backend: SMTP_PORT := $(SMTP_PORT_DOCKER)
 DC  := docker compose
 AIR ?= $(BIN)/air
 
+# Optional flags toggled via env
+FORCE ?=
+FORCE_FLAG := $(if $(filter 1 true yes on,$(FORCE)),-force,)
+
 # Stripe
 WEBHOOK_URL ?= http://localhost:$(APP_PORT)/v1/payments/webhook
 
@@ -143,10 +147,10 @@ test:
 	@go test -v -race ./internal/...
 
 db-seed:
-	go run ./cmd/ctl
+	go run ./cmd/ctl $(FORCE_FLAG)
 
 db-reset:
-	go run ./cmd/ctl -reset
+	go run ./cmd/ctl -reset $(FORCE_FLAG)
 
 stripe-listen:
 	@command -v stripe >/dev/null 2>&1 || { \
