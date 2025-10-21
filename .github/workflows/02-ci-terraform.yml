@@ -97,5 +97,5 @@ jobs:
           organization: ${{ env.TF_ORG_NAME }}
           workspace: ${{ steps.ws.outputs.workspace }}
           message: "Speculative plan for PR #${{ github.event.pull_request.number }}"
-          speculative: true
+          type: plan
           wait-for-completion: true
