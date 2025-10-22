@@ -121,7 +121,6 @@
     "@testing-library/jest-dom": "^6.1.4",
     "@testing-library/react": "^16.0.0",
     "@total-typescript/ts-reset": "^0.6.0",
-    "@types/bcryptjs": "^3.0.0",
     "@types/node": "^22.0.0",
     "@types/pg": "^8.11.0",
     "@types/qrcode": "^1.5.5",

@@ -1,22 +1,41 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "config:recommended",
+    "group:allNonMajor"
   ],
+  "timezone": "Europe/Zurich",
+  "schedule": ["* 2-7 * * *"],
+  "prConcurrentLimit": 10,
+  "prHourlyLimit": 10,
   "lockFileMaintenance": {
-    "enabled": false
+    "enabled": true,
+    "schedule": ["* 2-7 * * *"]
   },
   "packageRules": [
     {
-      "groupName": "all non-major dependencies",
-      "groupSlug": "all-minor-patch",
-      "matchPackageNames": [
-        "*"
-      ],
-      "matchUpdateTypes": [
-        "minor",
-        "patch"
-      ]
+      "groupName": "npm non-major deps",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"]
+    },
+    {
+      "groupName": "gradle non-major deps",
+      "matchManagers": ["gradle"],
+      "matchUpdateTypes": ["minor", "patch"]
+    },
+    {
+      "groupName": "go modules non-major deps",
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["minor", "patch"]
+    },
+    {
+      "groupName": "terraform non-major deps",
+      "matchManagers": ["terraform"],
+      "matchUpdateTypes": ["minor", "patch"]
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
     }
   ]
 }
