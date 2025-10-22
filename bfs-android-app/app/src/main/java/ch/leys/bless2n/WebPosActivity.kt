@@ -358,6 +358,12 @@ class WebPosActivity : ComponentActivity() {
         } else true
     }
 
+    private fun hasBtScanPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= 31) {
+            ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED
+        } else true
+    }
+
     // Very small HTML print helper via hidden WebView
     private fun printWithSystem(htmlContent: String, onResult: (success: Boolean, error: String?) -> Unit) {
         val pv = WebView(this)
@@ -529,12 +535,28 @@ class WebPosActivity : ComponentActivity() {
             val mgr = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
             val adapter = mgr.adapter
             if (adapter == null || !adapter.isEnabled) throw Exception("bt_disabled")
-            val dev = adapter.getRemoteDevice(macAddress)
-            adapter.cancelDiscovery()
+            if (!hasBtConnectPermission()) throw Exception("missing_bt_permission")
+            val dev = try {
+                adapter.getRemoteDevice(macAddress)
+            } catch (_: SecurityException) {
+                throw Exception("bt_connect_permission_denied")
+            }
+            if (hasBtScanPermission()) {
+                try { adapter.cancelDiscovery() } catch (_: SecurityException) {}
+            }
 
-            val sock = dev.createInsecureRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"))
+            val sock = try {
+                dev.createInsecureRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"))
+            } catch (_: SecurityException) {
+                throw Exception("bt_connect_permission_denied")
+            }
             try {
-                sock.connect()
+                if (!hasBtConnectPermission()) throw Exception("missing_bt_permission")
+                try {
+                    sock.connect()
+                } catch (_: SecurityException) {
+                    throw Exception("bt_connect_permission_denied")
+                }
                 val name = if (hasBtConnectPermission()) {
                     try { dev.name } catch (_: SecurityException) { macAddress } catch (_: Throwable) { macAddress }
                 } else macAddress

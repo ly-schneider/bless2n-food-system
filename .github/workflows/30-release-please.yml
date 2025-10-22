@@ -22,5 +22,5 @@ jobs:
         with: { fetch-depth: 0 }
       - uses: googleapis/release-please-action@v4
         with:
-          config-file: .github/release-please-config.json
-          manifest-file: .release-please-manifest.json
+          config-file: release-please-config.json
+          manifest-file: release-please-manifest.json
