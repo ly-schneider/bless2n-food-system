@@ -201,8 +201,8 @@ importers:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       stripe:
-        specifier: ^15.0.0
-        version: 15.12.0
+        specifier: ^19.0.0
+        version: 19.1.0(@types/node@22.18.12)
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.0
@@ -8800,9 +8800,14 @@ packages:
   strip-literal@3.0.0:
     resolution: {integrity: sha512-TcccoMhJOM3OebGhSBEmp3UZ2SfDMZUEBdRA/9ynfLi8yYajyWX3JiXArcJt4Umh4vISpspkQIY8ZZoCqjbviA==}
 
-  stripe@15.12.0:
-    resolution: {integrity: sha512-slTbYS1WhRJXVB8YXU8fgHizkUrM9KJyrw4Dd8pLEwzKHYyQTIE46EePC2MVbSDZdE24o1GdNtzmJV4PrPpmJA==}
-    engines: {node: '>=12.*'}
+  stripe@19.1.0:
+    resolution: {integrity: sha512-FjgIiE98dMMTNssfdjMvFdD4eZyEzdWAOwPYqzhPRNZeg9ggFWlPXmX1iJKD5pPIwZBaPlC3SayQQkwsPo6/YQ==}
+    engines: {node: '>=16'}
+    peerDependencies:
+      '@types/node': '>=16'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
 
   style-loader@3.3.4:
     resolution: {integrity: sha512-0WqXzrsMTyb8yjZJHDqwmnwRJvhALK9LfRtRc6B4UTWe8AijYLZYZ9thuJTZc2VfQWINADW/j+LiJnfy2RoC1w==}
@@ -18969,10 +18974,11 @@ snapshots:
     dependencies:
       js-tokens: 9.0.1
 
-  stripe@15.12.0:
+  stripe@19.1.0(@types/node@22.18.12):
     dependencies:
-      '@types/node': 22.18.12
       qs: 6.14.0
+    optionalDependencies:
+      '@types/node': 22.18.12
 
   style-loader@3.3.4(webpack@5.102.1(@swc/core@1.10.9(@swc/helpers@0.5.15))(esbuild@0.25.11)):
     dependencies:
