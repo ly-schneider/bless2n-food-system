@@ -7,6 +7,11 @@ on:
         description: "Version tag to create (e.g., v1.2.3)"
         required: true
         type: string
+      environment:
+        description: "Environment to use for downstream jobs (for env-scoped secrets)"
+        required: false
+        default: "staging"
+        type: string
       target:
         description: "Target branch or SHA to tag"
         required: false
@@ -149,6 +154,7 @@ jobs:
     if: ${{ inputs.dry_run != 'true' }}
     needs: tag-and-release
     uses: ./.github/workflows/31-release-android-app.yml
+    environment: ${{ inputs.environment }}
     with:
       tag_name: ${{ inputs.version }}
     secrets: inherit
