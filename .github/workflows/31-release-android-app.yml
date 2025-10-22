@@ -11,6 +11,11 @@ on:
         description: "Tag to build from (e.g., v1.2.3)"
         required: true
         type: string
+      environment:
+        description: "Environment name to read secrets from"
+        required: false
+        default: "staging"
+        type: string
 
 permissions:
   contents: write
@@ -21,6 +26,7 @@ concurrency:
 
 jobs:
   build-release:
+    environment: ${{ inputs.environment || 'staging' }}
     runs-on: ubuntu-latest
     defaults:
       run:
