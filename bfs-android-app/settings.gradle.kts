@@ -23,6 +23,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "android-poc"
+rootProject.name = "bfs-android-app"
 include(":app")
  

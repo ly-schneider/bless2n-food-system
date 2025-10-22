@@ -27,7 +27,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import ch.leys.bless2n.ui.theme.AndroidpocTheme
+import ch.leys.bless2n.ui.theme.BfsAndroidAppTheme
 import com.sumup.merchant.reader.api.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -68,7 +68,7 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            AndroidpocTheme {
+            BfsAndroidAppTheme {
                 EnsureBtPermission {
                     Scaffold(Modifier.fillMaxSize()) { inner ->
                         PaymentScreen(

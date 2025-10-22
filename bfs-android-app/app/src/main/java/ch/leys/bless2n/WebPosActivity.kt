@@ -352,6 +352,12 @@ class WebPosActivity : ComponentActivity() {
         } else true
     }
 
+    private fun hasBtConnectPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= 31) {
+            ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+        } else true
+    }
+
     // Very small HTML print helper via hidden WebView
     private fun printWithSystem(htmlContent: String, onResult: (success: Boolean, error: String?) -> Unit) {
         val pv = WebView(this)
@@ -387,8 +393,12 @@ class WebPosActivity : ComponentActivity() {
             val connection = com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections.selectFirstPaired()
             if (connection == null) throw Exception("no_paired_printer")
             // If the paired device looks like a Phomemo T02 (non-ESC/POS), use raw raster path
-            val devName = try { connection.device?.name } catch (_: Throwable) { null }
-            val devAddr = try { connection.device?.address } catch (_: Throwable) { null }
+            val devName = if (hasBtConnectPermission()) {
+                try { connection.device?.name } catch (_: SecurityException) { null } catch (_: Throwable) { null }
+            } else null
+            val devAddr = if (hasBtConnectPermission()) {
+                try { connection.device?.address } catch (_: SecurityException) { null } catch (_: Throwable) { null }
+            } else null
             if ((devName?.contains("T02", ignoreCase = true) == true || devName?.contains("Phomemo", ignoreCase = true) == true) && !devAddr.isNullOrBlank()) {
                 Log.d("POS_PRINT", "Detected Phomemo-like printer: $devName ($devAddr), using raw raster protocol")
                 try { connection.disconnect() } catch (_: Throwable) {}
@@ -399,7 +409,9 @@ class WebPosActivity : ComponentActivity() {
             try {
                 connection.connect()
                 try {
-                    val name = try { connection.device.name } catch (_: Throwable) { "Bluetooth Printer" }
+                    val name = if (hasBtConnectPermission()) {
+                        try { connection.device.name } catch (_: SecurityException) { "Bluetooth Printer" } catch (_: Throwable) { "Bluetooth Printer" }
+                    } else "Bluetooth Printer"
                     Log.d("POS_PRINT", "Connected to printer: $name")
                 } catch (_: Throwable) {}
             } catch (t: Throwable) {
@@ -523,7 +535,9 @@ class WebPosActivity : ComponentActivity() {
             val sock = dev.createInsecureRfcommSocketToServiceRecord(UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"))
             try {
                 sock.connect()
-                val name = try { dev.name } catch (_: Throwable) { macAddress }
+                val name = if (hasBtConnectPermission()) {
+                    try { dev.name } catch (_: SecurityException) { macAddress } catch (_: Throwable) { macAddress }
+                } else macAddress
                 Log.d("POS_PRINT", "Connected (raw) to printer: $name")
 
                 val obj = try { JSONObject(content) } catch (_: Exception) { JSONObject() }
