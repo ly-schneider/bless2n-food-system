@@ -143,7 +143,7 @@
     "eslint-plugin-tailwindcss": "^3.18.0",
     "fetch-mock": "^12.0.0",
     "gzip-size": "6.0.0",
-    "jsdom": "^26.1.0",
+    "jsdom": "^27.0.0",
     "mkdirp": "^3.0.1",
     "patch-package": "^8.0.0",
     "postcss": "^8.5.3",
