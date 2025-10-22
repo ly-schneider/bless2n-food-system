@@ -127,6 +127,15 @@ android {
     }
 }
 
+androidComponents {
+    onVariants(selector().withBuildType("release")) { variant ->
+        val envFromProp = (project.findProperty("bfsEnv") as String?) ?: System.getenv("BFS_ENV")
+        variant.outputs.forEach { output ->
+            output.outputFileName.set("bfs-android-app-release-${envFromProp ?: "dev"}.apk")
+        }
+    }
+}
+
 dependencies {
     implementation("com.sumup:merchant-sdk:5.0.3")
     implementation("com.github.DantSu:ESCPOS-ThermalPrinter-Android:3.3.0")
