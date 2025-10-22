@@ -28,7 +28,7 @@ jobs:
       BFS_UPLOAD_KEY_PASSWORD:    ${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           # For release events, explicitly checkout the tag being released
