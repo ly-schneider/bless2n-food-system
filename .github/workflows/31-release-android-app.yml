@@ -26,12 +26,12 @@ jobs:
       run:
         working-directory: bfs-android-app
     env:
-      SUMUP_AFFILIATE_KEY: ${{ secrets.SUMUP_AFFILIATE_KEY }}
-      POS_URL:     ${{ secrets.POS_URL }}
-      ANDROID_KEYSTORE_BASE64:   ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-      BFS_UPLOAD_STORE_PASSWORD:  ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-      BFS_UPLOAD_KEY_ALIAS:       ${{ secrets.ANDROID_KEY_ALIAS }}
-      BFS_UPLOAD_KEY_PASSWORD:    ${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}
+      SUMUP_AFFILIATE_KEY: ${{ secrets.SUMUP_AFFILIATE_KEY || vars.SUMUP_AFFILIATE_KEY }}
+      POS_URL: ${{ secrets.POS_URL || vars.POS_URL }}
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 || vars.ANDROID_KEYSTORE_BASE64 }}
+      BFS_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD || vars.ANDROID_KEYSTORE_PASSWORD }}
+      BFS_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS || vars.ANDROID_KEY_ALIAS }}
+      BFS_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_ALIAS_PASSWORD || vars.ANDROID_KEY_ALIAS_PASSWORD }}
 
     steps:
       - uses: actions/checkout@v5
@@ -51,6 +51,12 @@ jobs:
         with:
           api-level: 35
           build-tools: 35.0.0
+
+      - name: Debug inputs presence
+        run: |
+          for v in SUMUP_AFFILIATE_KEY POS_URL ANDROID_KEYSTORE_BASE64 BFS_UPLOAD_STORE_PASSWORD BFS_UPLOAD_KEY_ALIAS BFS_UPLOAD_KEY_PASSWORD; do
+            if [ -n "${!v}" ]; then echo "::notice::$v is set"; else echo "::warning::$v is empty"; fi
+          done
 
       - name: Decode upload keystore
         if: ${{ env.ANDROID_KEYSTORE_BASE64 != '' }}
