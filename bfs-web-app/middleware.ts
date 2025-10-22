@@ -12,7 +12,12 @@ export async function middleware(request: NextRequest) {
       const fwd = request.headers.get("x-forwarded-for") || "-"
       const proto = (request.headers.get("x-forwarded-proto") || "").toLowerCase()
       // Lightweight request log (stdout)
-      console.log(`[req] ${method} ${pathname} proto=${proto || "-"} ip=${fwd.split(",")[0]?.trim() || "-"} ua=${ua.substring(0, 80)}`)
+      console.log(
+        `[req] ${method} ${pathname} proto=${proto || "-"} ip=${fwd.split(",")[0]?.trim() || "-"} ua=${ua.substring(
+          0,
+          80
+        )}`
+      )
     } catch {}
   }
 

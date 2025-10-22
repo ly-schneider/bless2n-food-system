@@ -65,7 +65,11 @@ async function handle(req: Request, params: Promise<{ path: string[] }>) {
     try {
       const ua = inHeaders.get("user-agent") || "-"
       const fwd = inHeaders.get("x-forwarded-for") || "-"
-      console.log(`[api-proxy] ${method} ${target.pathname} -> ${target.origin} dur=${dur}ms ip=${fwd.split(",")[0]?.trim() || "-"} ua=${ua.substring(0, 80)}`)
+      console.log(
+        `[api-proxy] ${method} ${target.pathname} -> ${target.origin} dur=${dur}ms ip=${
+          fwd.split(",")[0]?.trim() || "-"
+        } ua=${ua.substring(0, 80)}`
+      )
     } catch {}
   }
 
