@@ -117,8 +117,8 @@ importers:
         specifier: ^14.0.0
         version: 14.1.0(semantic-release@25.0.1(typescript@5.8.3))
       '@stripe/react-stripe-js':
-        specifier: ^2.7.1
-        version: 2.9.0(@stripe/stripe-js@4.10.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        specifier: ^5.0.0
+        version: 5.2.0(@stripe/stripe-js@4.10.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       '@stripe/stripe-js':
         specifier: ^4.10.0
         version: 4.10.0
@@ -3582,12 +3582,12 @@ packages:
     peerDependencies:
       storybook: ^8.6.12
 
-  '@stripe/react-stripe-js@2.9.0':
-    resolution: {integrity: sha512-+/j2g6qKAKuWSurhgRMfdlIdKM+nVVJCy/wl0US2Ccodlqx0WqfIIBhUkeONkCG+V/b+bZzcj4QVa3E/rXtT4Q==}
+  '@stripe/react-stripe-js@5.2.0':
+    resolution: {integrity: sha512-m6CFXWjI5yikOcaP1L9xiabgkljdhu8vspoqF+BDD9mIjZIh1yEjeU0++oefqlXBd9U3QZj+C2ds4t3BDmICMg==}
     peerDependencies:
-      '@stripe/stripe-js': ^1.44.1 || ^2.0.0 || ^3.0.0 || ^4.0.0
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0
-      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0
+      '@stripe/stripe-js': '>=8.0.0 <9.0.0'
+      react: '>=16.8.0 <20.0.0'
+      react-dom: '>=16.8.0 <20.0.0'
 
   '@stripe/stripe-js@4.10.0':
     resolution: {integrity: sha512-KrMOL+sH69htCIXCaZ4JluJ35bchuCCznyPyrbN8JXSGQfwBI1SuIEMZNwvy8L8ykj29t6sa5BAAiL7fNoLZ8A==}
@@ -12982,7 +12982,7 @@ snapshots:
       '@vitest/spy': 2.0.5
       storybook: 9.1.13(@testing-library/dom@10.4.0)(prettier@3.0.3)(vite@7.0.6(@types/node@22.18.12)(jiti@2.4.2)(lightningcss@1.29.2)(terser@5.39.0)(tsx@4.20.6)(yaml@2.7.0))
 
-  '@stripe/react-stripe-js@2.9.0(@stripe/stripe-js@4.10.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
+  '@stripe/react-stripe-js@5.2.0(@stripe/stripe-js@4.10.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
     dependencies:
       '@stripe/stripe-js': 4.10.0
       prop-types: 15.8.1
