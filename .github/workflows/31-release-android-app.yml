@@ -40,7 +40,6 @@ jobs:
       BFS_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}
       ORG_GRADLE_PROJECT_sumupAffiliateKey: ${{ secrets.SUMUP_AFFILIATE_KEY }}
       ORG_GRADLE_PROJECT_posUrl: ${{ secrets.POS_URL }}
-      BFS_ENV: ${{ inputs.environment || vars.BFS_ENV || 'staging' }}
       ORG_GRADLE_PROJECT_bfsEnv: ${{ inputs.environment || vars.BFS_ENV || 'staging' }}
 
     steps:

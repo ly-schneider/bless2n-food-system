@@ -1,4 +1,6 @@
 import java.util.regex.Pattern
+import com.android.build.api.variant.ApkVariantOutput
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 fun semverFromTag(): Triple<Int, Int, Int> {
     val raw = (System.getenv("GITHUB_REF_NAME") ?: System.getenv("VERSION_TAG") ?: "")
@@ -112,9 +114,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "11"
-    }
+    // Kotlin options moved to compilerOptions DSL below
     buildFeatures {
         compose = true
     }
@@ -129,10 +129,19 @@ android {
 
 androidComponents {
     onVariants(selector().withBuildType("release")) { variant ->
-        val envFromProp = (project.findProperty("bfsEnv") as String?) ?: System.getenv("BFS_ENV")
+        val envName = (project.findProperty("bfsEnv") as String?) ?: "staging"
         variant.outputs.forEach { output ->
-            output.outputFileName.set("bfs-android-app-release-${envFromProp ?: "dev"}.apk")
+            if (output is ApkVariantOutput) {
+                output.outputFileName.set("bfs-android-app-release-$envName.apk")
+            }
         }
+    }
+}
+
+// Kotlin compiler options (KGP 2.x)
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_11)
     }
 }
 
