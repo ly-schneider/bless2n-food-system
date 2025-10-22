@@ -3,7 +3,20 @@ import { NextRequest, NextResponse } from "next/server"
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  if (pathname.startsWith("/_next/") || pathname.startsWith("/api/") || pathname.includes(".")) {
+  // Skip static assets
+  const isStatic = pathname.startsWith("/_next/") || pathname.includes(".")
+  if (!isStatic) {
+    try {
+      const method = request.method
+      const ua = request.headers.get("user-agent") || "-"
+      const fwd = request.headers.get("x-forwarded-for") || "-"
+      const proto = (request.headers.get("x-forwarded-proto") || "").toLowerCase()
+      // Lightweight request log (stdout)
+      console.log(`[req] ${method} ${pathname} proto=${proto || "-"} ip=${fwd.split(",")[0]?.trim() || "-"} ua=${ua.substring(0, 80)}`)
+    } catch {}
+  }
+
+  if (isStatic || pathname.startsWith("/api/")) {
     return NextResponse.next()
   }
 

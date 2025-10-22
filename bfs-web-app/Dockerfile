@@ -55,7 +55,7 @@ FROM gcr.io/distroless/nodejs24-debian12:nonroot AS runtime
 # Set secure environment variables (runtime env like BACKEND_INTERNAL_URL and
 # NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY are expected to be injected by the orchestrator at start)
 ENV NODE_ENV=production \
-    NODE_OPTIONS="--max-old-space-size=2048 --no-deprecation" \
+    NODE_OPTIONS="--max-old-space-size=2048 --no-deprecation --trace-warnings --trace-uncaught --unhandled-rejections=strict" \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000
 

@@ -11,7 +11,9 @@ function getCookie(name: string): string | null {
   return match && typeof match[1] === "string" ? decodeURIComponent(match[1]) : null
 }
 
-export default function AnalyticsConsentGate() {
+type Props = { gaId?: string }
+
+export default function AnalyticsConsentGate({ gaId }: Props) {
   const [enabled, setEnabled] = useState(false)
 
   useEffect(() => {
@@ -31,8 +33,6 @@ export default function AnalyticsConsentGate() {
     window.addEventListener("ga-consent-changed", onChange as EventListener)
     return () => window.removeEventListener("ga-consent-changed", onChange as EventListener)
   }, [])
-
-  const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
 
   if (!enabled || !gaId) return null
   return <GoogleAnalytics gaId={gaId} />

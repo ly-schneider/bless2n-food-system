@@ -9,7 +9,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 export function POSHeader() {
   const PIN = process.env.NEXT_PUBLIC_POS_PIN || "0000"
   const LOCK_KEY = "bfs.pos.locked"
-  const IDLE_MS = Number(process.env.NEXT_PUBLIC_POS_IDLE_TIMEOUT) || 60000
+  const IDLE_MS = Number(process.env.NEXT_PUBLIC_POS_IDLE_TIMEOUT) || 300000
   const [locked, setLocked] = useState<boolean>(() => {
     if (typeof window === "undefined") return false
     try {

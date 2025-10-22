@@ -4,7 +4,6 @@
 // Exposes globalThis.PosBridge expected by /pos UI by delegating to window.BFS if available
 
 declare global {
-  // eslint-disable-next-line no-var
   var PosBridge:
     | {
         print?: (s: string) => void

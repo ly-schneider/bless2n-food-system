@@ -56,7 +56,18 @@ async function handle(req: Request, params: Promise<{ path: string[] }>) {
     }
   }
 
-  const res = await fetch(target.toString(), { method, headers: outHeaders, body, redirect: "manual" })
+  const start = Date.now()
+  let res: Response
+  try {
+    res = await fetch(target.toString(), { method, headers: outHeaders, body, redirect: "manual" })
+  } finally {
+    const dur = Date.now() - start
+    try {
+      const ua = inHeaders.get("user-agent") || "-"
+      const fwd = inHeaders.get("x-forwarded-for") || "-"
+      console.log(`[api-proxy] ${method} ${target.pathname} -> ${target.origin} dur=${dur}ms ip=${fwd.split(",")[0]?.trim() || "-"} ua=${ua.substring(0, 80)}`)
+    } catch {}
+  }
 
   const respHeaders = new Headers(res.headers)
 

@@ -23,7 +23,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div className={`${golosText.variable} flex min-h-screen flex-col overflow-x-hidden`}>
       <main className="flex-1">{children}</main>
       <AuthFooter />
-      <AnalyticsConsentGate />
+      <AnalyticsConsentGate gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
       <CookieBanner />
     </div>
   )
