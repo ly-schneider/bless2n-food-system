@@ -62,7 +62,7 @@
     "@semantic-release/npm": "^13.0.0",
     "@semantic-release/release-notes-generator": "^14.0.0",
     "@stripe/react-stripe-js": "^5.0.0",
-    "@stripe/stripe-js": "^4.10.0",
+    "@stripe/stripe-js": "^8.0.0",
     "@vercel/otel": "^2.0.0",
     "@zxing/browser": "^0.1.5",
     "bcryptjs": "^3.0.0",
