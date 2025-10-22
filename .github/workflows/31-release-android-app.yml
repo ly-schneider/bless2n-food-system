@@ -66,6 +66,37 @@ jobs:
           echo -n "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload-keystore.jks"
           echo "BFS_UPLOAD_STORE_FILE=$RUNNER_TEMP/upload-keystore.jks" >> "$GITHUB_ENV"
 
+      - name: Validate keystore and alias
+        if: ${{ env.ANDROID_KEYSTORE_BASE64 != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Ensure required env vars are present
+          if [[ -z "${BFS_UPLOAD_STORE_FILE:-}" || -z "${BFS_UPLOAD_STORE_PASSWORD:-}" || -z "${BFS_UPLOAD_KEY_ALIAS:-}" || -z "${BFS_UPLOAD_KEY_PASSWORD:-}" ]]; then
+            echo "Required signing env vars are missing (store file/password, key alias/password)."
+            exit 1
+          fi
+          if [[ ! -f "$BFS_UPLOAD_STORE_FILE" ]]; then
+            echo "Keystore file not found at path configured in BFS_UPLOAD_STORE_FILE."
+            exit 1
+          fi
+          # Validate keystore can be opened with the store password
+          if ! keytool -list -keystore "$BFS_UPLOAD_STORE_FILE" -storepass "$BFS_UPLOAD_STORE_PASSWORD" >/dev/null 2>&1; then
+            echo "Keystore or store password is invalid."
+            exit 1
+          fi
+          # Validate alias exists in keystore
+          if ! keytool -list -alias "$BFS_UPLOAD_KEY_ALIAS" -keystore "$BFS_UPLOAD_STORE_FILE" -storepass "$BFS_UPLOAD_STORE_PASSWORD" >/dev/null 2>&1; then
+            echo "Alias not found in keystore or store password incorrect."
+            exit 1
+          fi
+          # Validate key password for the alias
+          if ! keytool -list -alias "$BFS_UPLOAD_KEY_ALIAS" -keystore "$BFS_UPLOAD_STORE_FILE" -storepass "$BFS_UPLOAD_STORE_PASSWORD" -keypass "$BFS_UPLOAD_KEY_PASSWORD" >/dev/null 2>&1; then
+            echo "Key password for alias is invalid."
+            exit 1
+          fi
+          echo "Keystore, alias, and key password validated."
+
       - name: Configure local.properties
         run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
 
