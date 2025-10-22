@@ -93,7 +93,7 @@
     "tailwind-merge": "^2.6.0",
     "vaul": "^1.1.2",
     "ws": "^8.16.0",
-    "zod": "^3.24.4"
+    "zod": "^4.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.27.1",
