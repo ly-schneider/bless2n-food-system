@@ -23,7 +23,7 @@ jobs:
       web: ${{ steps.filter.outputs.web }}
       cloud: ${{ steps.filter.outputs.cloud }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with: { fetch-depth: 0 }
       - id: filter
         uses: dorny/paths-filter@v3
@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     env: { TF_VERSION: 1.13.3 }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with: { fetch-depth: 0 }
       - uses: hashicorp/setup-terraform@v3
         with:

@@ -19,7 +19,7 @@ jobs:
   fmt:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with: { fetch-depth: 0 }
       - uses: hashicorp/setup-terraform@v3
         with: { terraform_version: 1.13.3 }
@@ -32,7 +32,7 @@ jobs:
     outputs:
       dirs: ${{ steps.out.outputs.dirs }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with: { fetch-depth: 0 }
       - id: out
         shell: bash
@@ -62,7 +62,7 @@ jobs:
       matrix:
         dir: ${{ fromJson(needs.discover.outputs.dirs) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with: { fetch-depth: 0 }
       - uses: hashicorp/setup-terraform@v3
         with: { terraform_version: 1.13.3 }
