@@ -5,7 +5,7 @@ on:
     branches: [staging, production]
     paths: ['bfs-android-app/**', '.github/workflows/01-ci-android.yml']
   push:
-    branches: [staging, production]
+    branches: ['**']
     paths: ['bfs-android-app/**', '.github/workflows/01-ci-android.yml']
 
 permissions:
@@ -32,17 +32,12 @@ jobs:
         run: chmod +x ./gradlew
       - name: Lint
         continue-on-error: true
-        uses: gradle/gradle-build-action@v3
+        uses: gradle/actions/setup-gradle@v5
         with:
           arguments: lintDebug --no-daemon
           build-root-directory: bfs-android-app
-      - name: Test and Build
-        uses: gradle/gradle-build-action@v3
+      - name: Test
+        uses: gradle/actions/setup-gradle@v5
         with:
-          arguments: test assembleDebug --no-daemon
+          arguments: test --no-daemon
           build-root-directory: bfs-android-app
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-apk-debug
-          path: bfs-android-app/app/build/outputs/apk/debug/*.apk

@@ -1,3 +1,16 @@
+import java.util.regex.Pattern
+
+fun semverFromTag(): Triple<Int, Int, Int> {
+    val raw = (System.getenv("GITHUB_REF_NAME") ?: System.getenv("VERSION_TAG") ?: "")
+    val tag = raw.removePrefix("v")
+    val m = Pattern.compile("""^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$""").matcher(tag)
+    return if (m.matches()) Triple(m.group(1).toInt(), m.group(2).toInt(), m.group(3).toInt()) else Triple(0, 0, 1)
+}
+
+val (maj, min, pat) = semverFromTag()
+val computedVersionCode = maj * 10000 + min * 100 + pat
+val computedVersionName = "$maj.$min.$pat"
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -10,17 +23,15 @@ android {
 
     defaultConfig {
         applicationId = "ch.leys.bless2n"
-        // SumUp SDK 5.x requires minSdk >= 26
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionName = computedVersionName
+        versionCode = computedVersionCode
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         vectorDrawables { useSupportLibrary = true }
 
-        // SumUp affiliate key from gradle property or environment; avoid hard-coding
         val sumupAffiliateKey = (project.findProperty("sumupAffiliateKey") as String?)
             ?: System.getenv("SUMUP_AFFILIATE_KEY")
             ?: ""
@@ -29,7 +40,6 @@ android {
         }
         buildConfigField("String", "SUMUP_AFFILIATE_KEY", "\"$sumupAffiliateKey\"")
 
-        // Default buildConfig fields so all variants (incl. debug) compile
         buildConfigField("String", "POS_URL", "\"http://127.0.0.1:3000/pos\"")
         buildConfigField("boolean", "DEV_BUILD", "true")
     }
@@ -38,9 +48,11 @@ android {
         buildConfig = true
     }
 
+    // Configure release signing via environment variables (set by CI)
     signingConfigs {
         create("release") {
-            // Read signing from env or Gradle props; keep empty in dev machines
+            val buildingRelease = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
+
             val storeFilePath = (System.getenv("BFS_UPLOAD_STORE_FILE")
                 ?: project.findProperty("BFS_UPLOAD_STORE_FILE") as String?) ?: ""
             val storePasswordVal = (System.getenv("BFS_UPLOAD_STORE_PASSWORD")
@@ -49,6 +61,11 @@ android {
                 ?: project.findProperty("BFS_UPLOAD_KEY_ALIAS") as String?) ?: ""
             val keyPasswordVal = (System.getenv("BFS_UPLOAD_KEY_PASSWORD")
                 ?: project.findProperty("BFS_UPLOAD_KEY_PASSWORD") as String?) ?: ""
+
+            val missing = storeFilePath.isBlank() || storePasswordVal.isBlank() || keyAliasVal.isBlank() || keyPasswordVal.isBlank()
+            if (buildingRelease && missing) {
+                throw GradleException("Release signing missing. Set BFS_UPLOAD_STORE_FILE, BFS_UPLOAD_STORE_PASSWORD, BFS_UPLOAD_KEY_ALIAS, BFS_UPLOAD_KEY_PASSWORD.")
+            }
 
             if (storeFilePath.isNotBlank()) storeFile = file(storeFilePath)
             if (storePasswordVal.isNotBlank()) storePassword = storePasswordVal
@@ -59,36 +76,35 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Use CI-provided signing if available
+
             signingConfig = signingConfigs.getByName("release")
-            // Configure production POS URL via gradle property or env
+
             val buildingRelease = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
-            val posUrlReleaseProp = (project.findProperty("posUrlRelease") as String?) ?: System.getenv("POS_URL_RELEASE")
-            if (buildingRelease && (posUrlReleaseProp.isNullOrBlank())) {
-                throw GradleException("POS_URL_RELEASE (or -PposUrlRelease) must be set for release builds")
+            val posUrl = (project.findProperty("posUrl") as String?) ?: System.getenv("POS_URL")
+            if (buildingRelease && (posUrl.isNullOrBlank())) {
+                throw GradleException("POS_URL (or -PposUrl) must be set for release builds")
             }
-            val posUrlRelease = posUrlReleaseProp ?: "https://example.com/pos"
+            val posUrlRelease = posUrl ?: "https://example.com/pos"
             buildConfigField("String", "POS_URL", "\"$posUrlRelease\"")
             buildConfigField("boolean", "DEV_BUILD", "false")
         }
 
         create("dev") {
-            // Mirror debug-like behavior for developer builds
             initWith(getByName("debug"))
             isDebuggable = true
             signingConfig = signingConfigs.getByName("debug")
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-dev"
-            // Emulator points to host machine
-            val posUrlDev = (project.findProperty("posUrlDev") as String?)
-                ?: System.getenv("POS_URL_DEV")
+
+            val posUrl = (project.findProperty("posUrl") as String?)
+                ?: System.getenv("POS_URL")
                 ?: "http://127.0.0.1:3000/pos"
-            buildConfigField("String", "POS_URL", "\"$posUrlDev\"")
+            buildConfigField("String", "POS_URL", "\"$posUrl\"")
             buildConfigField("boolean", "DEV_BUILD", "true")
         }
     }
