@@ -143,3 +143,12 @@ jobs:
         run: |
           echo "Tag '${{ inputs.version }}' created."
           echo "Downstream release jobs (e.g., Android) will run on this tag."
+
+  android-release:
+    name: Android • Build & Attach
+    if: ${{ inputs.dry_run != 'true' }}
+    needs: tag-and-release
+    uses: ./.github/workflows/31-release-android-app.yml
+    with:
+      tag_name: ${{ inputs.version }}
+    secrets: inherit

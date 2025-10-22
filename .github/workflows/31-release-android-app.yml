@@ -5,12 +5,18 @@ on:
     tags: ["v*"]
   release:
     types: [published]
+  workflow_call:
+    inputs:
+      tag_name:
+        description: "Tag to build from (e.g., v1.2.3)"
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 concurrency:
-  group: android-release-${{ github.event_name == 'release' && github.event.release.tag_name || github.ref }}
+  group: android-release-${{ github.event_name == 'release' && github.event.release.tag_name || (github.ref_name || inputs.tag_name) }}
   cancel-in-progress: false
 
 jobs:
@@ -32,7 +38,7 @@ jobs:
         with:
           fetch-depth: 0
           # For release events, explicitly checkout the tag being released
-          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.ref }}
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag_name || github.ref }}
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -77,7 +83,7 @@ jobs:
       - name: Attach to existing GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event_name == 'release' && github.event.release.tag_name || github.ref_name }}
+          tag_name: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag_name || github.ref_name }}
           generate_release_notes: false
           files: |
             bfs-android-app/app/build/outputs/apk/release/*.apk
