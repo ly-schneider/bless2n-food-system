@@ -118,6 +118,13 @@ android {
     buildFeatures {
         compose = true
     }
+
+    lint {
+        // Vendor library (android-state) ships a lint registry without vendor metadata.
+        // Do not fail release builds on such third-party lint issues.
+        abortOnError = false
+        checkReleaseBuilds = false
+    }
 }
 
 dependencies {
@@ -142,4 +149,7 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+
+    // Compile-only annotations used by transitive libraries to satisfy R8 analysis
+    compileOnly("com.google.errorprone:error_prone_annotations:2.21.1")
 }

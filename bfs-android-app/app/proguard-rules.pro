@@ -19,3 +19,20 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# --- Suppress missing/optional dependencies referenced by vendor SDKs ---
+# SumUp SDK references optional analytics/observability and other libs that are not bundled.
+# We don't use these features, so suppress warnings about their absence during shrink.
+-dontwarn com.google.errorprone.annotations.**
+-dontwarn com.sumup.analyticskit.**
+-dontwarn com.sumup.mixpanel.**
+-dontwarn com.sumup.observabilitylib.**
+-dontwarn com.sumup.observablib.**
+-dontwarn io.opentelemetry.**
+-dontwarn org.greenrobot.eventbus.**
+-dontwarn com.google.firebase.**
+-dontwarn com.mixpanel.**
+-dontwarn kotlinx.parcelize.**
+
+# Keep annotations and signatures to avoid issues with Kotlin/Parcelize reflection
+-keepattributes *Annotation*,Signature
