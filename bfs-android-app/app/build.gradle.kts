@@ -1,12 +1,15 @@
 import java.util.regex.Pattern
-import com.android.build.api.variant.ApkVariantOutput
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 fun semverFromTag(): Triple<Int, Int, Int> {
     val raw = (System.getenv("GITHUB_REF_NAME") ?: System.getenv("VERSION_TAG") ?: "")
     val tag = raw.removePrefix("v")
     val m = Pattern.compile("""^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$""").matcher(tag)
-    return if (m.matches()) Triple(m.group(1).toInt(), m.group(2).toInt(), m.group(3).toInt()) else Triple(0, 0, 1)
+    return if (m.matches()) Triple(
+        m.group(1).toInt(),
+        m.group(2).toInt(),
+        m.group(3).toInt()
+    ) else Triple(0, 0, 1)
 }
 
 val (maj, min, pat) = semverFromTag()
@@ -37,7 +40,12 @@ android {
         val sumupAffiliateKey = (project.findProperty("sumupAffiliateKey") as String?)
             ?: System.getenv("SUMUP_AFFILIATE_KEY")
             ?: ""
-        if (gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) } && sumupAffiliateKey.isBlank()) {
+        if (gradle.startParameter.taskNames.any {
+                it.contains(
+                    "Release",
+                    ignoreCase = true
+                )
+            } && sumupAffiliateKey.isBlank()) {
             throw GradleException("SUMUP_AFFILIATE_KEY (or -PsumupAffiliateKey) must be set for release builds")
         }
         buildConfigField("String", "SUMUP_AFFILIATE_KEY", "\"$sumupAffiliateKey\"")
@@ -53,7 +61,8 @@ android {
     // Configure release signing via environment variables (set by CI)
     signingConfigs {
         create("release") {
-            val buildingRelease = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
+            val buildingRelease =
+                gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
 
             val storeFilePath = (System.getenv("BFS_UPLOAD_STORE_FILE")
                 ?: project.findProperty("BFS_UPLOAD_STORE_FILE") as String?) ?: ""
@@ -64,7 +73,8 @@ android {
             val keyPasswordVal = (System.getenv("BFS_UPLOAD_KEY_PASSWORD")
                 ?: project.findProperty("BFS_UPLOAD_KEY_PASSWORD") as String?) ?: ""
 
-            val missing = storeFilePath.isBlank() || storePasswordVal.isBlank() || keyAliasVal.isBlank() || keyPasswordVal.isBlank()
+            val missing =
+                storeFilePath.isBlank() || storePasswordVal.isBlank() || keyAliasVal.isBlank() || keyPasswordVal.isBlank()
             if (buildingRelease && missing) {
                 throw GradleException("Release signing missing. Set BFS_UPLOAD_STORE_FILE, BFS_UPLOAD_STORE_PASSWORD, BFS_UPLOAD_KEY_ALIAS, BFS_UPLOAD_KEY_PASSWORD.")
             }
@@ -86,7 +96,8 @@ android {
 
             signingConfig = signingConfigs.getByName("release")
 
-            val buildingRelease = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
+            val buildingRelease =
+                gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
             val posUrl = (project.findProperty("posUrl") as String?) ?: System.getenv("POS_URL")
             if (buildingRelease && (posUrl.isNullOrBlank())) {
                 throw GradleException("POS_URL (or -PposUrl) must be set for release builds")
@@ -124,17 +135,6 @@ android {
         // Do not fail release builds on such third-party lint issues.
         abortOnError = false
         checkReleaseBuilds = false
-    }
-}
-
-androidComponents {
-    onVariants(selector().withBuildType("release")) { variant ->
-        val envName = (project.findProperty("bfsEnv") as String?) ?: "staging"
-        variant.outputs.forEach { output ->
-            if (output is ApkVariantOutput) {
-                output.outputFileName.set("bfs-android-app-release-$envName.apk")
-            }
-        }
     }
 }
 

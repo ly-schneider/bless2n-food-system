@@ -108,12 +108,25 @@ jobs:
           ./gradlew --no-daemon \
             :app:assembleRelease
 
+      - name: Prepare renamed APK for release
+        shell: bash
+        run: |
+          set -euo pipefail
+          ENV_NAME="${{ inputs.environment || vars.BFS_ENV || 'staging' }}"
+          APK_DIR="app/build/outputs/apk/release"
+          APK_SRC=$(ls -1 "$APK_DIR"/*.apk | head -n 1)
+          APK_DST="$APK_DIR/bfs-android-app-release-${ENV_NAME}.apk"
+          echo "Source APK: $APK_SRC"
+          echo "Renamed APK: $APK_DST"
+          cp -f "$APK_SRC" "$APK_DST"
+
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
           name: android-release-outputs
           path: |
             bfs-android-app/app/build/outputs/apk/release/*.apk
+            bfs-android-app/app/build/outputs/apk/release/bfs-android-app-release-${{ inputs.environment || vars.BFS_ENV || 'staging' }}.apk
             bfs-android-app/app/build/outputs/mapping/release/mapping.txt
           if-no-files-found: warn
 
@@ -123,5 +136,5 @@ jobs:
           tag_name: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag_name || github.ref_name }}
           generate_release_notes: false
           files: |
-            bfs-android-app/app/build/outputs/apk/release/*.apk
+            bfs-android-app/app/build/outputs/apk/release/bfs-android-app-release-${{ inputs.environment || vars.BFS_ENV || 'staging' }}.apk
             bfs-android-app/app/build/outputs/mapping/release/mapping.txt
