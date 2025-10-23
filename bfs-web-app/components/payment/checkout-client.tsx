@@ -223,7 +223,7 @@ export function CheckoutClient({ returnPath = "/food/checkout/payment/next" }: P
   }
 
   return (
-    <Elements stripe={stripePromise} options={options}>
+    <Elements key={clientSecret || "no-client-secret"} stripe={stripePromise} options={options}>
       <CheckoutForm
         email={email}
         setEmail={setEmail}
