@@ -13,9 +13,7 @@ export function getStripe() {
     const init = async (): Promise<Stripe | null> => {
       if (!inlinePk) {
         if (process.env.NODE_ENV !== "production") {
-          console.warn(
-            "Stripe publishable key not available; disabling Elements."
-          )
+          console.warn("Stripe publishable key not available; disabling Elements.")
         }
         return null
       }
