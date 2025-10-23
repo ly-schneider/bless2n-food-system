@@ -46,6 +46,15 @@ export async function apiRequest<T>(endpoint: string, options: RequestInit = {})
 
   if (!response.ok) {
     const errorData = (await response.json().catch(() => ({}))) as { message?: string; detail?: string }
+    try {
+      console.error("[api] request failed", {
+        method,
+        url,
+        status: response.status,
+        statusText: response.statusText,
+        message: errorData.message || errorData.detail,
+      })
+    } catch {}
     const error = createApiError(
       response.status,
       errorData.message || errorData.detail || `HTTP ${response.status}: ${response.statusText}`

@@ -57,6 +57,7 @@ export async function middleware(request: NextRequest) {
   const stripeFrame = ["https://js.stripe.com", "https://hooks.stripe.com", "https://m.stripe.network"]
 
   const googleTagManager = "https://www.googletagmanager.com"
+  const googleAnalytics = "https://region1.google-analytics.com"
 
   const csp = [
     "default-src 'self'",
@@ -66,7 +67,7 @@ export async function middleware(request: NextRequest) {
     // Stripe Elements iframes and assets
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
-    `connect-src ${[...connectSrc, ...stripeConnect].join(" ")}`,
+    `connect-src ${[...connectSrc, ...stripeConnect, googleAnalytics].join(" ")}`,
     `frame-src ${stripeFrame.join(" ")}`,
     "object-src 'none'",
     "base-uri 'self'",

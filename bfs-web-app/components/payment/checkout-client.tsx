@@ -1,6 +1,7 @@
 "use client"
 
 import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js"
+import type { StripeError } from "@stripe/stripe-js"
 import { ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useMemo, useRef, useState } from "react"
@@ -56,6 +57,9 @@ export function CheckoutClient({ returnPath = "/food/checkout/payment/next" }: P
       const seq = ++initSeq.current
       setError(null)
       if (cart.items.length === 0) return
+      try {
+        console.info("[payment] init start", { items: cart.items.length })
+      } catch {}
       // Reuse an existing PI for this fingerprint if present (prevents duplicates in Strict Mode/dev)
       try {
         const raw = sessionStorage.getItem("bfs.pi.current")
@@ -68,6 +72,12 @@ export function CheckoutClient({ returnPath = "/food/checkout/payment/next" }: P
             email?: string
           }
           if (parsed && parsed.fingerprint === cartFingerprint && parsed.pi && parsed.clientSecret) {
+            try {
+              console.info("[payment] reuse cached PI", {
+                pi: parsed.pi,
+                hasClientSecret: Boolean(parsed.clientSecret),
+              })
+            } catch {}
             setPaymentIntentId(parsed.pi)
             setClientSecret(parsed.clientSecret)
             const e = parsed.email || user?.email || ""
@@ -75,6 +85,9 @@ export function CheckoutClient({ returnPath = "/food/checkout/payment/next" }: P
             setEmail(e)
             return
           }
+          try {
+            console.info("[payment] cached PI fingerprint mismatch; creating new")
+          } catch {}
         }
       } catch {}
 
@@ -86,7 +99,17 @@ export function CheckoutClient({ returnPath = "/food/checkout/payment/next" }: P
       const prefill = user?.email ?? undefined
       try {
         const attemptId = stableAttemptId(cartFingerprint)
+        try {
+          console.info("[payment] create-intent", { attemptId })
+        } catch {}
         const res = await createPaymentIntent({ items, customerEmail: prefill, attemptId }, accessToken || undefined)
+        try {
+          console.info("[payment] create-intent OK", {
+            pi: res.paymentIntentId,
+            orderId: res.orderId,
+            hasClientSecret: Boolean(res.clientSecret),
+          })
+        } catch {}
         setClientSecret(res.clientSecret)
         setPaymentIntentId(res.paymentIntentId)
         const e = prefill || ""
@@ -118,12 +141,27 @@ export function CheckoutClient({ returnPath = "/food/checkout/payment/next" }: P
         if (initSeq.current === seq && !clientSecretRef.current) {
           setError(msg)
         }
+        try {
+          console.error("[payment] create-intent failed", e)
+        } catch {}
       }
     }
     void init()
   }, [cartFingerprint, user?.email, accessToken])
 
   const stripePromise = useMemo(() => getStripe(), [])
+  useEffect(() => {
+    let active = true
+    stripePromise.then((s) => {
+      if (!active) return
+      try {
+        console.info("[payment] stripe resolved", { loaded: Boolean(s) })
+      } catch {}
+    })
+    return () => {
+      active = false
+    }
+  }, [stripePromise])
   const options = useMemo(() => {
     if (!clientSecret) return undefined
     return {
@@ -131,6 +169,47 @@ export function CheckoutClient({ returnPath = "/food/checkout/payment/next" }: P
       appearance: { theme: "stripe" as const },
       // Disable all billing detail collection (we render our own optional email input)
       loader: "auto" as const,
+    }
+  }, [clientSecret])
+
+  // Try to retrieve PI status for diagnostics once clientSecret exists
+  useEffect(() => {
+    let cancelled = false
+    const run = async () => {
+      try {
+        const s = await getStripe()
+        if (!s) {
+          try {
+            console.warn("[payment] Stripe unavailable for retrievePaymentIntent")
+          } catch {}
+          return
+        }
+        if (!clientSecret) return
+        const { paymentIntent, error } = await s.retrievePaymentIntent(clientSecret)
+        if (cancelled) return
+        if (error) {
+          try {
+            const err = error as StripeError & { code?: string }
+            console.error("[payment] retrievePaymentIntent error", {
+              type: err.type,
+              code: err.code,
+              message: err.message,
+            })
+          } catch {}
+        } else if (paymentIntent) {
+          try {
+            console.info("[payment] retrievePaymentIntent", { id: paymentIntent.id, status: paymentIntent.status })
+          } catch {}
+        }
+      } catch (e) {
+        try {
+          console.error("[payment] retrievePaymentIntent threw", e)
+        } catch {}
+      }
+    }
+    if (clientSecret) void run()
+    return () => {
+      cancelled = true
     }
   }, [clientSecret])
 
@@ -180,12 +259,26 @@ function CheckoutForm({
   const { accessToken } = useAuth()
   const router = useRouter()
 
+  useEffect(() => {
+    try {
+      console.info("[payment] CheckoutForm mounted", { hasStripe: Boolean(stripe), hasElements: Boolean(elements) })
+    } catch {}
+  }, [stripe, elements])
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
     setError(null)
     try {
-      if (!stripe || !elements) return
+      if (!stripe || !elements) {
+        try {
+          console.warn("[payment] submit blocked; stripe/elements not ready", {
+            hasStripe: Boolean(stripe),
+            hasElements: Boolean(elements),
+          })
+        } catch {}
+        return
+      }
       // Update receipt email if changed (including clearing)
       if (email !== initialEmail) {
         await attachReceiptEmail(paymentIntentId, email || "", accessToken || undefined)
@@ -199,6 +292,9 @@ function CheckoutForm({
         return "Customer"
       })()
       const returnUrl = `${window.location.origin}${returnPath}?pi=${encodeURIComponent(paymentIntentId)}`
+      try {
+        console.info("[payment] confirmPayment", { returnUrl })
+      } catch {}
       const { error } = await stripe.confirmPayment({
         elements,
         confirmParams: {
@@ -220,10 +316,17 @@ function CheckoutForm({
         },
       })
       if (error) {
+        try {
+          const err = error as StripeError & { code?: string }
+          console.error("[payment] confirmPayment error", { type: err.type, code: err.code, message: err.message })
+        } catch {}
         setError(error.message || "Zahlung fehlgeschlagen. Bitte erneut versuchen.")
         btnRef.current?.focus()
       }
     } catch (err: unknown) {
+      try {
+        console.error("[payment] confirmPayment threw", err)
+      } catch {}
       const msg = err instanceof Error ? err.message : "Zahlung fehlgeschlagen. Bitte erneut versuchen."
       setError(msg)
       btnRef.current?.focus()
@@ -262,6 +365,17 @@ function CheckoutForm({
             layout: "tabs",
           } as unknown as Parameters<typeof PaymentElement>[0]["options"]
         }
+        onReady={() => {
+          try {
+            console.info("[payment] PaymentElement ready")
+          } catch {}
+        }}
+        onChange={(e: unknown) => {
+          try {
+            const complete = (e as { complete?: boolean }).complete
+            console.info("[payment] PaymentElement change", { complete })
+          } catch {}
+        }}
       />
 
       {error && (
