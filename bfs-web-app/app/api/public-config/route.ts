@@ -7,5 +7,5 @@ export function GET() {
   if (!pk) {
     return NextResponse.json({ error: "missing publishable key" }, { status: 500 })
   }
-  return NextResponse.json({ stripePk: pk })
+  return NextResponse.json({ stripePublishableKey: pk })
 }
