@@ -14,7 +14,7 @@ export function RequestAccess({ token, onRefresh: _onRefresh }: { token: string;
     try {
       const client = await getClientInfo()
       const payload = {
-        name: name || "POS‑Terminal",
+        name: name || "POS-Terminal",
         model: client.model,
         os: client.os,
         deviceToken: token,
@@ -32,7 +32,7 @@ export function RequestAccess({ token, onRefresh: _onRefresh }: { token: string;
   return (
     <div className="grid min-h-[calc(100dvh-8rem)] place-items-center p-4">
       <div className="bg-background w-full max-w-md rounded-xl border p-5 shadow-sm">
-        <h1 className="mb-2 text-2xl font-semibold">POS‑Zugang anfordern</h1>
+        <h1 className="mb-2 text-2xl font-semibold">POS-Zugang anfordern</h1>
         <p className="text-muted-foreground mb-4 text-sm">
           Dieses Gerät muss vor dem Verkauf von einem Admin freigegeben werden.
         </p>

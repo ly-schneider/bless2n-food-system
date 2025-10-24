@@ -86,8 +86,8 @@ export default function AdminPOSPage() {
       {loading && <div className="text-muted-foreground">Lädt…</div>}
 
       {/* Devices list */}
-      <h2 className="mt-2 mb-2 text-lg font-semibold">POS‑Geräte</h2>
-      {!loading && devices.length === 0 && <div className="text-muted-foreground">Keine POS‑Geräte vorhanden.</div>}
+      <h2 className="mt-2 mb-2 text-lg font-semibold">POS-Geräte</h2>
+      {!loading && devices.length === 0 && <div className="text-muted-foreground">Keine POS-Geräte vorhanden.</div>}
       <div className="mb-6 space-y-3">
         {devices.map((d) => (
           <div key={d.id} className="bg-card border-border rounded-[11px] border p-3">

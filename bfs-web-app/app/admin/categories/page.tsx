@@ -1,8 +1,22 @@
 "use client"
 import { useEffect, useState } from "react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
 
 import { getCSRFToken } from "@/lib/csrf"
@@ -16,6 +30,8 @@ export default function AdminCategoriesPage() {
   const [name, setName] = useState("")
   const [position, setPosition] = useState<number>(0)
   const [error, setError] = useState<string | null>(null)
+  const [editItem, setEditItem] = useState<{ id: string; name: string; isActive: boolean } | null>(null)
+  const [editSaving, setEditSaving] = useState(false)
 
   useEffect(() => {
     void reload()
@@ -55,19 +71,7 @@ export default function AdminCategoriesPage() {
     await reload()
   }
 
-  async function rename(id: string, newName: string) {
-    const csrf = getCSRFToken()
-    const res = await fetchAuth(`/api/v1/admin/categories/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
-      body: JSON.stringify({ name: newName }),
-    })
-    if (!res.ok) {
-      setError(await readErrorMessage(res))
-      return
-    }
-    await reload()
-  }
+  // removed unused rename() helper; name+active are updated together
 
   async function updatePosition(id: string, pos: number) {
     if (!Number.isFinite(pos) || pos < 0) {
@@ -102,7 +106,6 @@ export default function AdminCategoriesPage() {
   }
 
   async function remove(id: string) {
-    if (!confirm("Delete category?")) return
     const csrf = getCSRFToken()
     const res = await fetchAuth(`/api/v1/admin/categories/${id}`, {
       method: "DELETE",
@@ -115,10 +118,25 @@ export default function AdminCategoriesPage() {
     await reload()
   }
 
+  async function updateNameAndActive(id: string, newName: string, newActive: boolean) {
+    const csrf = getCSRFToken()
+    const res = await fetchAuth(`/api/v1/admin/categories/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
+      body: JSON.stringify({ name: newName, isActive: newActive }),
+    })
+    if (!res.ok) {
+      setError(await readErrorMessage(res))
+      return
+    }
+    await reload()
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 space-y-4">
       <h1 className="text-xl font-semibold">Kategorien</h1>
       {error && <div className="text-sm text-red-600">{error}</div>}
+
       <div className="flex items-center gap-2">
         <Input
           value={name}
@@ -137,58 +155,143 @@ export default function AdminCategoriesPage() {
           Erstellen
         </Button>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full border border-gray-100 text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-3 py-2 text-left">Pos</th>
-              <th className="px-3 py-2 text-left">Name</th>
-              <th className="px-3 py-2 text-left">Status</th>
-              <th className="px-3 py-2 text-right">Aktionen</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((c) => (
-              <tr key={c.id} className="border-t border-gray-100">
-                <td className="w-24 px-3 py-2">
-                  <Input
-                    type="number"
-                    value={c.position}
-                    onChange={(e) => {
-                      const v = Number(e.target.value)
-                      setItems((prev) => prev.map((it) => (it.id === c.id ? { ...it, position: v } : it)))
-                    }}
-                    onBlur={(e) => void updatePosition(c.id, Number(e.target.value))}
-                    className="h-7"
-                  />
-                </td>
-                <td className="px-3 py-2">
-                  <button
-                    className="underline decoration-dotted"
-                    onClick={() => {
-                      const v = prompt("Kategorie umbenennen", c.name)
-                      if (v && v.trim()) void rename(c.id, v.trim())
-                    }}
-                  >
-                    {c.name}
-                  </button>
-                </td>
-                <td className="px-3 py-2">
-                  <label className="inline-flex items-center gap-2">
-                    <Switch checked={c.isActive} onCheckedChange={(v) => void toggle(c.id, v)} />
-                    <span>{c.isActive ? "Aktiv" : "Inaktiv"}</span>
-                  </label>
-                </td>
-                <td className="px-3 py-2 text-right">
-                  <Button variant="ghost" size="sm" className="h-7 text-red-700" onClick={() => void remove(c.id)}>
-                    Löschen
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+
+      <div className="rounded-md border">
+        <div className="relative">
+          <div className="from-background pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r to-transparent" />
+          <div className="from-background pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l to-transparent" />
+          <div
+            className="max-w-full overflow-x-auto overscroll-x-contain rounded-[10px]"
+            role="region"
+            aria-label="Categories table – scroll horizontally to reveal more columns"
+            tabIndex={0}
+          >
+            <Table className="whitespace-nowrap">
+              <TableHeader className="bg-card sticky top-0">
+                <TableRow>
+                  <TableHead className="whitespace-nowrap">Pos</TableHead>
+                  <TableHead className="whitespace-nowrap">Name</TableHead>
+                  <TableHead className="whitespace-nowrap">Status</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Aktionen</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((c) => (
+                  <TableRow key={c.id} className="even:bg-card odd:bg-muted/40">
+                    <TableCell className="w-24">
+                      <Input
+                        type="number"
+                        value={c.position}
+                        onChange={(e) => {
+                          const v = Number(e.target.value)
+                          setItems((prev) => prev.map((it) => (it.id === c.id ? { ...it, position: v } : it)))
+                        }}
+                        onBlur={(e) => void updatePosition(c.id, Number(e.target.value))}
+                        className="h-7"
+                      />
+                    </TableCell>
+                    <TableCell>{c.name}</TableCell>
+                    <TableCell>
+                      <label className="inline-flex items-center gap-2">
+                        <Switch checked={c.isActive} onCheckedChange={(v) => void toggle(c.id, v)} />
+                        <span>{c.isActive ? "Aktiv" : "Inaktiv"}</span>
+                      </label>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="inline-flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7"
+                          onClick={() => setEditItem({ id: c.id, name: c.name, isActive: c.isActive })}
+                        >
+                          Bearbeiten
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-7 text-red-700">
+                              Löschen
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Kategorie löschen?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Diese Aktion kann nicht rückgängig gemacht werden. Kategorie "{c.name}" dauerhaft
+                                löschen?
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => void remove(c.id)}>Löschen</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
       </div>
+
+      {/* Edit dialog */}
+      <Dialog
+        open={!!editItem}
+        onOpenChange={(o) => {
+          if (!o) setEditItem(null)
+        }}
+      >
+        <DialogContent className="max-w-[520px] rounded-xl">
+          <DialogHeader>
+            <DialogTitle>Kategorie bearbeiten</DialogTitle>
+          </DialogHeader>
+          {editItem && (
+            <form
+              className="space-y-4"
+              onSubmit={async (e) => {
+                e.preventDefault()
+                const newName = editItem.name.trim()
+                if (!newName) return
+                setEditSaving(true)
+                await updateNameAndActive(editItem.id, newName, editItem.isActive)
+                setEditSaving(false)
+                setEditItem(null)
+              }}
+            >
+              <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  value={editItem.name}
+                  onChange={(e) => setEditItem({ ...editItem, name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="active">Status</Label>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="active"
+                    checked={editItem.isActive}
+                    onCheckedChange={(v) => setEditItem({ ...editItem, isActive: v })}
+                  />
+                  <span>{editItem.isActive ? "Aktiv" : "Inaktiv"}</span>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setEditItem(null)} disabled={editSaving}>
+                  Abbrechen
+                </Button>
+                <Button type="submit" disabled={editSaving}>
+                  Speichern
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

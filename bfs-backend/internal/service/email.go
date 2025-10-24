@@ -116,7 +116,7 @@ func (e *emailService) SendEmailChangeVerification(ctx context.Context, toNewEma
 	if err := textT.Execute(&textBody, data); err != nil {
 		return err
 	}
-	return e.send(ctx, toNewEmail, "E‑Mail Änderung bestätigen", textBody.String(), htmlBody.String())
+	return e.send(ctx, toNewEmail, "E-Mail Änderung bestätigen", textBody.String(), htmlBody.String())
 }
 
 func (e *emailService) PreviewEmailChangeVerification(ctx context.Context, toNewEmail, code, ip, ua string, codeTTL time.Duration) (string, string, string, error) {
@@ -137,7 +137,7 @@ func (e *emailService) PreviewEmailChangeVerification(ctx context.Context, toNew
 	if err := textT.Execute(&textBody, data); err != nil {
 		return "", "", "", err
 	}
-	return "E‑Mail Änderung bestätigen", textBody.String(), htmlBody.String(), nil
+	return "E-Mail Änderung bestätigen", textBody.String(), htmlBody.String(), nil
 }
 
 type inviteData struct {
@@ -189,8 +189,8 @@ func (e *emailService) send(ctx context.Context, to, subject, textBody, htmlBody
 	var fromHeader string
 	var fromEnvelope string
 	if addr, err := netmail.ParseAddress(fromRaw); err == nil {
-		fromHeader = addr.String()   // "Name <email@domain>"
-		fromEnvelope = addr.Address  // "email@domain"
+		fromHeader = addr.String()  // "Name <email@domain>"
+		fromEnvelope = addr.Address // "email@domain"
 	} else {
 		// Fallback: treat as bare address in both
 		fromHeader = fromRaw
