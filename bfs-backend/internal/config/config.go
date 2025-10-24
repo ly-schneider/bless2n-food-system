@@ -174,18 +174,6 @@ func getEnvAsBool(key string) bool {
 	return false
 }
 
-// getEnvAsBoolDefault gets a boolean from env or returns a default when unset/malformed
-func getEnvAsBoolDefault(key string, def bool) bool {
-	v := os.Getenv(key)
-	if v == "" {
-		return def
-	}
-	if b, err := strconv.ParseBool(v); err == nil {
-		return b
-	}
-	return def
-}
-
 // getTrustedOrigins parses comma-separated list of trusted origins from environment
 func getTrustedOrigins(key string) []string {
 	value := os.Getenv(key)
