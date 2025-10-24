@@ -636,7 +636,7 @@ export function BasketPanel({ token }: { token: string }) {
 
           {tender === "card" && (
             <div className="mt-2 space-y-3">
-              <p className="text-muted-foreground text-sm">Zahlung am verbundenen SumUp‑Terminal starten.</p>
+              <p className="text-muted-foreground text-sm">Zahlung am verbundenen SumUp-Terminal starten.</p>
               <Button className="w-full" onClick={startCardPayment} disabled={!canPayWithCard}>
                 Mit Karte bezahlen
               </Button>
@@ -650,7 +650,7 @@ export function BasketPanel({ token }: { token: string }) {
                 </Button>
               )}
               {!hasPosBridge && (
-                <div className="text-muted-foreground text-xs">Kartenzahlung außerhalb der Android‑App deaktiviert</div>
+                <div className="text-muted-foreground text-xs">Kartenzahlung außerhalb der Android-App deaktiviert</div>
               )}
             </div>
           )}

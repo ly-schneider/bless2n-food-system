@@ -18,8 +18,8 @@ export default function Footer() {
         (pathname === "/" || pathname === "/food") && totalItems > 0
           ? "mb-20"
           : pathname === "/food/orders"
-          ? "mb-18"
-          : "mb-4"
+            ? "mb-18"
+            : "mb-4"
       }`}
     >
       <div className="container mx-auto px-4">

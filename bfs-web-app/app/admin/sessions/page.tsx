@@ -58,7 +58,7 @@ export default function AdminSessionsPage() {
             <Table className="whitespace-nowrap">
               <TableHeader className="bg-card sticky top-0">
                 <TableRow>
-                  <TableHead className="whitespace-nowrap">E‑Mail</TableHead>
+                  <TableHead className="whitespace-nowrap">E-Mail</TableHead>
                   <TableHead className="whitespace-nowrap">Gerät</TableHead>
                   <TableHead className="whitespace-nowrap">Benutzer ID</TableHead>
                   <TableHead className="whitespace-nowrap">Erstellt</TableHead>

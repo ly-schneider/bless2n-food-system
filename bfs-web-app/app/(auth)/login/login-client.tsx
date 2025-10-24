@@ -163,7 +163,7 @@ export default function LoginClient() {
                 {loading ? "Sende…" : "Code senden"}
               </Button>
               <p className="text-muted-foreground text-xs">
-                Wir senden dir einen einmaligen 6‑stelligen Code per E‑Mail. Verwende nach Möglichkeit kein geteiltes
+                Wir senden dir einen einmaligen 6-stelligen Code per E-Mail. Verwende nach Möglichkeit kein geteiltes
                 Gerät.
               </p>
               <p className="text-muted-foreground mb-6 text-xs">
@@ -214,8 +214,8 @@ export default function LoginClient() {
                   {resendCooldown > 0
                     ? `Erneut senden in ${resendCooldown}s`
                     : resending
-                    ? "Sende…"
-                    : "Code erneut senden"}
+                      ? "Sende…"
+                      : "Code erneut senden"}
                 </Button>
               </div>
               {error && <p className="text-sm text-red-600">{error}</p>}

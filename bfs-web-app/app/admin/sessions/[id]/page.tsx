@@ -109,7 +109,7 @@ export default function AdminSessionDetailPage() {
               </Link>
             </div>
             <div>
-              <span className="text-muted-foreground">E‑Mail:</span> {item.email || "–"}
+              <span className="text-muted-foreground">E-Mail:</span> {item.email || "–"}
             </div>
             <div>
               <span className="text-muted-foreground">Gerät:</span> {item.device}

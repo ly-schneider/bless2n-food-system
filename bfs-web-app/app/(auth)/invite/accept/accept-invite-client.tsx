@@ -88,7 +88,7 @@ export default function AcceptInviteClient() {
     <div className="flex flex-1 flex-col">
       <main className="container mx-auto px-4 pt-24 pb-10">
         <AuthHeader />
-        <h1 className="mt-4 mb-2 text-center text-2xl font-semibold">Admin‑Einladung annehmen</h1>
+        <h1 className="mt-4 mb-2 text-center text-2xl font-semibold">Admin-Einladung annehmen</h1>
 
         <div className="mt-12 space-y-4">
           {loading ? (
@@ -96,7 +96,7 @@ export default function AcceptInviteClient() {
           ) : (
             <div className="space-y-3">
               <div className="flex flex-col gap-2">
-                <Label htmlFor="email">E‑Mail</Label>
+                <Label htmlFor="email">E-Mail</Label>
                 <Input id="email" value={email} disabled className="bg-muted" />
               </div>
               <div className="flex flex-col gap-2">

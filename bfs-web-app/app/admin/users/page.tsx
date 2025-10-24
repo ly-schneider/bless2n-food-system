@@ -61,7 +61,7 @@ export default function AdminUsersPage() {
               <TableHeader className="bg-card sticky top-0">
                 <TableRow>
                   <TableHead className="whitespace-nowrap">ID</TableHead>
-                  <TableHead className="whitespace-nowrap">E‑Mail</TableHead>
+                  <TableHead className="whitespace-nowrap">E-Mail</TableHead>
                   <TableHead className="whitespace-nowrap">Vorname</TableHead>
                   <TableHead className="whitespace-nowrap">Nachname</TableHead>
                   <TableHead className="whitespace-nowrap">Rolle</TableHead>
