@@ -22,12 +22,12 @@ type Config struct {
 }
 
 type AppConfig struct {
-    AppEnv         string
-    AppPort        string
-    JWTIssuer      string
-    JWTPrivPEM     string
-    JWTPubPEM      string
-    PublicBaseURL  string
+	AppEnv        string
+	AppPort       string
+	JWTIssuer     string
+	JWTPrivPEM    string
+	JWTPubPEM     string
+	PublicBaseURL string
 }
 
 type MongoConfig struct {
@@ -75,10 +75,10 @@ type StationConfig struct {
 }
 
 func Load() Config {
-    // Load .env files by default outside Docker. In Docker, allow opt-in via ALLOW_DOTENV_IN_DOCKER=true
-    allowDotenvInDocker := os.Getenv("ALLOW_DOTENV_IN_DOCKER") == "true"
-    if !isDockerEnvironment() || allowDotenvInDocker {
-        files := []string{".env"}
+	// Load .env files by default outside Docker. In Docker, allow opt-in via ALLOW_DOTENV_IN_DOCKER=true
+	allowDotenvInDocker := os.Getenv("ALLOW_DOTENV_IN_DOCKER") == "true"
+	if !isDockerEnvironment() || allowDotenvInDocker {
+		files := []string{".env"}
 
 		if appEnv := os.Getenv("APP_ENV"); appEnv != "" && appEnv != "local" {
 			envFile := fmt.Sprintf(".env.%s", appEnv)
@@ -87,20 +87,20 @@ func Load() Config {
 			}
 		}
 
-        if err := godotenv.Overload(files...); err != nil {
-            log.Printf("Warning: could not load env files %v: %v", files, err)
-        }
-    }
+		if err := godotenv.Overload(files...); err != nil {
+			log.Printf("Warning: could not load env files %v: %v", files, err)
+		}
+	}
 
-    cfg := Config{
-        App: AppConfig{
-            AppEnv:         getEnv("APP_ENV"),
-            AppPort:        getEnv("APP_PORT"),
-            JWTIssuer:      getEnv("JWT_ISSUER"),
-            JWTPrivPEM:     getEnv("JWT_PRIV_PEM"),
-            JWTPubPEM:      getEnv("JWT_PUB_PEM"),
-            PublicBaseURL:  getEnv("PUBLIC_BASE_URL"),
-        },
+	cfg := Config{
+		App: AppConfig{
+			AppEnv:        getEnv("APP_ENV"),
+			AppPort:       getEnv("APP_PORT"),
+			JWTIssuer:     getEnv("JWT_ISSUER"),
+			JWTPrivPEM:    getEnv("JWT_PRIV_PEM"),
+			JWTPubPEM:     getEnv("JWT_PUB_PEM"),
+			PublicBaseURL: getEnv("PUBLIC_BASE_URL"),
+		},
 		Mongo: MongoConfig{
 			URI:      getEnv("MONGO_URI"),
 			Database: getEnv("MONGO_DATABASE"),

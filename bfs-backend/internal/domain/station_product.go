@@ -1,6 +1,6 @@
 package domain
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import "go.mongodb.org/mongo-driver/v2/bson/primitive"
 
 type StationProduct struct {
 	ID        primitive.ObjectID `bson:"_id,omitempty"`

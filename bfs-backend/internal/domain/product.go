@@ -3,7 +3,7 @@ package domain
 import (
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson/primitive"
 )
 
 type ProductType string
@@ -26,17 +26,17 @@ type Product struct {
 }
 
 type ProductSummaryDTO struct {
-    ID         string      `json:"id"`
-    Category   CategoryDTO `json:"category"`
-    Type       ProductType `json:"type"`
-    Name       string      `json:"name"`
-    Image      *string     `json:"image,omitempty"`
-    PriceCents Cents       `json:"priceCents"`
-    IsActive   bool        `json:"isActive"`
-    // Inventory snapshot for availability on menus
-    AvailableQuantity *int  `json:"availableQuantity,omitempty"`
-    IsAvailable       *bool `json:"isAvailable,omitempty"`
-    IsLowStock        *bool `json:"isLowStock,omitempty"`
+	ID         string      `json:"id"`
+	Category   CategoryDTO `json:"category"`
+	Type       ProductType `json:"type"`
+	Name       string      `json:"name"`
+	Image      *string     `json:"image,omitempty"`
+	PriceCents Cents       `json:"priceCents"`
+	IsActive   bool        `json:"isActive"`
+	// Inventory snapshot for availability on menus
+	AvailableQuantity *int  `json:"availableQuantity,omitempty"`
+	IsAvailable       *bool `json:"isAvailable,omitempty"`
+	IsLowStock        *bool `json:"isLowStock,omitempty"`
 }
 
 type ProductDTO struct {

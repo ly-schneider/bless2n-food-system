@@ -6,8 +6,8 @@ import (
 
 	"backend/internal/config"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.uber.org/zap"
 )
 
@@ -52,23 +52,23 @@ func (m *MongoDB) Close() error {
 
 // Collection names constants
 const (
-	UsersCollection           = "users"
-	AdminInvitesCollection    = "admin_invites"
-	OTPTokensCollection       = "otp_tokens"
+	UsersCollection             = "users"
+	AdminInvitesCollection      = "admin_invites"
+	OTPTokensCollection         = "otp_tokens"
 	EmailChangeTokensCollection = "email_change_tokens"
-	RefreshTokensCollection   = "refresh_tokens"
-	IdentityLinksCollection   = "identity_links"
-	StationsCollection        = "stations"
-	StationRequestsCollection = "station_requests"
-	CategoriesCollection      = "categories"
-	ProductsCollection        = "products"
-	MenuSlotsCollection       = "menu_slots"
-	MenuSlotItemsCollection   = "menu_slot_items"
-	StationProductsCollection = "station_products"
-	InventoryLedgerCollection = "inventory_ledger"
-    OrdersCollection          = "orders"
-    OrderItemsCollection      = "order_items"
-    AuditLogsCollection       = "audit_logs"
-    PosDevicesCollection      = "pos_devices"
-    PosRequestsCollection     = "pos_requests"
+	RefreshTokensCollection     = "refresh_tokens"
+	IdentityLinksCollection     = "identity_links"
+	StationsCollection          = "stations"
+	StationRequestsCollection   = "station_requests"
+	CategoriesCollection        = "categories"
+	ProductsCollection          = "products"
+	MenuSlotsCollection         = "menu_slots"
+	MenuSlotItemsCollection     = "menu_slot_items"
+	StationProductsCollection   = "station_products"
+	InventoryLedgerCollection   = "inventory_ledger"
+	OrdersCollection            = "orders"
+	OrderItemsCollection        = "order_items"
+	AuditLogsCollection         = "audit_logs"
+	PosDevicesCollection        = "pos_devices"
+	PosRequestsCollection       = "pos_requests"
 )

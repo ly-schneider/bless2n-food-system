@@ -5,31 +5,31 @@ import (
 	"backend/internal/handler"
 	"backend/internal/middleware"
 
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
 
 func NewHandlers() fx.Option {
-    return fx.Options(
-        fx.Provide(
-            handler.NewAuthHandler,
-            handler.NewDevHandler,
-            handler.NewAdminHandler,
-            handler.NewUserHandler,
-            handler.NewOrderHandler,
-            handler.NewStationHandler,
-            handler.NewPOSHandler,
-            handler.NewCategoryHandler,
-            handler.NewProductHandler,
-            handler.NewPaymentHandler,
-            handler.NewRedemptionHandler,
-            NewHealthHandler,
-            handler.NewJWKSHandler,
-            middleware.NewJWTMiddleware,
-            NewSecurityMiddleware,
-        ),
-    )
+	return fx.Options(
+		fx.Provide(
+			handler.NewAuthHandler,
+			handler.NewDevHandler,
+			handler.NewAdminHandler,
+			handler.NewUserHandler,
+			handler.NewOrderHandler,
+			handler.NewStationHandler,
+			handler.NewPOSHandler,
+			handler.NewCategoryHandler,
+			handler.NewProductHandler,
+			handler.NewPaymentHandler,
+			handler.NewRedemptionHandler,
+			NewHealthHandler,
+			handler.NewJWKSHandler,
+			middleware.NewJWTMiddleware,
+			NewSecurityMiddleware,
+		),
+	)
 }
 
 func NewHealthHandler(logger *zap.Logger, db *mongo.Database) *handler.HealthHandler {

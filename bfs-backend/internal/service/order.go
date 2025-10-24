@@ -1,17 +1,17 @@
 package service
 
 import (
-    "backend/internal/domain"
-    "backend/internal/repository"
-    "context"
-    "fmt"
-    "time"
+	"backend/internal/domain"
+	"backend/internal/repository"
+	"context"
+	"fmt"
+	"time"
 
-    "go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson/primitive"
 )
 
 type OrderService interface {
-    PrepareOrder(ctx context.Context, dto *domain.CreateOrderDTO, userID *primitive.ObjectID) (*domain.Order, []*domain.OrderItem, error)
+	PrepareOrder(ctx context.Context, dto *domain.CreateOrderDTO, userID *primitive.ObjectID) (*domain.Order, []*domain.OrderItem, error)
 }
 
 type orderService struct {

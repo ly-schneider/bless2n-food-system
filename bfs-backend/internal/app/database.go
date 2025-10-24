@@ -4,7 +4,7 @@ import (
 	"backend/internal/config"
 	"backend/internal/database"
 
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 func NewDB(cfg config.Config) (*database.MongoDB, error) {
