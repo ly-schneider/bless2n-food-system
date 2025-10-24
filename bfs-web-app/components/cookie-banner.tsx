@@ -45,7 +45,7 @@ export default function CookieBanner() {
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 p-4">
-      <div className="mx-auto max-w-4xl rounded-md border border-gray-200 bg-white/95 p-4 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-white/70 dark:border-gray-800 dark:bg-gray-900/90">
+      <div className="mx-auto max-w-4xl rounded-2xl border border-gray-200 bg-white/95 p-4 shadow-lg backdrop-blur supports-backdrop-filter:bg-white/70 dark:border-gray-800 dark:bg-gray-900/90">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <p className="text-sm text-gray-700 dark:text-gray-300">
             Wir verwenden Analysetools für minimale, datenschutzfreundliche Analyse von Seiten- und Website-Besuchen.

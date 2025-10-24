@@ -1,6 +1,7 @@
 "use client"
 import { Pencil, PencilIcon, Plus, RefreshCw } from "lucide-react"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -48,6 +49,7 @@ export default function AdminMenuPage() {
   const [activeCat, setActiveCat] = useState<string>("all")
   const [edit, setEdit] = useState<DirtyProduct | null>(null)
   const [saving, setSaving] = useState(false)
+  const router = useRouter()
 
   const totalCount = items.length
 
@@ -189,22 +191,11 @@ export default function AdminMenuPage() {
         ))}
         <Button
           className="border-border text-foreground hover:bg-card flex h-10 items-center justify-between gap-2 rounded-[10px] border bg-transparent px-1.5 text-sm"
-          onClick={() => {
-            /* could toggle category edit */
-          }}
+          onClick={() => router.push("/admin/categories")}
         >
           Bearbeiten
           <span className="bg-foreground flex h-7 min-w-7 items-center justify-center rounded-[6px] px-1 text-sm text-white">
             <Pencil className="size-3.5" />
-          </span>
-        </Button>
-        <Button
-          className="border-border text-foreground hover:bg-card flex h-10 items-center justify-between gap-2 rounded-[10px] border bg-transparent px-1.5 text-sm"
-          onClick={() => setEdit({ id: "new", name: "", priceCents: 0, categoryId: null, stock: null })}
-        >
-          Erstellen
-          <span className="bg-foreground flex h-7 min-w-7 items-center justify-center rounded-[6px] px-1 text-sm text-white">
-            <Plus className="size-4" />
           </span>
         </Button>
       </div>
@@ -224,18 +215,21 @@ export default function AdminMenuPage() {
             </Card>
           ))}
         </div>
-      ) : filtered.length === 0 ? (
-        <div className="bg-card rounded-xl border p-10 text-center">
-          <div className="text-muted-foreground mb-4 text-sm">Keine Produkte in dieser Kategorie</div>
-          <Button
-            variant="primary"
-            onClick={() => setEdit({ id: "new", name: "", priceCents: 0, categoryId: null, stock: null })}
-          >
-            Produkt hinzufügen
-          </Button>
-        </div>
       ) : (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-5">
+          {/* Placeholder card for creating new product */}
+          <CreateProductCard
+            onCreate={() =>
+              setEdit({
+                id: "new",
+                name: "",
+                priceCents: 0,
+                categoryId: activeCat !== "all" ? activeCat : null,
+                stock: null,
+              })
+            }
+          />
+
           {filtered.map((product) => (
             <ProductCard
               key={product.id}
@@ -276,6 +270,41 @@ export default function AdminMenuPage() {
 
       {error && <div className="text-destructive text-sm">{error}</div>}
     </div>
+  )
+}
+
+function CreateProductCard({ onCreate }: { onCreate: () => void }) {
+  return (
+    <Card
+      role="button"
+      aria-label="Neues Produkt erstellen"
+      className="cursor-pointer gap-0 overflow-hidden rounded-[11px] p-0 transition-shadow hover:shadow-lg"
+      onClick={onCreate}
+    >
+      <CardHeader className="p-2">
+        <div className="relative aspect-video rounded-[11px] rounded-t-lg bg-[#f2f2f2]">
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-500">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-dashed border-zinc-400">
+              <Plus className="size-5" />
+            </div>
+            <span className="mt-2 text-sm font-medium">Neues Produkt</span>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="px-2 pt-0 pb-4">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col">
+            <h3 className="font-family-secondary text-lg text-zinc-500">Produktname</h3>
+            <p className="font-family-secondary text-base text-zinc-400">CHF 0.-</p>
+          </div>
+          <div className="flex items-center">
+            <Button size="icon" className="rounded-[10px]" aria-hidden>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -457,16 +486,13 @@ function EditDialog({
                   value={local.stock ?? 0}
                   onChange={(e) => setLocal({ ...local, stock: Number(e.target.value) })}
                 />
-                <span className="text-muted-foreground text-xs">
-                  {local.stock == null ? "Unbegrenzt" : local.stock > 0 ? "Verfügbar" : "Ausverkauft"}
-                </span>
               </div>
             </div>
             <div className="flex items-center justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
                 Abbrechen
               </Button>
-              <Button type="submit" variant="primary" disabled={!dirty || saving}>
+              <Button type="submit" disabled={!dirty || saving}>
                 {" "}
                 {saving && <RefreshCw className="size-4 animate-spin" />}{" "}
                 {product?.id === "new" ? "Erstellen" : "Speichern"}

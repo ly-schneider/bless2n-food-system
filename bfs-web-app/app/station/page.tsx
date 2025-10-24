@@ -10,18 +10,14 @@ import {
   DialogHeader as ModalHeader,
   DialogTitle as ModalTitle,
 } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 import { getClientInfo } from "@/lib/client-info"
+import { randomUrlSafe } from "@/lib/crypto"
 
 type StationStatus = { exists: boolean; approved: boolean; name?: string }
-
-function randKey(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
-  const bytes = new Uint8Array(24)
-  if (typeof crypto !== "undefined" && crypto.getRandomValues) crypto.getRandomValues(bytes)
-  return Array.from(bytes, (b) => chars[b % chars.length]).join("")
-}
 
 export default function StationPage() {
   const log = (...args: unknown[]) => console.log("[Station]", ...args)
@@ -29,7 +25,6 @@ export default function StationPage() {
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
   const [deviceId, setDeviceId] = useState<string>("")
   const [status, setStatus] = useState<StationStatus | null>(null)
-  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   type PublicOrderItem = {
     id: string
@@ -75,7 +70,7 @@ export default function StationPage() {
     if (typeof window === "undefined") return ""
     let k = localStorage.getItem("bfs.stationKey")
     if (!k) {
-      k = `st_${randKey()}`
+      k = `st_${randomUrlSafe(24)}`
       localStorage.setItem("bfs.stationKey", k)
     }
     log("stationKey", k)
@@ -210,7 +205,6 @@ export default function StationPage() {
 
   async function handleScanned(code: string) {
     setError(null)
-    setBusy(true)
     try {
       log("verify-qr start")
       const verify = await fetch(`/api/v1/stations/verify-qr`, {
@@ -235,8 +229,6 @@ export default function StationPage() {
       // Verarbeitung wieder zulassen; Kamera läuft weiter
       setScanningPaused(false)
       log("verify-qr error; resume scanning")
-    } finally {
-      setBusy(false)
     }
   }
 
@@ -273,7 +265,6 @@ export default function StationPage() {
     const os = info.os || "web"
     const name = (stationName || fallbackLabel || "Station").slice(0, 80)
     if (!name) return
-    setBusy(true)
     try {
       log("request verification", { name, os, model: info.model })
       await fetch(`/api/v1/stations/requests`, {
@@ -290,8 +281,6 @@ export default function StationPage() {
     } catch {
       setError("Anfrage fehlgeschlagen")
       log("request verification failed")
-    } finally {
-      setBusy(false)
     }
   }
 
@@ -300,45 +289,34 @@ export default function StationPage() {
       <h1 className="font-primary text-3xl">Abholungsstation</h1>
       <p className="text-muted-foreground max-w-md text-center">Scanne Abhol-QR-Codes hier</p>
 
-      {/* Only show request screen when not approved: nothing else */}
       {status && !status.approved && (
-        <div className="border-border bg-card flex w-full max-w-md flex-col gap-4 rounded border p-4">
-          {!requestSubmitted ? (
-            <>
-              <div className="font-semibold">Station-Freigabe anfordern</div>
-              <div className="flex gap-2">
-                <input
-                  className="border-border flex-1 rounded border px-3 py-2"
-                  placeholder="Stationsname (z.B. Grill #1)"
+        <div className="place-items-center p-4">
+          <div className="bg-background w-full max-w-md rounded-xl border p-5 shadow-sm">
+            <h1 className="mb-2 text-2xl font-semibold">Gerät registrieren</h1>
+            <p className="text-muted-foreground mb-4 text-sm">
+              Dieses Gerät muss vor dem Verkauf von einem Admin freigegeben werden.
+            </p>
+            <div className="grid gap-3">
+              <div className="grid gap-1">
+                <Label htmlFor="name">Gerätename</Label>
+                <Input
+                  id="name"
                   value={stationName}
                   onChange={(e) => setStationName(e.target.value)}
+                  placeholder="z. B. Grill 1"
                 />
-                <button
-                  onClick={requestVerification}
-                  className="bg-primary text-primary-foreground rounded px-4 py-2 disabled:opacity-50"
-                  disabled={busy || !stationName.trim()}
-                >
-                  Anfragen
-                </button>
               </div>
-              {error && (
-                <div role="alert" aria-live="assertive" className="text-destructive">
-                  {error}
+              <Button onClick={requestVerification}>Zugang anfordern</Button>
+              {requestSubmitted && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-2 text-sm text-amber-700">
+                  Anfrage gesendet. Ein Admin muss dieses Gerät freigeben.
                 </div>
               )}
-            </>
-          ) : (
-            <>
-              <div className="font-semibold">Anfrage gesendet</div>
-              <p className="text-muted-foreground text-sm">
-                Deine Stations-Anfrage wurde übermittelt. Sobald sie freigegeben ist, erscheint hier der Kamera-Scanner.
-              </p>
-            </>
-          )}
+            </div>
+          </div>
         </div>
       )}
 
-      {/* After approval: show camera and continuous scanning */}
       {status?.approved && (
         <div className="flex w-full max-w-xl flex-col gap-4">
           {devices.length > 1 && (
@@ -368,7 +346,6 @@ export default function StationPage() {
         </div>
       )}
 
-      {/* Overlay wenn Produkte dargestellt werden: immer Dialog */}
       <Dialog
         open={drawerOpen && !!result}
         onOpenChange={(open) => {
@@ -376,7 +353,6 @@ export default function StationPage() {
           if (!open) {
             setResult(null)
             setScanned(null)
-            // Kamera bleibt aktiv; wieder Scannen erlauben
             setScanningPaused(false)
             pausedRef.current = false
             lastAtRef.current = 0
@@ -458,5 +434,3 @@ export default function StationPage() {
     </div>
   )
 }
-
-// Note: continuous scanning is handled via BrowserQRCodeReader.decodeFromVideoDevice

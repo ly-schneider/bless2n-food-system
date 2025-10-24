@@ -6,7 +6,8 @@ import { useMemo, useState } from "react"
 import { CartButtons } from "@/components/cart/cart-buttons"
 import { ProductConfigurationModal } from "@/components/cart/product-configuration-modal"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { useCart } from "@/contexts/cart-context"
 import { formatChf } from "@/lib/utils"
 import { ListResponse, ProductDTO } from "@/types"
 
@@ -24,7 +25,7 @@ export function MenuGrid({ products }: { products: ListResponse<ProductDTO> }) {
   })
 
   return (
-    <div className="grid grid-cols-2 gap-3 md:gap-5 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="xs:grid-cols-2 grid grid-cols-1 gap-3 md:gap-5 lg:grid-cols-3 xl:grid-cols-4">
       {sortedProducts.map((product) => (
         <MenuProductCard key={product.id} product={product} />
       ))}
@@ -34,10 +35,17 @@ export function MenuGrid({ products }: { products: ListResponse<ProductDTO> }) {
 
 function MenuProductCard({ product }: { product: ProductDTO }) {
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false)
+  const { addToCart, getItemQuantity, getTotalProductQuantity } = useCart()
   const isAvailable = product.isAvailable !== false // default true
   const isLowStock = product.isLowStock === true
   const availableQty = product.availableQuantity ?? null
   const isActive = product.isActive !== false
+  const disabled = !isAvailable || !isActive
+
+  // Determine current quantity for max check, mirroring CartButtons logic
+  const quantity = product.type === "menu" ? getTotalProductQuantity(product.id) : getItemQuantity(product.id)
+  const maxQty = typeof availableQty === "number" ? availableQty : undefined
+  const reachedMax = typeof maxQty === "number" && quantity >= maxQty
   const composition = useMemo(() => {
     if (product.type !== "menu" || !product.menu?.slots || product.menu.slots.length === 0) return null
     const counts = new Map<string, number>()
@@ -54,9 +62,36 @@ function MenuProductCard({ product }: { product: ProductDTO }) {
     setIsConfigModalOpen(true)
   }
 
+  const handleCardActivate = () => {
+    if (disabled || reachedMax) return
+    if (product.type === "menu") {
+      // Open configuration for menu products when no specific config is chosen
+      handleConfigureProduct()
+    } else {
+      addToCart(product)
+    }
+  }
+
+  const onCardKeyDown: React.KeyboardEventHandler<HTMLDivElement> = (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault()
+      handleCardActivate()
+    }
+  }
+
   return (
     <>
-      <Card className="gap-0 overflow-hidden rounded-[11px] p-0 transition-shadow hover:shadow-lg">
+      <Card
+        role="button"
+        tabIndex={disabled || reachedMax ? -1 : 0}
+        aria-disabled={disabled || reachedMax}
+        onClick={handleCardActivate}
+        onKeyDown={onCardKeyDown}
+        className={
+          "gap-0 overflow-hidden rounded-[11px] p-0 transition-shadow hover:shadow-lg " +
+          (disabled || reachedMax ? "" : "cursor-pointer")
+        }
+      >
         <CardHeader className="p-2">
           <div className="relative aspect-video rounded-[11px] rounded-t-lg bg-[#cec9c6]">
             {product.image ? (
@@ -91,25 +126,26 @@ function MenuProductCard({ product }: { product: ProductDTO }) {
               </div>
             )}
             {composition && (
-              <Tooltip>
-                <TooltipTrigger asChild>
+              <Popover>
+                <PopoverTrigger asChild>
                   <button
                     type="button"
                     aria-label="Menüinhalt anzeigen"
                     className="absolute top-1 right-1 z-10 inline-flex size-7 items-center justify-center rounded-full bg-white text-black shadow-sm ring-1 ring-black/10 hover:bg-white/90"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <Info className="size-4" />
                   </button>
-                </TooltipTrigger>
-                <TooltipContent
+                </PopoverTrigger>
+                <PopoverContent
                   side="left"
                   align="start"
                   sideOffset={6}
-                  className="rounded-full bg-white px-3 py-1 text-black"
+                  className="rounded-full border-none bg-white px-3 py-1 text-sm text-black"
                 >
                   {composition}
-                </TooltipContent>
-              </Tooltip>
+                </PopoverContent>
+              </Popover>
             )}
           </div>
         </CardHeader>
@@ -120,12 +156,8 @@ function MenuProductCard({ product }: { product: ProductDTO }) {
               <h3 className="font-family-secondary text-lg">{product.name}</h3>
               <p className="font-family-secondary text-base">{formatChf(product.priceCents)}</p>
             </div>
-            <div className="flex items-center">
-              <CartButtons
-                product={product}
-                onConfigureProduct={handleConfigureProduct}
-                disabled={!isAvailable || !isActive}
-              />
+            <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
+              <CartButtons product={product} onConfigureProduct={handleConfigureProduct} disabled={disabled} />
             </div>
           </div>
         </CardContent>

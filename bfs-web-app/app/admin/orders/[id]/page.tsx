@@ -140,7 +140,7 @@ export default function AdminOrderDetailPage() {
                 <span className="font-medium">{formatChf(order.totalCents)}</span>
               </div>
               <div>
-                <span className="text-muted-foreground">E‑Mail:</span> {order.contactEmail || "–"}
+                <span className="text-muted-foreground">E-Mail:</span> {order.contactEmail || "–"}
               </div>
               <div>
                 <span className="text-muted-foreground">Benutzer:</span>{" "}
@@ -168,7 +168,7 @@ export default function AdminOrderDetailPage() {
             <h2 className="mb-3 text-base font-semibold">Zahlung</h2>
             <div className="space-y-1 text-sm">
               <div>
-                <span className="text-muted-foreground">POS‑Methode:</span>{" "}
+                <span className="text-muted-foreground">POS-Methode:</span>{" "}
                 <span className="uppercase">{posMethod || "–"}</span>
               </div>
               <div>

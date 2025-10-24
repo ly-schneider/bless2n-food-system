@@ -155,7 +155,7 @@ export default function AdminUserDetailPage() {
                 <span className="text-muted-foreground">ID:</span> <span className="text-xs">{user.id}</span>
               </div>
               <div>
-                <span className="text-muted-foreground">E‑Mail:</span> {user.email}
+                <span className="text-muted-foreground">E-Mail:</span> {user.email}
               </div>
               <div>
                 <span className="text-muted-foreground">Name:</span>{" "}
@@ -200,7 +200,7 @@ export default function AdminUserDetailPage() {
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <label className="text-muted-foreground text-sm">E‑Mail</label>
+              <label className="text-muted-foreground text-sm">E-Mail</label>
               <Input value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-3">
