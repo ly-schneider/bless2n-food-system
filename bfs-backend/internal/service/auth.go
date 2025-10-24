@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type AuthService interface {
@@ -165,7 +165,7 @@ func (a *authService) issueSession(ctx context.Context, user *domain.User, clien
 	}
 	now := time.Now().UTC()
 	if _, err := a.refreshTokens.Create(ctx, &domain.RefreshToken{
-		ID:         primitive.NilObjectID,
+		ID:         bson.NilObjectID,
 		UserID:     user.ID,
 		ClientID:   clientID,
 		TokenHash:  utils.HashTokenSHA256(rt),
@@ -248,7 +248,7 @@ func (a *authService) Logout(ctx context.Context, refreshToken string) error {
 }
 
 func (a *authService) RevokeAllSessions(ctx context.Context, userID string) error {
-	oid, err := primitive.ObjectIDFromHex(userID)
+	oid, err := bson.ObjectIDFromHex(userID)
 	if err != nil {
 		return err
 	}
@@ -284,7 +284,7 @@ func (r *rateLimiter) allow(key string, max int, window time.Duration) bool {
 
 // Sessions utilities
 func (a *authService) ListUserActiveSessions(ctx context.Context, userID string) ([]map[string]any, error) {
-	oid, err := primitive.ObjectIDFromHex(userID)
+	oid, err := bson.ObjectIDFromHex(userID)
 	if err != nil {
 		return nil, errors.New("invalid_user_id")
 	}

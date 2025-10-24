@@ -1,29 +1,28 @@
 package repository
 
 import (
-    "backend/internal/database"
-    "backend/internal/domain"
-    "context"
-    "strings"
-    "time"
+	"backend/internal/database"
+	"backend/internal/domain"
+	"context"
+	"strings"
+	"time"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type UserRepository interface {
-	FindByID(ctx context.Context, id primitive.ObjectID) (*domain.User, error)
+	FindByID(ctx context.Context, id bson.ObjectID) (*domain.User, error)
 	FindByEmail(ctx context.Context, email string) (*domain.User, error)
 	UpsertCustomerByEmail(ctx context.Context, email string) (*domain.User, error)
-	UpdateStripeCustomerID(ctx context.Context, id primitive.ObjectID, stripeID string) error
-	UpdateEmail(ctx context.Context, id primitive.ObjectID, newEmail string, isVerified bool) error
-	UpdateNames(ctx context.Context, id primitive.ObjectID, firstName, lastName *string) error
-	DeleteByID(ctx context.Context, id primitive.ObjectID) error
+	UpdateStripeCustomerID(ctx context.Context, id bson.ObjectID, stripeID string) error
+	UpdateEmail(ctx context.Context, id bson.ObjectID, newEmail string, isVerified bool) error
+	UpdateNames(ctx context.Context, id bson.ObjectID, firstName, lastName *string) error
+	DeleteByID(ctx context.Context, id bson.ObjectID) error
 	List(ctx context.Context, limit, offset int) ([]*domain.User, int64, error)
 	UpsertByEmailWithRole(ctx context.Context, email string, role domain.UserRole, isVerified bool, firstName, lastName *string) (*domain.User, error)
-	UpdateRole(ctx context.Context, id primitive.ObjectID, role domain.UserRole) error
+	UpdateRole(ctx context.Context, id bson.ObjectID, role domain.UserRole) error
 }
 
 type userRepository struct {
@@ -38,10 +37,10 @@ func NewUserRepository(db *database.MongoDB) UserRepository {
 
 // normalizeEmail trims spaces and lowercases the email for consistent storage and lookup.
 func normalizeEmail(email string) string {
-    return strings.ToLower(strings.TrimSpace(email))
+	return strings.ToLower(strings.TrimSpace(email))
 }
 
-func (r *userRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*domain.User, error) {
+func (r *userRepository) FindByID(ctx context.Context, id bson.ObjectID) (*domain.User, error) {
 	var u domain.User
 	if err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&u); err != nil {
 		return nil, err
@@ -50,37 +49,37 @@ func (r *userRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*
 }
 
 func (r *userRepository) FindByEmail(ctx context.Context, email string) (*domain.User, error) {
-    email = normalizeEmail(email)
-    var u domain.User
-    if err := r.collection.FindOne(ctx, bson.M{"email": email}).Decode(&u); err != nil {
-        return nil, err
-    }
-    return &u, nil
+	email = normalizeEmail(email)
+	var u domain.User
+	if err := r.collection.FindOne(ctx, bson.M{"email": email}).Decode(&u); err != nil {
+		return nil, err
+	}
+	return &u, nil
 }
 
 // UpsertCustomerByEmail finds or creates a customer user by email.
 func (r *userRepository) UpsertCustomerByEmail(ctx context.Context, email string) (*domain.User, error) {
-    now := time.Now().UTC()
-    email = normalizeEmail(email)
-    // Try find first
-    if u, err := r.FindByEmail(ctx, email); err == nil {
-        return u, nil
-    }
-    u := &domain.User{
-        ID:         primitive.NewObjectID(),
-        Email:      email,
-        Role:       domain.UserRoleCustomer,
-        IsVerified: true,
-        CreatedAt:  now,
-        UpdatedAt:  now,
-    }
+	now := time.Now().UTC()
+	email = normalizeEmail(email)
+	// Try find first
+	if u, err := r.FindByEmail(ctx, email); err == nil {
+		return u, nil
+	}
+	u := &domain.User{
+		ID:         bson.NewObjectID(),
+		Email:      email,
+		Role:       domain.UserRoleCustomer,
+		IsVerified: true,
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}
 	if _, err := r.collection.InsertOne(ctx, u); err != nil {
 		return nil, err
 	}
 	return u, nil
 }
 
-func (r *userRepository) UpdateStripeCustomerID(ctx context.Context, id primitive.ObjectID, stripeID string) error {
+func (r *userRepository) UpdateStripeCustomerID(ctx context.Context, id bson.ObjectID, stripeID string) error {
 	now := time.Now().UTC()
 	update := bson.M{
 		"$set": bson.M{
@@ -92,21 +91,21 @@ func (r *userRepository) UpdateStripeCustomerID(ctx context.Context, id primitiv
 	return err
 }
 
-func (r *userRepository) UpdateEmail(ctx context.Context, id primitive.ObjectID, newEmail string, isVerified bool) error {
-    now := time.Now().UTC()
-    newEmail = normalizeEmail(newEmail)
-    update := bson.M{
-        "$set": bson.M{
-            "email":       newEmail,
-            "is_verified": isVerified,
-            "updated_at":  now,
-        },
-    }
-    _, err := r.collection.UpdateByID(ctx, id, update)
-    return err
+func (r *userRepository) UpdateEmail(ctx context.Context, id bson.ObjectID, newEmail string, isVerified bool) error {
+	now := time.Now().UTC()
+	newEmail = normalizeEmail(newEmail)
+	update := bson.M{
+		"$set": bson.M{
+			"email":       newEmail,
+			"is_verified": isVerified,
+			"updated_at":  now,
+		},
+	}
+	_, err := r.collection.UpdateByID(ctx, id, update)
+	return err
 }
 
-func (r *userRepository) UpdateNames(ctx context.Context, id primitive.ObjectID, firstName, lastName *string) error {
+func (r *userRepository) UpdateNames(ctx context.Context, id bson.ObjectID, firstName, lastName *string) error {
 	now := time.Now().UTC()
 	set := bson.M{
 		"updated_at": now,
@@ -125,7 +124,7 @@ func (r *userRepository) UpdateNames(ctx context.Context, id primitive.ObjectID,
 	return err
 }
 
-func (r *userRepository) DeleteByID(ctx context.Context, id primitive.ObjectID) error {
+func (r *userRepository) DeleteByID(ctx context.Context, id bson.ObjectID) error {
 	_, err := r.collection.DeleteOne(ctx, bson.M{"_id": id})
 	return err
 }
@@ -162,12 +161,12 @@ func (r *userRepository) List(ctx context.Context, limit, offset int) ([]*domain
 }
 
 func (r *userRepository) UpsertByEmailWithRole(ctx context.Context, email string, role domain.UserRole, isVerified bool, firstName, lastName *string) (*domain.User, error) {
-    now := time.Now().UTC()
-    email = normalizeEmail(email)
-    // Try find first
-    if u, err := r.FindByEmail(ctx, email); err == nil && u != nil {
-        // Upgrade role if needed, update verified and optional names
-        set := bson.M{"updated_at": now}
+	now := time.Now().UTC()
+	email = normalizeEmail(email)
+	// Try find first
+	if u, err := r.FindByEmail(ctx, email); err == nil && u != nil {
+		// Upgrade role if needed, update verified and optional names
+		set := bson.M{"updated_at": now}
 		if u.Role != role {
 			set["role"] = role
 		}
@@ -188,7 +187,7 @@ func (r *userRepository) UpsertByEmailWithRole(ctx context.Context, email string
 	}
 	// Insert new
 	u := &domain.User{
-		ID:    primitive.NewObjectID(),
+		ID:    bson.NewObjectID(),
 		Email: email,
 		FirstName: func() string {
 			if firstName != nil {
@@ -213,7 +212,7 @@ func (r *userRepository) UpsertByEmailWithRole(ctx context.Context, email string
 	return u, nil
 }
 
-func (r *userRepository) UpdateRole(ctx context.Context, id primitive.ObjectID, role domain.UserRole) error {
+func (r *userRepository) UpdateRole(ctx context.Context, id bson.ObjectID, role domain.UserRole) error {
 	now := time.Now().UTC()
 	_, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": bson.M{"role": role, "updated_at": now}})
 	return err

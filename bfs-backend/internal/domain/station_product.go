@@ -1,9 +1,9 @@
 package domain
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import "go.mongodb.org/mongo-driver/v2/bson"
 
 type StationProduct struct {
-	ID        primitive.ObjectID `bson:"_id,omitempty"`
-	StationID primitive.ObjectID `bson:"station_id" validate:"required"`
-	ProductID primitive.ObjectID `bson:"product_id" validate:"required"`
+	ID        bson.ObjectID `bson:"_id,omitempty"`
+	StationID bson.ObjectID `bson:"station_id" validate:"required"`
+	ProductID bson.ObjectID `bson:"product_id" validate:"required"`
 }

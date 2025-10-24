@@ -11,8 +11,8 @@ import (
 	"backend/db/seed"
 	"backend/internal/config"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -52,9 +52,9 @@ func seedMongo(ctx context.Context, cfg config.Config, reset, force bool, logger
 		return fmt.Errorf("seeding refused: not localhost (use --force to override)")
 	}
 
-	// Create MongoDB client
-	clientOptions := options.Client().ApplyURI(cfg.Mongo.URI)
-	client, err := mongo.Connect(ctx, clientOptions)
+	opts := options.Client().ApplyURI(cfg.Mongo.URI)
+	client, err := mongo.Connect(opts)
+
 	if err != nil {
 		return fmt.Errorf("failed to connect to MongoDB: %w", err)
 	}

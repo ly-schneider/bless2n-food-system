@@ -1,14 +1,12 @@
 package domain
 
-import (
-	"go.mongodb.org/mongo-driver/bson/primitive"
-)
+import "go.mongodb.org/mongo-driver/v2/bson"
 
 type MenuSlot struct {
-	ID        primitive.ObjectID `bson:"_id"`
-	ProductID primitive.ObjectID `bson:"product_id" validate:"required"`
-	Name      string             `bson:"name" validate:"required"`
-	Sequence  int                `bson:"sequence" validate:"required"`
+	ID        bson.ObjectID `bson:"_id"`
+	ProductID bson.ObjectID `bson:"product_id" validate:"required"`
+	Name      string        `bson:"name" validate:"required"`
+	Sequence  int           `bson:"sequence" validate:"required"`
 }
 
 type MenuSlotDTO struct {

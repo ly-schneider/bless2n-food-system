@@ -6,19 +6,18 @@ import (
 	"context"
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type OTPTokenRepository interface {
 	Create(ctx context.Context, t *domain.OTPToken) (*domain.OTPToken, error)
-	CreateOTPCode(ctx context.Context, userID primitive.ObjectID, codeHash string, expiresAt time.Time) (*domain.OTPToken, error)
-	FindActiveByUser(ctx context.Context, userID primitive.ObjectID) ([]domain.OTPToken, error)
-	MarkUsed(ctx context.Context, id primitive.ObjectID, usedAt time.Time) error
-	IncrementAttempts(ctx context.Context, id primitive.ObjectID) (int, error)
-	DeleteByUser(ctx context.Context, userID primitive.ObjectID) error
+	CreateOTPCode(ctx context.Context, userID bson.ObjectID, codeHash string, expiresAt time.Time) (*domain.OTPToken, error)
+	FindActiveByUser(ctx context.Context, userID bson.ObjectID) ([]domain.OTPToken, error)
+	MarkUsed(ctx context.Context, id bson.ObjectID, usedAt time.Time) error
+	IncrementAttempts(ctx context.Context, id bson.ObjectID) (int, error)
+	DeleteByUser(ctx context.Context, userID bson.ObjectID) error
 }
 
 type otpTokenRepository struct {
@@ -33,7 +32,7 @@ func NewOTPTokenRepository(db *database.MongoDB) OTPTokenRepository {
 
 func (r *otpTokenRepository) Create(ctx context.Context, t *domain.OTPToken) (*domain.OTPToken, error) {
 	if t.ID.IsZero() {
-		t.ID = primitive.NewObjectID()
+		t.ID = bson.NewObjectID()
 	}
 	t.CreatedAt = time.Now().UTC()
 	if _, err := r.collection.InsertOne(ctx, t); err != nil {
@@ -42,9 +41,9 @@ func (r *otpTokenRepository) Create(ctx context.Context, t *domain.OTPToken) (*d
 	return t, nil
 }
 
-func (r *otpTokenRepository) CreateOTPCode(ctx context.Context, userID primitive.ObjectID, codeHash string, expiresAt time.Time) (*domain.OTPToken, error) {
+func (r *otpTokenRepository) CreateOTPCode(ctx context.Context, userID bson.ObjectID, codeHash string, expiresAt time.Time) (*domain.OTPToken, error) {
 	t := &domain.OTPToken{
-		ID:        primitive.NewObjectID(),
+		ID:        bson.NewObjectID(),
 		UserID:    userID,
 		TokenHash: codeHash,
 		CreatedAt: time.Now().UTC(),
@@ -58,7 +57,7 @@ func (r *otpTokenRepository) CreateOTPCode(ctx context.Context, userID primitive
 	return t, nil
 }
 
-func (r *otpTokenRepository) FindActiveByUser(ctx context.Context, userID primitive.ObjectID) ([]domain.OTPToken, error) {
+func (r *otpTokenRepository) FindActiveByUser(ctx context.Context, userID bson.ObjectID) ([]domain.OTPToken, error) {
 	now := time.Now().UTC()
 	cur, err := r.collection.Find(ctx, bson.M{
 		"user_id":    userID,
@@ -82,12 +81,12 @@ func (r *otpTokenRepository) FindActiveByUser(ctx context.Context, userID primit
 
 // FindActiveByTokenHash removed: OTP-only flow
 
-func (r *otpTokenRepository) MarkUsed(ctx context.Context, id primitive.ObjectID, usedAt time.Time) error {
+func (r *otpTokenRepository) MarkUsed(ctx context.Context, id bson.ObjectID, usedAt time.Time) error {
 	_, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": bson.M{"used_at": usedAt}})
 	return err
 }
 
-func (r *otpTokenRepository) IncrementAttempts(ctx context.Context, id primitive.ObjectID) (int, error) {
+func (r *otpTokenRepository) IncrementAttempts(ctx context.Context, id bson.ObjectID) (int, error) {
 	res := r.collection.FindOneAndUpdate(ctx, bson.M{"_id": id}, bson.M{"$inc": bson.M{"attempts": 1}}, options.FindOneAndUpdate().SetReturnDocument(options.After))
 	var t domain.OTPToken
 	if err := res.Decode(&t); err != nil {
@@ -96,7 +95,7 @@ func (r *otpTokenRepository) IncrementAttempts(ctx context.Context, id primitive
 	return t.Attempts, nil
 }
 
-func (r *otpTokenRepository) DeleteByUser(ctx context.Context, userID primitive.ObjectID) error {
+func (r *otpTokenRepository) DeleteByUser(ctx context.Context, userID bson.ObjectID) error {
 	_, err := r.collection.DeleteMany(ctx, bson.M{"user_id": userID})
 	return err
 }

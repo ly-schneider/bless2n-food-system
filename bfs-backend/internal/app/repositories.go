@@ -7,28 +7,28 @@ import (
 )
 
 func NewRepositories() fx.Option {
-    return fx.Options(
-        fx.Provide(
-            repository.NewUserRepository,
-            repository.NewOTPTokenRepository,
-            repository.NewEmailChangeTokenRepository,
-            repository.NewRefreshTokenRepository,
-            repository.NewIdentityLinkRepository,
-            repository.NewAdminInviteRepository,
-            repository.NewStationRepository,
-            repository.NewStationRequestRepository,
-            repository.NewCategoryRepository,
-            repository.NewProductRepository,
-            repository.NewMenuSlotRepository,
-            repository.NewMenuSlotItemRepository,
-            repository.NewStationProductRepository,
-            repository.NewInventoryLedgerRepository,
-            repository.NewOrderRepository,
-            repository.NewOrderItemRepository,
-            repository.NewAuditRepository,
-            repository.NewIdempotencyRepository,
-            repository.NewPosDeviceRepository,
-            repository.NewPosRequestRepository,
-        ),
-    )
+	return fx.Options(
+		fx.Provide(
+			repository.NewUserRepository,
+			repository.NewOTPTokenRepository,
+			repository.NewEmailChangeTokenRepository,
+			repository.NewRefreshTokenRepository,
+			repository.NewIdentityLinkRepository,
+			repository.NewAdminInviteRepository,
+			repository.NewStationRepository,
+			repository.NewStationRequestRepository,
+			repository.NewCategoryRepository,
+			repository.NewProductRepository,
+			repository.NewMenuSlotRepository,
+			repository.NewMenuSlotItemRepository,
+			repository.NewStationProductRepository,
+			repository.NewInventoryLedgerRepository,
+			repository.NewOrderRepository,
+			repository.NewOrderItemRepository,
+			repository.NewAuditRepository,
+			repository.NewIdempotencyRepository,
+			repository.NewPosDeviceRepository,
+			repository.NewPosRequestRepository,
+		),
+	)
 }

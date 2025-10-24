@@ -12,14 +12,14 @@ import (
 
 // Response is a generic envelope for successful API responses
 type Response[T any] struct {
-    Data    T      `json:"data"`
-    Message string `json:"message,omitempty"`
+	Data    T      `json:"data"`
+	Message string `json:"message,omitempty"`
 }
 
 // Ack is a minimal acknowledgment payload for actions like POST/DELETE
 // where returning the full resource is not desired.
 type Ack struct {
-    Message string `json:"message"`
+	Message string `json:"message"`
 }
 
 // ProblemDetails represents RFC 9457 Problem Details for HTTP APIs
