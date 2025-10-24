@@ -1,10 +1,10 @@
-{{.Brand}} E‑Mail ändern
+{{.Brand}} E-Mail ändern
 
-Neue E‑Mail: {{.NewEmail}}
+Neue E-Mail: {{.NewEmail}}
 Dein Bestätigungscode (läuft in {{.CodeTTL}} ab):
   {{.Code}}
 
-Anfrage‑Details: IP {{.IP}}, Gerät {{.UA}}
+Anfrage-Details: IP {{.IP}}, Gerät {{.UA}}
 
-Wenn du dies nicht angefordert hast, ignoriere diese E‑Mail.
+Wenn du dies nicht angefordert hast, ignoriere diese E-Mail.
 

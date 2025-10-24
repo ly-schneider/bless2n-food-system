@@ -34,7 +34,7 @@ export function InlineMenuGroup({ suggestion, items, onEditItem, isPOS = false }
       <div className="p-4">
         <div className="mb-1 flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">Menü‑Vorschlag: {suggestion.menuProduct.name}</p>
+            <p className="truncate text-sm font-semibold">Menü-Vorschlag: {suggestion.menuProduct.name}</p>
             <p className="text-muted-foreground text-xs">
               Spare {formatChf(suggestion.savingsCents)}
               {!isPOS && " — Deine Auswahl bleibt erhalten."}
@@ -87,7 +87,7 @@ export function InlineMenuGroup({ suggestion, items, onEditItem, isPOS = false }
           ))}
         </div>
         <div className="mt-3 flex items-center justify-between text-sm">
-          <span className="font-medium">Menü‑Preis</span>
+          <span className="font-medium">Menü-Preis</span>
           <span className="font-medium">{formatChf(suggestion.menuProduct.priceCents)}</span>
         </div>
         <div className="mt-3">

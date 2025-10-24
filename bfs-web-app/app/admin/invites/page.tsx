@@ -74,7 +74,7 @@ export default function AdminInvitesPage() {
   return (
     <div className="min-w-0 space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Admin‑Einladungen</h1>
+        <h1 className="text-xl font-semibold">Admin-Einladungen</h1>
       </div>
       {error && <div className="text-sm text-red-600">{error}</div>}
 
@@ -82,7 +82,7 @@ export default function AdminInvitesPage() {
         <Input
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="E‑Mail‑Adresse"
+          placeholder="E-Mail-Adresse"
           className="h-8 w-72"
         />
         <Button variant="outline" size="sm" className="h-8" onClick={() => void createInvite()}>
@@ -104,7 +104,7 @@ export default function AdminInvitesPage() {
               <TableHeader className="bg-card sticky top-0">
                 <TableRow>
                   <TableHead className="whitespace-nowrap">ID</TableHead>
-                  <TableHead className="whitespace-nowrap">Eingeladene E‑Mail</TableHead>
+                  <TableHead className="whitespace-nowrap">Eingeladene E-Mail</TableHead>
                   <TableHead className="whitespace-nowrap">Status</TableHead>
                   <TableHead className="whitespace-nowrap">Eingeladet von</TableHead>
                   <TableHead className="whitespace-nowrap">Erstellt</TableHead>
