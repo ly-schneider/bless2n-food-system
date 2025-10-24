@@ -214,8 +214,8 @@ export default function LoginClient() {
                   {resendCooldown > 0
                     ? `Erneut senden in ${resendCooldown}s`
                     : resending
-                    ? "Sende…"
-                    : "Code erneut senden"}
+                      ? "Sende…"
+                      : "Code erneut senden"}
                 </Button>
               </div>
               {error && <p className="text-sm text-red-600">{error}</p>}

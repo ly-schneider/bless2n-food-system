@@ -19,8 +19,8 @@ export function CartButtons({ product, configuration, onConfigureProduct, disabl
   const quantity = configuration
     ? getItemQuantity(product.id, configuration)
     : product.type === "menu"
-    ? getTotalProductQuantity(product.id)
-    : getItemQuantity(product.id, configuration)
+      ? getTotalProductQuantity(product.id)
+      : getItemQuantity(product.id, configuration)
 
   const maxQty = typeof product.availableQuantity === "number" ? product.availableQuantity : undefined
   const reachedMax = typeof maxQty === "number" && quantity >= maxQty
