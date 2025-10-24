@@ -14,7 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	httpSwagger "github.com/swaggo/http-swagger"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 	"github.com/swaggo/swag"
 )
 
@@ -34,7 +34,6 @@ func NewRouter(
 	jwksHandler *handler.JWKSHandler,
 	jwtMw *jwtMiddleware.JWTMiddleware,
 	securityMw *jwtMiddleware.SecurityMiddleware,
-	// repositories for admin handlers
 	productRepo repository.ProductRepository,
 	inventoryRepo repository.InventoryLedgerRepository,
 	auditRepo repository.AuditRepository,

@@ -125,6 +125,17 @@ jobs:
         if: ${{ matrix.changed == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: image-digests
+          name: image-digests-${{ matrix.name }}
           path: digests/*
           if-no-files-found: error
+
+  merge-digests:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge per-image digest artifacts
+        uses: actions/upload-artifact/merge@v4
+        with:
+          name: image-digests
+          pattern: image-digests-*
+          delete-merged: true
