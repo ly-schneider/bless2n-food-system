@@ -17,6 +17,7 @@ const config: NextConfig = {
       { protocol: "http", hostname: "127.0.0.1", port: "8080", pathname: "/**" },
       { protocol: "https", hostname: "**", pathname: "/**" },
     ],
+    qualities: [90],
   },
   eslint: {
     dirs: ["."],

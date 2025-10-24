@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.uber.org/zap"
 )
 
@@ -100,7 +100,7 @@ func (h *AdminStationHandler) ListStations(w http.ResponseWriter, r *http.Reques
 // @Router /v1/admin/stations/{id}/products [get]
 func (h *AdminStationHandler) ListStationProducts(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(idStr)
+	oid, err := bson.ObjectIDFromHex(idStr)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -137,7 +137,7 @@ func (h *AdminStationHandler) ListStationProducts(w http.ResponseWriter, r *http
 // @Router /v1/admin/stations/{id}/products [post]
 func (h *AdminStationHandler) AssignProducts(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(idStr)
+	oid, err := bson.ObjectIDFromHex(idStr)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -153,9 +153,9 @@ func (h *AdminStationHandler) AssignProducts(w http.ResponseWriter, r *http.Requ
 		response.WriteError(w, http.StatusBadRequest, "invalid payload")
 		return
 	}
-	ids := make([]primitive.ObjectID, 0, len(body.ProductIDs))
+	ids := make([]bson.ObjectID, 0, len(body.ProductIDs))
 	for _, s := range body.ProductIDs {
-		if pid, e := primitive.ObjectIDFromHex(s); e == nil {
+		if pid, e := bson.ObjectIDFromHex(s); e == nil {
 			ids = append(ids, pid)
 		}
 	}
@@ -183,12 +183,12 @@ func (h *AdminStationHandler) AssignProducts(w http.ResponseWriter, r *http.Requ
 func (h *AdminStationHandler) RemoveProduct(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	pidStr := chi.URLParam(r, "productId")
-	oid, err := primitive.ObjectIDFromHex(idStr)
+	oid, err := bson.ObjectIDFromHex(idStr)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
 	}
-	pid, err := primitive.ObjectIDFromHex(pidStr)
+	pid, err := bson.ObjectIDFromHex(pidStr)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid product id")
 		return
@@ -215,7 +215,7 @@ func (h *AdminStationHandler) RemoveProduct(w http.ResponseWriter, r *http.Reque
 // @Router /v1/admin/stations/requests/{id}/approve [post]
 func (h *AdminStationHandler) Approve(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -231,9 +231,9 @@ func (h *AdminStationHandler) Approve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// mark request approved
-	var decidedBy *primitive.ObjectID
+	var decidedBy *bson.ObjectID
 	if claims, ok := middleware.GetUserFromContext(r.Context()); ok && claims != nil && claims.Subject != "" {
-		if u, err := primitive.ObjectIDFromHex(claims.Subject); err == nil {
+		if u, err := bson.ObjectIDFromHex(claims.Subject); err == nil {
 			decidedBy = &u
 		}
 	}
@@ -255,7 +255,7 @@ func (h *AdminStationHandler) Approve(w http.ResponseWriter, r *http.Request) {
 // @Router /v1/admin/stations/requests/{id}/reject [post]
 func (h *AdminStationHandler) Reject(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -264,9 +264,9 @@ func (h *AdminStationHandler) Reject(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, http.StatusNotFound, "not found")
 		return
 	}
-	var decidedBy *primitive.ObjectID
+	var decidedBy *bson.ObjectID
 	if claims, ok := middleware.GetUserFromContext(r.Context()); ok && claims != nil && claims.Subject != "" {
-		if u, err := primitive.ObjectIDFromHex(claims.Subject); err == nil {
+		if u, err := bson.ObjectIDFromHex(claims.Subject); err == nil {
 			decidedBy = &u
 		}
 	}

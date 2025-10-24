@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
@@ -16,8 +15,8 @@ type RefreshTokenRepository interface {
 	FindByHash(ctx context.Context, tokenHash string) (*domain.RefreshToken, error)
 	MarkUsed(ctx context.Context, id any, usedAt time.Time) error
 	RevokeFamily(ctx context.Context, familyID string, reason string) error
-	ListActiveByUser(ctx context.Context, userID primitive.ObjectID) ([]domain.RefreshToken, error)
-	RevokeAllByUser(ctx context.Context, userID primitive.ObjectID, reason string) error
+	ListActiveByUser(ctx context.Context, userID bson.ObjectID) ([]domain.RefreshToken, error)
+	RevokeAllByUser(ctx context.Context, userID bson.ObjectID, reason string) error
 	// ListActiveFamiliesAll returns active session families grouped by user and family id
 	ListActiveFamiliesAll(ctx context.Context, limit, offset int) ([]SessionFamily, int64, error)
 }
@@ -34,7 +33,7 @@ func NewRefreshTokenRepository(db *database.MongoDB) RefreshTokenRepository {
 
 func (r *refreshTokenRepository) Create(ctx context.Context, t *domain.RefreshToken) (*domain.RefreshToken, error) {
 	if t.ID.IsZero() {
-		t.ID = primitive.NewObjectID()
+		t.ID = bson.NewObjectID()
 	}
 	if _, err := r.collection.InsertOne(ctx, t); err != nil {
 		return nil, err
@@ -60,7 +59,7 @@ func (r *refreshTokenRepository) RevokeFamily(ctx context.Context, familyID stri
 	return err
 }
 
-func (r *refreshTokenRepository) ListActiveByUser(ctx context.Context, userID primitive.ObjectID) ([]domain.RefreshToken, error) {
+func (r *refreshTokenRepository) ListActiveByUser(ctx context.Context, userID bson.ObjectID) ([]domain.RefreshToken, error) {
 	now := time.Now().UTC()
 	cur, err := r.collection.Find(ctx, bson.M{
 		"user_id":    userID,
@@ -82,17 +81,17 @@ func (r *refreshTokenRepository) ListActiveByUser(ctx context.Context, userID pr
 	return out, nil
 }
 
-func (r *refreshTokenRepository) RevokeAllByUser(ctx context.Context, userID primitive.ObjectID, reason string) error {
+func (r *refreshTokenRepository) RevokeAllByUser(ctx context.Context, userID bson.ObjectID, reason string) error {
 	_, err := r.collection.UpdateMany(ctx, bson.M{"user_id": userID, "is_revoked": false}, bson.M{"$set": bson.M{"is_revoked": true, "revoked_reason": reason}})
 	return err
 }
 
 type SessionFamily struct {
-	UserID     primitive.ObjectID `bson:"user_id" json:"userId"`
-	FamilyID   string             `bson:"family_id" json:"familyId"`
-	Device     string             `bson:"device" json:"device"`
-	CreatedAt  time.Time          `bson:"created_at" json:"createdAt"`
-	LastUsedAt time.Time          `bson:"last_used_at" json:"lastUsedAt"`
+	UserID     bson.ObjectID `bson:"user_id" json:"userId"`
+	FamilyID   string        `bson:"family_id" json:"familyId"`
+	Device     string        `bson:"device" json:"device"`
+	CreatedAt  time.Time     `bson:"created_at" json:"createdAt"`
+	LastUsedAt time.Time     `bson:"last_used_at" json:"lastUsedAt"`
 }
 
 func (r *refreshTokenRepository) ListActiveFamiliesAll(ctx context.Context, limit, offset int) ([]SessionFamily, int64, error) {

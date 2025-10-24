@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strconv"
 
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type AdminMenuHandler struct {
@@ -89,7 +89,7 @@ func (h *AdminMenuHandler) List(w http.ResponseWriter, r *http.Request) {
 // @Router /v1/admin/menus/{id} [get]
 func (h *AdminMenuHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chiURLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -99,13 +99,13 @@ func (h *AdminMenuHandler) Get(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, http.StatusNotFound, "not found")
 		return
 	}
-	slots, err := h.slots.FindByProductIDs(r.Context(), []primitive.ObjectID{m.ID})
+	slots, err := h.slots.FindByProductIDs(r.Context(), []bson.ObjectID{m.ID})
 	if err != nil {
 		response.WriteError(w, http.StatusInternalServerError, "failed to load slots")
 		return
 	}
 	sort.Slice(slots, func(i, j int) bool { return slots[i].Sequence < slots[j].Sequence })
-	slotIDs := make([]primitive.ObjectID, 0, len(slots))
+	slotIDs := make([]bson.ObjectID, 0, len(slots))
 	for _, s := range slots {
 		slotIDs = append(slotIDs, s.ID)
 	}
@@ -114,16 +114,16 @@ func (h *AdminMenuHandler) Get(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, http.StatusInternalServerError, "failed to load items")
 		return
 	}
-	pidset := map[primitive.ObjectID]struct{}{}
+	pidset := map[bson.ObjectID]struct{}{}
 	for _, it := range items {
 		pidset[it.ProductID] = struct{}{}
 	}
-	pids := make([]primitive.ObjectID, 0, len(pidset))
+	pids := make([]bson.ObjectID, 0, len(pidset))
 	for pid := range pidset {
 		pids = append(pids, pid)
 	}
 	prods, _ := h.products.GetByIDs(r.Context(), pids)
-	prodByID := map[primitive.ObjectID]*domain.Product{}
+	prodByID := map[bson.ObjectID]*domain.Product{}
 	for _, p := range prods {
 		prodByID[p.ID] = p
 	}
@@ -179,7 +179,7 @@ func (h *AdminMenuHandler) Create(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, http.StatusBadRequest, "invalid payload")
 		return
 	}
-	catID, err := primitive.ObjectIDFromHex(body.CategoryID)
+	catID, err := bson.ObjectIDFromHex(body.CategoryID)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid category")
 		return
@@ -221,7 +221,7 @@ type updateMenuBody struct {
 // @Router /v1/admin/menus/{id} [patch]
 func (h *AdminMenuHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chiURLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -231,7 +231,7 @@ func (h *AdminMenuHandler) Update(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, http.StatusBadRequest, "invalid payload")
 		return
 	}
-	set := primitive.M{}
+	set := bson.M{}
 	if body.Name != nil {
 		set["name"] = *body.Name
 	}
@@ -265,12 +265,12 @@ func (h *AdminMenuHandler) Update(w http.ResponseWriter, r *http.Request) {
 // Soft delete: set inactive
 func (h *AdminMenuHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chiURLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
 	}
-	if err := h.products.UpdateFields(r.Context(), oid, primitive.M{"is_active": false}); err != nil {
+	if err := h.products.UpdateFields(r.Context(), oid, bson.M{"is_active": false}); err != nil {
 		response.WriteError(w, http.StatusInternalServerError, "delete failed")
 		return
 	}
@@ -292,7 +292,7 @@ type patchMenuActiveBody struct {
 // @Router /v1/admin/menus/{id}/active [patch]
 func (h *AdminMenuHandler) PatchActive(w http.ResponseWriter, r *http.Request) {
 	id := chiURLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -303,7 +303,7 @@ func (h *AdminMenuHandler) PatchActive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	before, _ := h.products.FindByID(r.Context(), oid)
-	if err := h.products.UpdateFields(r.Context(), oid, primitive.M{"is_active": body.IsActive}); err != nil {
+	if err := h.products.UpdateFields(r.Context(), oid, bson.M{"is_active": body.IsActive}); err != nil {
 		response.WriteError(w, http.StatusInternalServerError, "update failed")
 		return
 	}
@@ -322,13 +322,13 @@ func (h *AdminMenuHandler) PatchActive(w http.ResponseWriter, r *http.Request) {
 // @Router /v1/admin/menus/{id} [delete]
 func (h *AdminMenuHandler) DeleteHard(w http.ResponseWriter, r *http.Request) {
 	id := chiURLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
 	}
 	// delete slot items then slots then product
-	slots, err := h.slots.FindByProductIDs(r.Context(), []primitive.ObjectID{oid})
+	slots, err := h.slots.FindByProductIDs(r.Context(), []bson.ObjectID{oid})
 	if err != nil {
 		response.WriteError(w, http.StatusInternalServerError, "load slots failed")
 		return
@@ -359,7 +359,7 @@ type createSlotBody struct {
 // @Router /v1/admin/menus/{id}/slots [post]
 func (h *AdminMenuHandler) CreateSlot(w http.ResponseWriter, r *http.Request) {
 	id := chiURLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -396,7 +396,7 @@ type renameSlotBody struct {
 // @Router /v1/admin/menus/{id}/slots/{slotId} [patch]
 func (h *AdminMenuHandler) RenameSlot(w http.ResponseWriter, r *http.Request) {
 	sid := chiURLParam(r, "slotId")
-	soid, err := primitive.ObjectIDFromHex(sid)
+	soid, err := bson.ObjectIDFromHex(sid)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -434,9 +434,9 @@ func (h *AdminMenuHandler) ReorderSlots(w http.ResponseWriter, r *http.Request) 
 		response.WriteError(w, http.StatusBadRequest, "invalid payload")
 		return
 	}
-	seqs := map[primitive.ObjectID]int{}
+	seqs := map[bson.ObjectID]int{}
 	for _, it := range body.Order {
-		if oid, err := primitive.ObjectIDFromHex(it.SlotID); err == nil {
+		if oid, err := bson.ObjectIDFromHex(it.SlotID); err == nil {
 			seqs[oid] = it.Sequence
 		}
 	}
@@ -458,7 +458,7 @@ func (h *AdminMenuHandler) ReorderSlots(w http.ResponseWriter, r *http.Request) 
 // @Router /v1/admin/menus/{id}/slots/{slotId} [delete]
 func (h *AdminMenuHandler) DeleteSlot(w http.ResponseWriter, r *http.Request) {
 	sid := chiURLParam(r, "slotId")
-	soid, err := primitive.ObjectIDFromHex(sid)
+	soid, err := bson.ObjectIDFromHex(sid)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -489,7 +489,7 @@ type attachItemBody struct {
 // @Router /v1/admin/menus/{id}/slots/{slotId}/items [post]
 func (h *AdminMenuHandler) AttachItem(w http.ResponseWriter, r *http.Request) {
 	sid := chiURLParam(r, "slotId")
-	soid, err := primitive.ObjectIDFromHex(sid)
+	soid, err := bson.ObjectIDFromHex(sid)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid slot")
 		return
@@ -499,7 +499,7 @@ func (h *AdminMenuHandler) AttachItem(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, http.StatusBadRequest, "invalid payload")
 		return
 	}
-	pid, err := primitive.ObjectIDFromHex(body.ProductID)
+	pid, err := bson.ObjectIDFromHex(body.ProductID)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid product")
 		return
@@ -542,13 +542,13 @@ func (h *AdminMenuHandler) AttachItem(w http.ResponseWriter, r *http.Request) {
 // @Router /v1/admin/menus/{id}/slots/{slotId}/items/{productId} [delete]
 func (h *AdminMenuHandler) DetachItem(w http.ResponseWriter, r *http.Request) {
 	sid := chiURLParam(r, "slotId")
-	soid, err := primitive.ObjectIDFromHex(sid)
+	soid, err := bson.ObjectIDFromHex(sid)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid slot")
 		return
 	}
 	pidStr := chiURLParam(r, "productId")
-	pid, err := primitive.ObjectIDFromHex(pidStr)
+	pid, err := bson.ObjectIDFromHex(pidStr)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid product")
 		return

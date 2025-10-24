@@ -1,16 +1,16 @@
 package service
 
 import (
-    "crypto/ed25519"
-    "crypto/rand"
-    "crypto/x509"
-    "encoding/pem"
-    "fmt"
-    "time"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/pem"
+	"fmt"
+	"time"
 
-    "github.com/golang-jwt/jwt/v5"
+	"github.com/golang-jwt/jwt/v5"
 
-    "backend/internal/domain"
+	"backend/internal/domain"
 )
 
 const (
@@ -49,16 +49,16 @@ type jwtService struct {
 }
 
 func NewJWTService(jwtPrivPEM string, jwtPubPEM string, issuer string) JWTService {
-    priv, pub, err := ParseEd25519Keys([]byte(jwtPrivPEM), []byte(jwtPubPEM))
-    if err != nil {
-        panic(fmt.Sprintf("failed to parse Ed25519 keys: %v", err))
-    }
-    return &jwtService{
-        privateKey: priv,
-        publicKey:  pub,
-        issuer:     issuer,
-        audience:   defaultAudience,
-    }
+	priv, pub, err := ParseEd25519Keys([]byte(jwtPrivPEM), []byte(jwtPubPEM))
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse Ed25519 keys: %v", err))
+	}
+	return &jwtService{
+		privateKey: priv,
+		publicKey:  pub,
+		issuer:     issuer,
+		audience:   defaultAudience,
+	}
 }
 
 func (j *jwtService) GenerateAccessToken(user *domain.User) (string, error) {

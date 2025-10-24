@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.uber.org/zap"
 )
 
@@ -107,7 +107,7 @@ type updateCategoryBody struct {
 
 func (h *AdminCategoryHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := chiURLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -117,7 +117,7 @@ func (h *AdminCategoryHandler) Update(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, http.StatusBadRequest, "invalid payload")
 		return
 	}
-	set := primitive.M{}
+	set := bson.M{}
 	if body.Name != nil {
 		set["name"] = *body.Name
 	}
@@ -152,7 +152,7 @@ func (h *AdminCategoryHandler) Update(w http.ResponseWriter, r *http.Request) {
 // @Router /v1/admin/categories/{id} [delete]
 func (h *AdminCategoryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chiURLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return

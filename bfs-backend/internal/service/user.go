@@ -12,15 +12,15 @@ import (
 
 	stripe "github.com/stripe/stripe-go/v82"
 	"github.com/stripe/stripe-go/v82/customer"
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type UserService interface {
-	GetByID(ctx context.Context, userID primitive.ObjectID) (*domain.User, error)
-	RequestEmailChange(ctx context.Context, userID primitive.ObjectID, newEmail, ip, ua string) error
-	ConfirmEmailChange(ctx context.Context, userID primitive.ObjectID, code string) (*domain.User, error)
-	UpdateProfile(ctx context.Context, userID primitive.ObjectID, firstName, lastName *string, newEmail *string, role domain.UserRole, ip, ua string) (*domain.User, bool, error)
-	DeleteAccount(ctx context.Context, userID primitive.ObjectID) error
+	GetByID(ctx context.Context, userID bson.ObjectID) (*domain.User, error)
+	RequestEmailChange(ctx context.Context, userID bson.ObjectID, newEmail, ip, ua string) error
+	ConfirmEmailChange(ctx context.Context, userID bson.ObjectID, code string) (*domain.User, error)
+	UpdateProfile(ctx context.Context, userID bson.ObjectID, firstName, lastName *string, newEmail *string, role domain.UserRole, ip, ua string) (*domain.User, bool, error)
+	DeleteAccount(ctx context.Context, userID bson.ObjectID) error
 }
 
 type userService struct {
@@ -43,7 +43,7 @@ const (
 	maxEmailCodeAttempts = 5
 )
 
-func (s *userService) RequestEmailChange(ctx context.Context, userID primitive.ObjectID, newEmail, ip, ua string) error {
+func (s *userService) RequestEmailChange(ctx context.Context, userID bson.ObjectID, newEmail, ip, ua string) error {
 	newEmail = strings.ToLower(strings.TrimSpace(newEmail))
 	if newEmail == "" {
 		return errors.New("invalid_email")
@@ -76,7 +76,7 @@ func (s *userService) RequestEmailChange(ctx context.Context, userID primitive.O
 	return s.email.SendEmailChangeVerification(ctx, newEmail, code, ip, ua, emailChangeTTL)
 }
 
-func (s *userService) ConfirmEmailChange(ctx context.Context, userID primitive.ObjectID, code string) (*domain.User, error) {
+func (s *userService) ConfirmEmailChange(ctx context.Context, userID bson.ObjectID, code string) (*domain.User, error) {
 	// Load tokens
 	tokens, err := s.emailTokens.FindActiveByUser(ctx, userID)
 	if err != nil {
@@ -122,7 +122,7 @@ func (s *userService) ConfirmEmailChange(ctx context.Context, userID primitive.O
 	return u, nil
 }
 
-func (s *userService) DeleteAccount(ctx context.Context, userID primitive.ObjectID) error {
+func (s *userService) DeleteAccount(ctx context.Context, userID bson.ObjectID) error {
 	// Load user for Stripe cleanup
 	u, err := s.users.FindByID(ctx, userID)
 	if err != nil {
@@ -144,7 +144,7 @@ func (s *userService) DeleteAccount(ctx context.Context, userID primitive.Object
 
 // UpdateProfile updates allowed fields. If newEmail is provided and differs, starts verification flow.
 // Returns the current user and whether an email change was initiated.
-func (s *userService) UpdateProfile(ctx context.Context, userID primitive.ObjectID, firstName, lastName *string, newEmail *string, role domain.UserRole, ip, ua string) (*domain.User, bool, error) {
+func (s *userService) UpdateProfile(ctx context.Context, userID bson.ObjectID, firstName, lastName *string, newEmail *string, role domain.UserRole, ip, ua string) (*domain.User, bool, error) {
 	// Load current user
 	u, err := s.users.FindByID(ctx, userID)
 	if err != nil {
@@ -174,6 +174,6 @@ func (s *userService) UpdateProfile(ctx context.Context, userID primitive.Object
 	}
 	return u2, initiated, nil
 }
-func (s *userService) GetByID(ctx context.Context, userID primitive.ObjectID) (*domain.User, error) {
+func (s *userService) GetByID(ctx context.Context, userID bson.ObjectID) (*domain.User, error) {
 	return s.users.FindByID(ctx, userID)
 }

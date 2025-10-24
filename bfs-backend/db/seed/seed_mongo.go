@@ -12,7 +12,6 @@ import (
 
 	"github.com/brianvoe/gofakeit/v7"
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.uber.org/zap"
@@ -434,7 +433,7 @@ func seedInventoryOpeningBalance(ctx context.Context, db *mongo.Database, logger
 	}
 	defer func() { _ = cur.Close(ctx) }()
 	type production struct {
-		ID primitive.ObjectID `bson:"_id"`
+		ID bson.ObjectID `bson:"_id"`
 	}
 	entries := make([]interface{}, 0)
 	now := time.Now().UTC()
@@ -444,7 +443,7 @@ func seedInventoryOpeningBalance(ctx context.Context, db *mongo.Database, logger
 			return err
 		}
 		entries = append(entries, bson.M{
-			"_id":        primitive.NewObjectID(),
+			"_id":        bson.NewObjectID(),
 			"product_id": p.ID,
 			"delta":      qty,
 			"reason":     "opening_balance",
@@ -473,7 +472,7 @@ func generateAdmins(ctx context.Context, db *mongo.Database, logger *zap.Logger)
 	for i := 0; i < adminCount; i++ {
 		now := time.Now()
 		admin := map[string]interface{}{
-			"_id":         primitive.NewObjectID(),
+			"_id":         bson.NewObjectID(),
 			"email":       fmt.Sprintf("admin%d@dev.local", i+1),
 			"first_name":  gofakeit.FirstName(),
 			"last_name":   gofakeit.LastName(),
@@ -522,7 +521,7 @@ func generateCategories(ctx context.Context, db *mongo.Database, logger *zap.Log
 	for _, cat := range categories {
 		now := time.Now()
 		category := map[string]interface{}{
-			"_id":        primitive.NewObjectID(),
+			"_id":        bson.NewObjectID(),
 			"name":       cat.Name,
 			"is_active":  true,
 			"position":   cat.Position,
@@ -578,8 +577,8 @@ func generateSimpleProducts(ctx context.Context, db *mongo.Database, logger *zap
 	defer func() { _ = cursor.Close(ctx) }()
 
 	var categories []struct {
-		ID   primitive.ObjectID `bson:"_id"`
-		Name string             `bson:"name"`
+		ID   bson.ObjectID `bson:"_id"`
+		Name string        `bson:"name"`
 	}
 	if err := cursor.All(ctx, &categories); err != nil {
 		return fmt.Errorf("failed to decode categories: %w", err)
@@ -613,7 +612,7 @@ func generateSimpleProducts(ctx context.Context, db *mongo.Database, logger *zap
 		data := productData[i%len(productData)]
 
 		// Assign category based on product type
-		var categoryID primitive.ObjectID
+		var categoryID bson.ObjectID
 		for _, category := range categories {
 			switch data.name {
 			case "Smash Burger", "Veggie Burger":
@@ -632,7 +631,7 @@ func generateSimpleProducts(ctx context.Context, db *mongo.Database, logger *zap
 		}
 
 		product := map[string]interface{}{
-			"_id":         primitive.NewObjectID(),
+			"_id":         bson.NewObjectID(),
 			"category_id": categoryID,
 			"type":        "simple",
 			"name":        data.name,
@@ -674,7 +673,7 @@ func generateMenuProducts(ctx context.Context, db *mongo.Database, logger *zap.L
 
 	// Get Menus category for bundles
 	var menusCategory struct {
-		ID primitive.ObjectID `bson:"_id"`
+		ID bson.ObjectID `bson:"_id"`
 	}
 	err := categoriesCollection.FindOne(ctx, bson.D{{Key: "name", Value: "Menus"}}).Decode(&menusCategory)
 	if err != nil {
@@ -699,7 +698,7 @@ func generateMenuProducts(ctx context.Context, db *mongo.Database, logger *zap.L
 		data := menuData[i]
 
 		menuProduct := map[string]interface{}{
-			"_id":         primitive.NewObjectID(),
+			"_id":         bson.NewObjectID(),
 			"category_id": menusCategory.ID,
 			"type":        "menu",
 			"name":        data.name,
@@ -747,8 +746,8 @@ func generateMenuSlots(ctx context.Context, db *mongo.Database, logger *zap.Logg
 	defer func() { _ = menuCursor.Close(ctx) }()
 
 	var menuProducts []struct {
-		ID   primitive.ObjectID `bson:"_id"`
-		Name string             `bson:"name"`
+		ID   bson.ObjectID `bson:"_id"`
+		Name string        `bson:"name"`
 	}
 	if err := menuCursor.All(ctx, &menuProducts); err != nil {
 		return fmt.Errorf("failed to decode menu products: %w", err)
@@ -771,7 +770,7 @@ func generateMenuSlots(ctx context.Context, db *mongo.Database, logger *zap.Logg
 
 		for i, slotName := range slotNames {
 			menuSlot := map[string]interface{}{
-				"_id":        primitive.NewObjectID(),
+				"_id":        bson.NewObjectID(),
 				"product_id": menu.ID,
 				"name":       slotName,
 				"sequence":   i + 1,
@@ -816,8 +815,8 @@ func generateMenuSlotItems(ctx context.Context, db *mongo.Database, logger *zap.
 	defer func() { _ = slotsCursor.Close(ctx) }()
 
 	var menuSlots []struct {
-		ID   primitive.ObjectID `bson:"_id"`
-		Name string             `bson:"name"`
+		ID   bson.ObjectID `bson:"_id"`
+		Name string        `bson:"name"`
 	}
 	if err := slotsCursor.All(ctx, &menuSlots); err != nil {
 		return fmt.Errorf("failed to decode menu slots: %w", err)
@@ -831,8 +830,8 @@ func generateMenuSlotItems(ctx context.Context, db *mongo.Database, logger *zap.
 	defer func() { _ = simpleCursor.Close(ctx) }()
 
 	var simpleProducts []struct {
-		ID   primitive.ObjectID `bson:"_id"`
-		Name string             `bson:"name"`
+		ID   bson.ObjectID `bson:"_id"`
+		Name string        `bson:"name"`
 	}
 	if err := simpleCursor.All(ctx, &simpleProducts); err != nil {
 		return fmt.Errorf("failed to decode simple products: %w", err)
@@ -844,8 +843,8 @@ func generateMenuSlotItems(ctx context.Context, db *mongo.Database, logger *zap.
 
 	// Categorize products by type for easier assignment
 	var burgerProducts, friesProducts, drinkProducts []struct {
-		ID   primitive.ObjectID `bson:"_id"`
-		Name string             `bson:"name"`
+		ID   bson.ObjectID `bson:"_id"`
+		Name string        `bson:"name"`
 	}
 
 	for _, product := range simpleProducts {
@@ -864,8 +863,8 @@ func generateMenuSlotItems(ctx context.Context, db *mongo.Database, logger *zap.
 	// Add appropriate products to each slot based on slot name
 	for _, slot := range menuSlots {
 		var relevantProducts []struct {
-			ID   primitive.ObjectID `bson:"_id"`
-			Name string             `bson:"name"`
+			ID   bson.ObjectID `bson:"_id"`
+			Name string        `bson:"name"`
 		}
 
 		switch slot.Name {
@@ -880,7 +879,7 @@ func generateMenuSlotItems(ctx context.Context, db *mongo.Database, logger *zap.
 		// Add all relevant products for this slot
 		for _, product := range relevantProducts {
 			slotItem := map[string]interface{}{
-				"_id":          primitive.NewObjectID(),
+				"_id":          bson.NewObjectID(),
 				"menu_slot_id": slot.ID,
 				"product_id":   product.ID,
 			}

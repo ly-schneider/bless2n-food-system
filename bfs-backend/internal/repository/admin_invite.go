@@ -7,20 +7,19 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type AdminInviteRepository interface {
-	Create(ctx context.Context, invitedBy primitive.ObjectID, email string, tokenHash string, expiresAt time.Time) (*domain.AdminInvite, error)
-	FindByID(ctx context.Context, id primitive.ObjectID) (*domain.AdminInvite, error)
+	Create(ctx context.Context, invitedBy bson.ObjectID, email string, tokenHash string, expiresAt time.Time) (*domain.AdminInvite, error)
+	FindByID(ctx context.Context, id bson.ObjectID) (*domain.AdminInvite, error)
 	FindByTokenHash(ctx context.Context, tokenHash string) (*domain.AdminInvite, error)
 	List(ctx context.Context, status *string, email *string, limit, offset int) ([]*domain.AdminInvite, int64, error)
-	Revoke(ctx context.Context, id primitive.ObjectID) (bool, error)
-	MarkAccepted(ctx context.Context, id primitive.ObjectID) error
-	UpdateToken(ctx context.Context, id primitive.ObjectID, tokenHash string, expiresAt time.Time) error
-	Delete(ctx context.Context, id primitive.ObjectID) error
+	Revoke(ctx context.Context, id bson.ObjectID) (bool, error)
+	MarkAccepted(ctx context.Context, id bson.ObjectID) error
+	UpdateToken(ctx context.Context, id bson.ObjectID, tokenHash string, expiresAt time.Time) error
+	Delete(ctx context.Context, id bson.ObjectID) error
 }
 
 type adminInviteRepository struct {
@@ -39,10 +38,10 @@ func NewAdminInviteRepository(db *database.MongoDB) AdminInviteRepository {
 	return &adminInviteRepository{collection: coll}
 }
 
-func (r *adminInviteRepository) Create(ctx context.Context, invitedBy primitive.ObjectID, email string, tokenHash string, expiresAt time.Time) (*domain.AdminInvite, error) {
+func (r *adminInviteRepository) Create(ctx context.Context, invitedBy bson.ObjectID, email string, tokenHash string, expiresAt time.Time) (*domain.AdminInvite, error) {
 	now := time.Now().UTC()
 	inv := &domain.AdminInvite{
-		ID:           primitive.NewObjectID(),
+		ID:           bson.NewObjectID(),
 		InvitedBy:    invitedBy,
 		InviteeEmail: email,
 		TokenHash:    tokenHash,
@@ -56,7 +55,7 @@ func (r *adminInviteRepository) Create(ctx context.Context, invitedBy primitive.
 	return inv, nil
 }
 
-func (r *adminInviteRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*domain.AdminInvite, error) {
+func (r *adminInviteRepository) FindByID(ctx context.Context, id bson.ObjectID) (*domain.AdminInvite, error) {
 	var out domain.AdminInvite
 	if err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&out); err != nil {
 		return nil, err
@@ -110,7 +109,7 @@ func (r *adminInviteRepository) List(ctx context.Context, status *string, email 
 	return out, total, nil
 }
 
-func (r *adminInviteRepository) Revoke(ctx context.Context, id primitive.ObjectID) (bool, error) {
+func (r *adminInviteRepository) Revoke(ctx context.Context, id bson.ObjectID) (bool, error) {
 	res, err := r.collection.UpdateOne(ctx, bson.M{"_id": id, "status": "pending"}, bson.M{"$set": bson.M{"status": "revoked"}})
 	if err != nil {
 		return false, err
@@ -118,18 +117,18 @@ func (r *adminInviteRepository) Revoke(ctx context.Context, id primitive.ObjectI
 	return res.ModifiedCount > 0, nil
 }
 
-func (r *adminInviteRepository) MarkAccepted(ctx context.Context, id primitive.ObjectID) error {
+func (r *adminInviteRepository) MarkAccepted(ctx context.Context, id bson.ObjectID) error {
 	now := time.Now().UTC()
 	_, err := r.collection.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"status": "accepted", "used_at": now}})
 	return err
 }
 
-func (r *adminInviteRepository) UpdateToken(ctx context.Context, id primitive.ObjectID, tokenHash string, expiresAt time.Time) error {
+func (r *adminInviteRepository) UpdateToken(ctx context.Context, id bson.ObjectID, tokenHash string, expiresAt time.Time) error {
 	_, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": bson.M{"token_hash": tokenHash, "expires_at": expiresAt, "status": "pending"}})
 	return err
 }
 
-func (r *adminInviteRepository) Delete(ctx context.Context, id primitive.ObjectID) error {
+func (r *adminInviteRepository) Delete(ctx context.Context, id bson.ObjectID) error {
 	_, err := r.collection.DeleteOne(ctx, bson.M{"_id": id})
 	return err
 }

@@ -52,9 +52,9 @@ func seedMongo(ctx context.Context, cfg config.Config, reset, force bool, logger
 		return fmt.Errorf("seeding refused: not localhost (use --force to override)")
 	}
 
-	// Create MongoDB client
-	clientOptions := options.Client().ApplyURI(cfg.Mongo.URI)
-	client, err := mongo.Connect(ctx, clientOptions)
+	opts := options.Client().ApplyURI(cfg.Mongo.URI)
+	client, err := mongo.Connect(opts)
+
 	if err != nil {
 		return fmt.Errorf("failed to connect to MongoDB: %w", err)
 	}

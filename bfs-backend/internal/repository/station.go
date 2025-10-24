@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
@@ -16,7 +15,7 @@ type StationRepository interface {
 	UpsertPendingByDeviceKey(ctx context.Context, name, deviceKey string) (*domain.Station, error)
 	FindByDeviceKey(ctx context.Context, deviceKey string) (*domain.Station, error)
 	ApproveByDeviceKey(ctx context.Context, deviceKey string) error
-	FindByID(ctx context.Context, id primitive.ObjectID) (*domain.Station, error)
+	FindByID(ctx context.Context, id bson.ObjectID) (*domain.Station, error)
 	List(ctx context.Context) ([]*domain.Station, error)
 }
 
@@ -35,7 +34,7 @@ func (r *stationRepository) UpsertPendingByDeviceKey(ctx context.Context, name, 
 	// Ensure a record exists for this deviceKey (approved=false by default)
 	filter := bson.M{"device_key": deviceKey}
 	update := bson.M{"$setOnInsert": bson.M{
-		"_id":        primitive.NewObjectID(),
+		"_id":        bson.NewObjectID(),
 		"name":       name,
 		"device_key": deviceKey,
 		"approved":   false,
@@ -67,7 +66,7 @@ func (r *stationRepository) ApproveByDeviceKey(ctx context.Context, deviceKey st
 	return err
 }
 
-func (r *stationRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*domain.Station, error) {
+func (r *stationRepository) FindByID(ctx context.Context, id bson.ObjectID) (*domain.Station, error) {
 	var st domain.Station
 	if err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&st); err != nil {
 		return nil, err
@@ -96,9 +95,6 @@ func (r *stationRepository) List(ctx context.Context) ([]*domain.Station, error)
 }
 
 // optionsFindOneAndUpdateUpsert returns upsert=true and return after update
-func optionsFindOneAndUpdateUpsert() *options.FindOneAndUpdateOptions {
-	upsert := true
-	return &options.FindOneAndUpdateOptions{Upsert: &upsert, ReturnDocument: ptrReturnAfter()}
+func optionsFindOneAndUpdateUpsert() options.Lister[options.FindOneAndUpdateOptions] {
+    return options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After)
 }
-
-func ptrReturnAfter() *options.ReturnDocument { v := options.After; return &v }

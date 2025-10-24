@@ -9,7 +9,7 @@ import (
 	"backend/internal/repository"
 	"backend/internal/service"
 
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -157,7 +157,7 @@ func NewRouter(
 					}
 					// Fallback to DB role check for immediate RBAC change effect
 					if userRepo != nil {
-						if oid, err := primitive.ObjectIDFromHex(claims.Subject); err == nil {
+						if oid, err := bson.ObjectIDFromHex(claims.Subject); err == nil {
 							if u, err := userRepo.FindByID(r.Context(), oid); err == nil && u != nil && u.Role == domain.UserRoleAdmin {
 								next.ServeHTTP(w, r)
 								return

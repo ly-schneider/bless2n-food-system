@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 
 	"github.com/go-playground/validator/v10"
 	"go.uber.org/zap"
@@ -148,16 +148,16 @@ func (h *StationHandler) VerifyQR(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// product images
-	pidSet := map[primitive.ObjectID]struct{}{}
+	pidSet := map[bson.ObjectID]struct{}{}
 	for _, it := range items {
 		pidSet[it.ProductID] = struct{}{}
 	}
-	ids := make([]primitive.ObjectID, 0, len(pidSet))
+	ids := make([]bson.ObjectID, 0, len(pidSet))
 	for id := range pidSet {
 		ids = append(ids, id)
 	}
 	products, _ := h.productRepo.GetByIDs(r.Context(), ids)
-	imgByID := map[primitive.ObjectID]*string{}
+	imgByID := map[bson.ObjectID]*string{}
 	for _, p := range products {
 		if p.Image != nil && *p.Image != "" {
 			v := *p.Image
@@ -310,7 +310,7 @@ func (h *StationHandler) GetPickupQR(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, http.StatusBadRequest, "missing id")
 		return
 	}
-	oid, err := primitive.ObjectIDFromHex(idStr)
+	oid, err := bson.ObjectIDFromHex(idStr)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
@@ -15,7 +14,7 @@ type InventoryLedgerRepository interface {
 	Append(ctx context.Context, entry *domain.InventoryLedger) error
 	AppendMany(ctx context.Context, entries []*domain.InventoryLedger) error
 	// SumByProductIDs returns the total stock per product by summing deltas
-	SumByProductIDs(ctx context.Context, ids []primitive.ObjectID) (map[primitive.ObjectID]int64, error)
+	SumByProductIDs(ctx context.Context, ids []bson.ObjectID) (map[bson.ObjectID]int64, error)
 }
 
 type inventoryLedgerRepository struct {
@@ -33,7 +32,7 @@ func (r *inventoryLedgerRepository) Append(ctx context.Context, entry *domain.In
 		return nil
 	}
 	if entry.ID.IsZero() {
-		entry.ID = primitive.NewObjectID()
+		entry.ID = bson.NewObjectID()
 	}
 	if entry.CreatedAt.IsZero() {
 		entry.CreatedAt = time.Now().UTC()
@@ -53,7 +52,7 @@ func (r *inventoryLedgerRepository) AppendMany(ctx context.Context, entries []*d
 			continue
 		}
 		if e.ID.IsZero() {
-			e.ID = primitive.NewObjectID()
+			e.ID = bson.NewObjectID()
 		}
 		if e.CreatedAt.IsZero() {
 			e.CreatedAt = now
@@ -67,8 +66,8 @@ func (r *inventoryLedgerRepository) AppendMany(ctx context.Context, entries []*d
 	return err
 }
 
-func (r *inventoryLedgerRepository) SumByProductIDs(ctx context.Context, ids []primitive.ObjectID) (map[primitive.ObjectID]int64, error) {
-	result := map[primitive.ObjectID]int64{}
+func (r *inventoryLedgerRepository) SumByProductIDs(ctx context.Context, ids []bson.ObjectID) (map[bson.ObjectID]int64, error) {
+	result := map[bson.ObjectID]int64{}
 	if len(ids) == 0 {
 		return result, nil
 	}
@@ -84,8 +83,8 @@ func (r *inventoryLedgerRepository) SumByProductIDs(ctx context.Context, ids []p
 	defer func() { _ = cur.Close(ctx) }()
 	for cur.Next(ctx) {
 		var row struct {
-			ID    primitive.ObjectID `bson:"_id"`
-			Total int64              `bson:"total"`
+			ID    bson.ObjectID `bson:"_id"`
+			Total int64         `bson:"total"`
 		}
 		if err := cur.Decode(&row); err != nil {
 			return nil, err

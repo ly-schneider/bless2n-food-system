@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type AdminUserHandler struct {
@@ -84,7 +84,7 @@ func (h *AdminUserHandler) List(w http.ResponseWriter, r *http.Request) {
 // @Router /v1/admin/users/{id}/promote [post]
 func (h *AdminUserHandler) Promote(w http.ResponseWriter, r *http.Request) {
 	id := chiURLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -121,7 +121,7 @@ func (h *AdminUserHandler) Promote(w http.ResponseWriter, r *http.Request) {
 // @Router /v1/admin/users/{id} [get]
 func (h *AdminUserHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	id := chiURLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -170,7 +170,7 @@ type patchRoleBody struct {
 
 func (h *AdminUserHandler) PatchRole(w http.ResponseWriter, r *http.Request) {
 	id := chiURLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -211,7 +211,7 @@ type adminPatchUserBody struct {
 
 func (h *AdminUserHandler) PatchProfile(w http.ResponseWriter, r *http.Request) {
 	id := chiURLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -299,7 +299,7 @@ func (h *AdminUserHandler) PatchProfile(w http.ResponseWriter, r *http.Request) 
 // @Router /v1/admin/users/{id} [delete]
 func (h *AdminUserHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chiURLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return

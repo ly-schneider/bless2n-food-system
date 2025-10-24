@@ -3,13 +3,13 @@ package domain
 import (
 	"time"
 
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // PosDevice represents a tablet or terminal approved to use the POS surface.
 type PosDevice struct {
-	ID   primitive.ObjectID `bson:"_id,omitempty"`
-	Name string             `bson:"name" validate:"required"`
+	ID   bson.ObjectID `bson:"_id,omitempty"`
+	Name string        `bson:"name" validate:"required"`
 	// DeviceToken uniquely identifies the browser/device claiming to be this POS device
 	DeviceToken string     `bson:"device_token" validate:"required"`
 	Approved    bool       `bson:"approved"`

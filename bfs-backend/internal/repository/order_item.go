@@ -7,19 +7,18 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 type OrderItemRepository interface {
 	InsertMany(ctx context.Context, items []*domain.OrderItem) error
-	DeleteByOrderID(ctx context.Context, id primitive.ObjectID) error
+	DeleteByOrderID(ctx context.Context, id bson.ObjectID) error
 	// FindByOrderID returns all items for a given order id
-	FindByOrderID(ctx context.Context, id primitive.ObjectID) ([]*domain.OrderItem, error)
+	FindByOrderID(ctx context.Context, id bson.ObjectID) ([]*domain.OrderItem, error)
 	// FindByFilter returns items by arbitrary filter (internal use)
 	FindByFilter(ctx context.Context, filter any) ([]*domain.OrderItem, error)
 	// UpdateRedeemForOrderByProductIDs marks items redeemed in a single conditional write
-	UpdateRedeemForOrderByProductIDs(ctx context.Context, orderID primitive.ObjectID, productIDs []primitive.ObjectID, redeemedAt time.Time) (matched int64, modified int64, err error)
+	UpdateRedeemForOrderByProductIDs(ctx context.Context, orderID bson.ObjectID, productIDs []bson.ObjectID, redeemedAt time.Time) (matched int64, modified int64, err error)
 }
 
 type orderItemRepository struct {
@@ -44,12 +43,12 @@ func (r *orderItemRepository) InsertMany(ctx context.Context, items []*domain.Or
 	return err
 }
 
-func (r *orderItemRepository) DeleteByOrderID(ctx context.Context, id primitive.ObjectID) error {
+func (r *orderItemRepository) DeleteByOrderID(ctx context.Context, id bson.ObjectID) error {
 	_, err := r.collection.DeleteMany(ctx, bson.M{"order_id": id})
 	return err
 }
 
-func (r *orderItemRepository) FindByOrderID(ctx context.Context, id primitive.ObjectID) ([]*domain.OrderItem, error) {
+func (r *orderItemRepository) FindByOrderID(ctx context.Context, id bson.ObjectID) ([]*domain.OrderItem, error) {
 	cur, err := r.collection.Find(ctx, bson.M{"order_id": id})
 	if err != nil {
 		return nil, err
@@ -90,7 +89,7 @@ func (r *orderItemRepository) FindByFilter(ctx context.Context, filter any) ([]*
 	return items, nil
 }
 
-func (r *orderItemRepository) UpdateRedeemForOrderByProductIDs(ctx context.Context, orderID primitive.ObjectID, productIDs []primitive.ObjectID, redeemedAt time.Time) (int64, int64, error) {
+func (r *orderItemRepository) UpdateRedeemForOrderByProductIDs(ctx context.Context, orderID bson.ObjectID, productIDs []bson.ObjectID, redeemedAt time.Time) (int64, int64, error) {
 	if len(productIDs) == 0 {
 		return 0, 0, nil
 	}

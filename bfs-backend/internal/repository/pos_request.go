@@ -7,16 +7,15 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 type PosRequestRepository interface {
 	Create(ctx context.Context, req *domain.PosRequest) error
 	FindPendingByToken(ctx context.Context, token string) (*domain.PosRequest, error)
-	FindByID(ctx context.Context, id primitive.ObjectID) (*domain.PosRequest, error)
+	FindByID(ctx context.Context, id bson.ObjectID) (*domain.PosRequest, error)
 	List(ctx context.Context, status *domain.PosRequestStatus) ([]*domain.PosRequest, error)
-	UpdateStatus(ctx context.Context, id primitive.ObjectID, status domain.PosRequestStatus, decidedBy *primitive.ObjectID, decidedAt time.Time) error
+	UpdateStatus(ctx context.Context, id bson.ObjectID, status domain.PosRequestStatus, decidedBy *bson.ObjectID, decidedAt time.Time) error
 }
 
 type posRequestRepository struct{ collection *mongo.Collection }
@@ -30,7 +29,7 @@ func (r *posRequestRepository) Create(ctx context.Context, req *domain.PosReques
 		return nil
 	}
 	if req.ID.IsZero() {
-		req.ID = primitive.NewObjectID()
+		req.ID = bson.NewObjectID()
 	}
 	now := time.Now().UTC()
 	if req.CreatedAt.IsZero() {
@@ -51,7 +50,7 @@ func (r *posRequestRepository) FindPendingByToken(ctx context.Context, token str
 	return &req, nil
 }
 
-func (r *posRequestRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*domain.PosRequest, error) {
+func (r *posRequestRepository) FindByID(ctx context.Context, id bson.ObjectID) (*domain.PosRequest, error) {
 	var req domain.PosRequest
 	if err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&req); err != nil {
 		return nil, err
@@ -83,7 +82,7 @@ func (r *posRequestRepository) List(ctx context.Context, status *domain.PosReque
 	return out, nil
 }
 
-func (r *posRequestRepository) UpdateStatus(ctx context.Context, id primitive.ObjectID, status domain.PosRequestStatus, decidedBy *primitive.ObjectID, decidedAt time.Time) error {
+func (r *posRequestRepository) UpdateStatus(ctx context.Context, id bson.ObjectID, status domain.PosRequestStatus, decidedBy *bson.ObjectID, decidedAt time.Time) error {
 	set := bson.M{"status": status, "updated_at": time.Now().UTC(), "decided_at": decidedAt}
 	if decidedBy != nil {
 		set["decided_by"] = *decidedBy

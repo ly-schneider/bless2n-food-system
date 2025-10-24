@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // POSHandler exposes minimal POS device and checkout endpoints.
@@ -170,7 +170,7 @@ func (h *POSHandler) PayCash(w http.ResponseWriter, r *http.Request) {
 	}
 	// Parse order id from path
 	idStr := chi.URLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(idStr)
+	oid, err := bson.ObjectIDFromHex(idStr)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -221,7 +221,7 @@ func (h *POSHandler) PayCard(w http.ResponseWriter, r *http.Request) {
 	}
 	// Parse id
 	idStr := chi.URLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(idStr)
+	oid, err := bson.ObjectIDFromHex(idStr)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return

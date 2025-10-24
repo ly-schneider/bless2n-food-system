@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type AdminPOSHandler struct {
@@ -96,7 +96,7 @@ func (h *AdminPOSHandler) ListDevices(w http.ResponseWriter, r *http.Request) {
 // @Router /v1/admin/pos/requests/{id}/approve [post]
 func (h *AdminPOSHandler) Approve(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -115,9 +115,9 @@ func (h *AdminPOSHandler) Approve(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, http.StatusInternalServerError, "approve failed")
 		return
 	}
-	var decidedBy *primitive.ObjectID
+	var decidedBy *bson.ObjectID
 	if claims, ok := middleware.GetUserFromContext(r.Context()); ok && claims != nil && claims.Subject != "" {
-		if u, err := primitive.ObjectIDFromHex(claims.Subject); err == nil {
+		if u, err := bson.ObjectIDFromHex(claims.Subject); err == nil {
 			decidedBy = &u
 		}
 	}
@@ -137,7 +137,7 @@ func (h *AdminPOSHandler) Approve(w http.ResponseWriter, r *http.Request) {
 // @Router /v1/admin/pos/requests/{id}/reject [post]
 func (h *AdminPOSHandler) Reject(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -146,9 +146,9 @@ func (h *AdminPOSHandler) Reject(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, http.StatusNotFound, "not found")
 		return
 	}
-	var decidedBy *primitive.ObjectID
+	var decidedBy *bson.ObjectID
 	if claims, ok := middleware.GetUserFromContext(r.Context()); ok && claims != nil && claims.Subject != "" {
-		if u, err := primitive.ObjectIDFromHex(claims.Subject); err == nil {
+		if u, err := bson.ObjectIDFromHex(claims.Subject); err == nil {
 			decidedBy = &u
 		}
 	}
@@ -170,7 +170,7 @@ func (h *AdminPOSHandler) Reject(w http.ResponseWriter, r *http.Request) {
 // @Router /v1/admin/pos/devices/{id}/config [patch]
 func (h *AdminPOSHandler) PatchConfig(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return

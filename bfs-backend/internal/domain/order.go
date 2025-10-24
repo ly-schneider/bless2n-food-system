@@ -3,7 +3,7 @@ package domain
 import (
 	"time"
 
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type OrderStatus string
@@ -16,11 +16,11 @@ const (
 )
 
 type Order struct {
-	ID           primitive.ObjectID  `bson:"_id"`
-	CustomerID   *primitive.ObjectID `bson:"customer_id,omitempty"`
-	ContactEmail *string             `bson:"contact_email,omitempty"`
-	TotalCents   Cents               `bson:"total_cents" validate:"required,gte=0"`
-	Status       OrderStatus         `bson:"status" validate:"required,oneof=pending paid cancelled refunded"`
+	ID           bson.ObjectID  `bson:"_id"`
+	CustomerID   *bson.ObjectID `bson:"customer_id,omitempty"`
+	ContactEmail *string        `bson:"contact_email,omitempty"`
+	TotalCents   Cents          `bson:"total_cents" validate:"required,gte=0"`
+	Status       OrderStatus    `bson:"status" validate:"required,oneof=pending paid cancelled refunded"`
 	// Origin of the order: default "shop" (web shop) or "pos" (in-person terminal)
 	Origin *OrderOrigin `bson:"origin,omitempty"`
 	// Deprecated: previous Stripe Checkout session id

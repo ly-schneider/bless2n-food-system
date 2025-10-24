@@ -3,12 +3,12 @@ package domain
 import (
 	"time"
 
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type Station struct {
-	ID   primitive.ObjectID `bson:"_id,omitempty"`
-	Name string             `bson:"name" validate:"required"`
+	ID   bson.ObjectID `bson:"_id,omitempty"`
+	Name string        `bson:"name" validate:"required"`
 	// DeviceKey uniquely identifies a browser/device claiming to be this station
 	DeviceKey  string     `bson:"device_key" validate:"required"`
 	Approved   bool       `bson:"approved"`

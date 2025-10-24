@@ -9,7 +9,7 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type AdminProductHandler struct {
@@ -49,7 +49,7 @@ func (h *AdminProductHandler) PatchPrice(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	id := chiURLParam(r, "id")
-	pid, err := primitive.ObjectIDFromHex(id)
+	pid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -68,7 +68,7 @@ func (h *AdminProductHandler) PatchPrice(w http.ResponseWriter, r *http.Request)
 		response.WriteProblem(w, response.NewValidationProblem(response.ConvertValidationErrors(err.(validator.ValidationErrors)), r.URL.Path))
 		return
 	}
-	if err := h.products.UpdateFields(r.Context(), pid, primitive.M{"price_cents": body.PriceCents}); err != nil {
+	if err := h.products.UpdateFields(r.Context(), pid, bson.M{"price_cents": body.PriceCents}); err != nil {
 		response.WriteError(w, http.StatusInternalServerError, "update failed")
 		return
 	}
@@ -110,7 +110,7 @@ func (h *AdminProductHandler) PatchActive(w http.ResponseWriter, r *http.Request
 		return
 	}
 	id := chiURLParam(r, "id")
-	pid, err := primitive.ObjectIDFromHex(id)
+	pid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -125,7 +125,7 @@ func (h *AdminProductHandler) PatchActive(w http.ResponseWriter, r *http.Request
 		response.WriteError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
-	if err := h.products.UpdateFields(r.Context(), pid, primitive.M{"is_active": body.IsActive}); err != nil {
+	if err := h.products.UpdateFields(r.Context(), pid, bson.M{"is_active": body.IsActive}); err != nil {
 		response.WriteError(w, http.StatusInternalServerError, "update failed")
 		return
 	}
@@ -158,7 +158,7 @@ func (h *AdminProductHandler) AdjustInventory(w http.ResponseWriter, r *http.Req
 		return
 	}
 	id := chiURLParam(r, "id")
-	pid, err := primitive.ObjectIDFromHex(id)
+	pid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -197,7 +197,7 @@ func (h *AdminProductHandler) AdjustInventory(w http.ResponseWriter, r *http.Req
 // @Router /v1/admin/products/{id} [delete]
 func (h *AdminProductHandler) DeleteHard(w http.ResponseWriter, r *http.Request) {
 	id := chiURLParam(r, "id")
-	pid, err := primitive.ObjectIDFromHex(id)
+	pid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -239,7 +239,7 @@ type patchCategoryBody struct {
 
 func (h *AdminProductHandler) PatchCategory(w http.ResponseWriter, r *http.Request) {
 	id := chiURLParam(r, "id")
-	pid, err := primitive.ObjectIDFromHex(id)
+	pid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -249,7 +249,7 @@ func (h *AdminProductHandler) PatchCategory(w http.ResponseWriter, r *http.Reque
 		response.WriteError(w, http.StatusBadRequest, "invalid payload")
 		return
 	}
-	cid, err := primitive.ObjectIDFromHex(body.CategoryID)
+	cid, err := bson.ObjectIDFromHex(body.CategoryID)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid category")
 		return
@@ -262,7 +262,7 @@ func (h *AdminProductHandler) PatchCategory(w http.ResponseWriter, r *http.Reque
 		}
 	}
 	before, _ := h.products.FindByID(r.Context(), pid)
-	if err := h.products.UpdateFields(r.Context(), pid, primitive.M{"category_id": cid}); err != nil {
+	if err := h.products.UpdateFields(r.Context(), pid, bson.M{"category_id": cid}); err != nil {
 		response.WriteError(w, http.StatusInternalServerError, "update failed")
 		return
 	}
@@ -283,8 +283,8 @@ func strPtr(s string) *string {
 	}
 	return &s
 }
-func objIDPtr(hex string) *primitive.ObjectID {
-	id, err := primitive.ObjectIDFromHex(hex)
+func objIDPtr(hex string) *bson.ObjectID {
+	id, err := bson.ObjectIDFromHex(hex)
 	if err != nil {
 		return nil
 	}

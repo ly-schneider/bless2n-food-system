@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
@@ -15,7 +14,7 @@ import (
 type IdentityLinkRepository interface {
 	FindByProviderAndSub(ctx context.Context, provider domain.IdentityProvider, sub string) (*domain.IdentityLink, error)
 	Create(ctx context.Context, link *domain.IdentityLink) (*domain.IdentityLink, error)
-	UpsertLink(ctx context.Context, provider domain.IdentityProvider, sub string, userID primitive.ObjectID, email *string, name *string, avatar *string) (*domain.IdentityLink, error)
+	UpsertLink(ctx context.Context, provider domain.IdentityProvider, sub string, userID bson.ObjectID, email *string, name *string, avatar *string) (*domain.IdentityLink, error)
 }
 
 type identityLinkRepository struct {
@@ -37,7 +36,7 @@ func (r *identityLinkRepository) FindByProviderAndSub(ctx context.Context, provi
 func (r *identityLinkRepository) Create(ctx context.Context, link *domain.IdentityLink) (*domain.IdentityLink, error) {
 	now := time.Now().UTC()
 	if link.ID.IsZero() {
-		link.ID = primitive.NewObjectID()
+		link.ID = bson.NewObjectID()
 	}
 	link.CreatedAt = now
 	link.UpdatedAt = now
@@ -47,11 +46,11 @@ func (r *identityLinkRepository) Create(ctx context.Context, link *domain.Identi
 	return link, nil
 }
 
-func (r *identityLinkRepository) UpsertLink(ctx context.Context, provider domain.IdentityProvider, sub string, userID primitive.ObjectID, email *string, name *string, avatar *string) (*domain.IdentityLink, error) {
+func (r *identityLinkRepository) UpsertLink(ctx context.Context, provider domain.IdentityProvider, sub string, userID bson.ObjectID, email *string, name *string, avatar *string) (*domain.IdentityLink, error) {
 	now := time.Now().UTC()
 	filter := bson.M{"provider": provider, "provider_user_id": sub}
 	update := bson.M{
-		"$setOnInsert": bson.M{"_id": primitive.NewObjectID(), "created_at": now},
+		"$setOnInsert": bson.M{"_id": bson.NewObjectID(), "created_at": now},
 		"$set": bson.M{
 			"user_id":        userID,
 			"email_snapshot": email,

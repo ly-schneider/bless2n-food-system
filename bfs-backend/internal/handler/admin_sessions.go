@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type AdminSessionsHandler struct {
@@ -56,7 +56,7 @@ func (h *AdminSessionsHandler) List(w http.ResponseWriter, r *http.Request) {
 		LastUsedAt any    `json:"lastUsedAt"`
 	}
 	out := make([]RowDTO, 0, len(rows))
-	cache := map[primitive.ObjectID]string{}
+	cache := map[bson.ObjectID]string{}
 	for _, rrow := range rows {
 		email := cache[rrow.UserID]
 		if email == "" {
@@ -89,7 +89,7 @@ type revokeBody struct {
 
 func (h *AdminSessionsHandler) RevokeFamily(w http.ResponseWriter, r *http.Request) {
 	uid := chiURLParam(r, "id")
-	_, err := primitive.ObjectIDFromHex(uid)
+	_, err := bson.ObjectIDFromHex(uid)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid user id")
 		return
@@ -116,7 +116,7 @@ func (h *AdminSessionsHandler) RevokeFamily(w http.ResponseWriter, r *http.Reque
 // @Router /v1/admin/users/{id}/sessions/revoke-all [post]
 func (h *AdminSessionsHandler) RevokeAll(w http.ResponseWriter, r *http.Request) {
 	uid := chiURLParam(r, "id")
-	uoid, err := primitive.ObjectIDFromHex(uid)
+	uoid, err := bson.ObjectIDFromHex(uid)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid user id")
 		return

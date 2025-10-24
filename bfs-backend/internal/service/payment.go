@@ -11,7 +11,7 @@ import (
 	"github.com/stripe/stripe-go/v82/checkout/session"
 	"github.com/stripe/stripe-go/v82/customer"
 	"github.com/stripe/stripe-go/v82/paymentintent"
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type CheckoutItem struct {
@@ -44,9 +44,9 @@ type PaymentService interface {
 	MarkOrderPaid(ctx context.Context, clientReferenceID string, contactEmail *string) error
 	PersistPaymentSuccessByOrderID(ctx context.Context, orderIDHex string, paymentIntentID string, chargeID *string, customerID *string, receiptEmail *string) error
 	FindPendingOrderByAttemptID(ctx context.Context, attemptID string) (*domain.Order, error)
-	SetOrderAttemptID(ctx context.Context, orderID primitive.ObjectID, attemptID string) error
+	SetOrderAttemptID(ctx context.Context, orderID bson.ObjectID, attemptID string) error
 	CreatePaymentIntentForExistingPendingOrder(ctx context.Context, ord *domain.Order, userID *string, receiptEmail *string) (*stripe.PaymentIntent, error)
-	CleanupOtherPendingOrdersByAttemptID(ctx context.Context, attemptID string, keepOrderID primitive.ObjectID) (int64, error)
+	CleanupOtherPendingOrdersByAttemptID(ctx context.Context, attemptID string, keepOrderID bson.ObjectID) (int64, error)
 	CleanupPendingOrderByID(ctx context.Context, clientReferenceID string) error
 	CleanupPendingOrderBySessionID(ctx context.Context, sessionID string) error
 }
@@ -143,11 +143,11 @@ type CreateCheckoutInput struct {
 
 // CheckoutPreparation bundles computed order and pricing for Stripe
 type CheckoutPreparation struct {
-	OrderID       primitive.ObjectID
+	OrderID       bson.ObjectID
 	LineItems     []CheckoutItem
 	CustomerEmail *string
 	// If the order is associated to a logged-in user, store their ID for potential Stripe Customer usage
-	UserID *primitive.ObjectID
+	UserID *bson.ObjectID
 }
 
 func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateCheckoutInput, userID *string, attemptID *string) (*CheckoutPreparation, error) {
@@ -156,9 +156,9 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 	}
 
 	// Resolve user
-	var customerOID *primitive.ObjectID
+	var customerOID *bson.ObjectID
 	if userID != nil && *userID != "" {
-		if oid, err := primitive.ObjectIDFromHex(*userID); err == nil {
+		if oid, err := bson.ObjectIDFromHex(*userID); err == nil {
 			customerOID = &oid
 		}
 	}
@@ -172,9 +172,9 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 	// Build CreateOrderDTO for validation and totals
 	dto := &domain.CreateOrderDTO{ContactEmail: in.CustomerEmail}
 	// Track all referenced product IDs (parents + configured children)
-	childIDs := make([]primitive.ObjectID, 0)
+	childIDs := make([]bson.ObjectID, 0)
 	for _, it := range in.Items {
-		pid, err := primitive.ObjectIDFromHex(it.ProductID)
+		pid, err := bson.ObjectIDFromHex(it.ProductID)
 		if err != nil {
 			return nil, fmt.Errorf("invalid productId: %s", it.ProductID)
 		}
@@ -183,7 +183,7 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 			if child == "" {
 				continue
 			}
-			cid, err := primitive.ObjectIDFromHex(child)
+			cid, err := bson.ObjectIDFromHex(child)
 			if err != nil {
 				return nil, fmt.Errorf("invalid configuration productId: %s", child)
 			}
@@ -192,8 +192,8 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 	}
 
 	// Validate and compute totals
-	ids := make([]primitive.ObjectID, 0, len(dto.OrderItems))
-	seen := map[primitive.ObjectID]struct{}{}
+	ids := make([]bson.ObjectID, 0, len(dto.OrderItems))
+	seen := map[bson.ObjectID]struct{}{}
 	for _, it := range dto.OrderItems {
 		if _, ok := seen[it.ProductID]; !ok {
 			ids = append(ids, it.ProductID)
@@ -206,28 +206,28 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 	if err != nil {
 		return nil, fmt.Errorf("load products: %w", err)
 	}
-	pm := map[primitive.ObjectID]*domain.Product{}
+	pm := map[bson.ObjectID]*domain.Product{}
 	for _, p := range products {
 		pm[p.ID] = p
 	}
 
 	var total domain.Cents
 	// Preload menu slots/items for menu-type products
-	menuProdIDs := make([]primitive.ObjectID, 0)
+	menuProdIDs := make([]bson.ObjectID, 0)
 	for _, it := range dto.OrderItems {
 		if p := pm[it.ProductID]; p != nil && p.Type == domain.ProductTypeMenu {
 			menuProdIDs = append(menuProdIDs, p.ID)
 		}
 	}
-	slotsByProduct := map[primitive.ObjectID][]*domain.MenuSlot{}
-	slotByID := map[primitive.ObjectID]*domain.MenuSlot{}
-	allowedBySlot := map[primitive.ObjectID]map[primitive.ObjectID]struct{}{}
+	slotsByProduct := map[bson.ObjectID][]*domain.MenuSlot{}
+	slotByID := map[bson.ObjectID]*domain.MenuSlot{}
+	allowedBySlot := map[bson.ObjectID]map[bson.ObjectID]struct{}{}
 	if len(menuProdIDs) > 0 {
 		slots, err := s.menuSlotRepo.FindByProductIDs(ctx, menuProdIDs)
 		if err != nil {
 			return nil, fmt.Errorf("load menu slots: %w", err)
 		}
-		slotIDs := make([]primitive.ObjectID, 0, len(slots))
+		slotIDs := make([]bson.ObjectID, 0, len(slots))
 		for _, sl := range slots {
 			slotsByProduct[sl.ProductID] = append(slotsByProduct[sl.ProductID], sl)
 			slotByID[sl.ID] = sl
@@ -241,7 +241,7 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 			for _, mi := range mitems {
 				set := allowedBySlot[mi.MenuSlotID]
 				if set == nil {
-					set = map[primitive.ObjectID]struct{}{}
+					set = map[bson.ObjectID]struct{}{}
 				}
 				set[mi.ProductID] = struct{}{}
 				allowedBySlot[mi.MenuSlotID] = set
@@ -288,7 +288,7 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 		p := pm[dto.OrderItems[idx].ProductID]
 		// Create the parent order item first
 		parentOrderItem := &domain.OrderItem{
-			ID:                primitive.NewObjectID(),
+			ID:                bson.NewObjectID(),
 			OrderID:           id,
 			ProductID:         p.ID,
 			Title:             p.Name,
@@ -304,7 +304,7 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 				if childProdIDStr == "" {
 					continue
 				}
-				slotOID, err := primitive.ObjectIDFromHex(slotIDStr)
+				slotOID, err := bson.ObjectIDFromHex(slotIDStr)
 				if err != nil {
 					return nil, fmt.Errorf("invalid menu slot id: %s", slotIDStr)
 				}
@@ -312,7 +312,7 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 				if sl == nil || sl.ProductID != p.ID {
 					return nil, fmt.Errorf("slot does not belong to product: %s", slotIDStr)
 				}
-				childOID, err := primitive.ObjectIDFromHex(childProdIDStr)
+				childOID, err := bson.ObjectIDFromHex(childProdIDStr)
 				if err != nil {
 					return nil, fmt.Errorf("invalid configured product id: %s", childProdIDStr)
 				}
@@ -330,7 +330,7 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 				// Parent ID must be the parent order item (not the previously appended child)
 				parentID := parentOrderItem.ID
 				oitems = append(oitems, &domain.OrderItem{
-					ID:                primitive.NewObjectID(),
+					ID:                bson.NewObjectID(),
 					OrderID:           id,
 					ProductID:         childOID,
 					Title:             title,
@@ -541,7 +541,7 @@ func (s *paymentService) MarkOrderPaid(ctx context.Context, clientReferenceID st
 	if clientReferenceID == "" {
 		return fmt.Errorf("missing client_reference_id")
 	}
-	oid, err := primitive.ObjectIDFromHex(clientReferenceID)
+	oid, err := bson.ObjectIDFromHex(clientReferenceID)
 	if err != nil {
 		return fmt.Errorf("invalid order id in client_reference_id")
 	}
@@ -552,7 +552,7 @@ func (s *paymentService) PersistPaymentSuccessByOrderID(ctx context.Context, ord
 	if orderIDHex == "" {
 		return fmt.Errorf("missing order id")
 	}
-	oid, err := primitive.ObjectIDFromHex(orderIDHex)
+	oid, err := bson.ObjectIDFromHex(orderIDHex)
 	if err != nil {
 		return fmt.Errorf("invalid order id: %w", err)
 	}
@@ -566,7 +566,7 @@ func (s *paymentService) FindPendingOrderByAttemptID(ctx context.Context, attemp
 	return s.orderRepo.FindPendingByAttemptID(ctx, attemptID)
 }
 
-func (s *paymentService) SetOrderAttemptID(ctx context.Context, orderID primitive.ObjectID, attemptID string) error {
+func (s *paymentService) SetOrderAttemptID(ctx context.Context, orderID bson.ObjectID, attemptID string) error {
 	if orderID.IsZero() || attemptID == "" {
 		return nil
 	}
@@ -583,7 +583,7 @@ func (s *paymentService) CreatePaymentIntentForExistingPendingOrder(ctx context.
 	var customerID *string
 	fallbackEmail := receiptEmail
 	if userID != nil && *userID != "" {
-		if oid, err := primitive.ObjectIDFromHex(*userID); err == nil {
+		if oid, err := bson.ObjectIDFromHex(*userID); err == nil {
 			if u, err := s.userRepo.FindByID(ctx, oid); err == nil && u != nil {
 				if u.StripeCustomerID != nil && *u.StripeCustomerID != "" {
 					customerID = u.StripeCustomerID
@@ -627,7 +627,7 @@ func (s *paymentService) CreatePaymentIntentForExistingPendingOrder(ctx context.
 	return pi, nil
 }
 
-func (s *paymentService) CleanupOtherPendingOrdersByAttemptID(ctx context.Context, attemptID string, keepOrderID primitive.ObjectID) (int64, error) {
+func (s *paymentService) CleanupOtherPendingOrdersByAttemptID(ctx context.Context, attemptID string, keepOrderID bson.ObjectID) (int64, error) {
 	if attemptID == "" || keepOrderID.IsZero() {
 		return 0, nil
 	}
@@ -647,7 +647,7 @@ func (s *paymentService) CleanupPendingOrderByID(ctx context.Context, clientRefe
 	if clientReferenceID == "" {
 		return fmt.Errorf("missing order id")
 	}
-	oid, err := primitive.ObjectIDFromHex(clientReferenceID)
+	oid, err := bson.ObjectIDFromHex(clientReferenceID)
 	if err != nil {
 		return fmt.Errorf("invalid order id: %w", err)
 	}
@@ -663,17 +663,17 @@ func (s *paymentService) CleanupPendingOrderByID(ctx context.Context, clientRefe
 	items, _ := s.orderItemRepo.FindByOrderID(ctx, oid)
 	if len(items) > 0 {
 		// Load product types to discriminate menu vs simple
-		pidSet := map[primitive.ObjectID]struct{}{}
+		pidSet := map[bson.ObjectID]struct{}{}
 		for _, it := range items {
 			if !it.ProductID.IsZero() {
 				pidSet[it.ProductID] = struct{}{}
 			}
 		}
-		pids := make([]primitive.ObjectID, 0, len(pidSet))
+		pids := make([]bson.ObjectID, 0, len(pidSet))
 		for id := range pidSet {
 			pids = append(pids, id)
 		}
-		pmap := map[primitive.ObjectID]*domain.Product{}
+		pmap := map[bson.ObjectID]*domain.Product{}
 		if len(pids) > 0 {
 			if prods, err := s.productRepo.GetByIDs(ctx, pids); err == nil {
 				for _, p := range prods {
@@ -717,17 +717,17 @@ func (s *paymentService) CleanupPendingOrderBySessionID(ctx context.Context, ses
 	items, _ := s.orderItemRepo.FindByOrderID(ctx, o.ID)
 	if len(items) > 0 {
 		// load product types
-		pidSet := map[primitive.ObjectID]struct{}{}
+		pidSet := map[bson.ObjectID]struct{}{}
 		for _, it := range items {
 			if !it.ProductID.IsZero() {
 				pidSet[it.ProductID] = struct{}{}
 			}
 		}
-		pids := make([]primitive.ObjectID, 0, len(pidSet))
+		pids := make([]bson.ObjectID, 0, len(pidSet))
 		for id := range pidSet {
 			pids = append(pids, id)
 		}
-		pmap := map[primitive.ObjectID]*domain.Product{}
+		pmap := map[bson.ObjectID]*domain.Product{}
 		if len(pids) > 0 {
 			if prods, err := s.productRepo.GetByIDs(ctx, pids); err == nil {
 				for _, p := range prods {

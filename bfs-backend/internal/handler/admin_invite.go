@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"time"
 
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type AdminInviteHandler struct {
@@ -126,7 +126,7 @@ func (h *AdminInviteHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	hash := utils.HashTokenSHA256(token)
-	inviter, _ := primitive.ObjectIDFromHex(claims.Subject)
+	inviter, _ := bson.ObjectIDFromHex(claims.Subject)
 	inv, err := h.invites.Create(r.Context(), inviter, body.Email, hash, time.Now().UTC().Add(time.Duration(ttl)*time.Second))
 	if err != nil {
 		response.WriteError(w, http.StatusInternalServerError, "create failed")
@@ -153,7 +153,7 @@ func (h *AdminInviteHandler) Create(w http.ResponseWriter, r *http.Request) {
 // @Router /v1/admin/invites/{id}/revoke [post]
 func (h *AdminInviteHandler) Revoke(w http.ResponseWriter, r *http.Request) {
 	id := chiURLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -352,7 +352,7 @@ func (h *AdminInviteHandler) Verify(w http.ResponseWriter, r *http.Request) {
 // @Router /v1/admin/invites/{id}/resend [post]
 func (h *AdminInviteHandler) Resend(w http.ResponseWriter, r *http.Request) {
 	id := chiURLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -391,7 +391,7 @@ func (h *AdminInviteHandler) Resend(w http.ResponseWriter, r *http.Request) {
 // @Router /v1/admin/invites/{id} [delete]
 func (h *AdminInviteHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id := chiURLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return

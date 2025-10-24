@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
@@ -16,9 +15,9 @@ type PosDeviceRepository interface {
 	UpsertPendingByToken(ctx context.Context, name, token string) (*domain.PosDevice, error)
 	FindByToken(ctx context.Context, token string) (*domain.PosDevice, error)
 	ApproveByToken(ctx context.Context, token string) error
-	FindByID(ctx context.Context, id primitive.ObjectID) (*domain.PosDevice, error)
+	FindByID(ctx context.Context, id bson.ObjectID) (*domain.PosDevice, error)
 	List(ctx context.Context) ([]*domain.PosDevice, error)
-	UpdateConfig(ctx context.Context, id primitive.ObjectID, cardCapable *bool, printerMAC *string, printerUUID *string) error
+	UpdateConfig(ctx context.Context, id bson.ObjectID, cardCapable *bool, printerMAC *string, printerUUID *string) error
 }
 
 type posDeviceRepository struct {
@@ -33,17 +32,15 @@ func (r *posDeviceRepository) UpsertPendingByToken(ctx context.Context, name, to
 	now := time.Now().UTC()
 	filter := bson.M{"device_token": token}
 	update := bson.M{"$setOnInsert": bson.M{
-		"_id":          primitive.NewObjectID(),
+		"_id":          bson.NewObjectID(),
 		"name":         name,
 		"device_token": token,
 		"approved":     false,
 		"created_at":   now,
 	}, "$set": bson.M{"updated_at": now}}
-	upsert := true
-	ret := options.After
-	opts := options.FindOneAndUpdateOptions{Upsert: &upsert, ReturnDocument: &ret}
+	opts := options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After)
 	var d domain.PosDevice
-	if err := r.collection.FindOneAndUpdate(ctx, filter, update, &opts).Decode(&d); err != nil {
+	if err := r.collection.FindOneAndUpdate(ctx, filter, update, opts).Decode(&d); err != nil {
 		if err == mongo.ErrNoDocuments {
 			return r.FindByToken(ctx, token)
 		}
@@ -66,7 +63,7 @@ func (r *posDeviceRepository) ApproveByToken(ctx context.Context, token string) 
 	return err
 }
 
-func (r *posDeviceRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*domain.PosDevice, error) {
+func (r *posDeviceRepository) FindByID(ctx context.Context, id bson.ObjectID) (*domain.PosDevice, error) {
 	var d domain.PosDevice
 	if err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&d); err != nil {
 		return nil, err
@@ -94,7 +91,7 @@ func (r *posDeviceRepository) List(ctx context.Context) ([]*domain.PosDevice, er
 	return out, nil
 }
 
-func (r *posDeviceRepository) UpdateConfig(ctx context.Context, id primitive.ObjectID, cardCapable *bool, printerMAC *string, printerUUID *string) error {
+func (r *posDeviceRepository) UpdateConfig(ctx context.Context, id bson.ObjectID, cardCapable *bool, printerMAC *string, printerUUID *string) error {
 	set := bson.M{"updated_at": time.Now().UTC()}
 	if cardCapable != nil {
 		set["card_capable"] = *cardCapable

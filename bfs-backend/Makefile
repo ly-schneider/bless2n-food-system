@@ -7,9 +7,12 @@ BIN := $(CURDIR)/bin
 export PATH := $(BIN):$(PATH)
 
 # Tool versions (pin these)
-GOLANGCI_LINT_VERSION := v2.4.0
+GOLANGCI_LINT_VERSION := v2.5.0
 SWAG_VERSION := v1.16.6
 AIR_VERSION := v1.63.0
+
+# Let callers tweak linter flags in CI/local runs
+GOLANGCI_LINT_ARGS ?= --timeout=3m --max-issues-per-linter=0 --max-same-issues=0
 
 # Load env files (don't error if missing)
 -include .env
@@ -44,13 +47,17 @@ FORCE_FLAG := $(if $(filter 1 true yes on,$(FORCE)),-force,)
 # Stripe
 WEBHOOK_URL ?= http://localhost:$(APP_PORT)/v1/payments/webhook
 
-.PHONY: help tools lint lint-fix swag dev docker-up docker-up-backend docker-down docker-down-backend docker-down-v docker-down-v-backend docker-restart docker-restart-backend clean test db-seed db-reset stripe-listen
+.PHONY: help tools lint lint-fix fmt tidy tidy-check print-tools swag dev docker-up docker-up-backend docker-down docker-down-backend docker-down-v docker-down-v-backend docker-restart docker-restart-backend clean test db-seed db-reset stripe-listen
 
 help:
 	@echo "Available commands:"
 	@echo "  tools                  - Install/update required tools (air, swag, golangci-lint)"
 	@echo "  lint                   - Run linters"
 	@echo "  lint-fix               - Run linters with auto-fix"
+	@echo "  fmt                    - Run go fmt"
+	@echo "  tidy                   - Run go mod tidy"
+	@echo "  tidy-check             - Check go.mod/go.sum are tidy"
+	@echo "  print-tools            - Print installed tool versions"
 	@echo "  swag                   - Create swagger documentation"
 	@echo "  dev                    - Start API server with live-reload (AIR)"
 	@echo "  docker-up              - Start Mongo + Mongo Express"
@@ -88,11 +95,29 @@ $(BIN)/air:
 
 lint: $(BIN)/golangci-lint
 	@echo "Running linters..."
-	@GOWORK=off $(BIN)/golangci-lint run ./...
+	@GOTOOLCHAIN=auto GOWORK=off $(BIN)/golangci-lint run $(GOLANGCI_LINT_ARGS) ./...
 
 lint-fix: $(BIN)/golangci-lint
 	@echo "Running linters with auto-fix..."
-	@GOWORK=off $(BIN)/golangci-lint run --fix ./...
+	@GOTOOLCHAIN=auto GOWORK=off $(BIN)/golangci-lint run --fix $(GOLANGCI_LINT_ARGS) ./...
+
+fmt:
+	@echo "Formatting..."
+	@go fmt ./...
+
+tidy:
+	@echo "Tidying modules..."
+	@GOWORK=off go mod tidy
+
+tidy-check:
+	@echo "Checking go.mod/go.sum are tidy..."
+	@GOWORK=off go mod tidy
+	@git diff --exit-code -- go.mod go.sum || (echo "Run 'make tidy' to update go.mod/go.sum"; exit 1)
+
+print-tools:
+	@echo "golangci-lint: $$($(BIN)/golangci-lint version | head -n1 || echo 'not installed')"
+	@echo "swag:          $$($(BIN)/swag --version 2>/dev/null || echo 'not installed')"
+	@echo "air:           $$($(BIN)/air --version 2>/dev/null || echo 'not installed')"
 
 swag: $(BIN)/swag
 	@echo "Creating swagger documentation..."

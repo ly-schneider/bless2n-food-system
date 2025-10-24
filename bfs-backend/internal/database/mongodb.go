@@ -20,8 +20,9 @@ func NewMongoDB(cfg config.Config) (*MongoDB, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	clientOptions := options.Client().ApplyURI(cfg.Mongo.URI)
-	client, err := mongo.Connect(ctx, clientOptions)
+	opts := options.Client().ApplyURI(cfg.Mongo.URI)
+	client, err := mongo.Connect(opts)
+
 	if err != nil {
 		zap.L().Error("failed to connect to MongoDB", zap.Error(err))
 		return nil, err

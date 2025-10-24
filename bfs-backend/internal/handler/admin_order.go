@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type AdminOrderHandler struct {
@@ -213,7 +213,7 @@ func (h *AdminOrderHandler) PatchStatus(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	id := chiURLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -269,7 +269,7 @@ type AdminOrderDetailsDTO struct {
 // @Router /v1/admin/orders/{id} [get]
 func (h *AdminOrderHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	id := chiURLParam(r, "id")
-	oid, err := primitive.ObjectIDFromHex(id)
+	oid, err := bson.ObjectIDFromHex(id)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
@@ -289,16 +289,16 @@ func (h *AdminOrderHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Enrich items with product images (non-sensitive)
-	pidSet := map[primitive.ObjectID]struct{}{}
+	pidSet := map[bson.ObjectID]struct{}{}
 	for _, it := range items {
 		pidSet[it.ProductID] = struct{}{}
 	}
-	ids := make([]primitive.ObjectID, 0, len(pidSet))
+	ids := make([]bson.ObjectID, 0, len(pidSet))
 	for k := range pidSet {
 		ids = append(ids, k)
 	}
 	products, _ := h.products.GetByIDs(r.Context(), ids)
-	imgByID := map[primitive.ObjectID]*string{}
+	imgByID := map[bson.ObjectID]*string{}
 	for _, p := range products {
 		if p.Image != nil && *p.Image != "" {
 			v := *p.Image

@@ -15,16 +15,15 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
 )
 
 type StationService interface {
 	RequestVerification(ctx context.Context, name, model, os, deviceKey string) (*domain.Station, error)
 	GetStationByKey(ctx context.Context, deviceKey string) (*domain.Station, error)
-	VerifyQR(ctx context.Context, code string) (primitive.ObjectID, error)
-	AssignedItemsForOrder(ctx context.Context, stationID, orderID primitive.ObjectID) ([]*domain.OrderItem, error)
-	RedeemAssigned(ctx context.Context, stationID primitive.ObjectID, orderID primitive.ObjectID, idemKey string) (map[string]any, error)
-	MakePickupQR(ctx context.Context, orderID primitive.ObjectID) (string, error)
+	VerifyQR(ctx context.Context, code string) (bson.ObjectID, error)
+	AssignedItemsForOrder(ctx context.Context, stationID, orderID bson.ObjectID) ([]*domain.OrderItem, error)
+	RedeemAssigned(ctx context.Context, stationID bson.ObjectID, orderID bson.ObjectID, idemKey string) (map[string]any, error)
+	MakePickupQR(ctx context.Context, orderID bson.ObjectID) (string, error)
 }
 
 type stationService struct {
@@ -68,43 +67,43 @@ func (s *stationService) GetStationByKey(ctx context.Context, deviceKey string) 
 
 // VerifyQR parses a QR code string and validates HMAC signature and freshness.
 // Expected minimal format: v=1;orderId=<hex>;issuedAt=<rfc3339>;sig=<base64url>
-func (s *stationService) VerifyQR(ctx context.Context, code string) (primitive.ObjectID, error) { // nolint: revive
+func (s *stationService) VerifyQR(ctx context.Context, code string) (bson.ObjectID, error) { // nolint: revive
 	parts := parseKV(code)
 	if parts["v"] != "1" {
-		return primitive.NilObjectID, errors.New("invalid_qr_version")
+		return bson.NilObjectID, errors.New("invalid_qr_version")
 	}
-	oid, err := primitive.ObjectIDFromHex(parts["orderId"])
+	oid, err := bson.ObjectIDFromHex(parts["orderId"])
 	if err != nil {
-		return primitive.NilObjectID, errors.New("invalid_order_id")
+		return bson.NilObjectID, errors.New("invalid_order_id")
 	}
 	issuedAtStr := parts["issuedAt"]
 	if issuedAtStr == "" {
-		return primitive.NilObjectID, errors.New("invalid_issued_at")
+		return bson.NilObjectID, errors.New("invalid_issued_at")
 	}
 	ia, err := time.Parse(time.RFC3339, issuedAtStr)
 	if err != nil {
-		return primitive.NilObjectID, errors.New("invalid_issued_at")
+		return bson.NilObjectID, errors.New("invalid_issued_at")
 	}
 	maxAge := time.Duration(s.cfg.Stations.QRMaxAgeSeconds) * time.Second
 	if maxAge <= 0 {
 		maxAge = 10 * time.Minute
 	}
 	if time.Since(ia) > maxAge {
-		return primitive.NilObjectID, errors.New("qr_expired")
+		return bson.NilObjectID, errors.New("qr_expired")
 	}
 	// Verify signature
 	sig := parts["sig"]
 	if sig == "" {
-		return primitive.NilObjectID, errors.New("missing_sig")
+		return bson.NilObjectID, errors.New("missing_sig")
 	}
 	payload := fmt.Sprintf("v=%s;orderId=%s;issuedAt=%s", parts["v"], parts["orderId"], issuedAtStr)
 	if !verifyHMAC(payload, sig, s.cfg.Stations.QRSecret) {
-		return primitive.NilObjectID, errors.New("bad_sig")
+		return bson.NilObjectID, errors.New("bad_sig")
 	}
 	return oid, nil
 }
 
-func (s *stationService) AssignedItemsForOrder(ctx context.Context, stationID, orderID primitive.ObjectID) ([]*domain.OrderItem, error) {
+func (s *stationService) AssignedItemsForOrder(ctx context.Context, stationID, orderID bson.ObjectID) ([]*domain.OrderItem, error) {
 	// filter order items to only product IDs assigned to this station
 	pids, err := s.stationProds.ListProductIDsByStation(ctx, stationID)
 	if err != nil {
@@ -118,7 +117,7 @@ func (s *stationService) AssignedItemsForOrder(ctx context.Context, stationID, o
 	return s.orderItems.FindByFilter(ctx, bson.M{"order_id": orderID, "product_id": bson.M{"$in": pids}})
 }
 
-func (s *stationService) RedeemAssigned(ctx context.Context, stationID primitive.ObjectID, orderID primitive.ObjectID, idemKey string) (map[string]any, error) {
+func (s *stationService) RedeemAssigned(ctx context.Context, stationID bson.ObjectID, orderID bson.ObjectID, idemKey string) (map[string]any, error) {
 	scope := fmt.Sprintf("station:%s:order:%s", stationID.Hex(), orderID.Hex())
 	if idemKey != "" {
 		if rec, err := s.idempotency.Get(ctx, scope, idemKey); err == nil && rec != nil {
@@ -160,7 +159,7 @@ func (s *stationService) RedeemAssigned(ctx context.Context, stationID primitive
 
 // MakePickupQR generates a minimal signed QR payload for an orderId
 // Format: v=1;orderId=<hex>;issuedAt=<RFC3339>;sig=<base64url(HMAC256)>
-func (s *stationService) MakePickupQR(ctx context.Context, orderID primitive.ObjectID) (string, error) {
+func (s *stationService) MakePickupQR(ctx context.Context, orderID bson.ObjectID) (string, error) {
 	if orderID.IsZero() {
 		return "", errors.New("invalid_order_id")
 	}

@@ -9,7 +9,7 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type UserHandler struct {
@@ -38,7 +38,7 @@ func (h *UserHandler) GetCurrent(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	oid, err := primitive.ObjectIDFromHex(claims.Subject)
+	oid, err := bson.ObjectIDFromHex(claims.Subject)
 	if err != nil {
 		response.WriteProblem(w, response.NewProblem(http.StatusBadRequest, http.StatusText(http.StatusBadRequest), "Invalid user id"))
 		return
@@ -97,7 +97,7 @@ func (h *UserHandler) RequestEmailChange(w http.ResponseWriter, r *http.Request)
 		response.WriteProblem(w, response.NewProblem(http.StatusBadRequest, http.StatusText(http.StatusBadRequest), "Validation failed"))
 		return
 	}
-	oid, err := primitive.ObjectIDFromHex(claims.Subject)
+	oid, err := bson.ObjectIDFromHex(claims.Subject)
 	if err != nil {
 		response.WriteProblem(w, response.NewProblem(http.StatusBadRequest, http.StatusText(http.StatusBadRequest), "Invalid user id"))
 		return
@@ -154,7 +154,7 @@ func (h *UserHandler) ConfirmEmailChange(w http.ResponseWriter, r *http.Request)
 		response.WriteProblem(w, response.NewProblem(http.StatusBadRequest, http.StatusText(http.StatusBadRequest), "Validation failed"))
 		return
 	}
-	oid, err := primitive.ObjectIDFromHex(claims.Subject)
+	oid, err := bson.ObjectIDFromHex(claims.Subject)
 	if err != nil {
 		response.WriteProblem(w, response.NewProblem(http.StatusBadRequest, http.StatusText(http.StatusBadRequest), "Invalid user id"))
 		return
@@ -190,7 +190,7 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	oid, err := primitive.ObjectIDFromHex(claims.Subject)
+	oid, err := bson.ObjectIDFromHex(claims.Subject)
 	if err != nil {
 		response.WriteProblem(w, response.NewProblem(http.StatusBadRequest, http.StatusText(http.StatusBadRequest), "Invalid user id"))
 		return
@@ -240,7 +240,7 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		response.WriteProblem(w, response.NewProblem(http.StatusBadRequest, http.StatusText(http.StatusBadRequest), "Validation failed"))
 		return
 	}
-	oid, err := primitive.ObjectIDFromHex(claims.Subject)
+	oid, err := bson.ObjectIDFromHex(claims.Subject)
 	if err != nil {
 		response.WriteProblem(w, response.NewProblem(http.StatusBadRequest, http.StatusText(http.StatusBadRequest), "Invalid user id"))
 		return

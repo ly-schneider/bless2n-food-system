@@ -7,18 +7,17 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type EmailChangeTokenRepository interface {
 	Create(ctx context.Context, t *domain.EmailChangeToken) (*domain.EmailChangeToken, error)
-	CreateWithCode(ctx context.Context, userID primitive.ObjectID, newEmail, codeHash string, expiresAt time.Time) (*domain.EmailChangeToken, error)
-	FindActiveByUser(ctx context.Context, userID primitive.ObjectID) ([]domain.EmailChangeToken, error)
-	MarkUsed(ctx context.Context, id primitive.ObjectID, usedAt time.Time) error
-	IncrementAttempts(ctx context.Context, id primitive.ObjectID) (int, error)
-	DeleteByUser(ctx context.Context, userID primitive.ObjectID) error
+	CreateWithCode(ctx context.Context, userID bson.ObjectID, newEmail, codeHash string, expiresAt time.Time) (*domain.EmailChangeToken, error)
+	FindActiveByUser(ctx context.Context, userID bson.ObjectID) ([]domain.EmailChangeToken, error)
+	MarkUsed(ctx context.Context, id bson.ObjectID, usedAt time.Time) error
+	IncrementAttempts(ctx context.Context, id bson.ObjectID) (int, error)
+	DeleteByUser(ctx context.Context, userID bson.ObjectID) error
 }
 
 type emailChangeTokenRepository struct {
@@ -31,7 +30,7 @@ func NewEmailChangeTokenRepository(db *database.MongoDB) EmailChangeTokenReposit
 
 func (r *emailChangeTokenRepository) Create(ctx context.Context, t *domain.EmailChangeToken) (*domain.EmailChangeToken, error) {
 	if t.ID.IsZero() {
-		t.ID = primitive.NewObjectID()
+		t.ID = bson.NewObjectID()
 	}
 	t.CreatedAt = time.Now().UTC()
 	if _, err := r.collection.InsertOne(ctx, t); err != nil {
@@ -40,9 +39,9 @@ func (r *emailChangeTokenRepository) Create(ctx context.Context, t *domain.Email
 	return t, nil
 }
 
-func (r *emailChangeTokenRepository) CreateWithCode(ctx context.Context, userID primitive.ObjectID, newEmail, codeHash string, expiresAt time.Time) (*domain.EmailChangeToken, error) {
+func (r *emailChangeTokenRepository) CreateWithCode(ctx context.Context, userID bson.ObjectID, newEmail, codeHash string, expiresAt time.Time) (*domain.EmailChangeToken, error) {
 	t := &domain.EmailChangeToken{
-		ID:        primitive.NewObjectID(),
+		ID:        bson.NewObjectID(),
 		UserID:    userID,
 		NewEmail:  newEmail,
 		TokenHash: codeHash,
@@ -56,7 +55,7 @@ func (r *emailChangeTokenRepository) CreateWithCode(ctx context.Context, userID 
 	return t, nil
 }
 
-func (r *emailChangeTokenRepository) FindActiveByUser(ctx context.Context, userID primitive.ObjectID) ([]domain.EmailChangeToken, error) {
+func (r *emailChangeTokenRepository) FindActiveByUser(ctx context.Context, userID bson.ObjectID) ([]domain.EmailChangeToken, error) {
 	now := time.Now().UTC()
 	cur, err := r.collection.Find(ctx, bson.M{
 		"user_id":    userID,
@@ -78,12 +77,12 @@ func (r *emailChangeTokenRepository) FindActiveByUser(ctx context.Context, userI
 	return out, nil
 }
 
-func (r *emailChangeTokenRepository) MarkUsed(ctx context.Context, id primitive.ObjectID, usedAt time.Time) error {
+func (r *emailChangeTokenRepository) MarkUsed(ctx context.Context, id bson.ObjectID, usedAt time.Time) error {
 	_, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": bson.M{"used_at": usedAt}})
 	return err
 }
 
-func (r *emailChangeTokenRepository) IncrementAttempts(ctx context.Context, id primitive.ObjectID) (int, error) {
+func (r *emailChangeTokenRepository) IncrementAttempts(ctx context.Context, id bson.ObjectID) (int, error) {
 	res := r.collection.FindOneAndUpdate(ctx, bson.M{"_id": id}, bson.M{"$inc": bson.M{"attempts": 1}}, options.FindOneAndUpdate().SetReturnDocument(options.After))
 	var t domain.EmailChangeToken
 	if err := res.Decode(&t); err != nil {
@@ -92,7 +91,7 @@ func (r *emailChangeTokenRepository) IncrementAttempts(ctx context.Context, id p
 	return t.Attempts, nil
 }
 
-func (r *emailChangeTokenRepository) DeleteByUser(ctx context.Context, userID primitive.ObjectID) error {
+func (r *emailChangeTokenRepository) DeleteByUser(ctx context.Context, userID bson.ObjectID) error {
 	_, err := r.collection.DeleteMany(ctx, bson.M{"user_id": userID})
 	return err
 }

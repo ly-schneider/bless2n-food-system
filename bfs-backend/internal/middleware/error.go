@@ -64,7 +64,7 @@ func (e *ErrorMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 					"Internal Server Error",
 					"An unexpected error occurred while processing your request",
 				)
-				
+
 				if errorCtx, ok := GetErrorContext(r.Context()); ok {
 					problem.Instance = fmt.Sprintf("%s %s", errorCtx.Method, errorCtx.Path)
 				}
@@ -189,9 +189,9 @@ func isBadRequestError(err error) bool {
 }
 
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || (len(s) > len(substr) && 
-		(s[:len(substr)+1] == substr+" " || s[len(s)-len(substr)-1:] == " "+substr || 
-		 indexOf(s, " "+substr+" ") >= 0)))
+	return len(s) >= len(substr) && (s == substr || (len(s) > len(substr) &&
+		(s[:len(substr)+1] == substr+" " || s[len(s)-len(substr)-1:] == " "+substr ||
+			indexOf(s, " "+substr+" ") >= 0)))
 }
 
 func indexOf(s, substr string) int {

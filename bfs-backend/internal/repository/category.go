@@ -8,19 +8,18 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.uber.org/zap"
 )
 
 type CategoryRepository interface {
-	GetByID(ctx context.Context, id primitive.ObjectID) (*domain.Category, error)
-	GetByIDs(ctx context.Context, ids []primitive.ObjectID) ([]*domain.Category, error)
+	GetByID(ctx context.Context, id bson.ObjectID) (*domain.Category, error)
+	GetByIDs(ctx context.Context, ids []bson.ObjectID) ([]*domain.Category, error)
 	List(ctx context.Context, active *bool, q *string, limit, offset int) ([]*domain.Category, int64, error)
-	Insert(ctx context.Context, c *domain.Category) (primitive.ObjectID, error)
-	UpdateFields(ctx context.Context, id primitive.ObjectID, set primitive.M) error
-	DeleteByID(ctx context.Context, id primitive.ObjectID) error
+	Insert(ctx context.Context, c *domain.Category) (bson.ObjectID, error)
+	UpdateFields(ctx context.Context, id bson.ObjectID, set bson.M) error
+	DeleteByID(ctx context.Context, id bson.ObjectID) error
 }
 
 type categoryRepository struct {
@@ -33,9 +32,9 @@ func NewCategoryRepository(db *database.MongoDB) CategoryRepository {
 	}
 }
 
-func (r *categoryRepository) GetByID(ctx context.Context, id primitive.ObjectID) (*domain.Category, error) {
+func (r *categoryRepository) GetByID(ctx context.Context, id bson.ObjectID) (*domain.Category, error) {
 	var raw bson.M
-	err := r.collection.FindOne(ctx, primitive.M{"_id": id}).Decode(&raw)
+	err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&raw)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, nil
@@ -45,8 +44,8 @@ func (r *categoryRepository) GetByID(ctx context.Context, id primitive.ObjectID)
 	return mapRawToCategory(raw), nil
 }
 
-func (r *categoryRepository) GetByIDs(ctx context.Context, ids []primitive.ObjectID) (categories []*domain.Category, err error) {
-	cursor, err := r.collection.Find(ctx, primitive.M{"_id": primitive.M{"$in": ids}})
+func (r *categoryRepository) GetByIDs(ctx context.Context, ids []bson.ObjectID) (categories []*domain.Category, err error) {
+	cursor, err := r.collection.Find(ctx, bson.M{"_id": bson.M{"$in": ids}})
 	if err != nil {
 		return nil, err
 	}
@@ -74,12 +73,12 @@ func (r *categoryRepository) GetByIDs(ctx context.Context, ids []primitive.Objec
 }
 
 func (r *categoryRepository) List(ctx context.Context, active *bool, q *string, limit, offset int) ([]*domain.Category, int64, error) {
-	filter := primitive.M{}
+	filter := bson.M{}
 	if active != nil {
 		filter["is_active"] = *active
 	}
 	if q != nil && *q != "" {
-		filter["name"] = primitive.M{"$regex": *q, "$options": "i"}
+		filter["name"] = bson.M{"$regex": *q, "$options": "i"}
 	}
 	total, err := r.collection.CountDocuments(ctx, filter)
 	if err != nil {
@@ -117,9 +116,9 @@ func (r *categoryRepository) List(ctx context.Context, active *bool, q *string, 
 	return out, total, nil
 }
 
-func (r *categoryRepository) Insert(ctx context.Context, c *domain.Category) (primitive.ObjectID, error) {
+func (r *categoryRepository) Insert(ctx context.Context, c *domain.Category) (bson.ObjectID, error) {
 	if c.ID.IsZero() {
-		c.ID = primitive.NewObjectID()
+		c.ID = bson.NewObjectID()
 	}
 	now := time.Now().UTC()
 	if c.CreatedAt.IsZero() {
@@ -128,31 +127,31 @@ func (r *categoryRepository) Insert(ctx context.Context, c *domain.Category) (pr
 	c.UpdatedAt = now
 	_, err := r.collection.InsertOne(ctx, c)
 	if err != nil {
-		return primitive.NilObjectID, err
+		return bson.NilObjectID, err
 	}
 	return c.ID, nil
 }
 
-func (r *categoryRepository) UpdateFields(ctx context.Context, id primitive.ObjectID, set primitive.M) error {
+func (r *categoryRepository) UpdateFields(ctx context.Context, id bson.ObjectID, set bson.M) error {
 	if set == nil {
 		return nil
 	}
 	if set["updated_at"] == nil {
 		set["updated_at"] = time.Now().UTC()
 	}
-	_, err := r.collection.UpdateByID(ctx, id, primitive.M{"$set": set})
+	_, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": set})
 	return err
 }
 
-func (r *categoryRepository) DeleteByID(ctx context.Context, id primitive.ObjectID) error {
-	_, err := r.collection.DeleteOne(ctx, primitive.M{"_id": id})
+func (r *categoryRepository) DeleteByID(ctx context.Context, id bson.ObjectID) error {
+	_, err := r.collection.DeleteOne(ctx, bson.M{"_id": id})
 	return err
 }
 
 // Tolerant mapper to avoid decode errors on null/typed position
 func mapRawToCategory(m bson.M) *domain.Category {
 	var c domain.Category
-	if v, ok := m["_id"].(primitive.ObjectID); ok {
+	if v, ok := m["_id"].(bson.ObjectID); ok {
 		c.ID = v
 	}
 	if v, ok := m["name"].(string); ok {

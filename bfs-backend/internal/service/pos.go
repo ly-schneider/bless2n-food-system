@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type POSService interface {
@@ -17,9 +17,9 @@ type POSService interface {
 	RequestAccess(ctx context.Context, name, model, os, token string) error
 	GetDeviceByToken(ctx context.Context, token string) (*domain.PosDevice, error)
 	// Orders
-	CreateOrder(ctx context.Context, items []CreateCheckoutInputItem, customerEmail *string) (primitive.ObjectID, error)
-	PayCash(ctx context.Context, orderID primitive.ObjectID, amountReceived domain.Cents) (change domain.Cents, err error)
-	PayCard(ctx context.Context, orderID primitive.ObjectID, processor string, transactionID *string, status string) error
+	CreateOrder(ctx context.Context, items []CreateCheckoutInputItem, customerEmail *string) (bson.ObjectID, error)
+	PayCash(ctx context.Context, orderID bson.ObjectID, amountReceived domain.Cents) (change domain.Cents, err error)
+	PayCard(ctx context.Context, orderID bson.ObjectID, processor string, transactionID *string, status string) error
 }
 
 // Reuse CreateCheckoutInput item subtype
@@ -69,21 +69,21 @@ func (s *posService) GetDeviceByToken(ctx context.Context, token string) (*domai
 	return s.devices.FindByToken(ctx, token)
 }
 
-func (s *posService) CreateOrder(ctx context.Context, items []CreateCheckoutInputItem, customerEmail *string) (primitive.ObjectID, error) {
+func (s *posService) CreateOrder(ctx context.Context, items []CreateCheckoutInputItem, customerEmail *string) (bson.ObjectID, error) {
 	if len(items) == 0 {
-		return primitive.NilObjectID, fmt.Errorf("no items")
+		return bson.NilObjectID, fmt.Errorf("no items")
 	}
 	in := CreateCheckoutInput{Items: items, CustomerEmail: customerEmail}
 	prep, err := s.payments.PrepareAndCreateOrder(ctx, in, nil, nil)
 	if err != nil {
-		return primitive.NilObjectID, err
+		return bson.NilObjectID, err
 	}
 	// Mark origin as POS
 	_ = s.orders.SetOrigin(ctx, prep.OrderID, domain.OrderOriginPOS)
 	return prep.OrderID, nil
 }
 
-func (s *posService) PayCash(ctx context.Context, orderID primitive.ObjectID, amountReceived domain.Cents) (domain.Cents, error) {
+func (s *posService) PayCash(ctx context.Context, orderID bson.ObjectID, amountReceived domain.Cents) (domain.Cents, error) {
 	if orderID.IsZero() {
 		return 0, fmt.Errorf("invalid order id")
 	}
@@ -104,7 +104,7 @@ func (s *posService) PayCash(ctx context.Context, orderID primitive.ObjectID, am
 	return change, nil
 }
 
-func (s *posService) PayCard(ctx context.Context, orderID primitive.ObjectID, processor string, transactionID *string, status string) error {
+func (s *posService) PayCard(ctx context.Context, orderID bson.ObjectID, processor string, transactionID *string, status string) error {
 	if orderID.IsZero() {
 		return fmt.Errorf("invalid order id")
 	}

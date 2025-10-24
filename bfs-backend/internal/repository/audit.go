@@ -6,7 +6,7 @@ import (
 	"context"
 	"time"
 
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
@@ -27,7 +27,7 @@ func (r *auditRepository) Insert(ctx context.Context, log *domain.AuditLog) erro
 		return nil
 	}
 	if log.ID.IsZero() {
-		log.ID = primitive.NewObjectID()
+		log.ID = bson.NewObjectID()
 	}
 	if log.CreatedAt.IsZero() {
 		log.CreatedAt = time.Now().UTC()

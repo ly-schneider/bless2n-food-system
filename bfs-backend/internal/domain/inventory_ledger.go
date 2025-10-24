@@ -3,7 +3,7 @@ package domain
 import (
 	"time"
 
-	"go.mongodb.org/mongo-driver/v2/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 type InventoryReason string
@@ -17,9 +17,9 @@ const (
 )
 
 type InventoryLedger struct {
-	ID        primitive.ObjectID `bson:"_id"`
-	ProductID primitive.ObjectID `bson:"product_id" validate:"required"`
-	Delta     int                `bson:"delta" validate:"required"`
-	Reason    InventoryReason    `bson:"reason" validate:"required,oneof=opening_balance sale refund manual_adjust correction"`
-	CreatedAt time.Time          `bson:"created_at"`
+	ID        bson.ObjectID   `bson:"_id"`
+	ProductID bson.ObjectID   `bson:"product_id" validate:"required"`
+	Delta     int             `bson:"delta" validate:"required"`
+	Reason    InventoryReason `bson:"reason" validate:"required,oneof=opening_balance sale refund manual_adjust correction"`
+	CreatedAt time.Time       `bson:"created_at"`
 }
