@@ -16,8 +16,8 @@ function Menubar({ className, ...props }: React.ComponentProps<typeof MenubarPri
   )
 }
 
-function MenubarMenu({ ...props }: React.ComponentProps<typeof Menubarbson.Menu>) {
-  return <Menubarbson.Menu data-slot="menubar-menu" {...props} />
+function MenubarMenu({ ...props }: React.ComponentProps<typeof MenubarPrimitive.Menu>) {
+  return <MenubarPrimitive.Menu data-slot="menubar-menu" {...props} />
 }
 
 function MenubarGroup({ ...props }: React.ComponentProps<typeof MenubarPrimitive.Group>) {
