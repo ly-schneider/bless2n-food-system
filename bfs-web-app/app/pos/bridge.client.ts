@@ -8,6 +8,12 @@ declare global {
     | {
         print?: (s: string) => void
         payWithCard?: (p: { amountCents: number; currency: string; reference: string }) => void
+        listPrinters?: () => string
+        selectPrinter?: (address?: string | null) => void
+        getSelectedPrinter?: () => string
+        startDiscovery?: () => boolean
+        stopDiscovery?: () => void
+        pair?: (address?: string | null) => boolean
       }
     | undefined
   // window.BFS shape (optional)
