@@ -15,7 +15,7 @@ output "key_vault_uri" {
 
 output "key_vault_secret_ids" {
   description = "Map of Key Vault secret names to their versionless IDs"
-  value = var.enable_key_vault ? {
+  value = var.enable_key_vault && length(azurerm_key_vault_secret.cosmos_connection_string) > 0 ? {
     "mongo-uri" = azurerm_key_vault_secret.cosmos_connection_string[0].versionless_id
   } : {}
 }

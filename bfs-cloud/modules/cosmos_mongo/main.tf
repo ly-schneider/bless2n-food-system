@@ -51,6 +51,9 @@ resource "azurerm_cosmosdb_account" "this" {
   }
 
   tags = var.tags
+
+  # Ensure RBAC role allowing key listing is applied first
+  depends_on = [azurerm_role_assignment.cosmos_key_operator_rg]
 }
 
 resource "azurerm_cosmosdb_mongo_database" "db" {
@@ -121,4 +124,15 @@ resource "azurerm_monitor_diagnostic_setting" "cosmos_diag" {
   enabled_metric {
     category = "Requests"
   }
+}
+
+# Ensure the deploying principal can read/manage Cosmos keys so provider
+# operations (like listKeys) succeed during create/read.
+data "azurerm_client_config" "current" {}
+data "azurerm_resource_group" "rg" { name = var.resource_group_name }
+
+resource "azurerm_role_assignment" "cosmos_key_operator_rg" {
+  scope                = data.azurerm_resource_group.rg.id
+  role_definition_name = "Cosmos DB Key Operator Service Role"
+  principal_id         = data.azurerm_client_config.current.object_id
 }
