@@ -215,7 +215,7 @@ export function CheckoutClient({ returnPath = "/food/checkout/payment/next" }: P
 
   if (!clientSecret) {
     return (
-      <div className="rounded-md border p-4">
+      <div className="rounded-xl border p-4">
         <p className="text-muted-foreground">Zahlung wird vorbereitet…</p>
         {error && <p className="mt-2 text-red-600">{error}</p>}
       </div>

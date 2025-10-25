@@ -31,6 +31,7 @@ export async function resolveCookieNames(): Promise<CookieNames> {
 }
 
 export function clearAuthCookies(cookieStore: CookieStore, names: CookieNames) {
+  // Clear detected cookie names
   cookieStore.set({
     name: names.rtName,
     value: "",
@@ -46,6 +47,27 @@ export function clearAuthCookies(cookieStore: CookieStore, names: CookieNames) {
     path: "/",
     httpOnly: false,
     secure: names.secure,
+    sameSite: "lax",
+    maxAge: -1,
+  })
+  // Also clear opposite variants for resilience
+  const altRt = names.rtName === "__Host-rt" ? "rt" : "__Host-rt"
+  const altCsrf = names.csrfName === "__Host-csrf" ? "csrf" : "__Host-csrf"
+  cookieStore.set({
+    name: altRt,
+    value: "",
+    path: "/",
+    httpOnly: true,
+    secure: altRt.startsWith("__Host-"),
+    sameSite: "lax",
+    maxAge: -1,
+  })
+  cookieStore.set({
+    name: altCsrf,
+    value: "",
+    path: "/",
+    httpOnly: false,
+    secure: altCsrf.startsWith("__Host-"),
     sameSite: "lax",
     maxAge: -1,
   })

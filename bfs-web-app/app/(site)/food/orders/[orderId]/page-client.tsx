@@ -25,6 +25,8 @@ export default function OrderPageClient() {
   const [pickupCode, setPickupCode] = useState<string | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
   const [apiError, setApiError] = useState<string | null>(null)
+  // Ensure we don't render a QR before the pickup-qr request finishes
+  const [qrReady, setQrReady] = useState<boolean>(false)
 
   useEffect(() => {
     if (orderId) addOrder(orderId)
@@ -35,6 +37,7 @@ export default function OrderPageClient() {
     let cancelled = false
     async function load() {
       if (!orderId) return
+      setQrReady(false)
       setLoading(true)
       setApiError(null)
       try {
@@ -51,6 +54,7 @@ export default function OrderPageClient() {
           typeof e === "object" && e && "message" in e ? String((e as { message?: unknown }).message ?? "") : undefined
         if (!cancelled) setApiError(msg || "Fehler beim Laden der Bestellung")
       } finally {
+        if (!cancelled) setQrReady(true)
         if (!cancelled) setLoading(false)
       }
     }
@@ -147,7 +151,11 @@ export default function OrderPageClient() {
 
       {mounted ? (
         orderId ? (
-          <QRCode value={pickupCode ?? orderId ?? ""} size={260} className="mx-auto rounded-[11px] border-2 p-1" />
+          qrReady ? (
+            <QRCode value={pickupCode ?? orderId ?? ""} size={260} className="mx-auto rounded-[11px] border-2 p-1" />
+          ) : (
+            <div className="mx-auto h-[260px] w-[260px] animate-pulse rounded-[11px] border-2 bg-gray-100" />
+          )
         ) : (
           <p className="text-red-600">Bestellnummer fehlt.</p>
         )
