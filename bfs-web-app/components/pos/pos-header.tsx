@@ -129,21 +129,20 @@ export function POSHeader() {
                 <div
                   key={i}
                   aria-hidden
-                  className={
-                    (i < pin.length ? "bg-foreground" : "bg-muted-foreground/30") +
-                    " h-4 w-4 rounded-full"
-                  }
+                  className={(i < pin.length ? "bg-foreground" : "bg-muted-foreground/30") + " h-4 w-4 rounded-full"}
                 />
               ))}
             </div>
-            {error && <div className="text-destructive mt-10 text-sm text-center">{error}</div>}
+            {error && <div className="text-destructive mt-10 text-center text-sm">{error}</div>}
           </div>
           {/* Numeric keypad */}
           <div className="mt-2 grid grid-cols-3 gap-2">
             {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
               <Button key={d} variant="outline" onClick={() => onKeyDigit(d)} className="h-16 text-lg">
                 {/* Hide actual digit label, show generic bullet */}
-                <span aria-hidden className="select-none text-2xl">{d}</span>
+                <span aria-hidden className="text-2xl select-none">
+                  {d}
+                </span>
                 <span className="sr-only">Ziffer</span>
               </Button>
             ))}
@@ -151,7 +150,9 @@ export function POSHeader() {
               C
             </Button>
             <Button variant="outline" onClick={() => onKeyDigit("0")} className="h-16 text-lg">
-              <span aria-hidden className="select-none text-2xl">0</span>
+              <span aria-hidden className="text-2xl select-none">
+                0
+              </span>
               <span className="sr-only">Ziffer</span>
             </Button>
             <Button variant="outline" onClick={onBackspace} className="h-16 text-lg">
