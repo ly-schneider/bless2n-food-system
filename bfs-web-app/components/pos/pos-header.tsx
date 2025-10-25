@@ -124,28 +124,36 @@ export function POSHeader() {
         <h2 className="mb-10 text-center text-5xl font-semibold">Gesperrt</h2>
         <div className="grid gap-10">
           <div>
-            <InputOTP maxLength={4} value={pin} onChange={onOtpChange}>
-              <InputOTPGroup>
-                <InputOTPSlot index={0} className="border-border border-2 bg-transparent" />
-                <InputOTPSlot index={1} className="border-border border-2 bg-transparent" />
-                <InputOTPSlot index={2} className="border-border border-2 bg-transparent" />
-                <InputOTPSlot index={3} className="border-border border-2 bg-transparent" />
-              </InputOTPGroup>
-            </InputOTP>
-            {error && <div className="text-destructive mt-2 text-sm">{error}</div>}
+            {/* Visual masked indicators for 4-digit PIN */}
+            <div className="mt-3 flex items-center justify-center gap-3">
+              {[0, 1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  aria-hidden
+                  className={
+                    (i < pin.length ? "bg-foreground" : "bg-muted-foreground/30") +
+                    " h-4 w-4 rounded-full"
+                  }
+                />
+              ))}
+            </div>
+            {error && <div className="text-destructive mt-10 text-sm text-center">{error}</div>}
           </div>
           {/* Numeric keypad */}
           <div className="mt-2 grid grid-cols-3 gap-2">
             {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((d) => (
               <Button key={d} variant="outline" onClick={() => onKeyDigit(d)} className="h-16 text-lg">
-                {d}
+                {/* Hide actual digit label, show generic bullet */}
+                <span aria-hidden className="select-none text-2xl">{d}</span>
+                <span className="sr-only">Ziffer</span>
               </Button>
             ))}
             <Button variant="outline" onClick={onClear} className="h-16 text-lg">
               C
             </Button>
             <Button variant="outline" onClick={() => onKeyDigit("0")} className="h-16 text-lg">
-              0
+              <span aria-hidden className="select-none text-2xl">0</span>
+              <span className="sr-only">Ziffer</span>
             </Button>
             <Button variant="outline" onClick={onBackspace} className="h-16 text-lg">
               <Delete className="size-4" />
