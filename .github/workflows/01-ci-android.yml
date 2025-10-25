@@ -5,7 +5,7 @@ on:
     branches: [staging, production]
     paths: ['bfs-android-app/**', '.github/workflows/01-ci-android.yml']
   push:
-    branches: ['**']
+    branches: [staging, production]
     paths: ['bfs-android-app/**', '.github/workflows/01-ci-android.yml']
 
 permissions:

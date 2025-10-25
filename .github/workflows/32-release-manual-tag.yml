@@ -10,12 +10,12 @@ on:
       environment:
         description: "Environment to use for downstream jobs (for env-scoped secrets)"
         required: false
-        default: "staging"
+        default: "production"
         type: string
       target:
         description: "Target branch or SHA to tag"
         required: false
-        default: "main"
+        default: "production"
         type: string
       prerelease:
         description: "Mark GitHub release as prerelease"

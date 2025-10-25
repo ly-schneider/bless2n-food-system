@@ -2,7 +2,7 @@ name: Release Please (android-app)
 
 on:
   pull_request:
-    branches: [staging]
+    branches: [production]
     types: [closed]
 
 permissions:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   release-please:
-    # Only create a release when the release-please PR is merged into staging
+    # Only create a release when the release-please PR is merged into production
     if: >-
       ${{ github.event.pull_request.merged == true &&
           (github.event.pull_request.user.login == 'release-please[bot]' ||

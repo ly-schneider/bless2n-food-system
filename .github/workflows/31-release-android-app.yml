@@ -14,7 +14,7 @@ on:
       environment:
         description: "Environment name to read secrets from"
         required: false
-        default: "staging"
+        default: "production"
         type: string
 
 permissions:
@@ -26,7 +26,7 @@ concurrency:
 
 jobs:
   build-release:
-    environment: ${{ inputs.environment || 'staging' }}
+    environment: ${{ inputs.environment || 'production' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -40,7 +40,7 @@ jobs:
       BFS_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}
       ORG_GRADLE_PROJECT_sumupAffiliateKey: ${{ secrets.SUMUP_AFFILIATE_KEY }}
       ORG_GRADLE_PROJECT_posUrl: ${{ secrets.POS_URL }}
-      ORG_GRADLE_PROJECT_bfsEnv: ${{ inputs.environment || vars.BFS_ENV || 'staging' }}
+      ORG_GRADLE_PROJECT_bfsEnv: ${{ inputs.environment || vars.BFS_ENV || 'production' }}
 
     steps:
       - uses: actions/checkout@v5
@@ -112,7 +112,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ENV_NAME="${{ inputs.environment || vars.BFS_ENV || 'staging' }}"
+          ENV_NAME="${{ inputs.environment || vars.BFS_ENV || 'production' }}"
           APK_DIR="app/build/outputs/apk/release"
           APK_SRC=$(ls -1 "$APK_DIR"/*.apk | head -n 1)
           APK_DST="$APK_DIR/bfs-android-app-release-${ENV_NAME}.apk"
@@ -126,7 +126,7 @@ jobs:
           name: android-release-outputs
           path: |
             bfs-android-app/app/build/outputs/apk/release/*.apk
-            bfs-android-app/app/build/outputs/apk/release/bfs-android-app-release-${{ inputs.environment || vars.BFS_ENV || 'staging' }}.apk
+            bfs-android-app/app/build/outputs/apk/release/bfs-android-app-release-${{ inputs.environment || vars.BFS_ENV || 'production' }}.apk
             bfs-android-app/app/build/outputs/mapping/release/mapping.txt
           if-no-files-found: warn
 
@@ -136,5 +136,5 @@ jobs:
           tag_name: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag_name || github.ref_name }}
           generate_release_notes: false
           files: |
-            bfs-android-app/app/build/outputs/apk/release/bfs-android-app-release-${{ inputs.environment || vars.BFS_ENV || 'staging' }}.apk
+            bfs-android-app/app/build/outputs/apk/release/bfs-android-app-release-${{ inputs.environment || vars.BFS_ENV || 'production' }}.apk
             bfs-android-app/app/build/outputs/mapping/release/mapping.txt
