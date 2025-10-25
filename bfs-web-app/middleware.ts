@@ -30,9 +30,8 @@ export async function middleware(request: NextRequest) {
   const protectedPrefixes = ["/profile", "/admin"]
   const isProtected = protectedPrefixes.some((p) => pathname.startsWith(p))
   if (isProtected) {
-    const proto = (request.headers.get("x-forwarded-proto") || "").toLowerCase()
-    const rtName = proto === "https" ? "__Host-rt" : "rt"
-    const hasRefresh = request.cookies.get(rtName)?.value
+    // Resilient to occasional proto/header inconsistencies by checking both cookie names
+    const hasRefresh = request.cookies.get("__Host-rt")?.value || request.cookies.get("rt")?.value
     if (!hasRefresh) {
       const url = request.nextUrl.clone()
       url.pathname = "/login"

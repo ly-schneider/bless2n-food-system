@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"time"
@@ -83,6 +84,11 @@ func (j *jwtService) GenerateAccessToken(user *domain.User) (string, error) {
 	}
 
 	tok := jwt.NewWithClaims(jwt.SigningMethodEdDSA, claims)
+	// Include a deterministic kid for future multi-key rotations.
+	if j.publicKey != nil {
+		kid := base64.RawURLEncoding.EncodeToString(j.publicKey[:8])
+		tok.Header["kid"] = kid
+	}
 	return tok.SignedString(j.privateKey)
 }
 
@@ -101,10 +107,12 @@ func (j *jwtService) GenerateRefreshToken() (string, error) {
 }
 
 func (j *jwtService) ValidateAccessToken(tokenString string) (*TokenClaims, error) {
+	// Add small leeway to tolerate minor clock skew across replicas/clients.
 	parser := jwt.NewParser(
 		jwt.WithValidMethods([]string{jwt.SigningMethodEdDSA.Alg()}),
 		jwt.WithIssuer(j.issuer),
 		jwt.WithAudience(j.audience),
+		jwt.WithLeeway(5*time.Second),
 	)
 
 	var claims TokenClaims

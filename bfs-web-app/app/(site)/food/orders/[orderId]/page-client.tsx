@@ -25,6 +25,8 @@ export default function OrderPageClient() {
   const [pickupCode, setPickupCode] = useState<string | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
   const [apiError, setApiError] = useState<string | null>(null)
+  // Ensure we don't render a QR before the pickup-qr request finishes
+  const [qrReady, setQrReady] = useState<boolean>(false)
 
   useEffect(() => {
     if (orderId) addOrder(orderId)
@@ -35,6 +37,7 @@ export default function OrderPageClient() {
     let cancelled = false
     async function load() {
       if (!orderId) return
+      setQrReady(false)
       setLoading(true)
       setApiError(null)
       try {
@@ -51,6 +54,7 @@ export default function OrderPageClient() {
           typeof e === "object" && e && "message" in e ? String((e as { message?: unknown }).message ?? "") : undefined
         if (!cancelled) setApiError(msg || "Fehler beim Laden der Bestellung")
       } finally {
+        if (!cancelled) setQrReady(true)
         if (!cancelled) setLoading(false)
       }
     }
@@ -133,6 +137,19 @@ export default function OrderPageClient() {
     return roots.map((root) => ({ parent: root, children: childrenByRoot[root.id] || [] }))
   }, [serverOrder])
 
+  const qrDisplay = (() => {
+    if (!mounted) {
+      return <div className="mx-auto h-[260px] w-[260px] animate-pulse rounded-[11px] border-2 bg-gray-100" />
+    }
+    if (!orderId) {
+      return <p className="text-red-600">Bestellnummer fehlt.</p>
+    }
+    if (qrReady) {
+      return <QRCode value={pickupCode ?? orderId ?? ""} size={260} className="mx-auto rounded-[11px] border-2 p-1" />
+    }
+    return <div className="mx-auto h-[260px] w-[260px] animate-pulse rounded-[11px] border-2 bg-gray-100" />
+  })()
+
   return (
     <div className="flex flex-col p-4" style={{ paddingBottom: footerHeight ? footerHeight + 16 : 16 }}>
       <h1 className="mb-2 text-2xl font-semibold">Dein Abhol-QR-Code</h1>
@@ -144,16 +161,7 @@ export default function OrderPageClient() {
           Du kannst diesen QR-Code jederzeit in deinen Bestellungen finden.
         </p>
       )}
-
-      {mounted ? (
-        orderId ? (
-          <QRCode value={pickupCode ?? orderId ?? ""} size={260} className="mx-auto rounded-[11px] border-2 p-1" />
-        ) : (
-          <p className="text-red-600">Bestellnummer fehlt.</p>
-        )
-      ) : (
-        <div className="mx-auto h-[260px] w-[260px] animate-pulse rounded-[11px] border-2 bg-gray-100" />
-      )}
+      {qrDisplay}
 
       {/* Order items summary */}
       {mounted && serverOrder && groupedItems.length > 0 ? (
