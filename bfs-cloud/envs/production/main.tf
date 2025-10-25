@@ -17,13 +17,13 @@ module "bfs_infrastructure" {
   alert_emails = var.alert_emails
 
   config = {
-    rg_name                  = "bfs-production-rg"
-    vnet_name                = "bfs-production-vnet"
-    subnet_name              = "container-apps-subnet"
-    vnet_cidr                = "10.1.0.0/16"
-    subnet_cidr              = "10.1.0.0/21"
-    wp_subnet_name           = "aca-workload-subnet"
-    wp_subnet_cidr           = "10.1.9.0/24"
+    rg_name     = "bfs-production-rg"
+    vnet_name   = "bfs-production-vnet"
+    subnet_name = "container-apps-subnet"
+    vnet_cidr   = "10.1.0.0/16"
+    subnet_cidr = "10.1.0.0/21"
+    # For Container Apps with Workload Profiles, the subnet must be non-delegated
+    delegate_aca_subnet      = false
     pe_subnet_name           = "private-endpoints-subnet"
     pe_subnet_cidr           = "10.1.8.0/24"
     env_name                 = "bfs-production-env"
