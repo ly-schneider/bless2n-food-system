@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { Button } from "@/components/ui/button"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
+import { PrinterSelector } from "@/components/pos/printer-selector"
 
 export function POSHeader() {
   const PIN = process.env.NEXT_PUBLIC_POS_PIN || "0000"
@@ -166,6 +167,7 @@ export function POSHeader() {
             <span className="text-sm font-semibold">BlessThun</span>
           </div>
           <div className="flex items-center gap-1.5">
+            <PrinterSelector />
             <Button
               variant="outline"
               size="sm"

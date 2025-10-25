@@ -1,0 +1,28 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Assemble Dev (env)" type="GradleRunConfiguration" factoryName="Gradle">
+    <ExternalSystemSettings>
+      <option name="executionName" />
+      <option name="externalProjectPath" value="$PROJECT_DIR$" />
+      <option name="externalSystemIdString" value="GRADLE" />
+      <option name="scriptParameters" />
+      <option name="taskDescriptions">
+        <list />
+      </option>
+      <option name="taskNames">
+        <list>
+          <option value=":app:assembleDev" />
+        </list>
+      </option>
+      <option name="vmOptions" />
+      <option name="env">
+        <map>
+          <entry key="SUMUP_AFFILIATE_KEY" value="REPLACE_WITH_YOUR_SUMUP_AFFILIATE_KEY" />
+          <entry key="POS_URL" value="http://127.0.0.1:3000/pos" />
+        </map>
+      </option>
+    </ExternalSystemSettings>
+    <GradleScriptDebugEnabled>false</GradleScriptDebugEnabled>
+    <method v="2" />
+  </configuration>
+  
+</component>

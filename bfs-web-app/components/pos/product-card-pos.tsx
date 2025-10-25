@@ -29,8 +29,25 @@ export function ProductCardPOS({ product, onConfigure }: { product: ProductDTO; 
     else addToCart(product)
   }
 
+  const onCardKeyDown: React.KeyboardEventHandler<HTMLDivElement> = (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault()
+      handleAdd()
+    }
+  }
+
   return (
-    <Card className="gap-0 overflow-hidden rounded-[11px] p-0 transition-shadow hover:shadow-lg">
+    <Card
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      aria-disabled={disabled}
+      onClick={handleAdd}
+      onKeyDown={onCardKeyDown}
+      className={
+        "gap-0 overflow-hidden rounded-[11px] p-0 transition-shadow hover:shadow-lg " +
+        (disabled ? "" : "cursor-pointer")
+      }
+    >
       <CardHeader className="p-2">
         <div className="relative aspect-video rounded-[11px] rounded-t-lg bg-[#cec9c6]">
           {product.image ? (
@@ -73,7 +90,10 @@ export function ProductCardPOS({ product, onConfigure }: { product: ProductDTO; 
           <div className="flex items-center">
             <Button
               size="icon"
-              onClick={handleAdd}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleAdd()
+              }}
               aria-label={`Produkt ${product.name} hinzufügen`}
               className="bg-foreground hover:bg-foreground/90 rounded-[10px] text-white"
             >

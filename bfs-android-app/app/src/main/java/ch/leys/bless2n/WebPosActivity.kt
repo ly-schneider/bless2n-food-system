@@ -3,6 +3,8 @@ package ch.leys.bless2n
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -20,6 +22,7 @@ import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
 import android.webkit.CookieManager
 import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothDevice
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -35,6 +38,10 @@ import org.json.JSONObject
 import android.widget.Toast
 import android.util.Log
 import java.util.UUID
+import org.json.JSONArray
+
+import android.bluetooth.BluetoothAdapter
+import android.content.Context
 
 class WebPosActivity : ComponentActivity() {
 
@@ -49,6 +56,76 @@ class WebPosActivity : ComponentActivity() {
     private val txByCorrelation: MutableMap<String, JSONObject> = mutableMapOf()
     // Last successful transaction (fallback when correlationId is not provided)
     private var lastTx: JSONObject? = null
+
+    // Simple prefs for storing selected printer
+    private val prefs by lazy { getSharedPreferences("pos_prefs", Context.MODE_PRIVATE) }
+    private fun saveSelectedPrinter(mac: String?) {
+        prefs.edit().putString("printer_mac", mac).apply()
+    }
+    private fun loadSelectedPrinter(): String? = prefs.getString("printer_mac", null)
+
+    // Bluetooth discovery receiver lifecycle
+    private var btReceiver: BroadcastReceiver? = null
+    private var discoveryActive: Boolean = false
+    private fun registerBtReceiver() {
+        if (btReceiver != null) return
+        btReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                when (intent?.action) {
+                    BluetoothDevice.ACTION_FOUND -> {
+                        try {
+                            val dev: BluetoothDevice? = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                            if (dev != null) {
+                                val name = try { dev.name ?: "Bluetooth Device" } catch (_: SecurityException) { "Bluetooth Device" } catch (_: Throwable) { "Bluetooth Device" }
+                                val addr = try { dev.address ?: "" } catch (_: SecurityException) { "" } catch (_: Throwable) { "" }
+                                val bonded = try { dev.bondState == BluetoothDevice.BOND_BONDED } catch (_: Throwable) { false }
+                                val proto = if (name.contains("T02", true) || name.contains("Phomemo", true)) "phomemo" else "escpos"
+                                if (addr.isNotBlank()) {
+                                    sendEvent(
+                                        "bfs:printer:found",
+                                        JSONObject().put("name", name).put("address", addr).put("bonded", bonded).put("protocol", proto)
+                                    )
+                                }
+                            }
+                        } catch (_: Throwable) {}
+                    }
+                    BluetoothDevice.ACTION_BOND_STATE_CHANGED -> {
+                        val dev: BluetoothDevice? = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+                        if (dev != null) {
+                            val addr = try { dev.address ?: "" } catch (_: Throwable) { "" }
+                            val state = when (dev.bondState) {
+                                BluetoothDevice.BOND_BONDING -> "bonding"
+                                BluetoothDevice.BOND_BONDED -> "bonded"
+                                else -> "none"
+                            }
+                            if (addr.isNotBlank()) {
+                                sendEvent(
+                                    "bfs:printer:bond:state",
+                                    JSONObject().put("address", addr).put("state", state)
+                                )
+                            }
+                        }
+                    }
+                    BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
+                        discoveryActive = false
+                        sendEvent("bfs:printer:discovery:finished", JSONObject())
+                    }
+                }
+            }
+        }
+        val f = IntentFilter().apply {
+            addAction(BluetoothDevice.ACTION_FOUND)
+            addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
+            addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
+        }
+        try { registerReceiver(btReceiver, f) } catch (_: Throwable) {}
+    }
+
+    private fun unregisterBtReceiver() {
+        val r = btReceiver ?: return
+        btReceiver = null
+        try { unregisterReceiver(r) } catch (_: Throwable) {}
+    }
 
     data class PendingPayment(
         val amountCents: Long,
@@ -66,6 +143,18 @@ class WebPosActivity : ComponentActivity() {
         webView.addJavascriptInterface(PosBridge(), "PosBridge")
 
         webView.loadUrl(BuildConfig.POS_URL)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        try {
+            val mgr = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
+            val adapter = mgr.adapter
+            if (adapter != null && adapter.isDiscovering) {
+                try { adapter.cancelDiscovery() } catch (_: Throwable) {}
+            }
+        } catch (_: Throwable) {}
+        unregisterBtReceiver()
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -183,6 +272,8 @@ class WebPosActivity : ComponentActivity() {
                     // ESC/POS (and Phomemo fallback) path
                     // Try to augment receipt content with SumUp tx details if available
                     val rawContent = obj.optString("content", payload)
+                    // Optional explicit printer selection in payload
+                    val explicitPrinterAddr = obj.optString("printerAddress", obj.optString("printer", "")).ifBlank { null }
                     val augmentedContent = try {
                         val rc = JSONObject(rawContent)
                         val method = rc.optString("method", "").lowercase()
@@ -204,7 +295,7 @@ class WebPosActivity : ComponentActivity() {
                     } catch (_: Throwable) {
                         rawContent
                     }
-                    val ok = printWithEscPos(augmentedContent)
+                    val ok = printWithEscPos(augmentedContent, explicitPrinterAddr)
                     sendEvent(
                         "bfs:print:result",
                         JSONObject().put("success", ok).put("correlationId", correlationId)
@@ -215,6 +306,119 @@ class WebPosActivity : ComponentActivity() {
                     "bfs:print:result",
                     JSONObject().put("success", false).put("error", e.message ?: "print failed").put("correlationId", correlationId)
                 )
+            }
+        }
+
+        // Return a JSON array string of paired Bluetooth printers the app can see
+        // [{ name, address, protocol }]
+        @JavascriptInterface
+        fun listPrinters(): String {
+            if (!ensureBtPermissions()) return "[]"
+            val arr = JSONArray()
+            try {
+                // Prefer DantSu helper to enumerate known printer connections
+                val dsuList = try {
+                    com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections().list
+                } catch (_: Throwable) { null }
+                if (dsuList != null && dsuList.isNotEmpty()) {
+                    for (conn in dsuList) {
+                        try {
+                            val dev = try { conn.device } catch (_: Throwable) { null }
+                            val name = try { dev?.name ?: "Bluetooth Printer" } catch (_: Throwable) { "Bluetooth Printer" }
+                            val addr = try { dev?.address ?: "" } catch (_: Throwable) { "" }
+                            val proto = if (name.contains("T02", true) || name.contains("Phomemo", true)) "phomemo" else "escpos"
+                            if (addr.isNotBlank()) {
+                                arr.put(
+                                    JSONObject().put("name", name).put("address", addr).put("protocol", proto)
+                                )
+                            }
+                        } catch (_: Throwable) { /* ignore entry */ }
+                    }
+                } else {
+                    // Fallback: list bonded devices from adapter
+                    val mgr = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
+                    val adapter = mgr.adapter
+                    val bonded = try { adapter?.bondedDevices } catch (_: SecurityException) { null }
+                    bonded?.forEach { dev ->
+                        try {
+                            val name = try { dev.name } catch (_: Throwable) { "Bluetooth Device" }
+                            val addr = try { dev.address } catch (_: Throwable) { "" }
+                            if (addr.isNotBlank()) {
+                                val proto = if (name.contains("T02", true) || name.contains("Phomemo", true)) "phomemo" else "escpos"
+                                arr.put(JSONObject().put("name", name).put("address", addr).put("protocol", proto))
+                            }
+                        } catch (_: Throwable) { }
+                    }
+                }
+            } catch (_: Throwable) { }
+            return arr.toString()
+        }
+
+        // Persist selected printer MAC address (null or empty clears selection)
+        @JavascriptInterface
+        fun selectPrinter(address: String?) {
+            val mac = address?.trim().orEmpty()
+            if (mac.isBlank()) saveSelectedPrinter(null) else saveSelectedPrinter(mac)
+        }
+
+        // Return current selected printer MAC (or empty)
+        @JavascriptInterface
+        fun getSelectedPrinter(): String {
+            return loadSelectedPrinter() ?: ""
+        }
+
+        // Start Bluetooth discovery; emits bfs:printer:found events and bfs:printer:discovery:finished
+        @JavascriptInterface
+        fun startDiscovery(): Boolean {
+            if (!ensureBtPermissions()) return false
+            val mgr = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
+            val adapter = mgr.adapter
+            if (adapter == null || !adapter.isEnabled) return false
+            if (!hasBtScanPermission()) return false
+            try {
+                if (adapter.isDiscovering) {
+                    try { adapter.cancelDiscovery() } catch (_: Throwable) {}
+                }
+                registerBtReceiver()
+                discoveryActive = adapter.startDiscovery()
+                return discoveryActive
+            } catch (_: SecurityException) {
+                return false
+            } catch (_: Throwable) {
+                return false
+            }
+        }
+
+        // Stop Bluetooth discovery
+        @JavascriptInterface
+        fun stopDiscovery() {
+            try {
+                val mgr = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
+                val adapter = mgr.adapter
+                if (adapter != null && adapter.isDiscovering) {
+                    try { adapter.cancelDiscovery() } catch (_: Throwable) {}
+                }
+            } catch (_: Throwable) {}
+            discoveryActive = false
+        }
+
+        // Attempt to pair (bond) with a device by MAC address
+        @JavascriptInterface
+        fun pair(address: String?): Boolean {
+            if (!ensureBtPermissions()) return false
+            val mac = address?.trim().orEmpty()
+            if (mac.isBlank()) return false
+            return try {
+                val mgr = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
+                val adapter = mgr.adapter
+                if (adapter == null || !adapter.isEnabled) return false
+                if (!hasBtConnectPermission()) return false
+                val dev = try { adapter.getRemoteDevice(mac) } catch (_: SecurityException) { return false }
+                // Kick off bond; user may see a pairing dialog
+                try { dev.createBond() } catch (_: SecurityException) { return false }
+                true
+            } catch (_: Throwable) {
+                false
             }
         }
     }
@@ -393,11 +597,23 @@ class WebPosActivity : ComponentActivity() {
     }
 
     // Minimal ESC/POS text printing using DantSu library; returns success
-    private fun printWithEscPos(content: String): Boolean {
+    private fun printWithEscPos(content: String, preferredAddress: String? = null): Boolean {
         if (!ensureBtPermissions()) return false
         return try {
-            val connection = com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections.selectFirstPaired()
-            if (connection == null) throw Exception("no_paired_printer")
+            val connection = run {
+                val addr = preferredAddress ?: loadSelectedPrinter()
+                if (!addr.isNullOrBlank()) {
+                    val mgr = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
+                    val adapter = mgr.adapter
+                    if (adapter == null || !adapter.isEnabled) throw Exception("bt_disabled")
+                    if (!hasBtConnectPermission()) throw Exception("missing_bt_permission")
+                    val dev = try { adapter.getRemoteDevice(addr) } catch (_: SecurityException) { throw Exception("bt_connect_permission_denied") }
+                    com.dantsu.escposprinter.connection.bluetooth.BluetoothConnection(dev)
+                } else {
+                    com.dantsu.escposprinter.connection.bluetooth.BluetoothPrintersConnections.selectFirstPaired()
+                        ?: throw Exception("no_paired_printer")
+                }
+            }
             // If the paired device looks like a Phomemo T02 (non-ESC/POS), use raw raster path
             val devName = if (hasBtConnectPermission()) {
                 try { connection.device?.name } catch (_: SecurityException) { null } catch (_: Throwable) { null }

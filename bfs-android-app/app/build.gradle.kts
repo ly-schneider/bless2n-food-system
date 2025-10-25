@@ -105,6 +105,9 @@ android {
             val posUrlRelease = posUrl ?: "https://example.com/pos"
             buildConfigField("String", "POS_URL", "\"$posUrlRelease\"")
             buildConfigField("boolean", "DEV_BUILD", "false")
+
+            // App name for Play/production builds
+            resValue("string", "app_name", "BlessThun Food")
         }
 
         create("dev") {
@@ -119,6 +122,27 @@ android {
                 ?: "http://127.0.0.1:3000/pos"
             buildConfigField("String", "POS_URL", "\"$posUrl\"")
             buildConfigField("boolean", "DEV_BUILD", "true")
+
+            // App name for developer builds
+            resValue("string", "app_name", "BlessThun Food (Dev)")
+        }
+
+        // Optional staging buildType for pre-prod testing
+        create("staging") {
+            initWith(getByName("release"))
+            // Use debug signing by default for convenience; switch if needed
+            signingConfig = signingConfigs.getByName("debug")
+            applicationIdSuffix = ".staging"
+            versionNameSuffix = "-staging"
+
+            val posUrl = (project.findProperty("posUrl") as String?)
+                ?: System.getenv("POS_URL")
+                ?: "http://127.0.0.1:3000/pos"
+            buildConfigField("String", "POS_URL", "\"$posUrl\"")
+            buildConfigField("boolean", "DEV_BUILD", "false")
+
+            // App name for staging builds
+            resValue("string", "app_name", "BlessThun Food (Staging)")
         }
     }
     compileOptions {
