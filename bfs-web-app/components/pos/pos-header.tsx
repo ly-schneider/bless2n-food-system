@@ -3,9 +3,9 @@ import { Delete, Lock, RefreshCw } from "lucide-react"
 import Image from "next/image"
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
+import { PrinterSelector } from "@/components/pos/printer-selector"
 import { Button } from "@/components/ui/button"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
-import { PrinterSelector } from "@/components/pos/printer-selector"
 
 export function POSHeader() {
   const PIN = process.env.NEXT_PUBLIC_POS_PIN || "0000"

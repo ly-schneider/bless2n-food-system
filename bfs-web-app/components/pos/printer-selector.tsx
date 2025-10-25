@@ -1,6 +1,6 @@
 "use client"
 
-import { Bluetooth, BluetoothSearching, Check, Loader2, RefreshCw, WifiOff } from "lucide-react"
+import { Bluetooth, BluetoothSearching, Check, RefreshCw, WifiOff } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -22,13 +22,14 @@ export function PrinterSelector() {
   const [paired, setPaired] = useState<Record<string, Printer>>({})
   const [found, setFound] = useState<Record<string, Printer>>({})
   const [scanning, setScanning] = useState(false)
-  const [busy, setBusy] = useState(false)
+  const [busy] = useState(false)
   const [hasBridge, setHasBridge] = useState(false)
   const listenersBound = useRef(false)
 
   function bridge(): Bridge | undefined {
     try {
-      return (globalThis as any)?.PosBridge as Bridge
+      const g = globalThis as unknown as { PosBridge?: Bridge }
+      return g?.PosBridge
     } catch {
       return undefined
     }
@@ -182,17 +183,17 @@ export function PrinterSelector() {
             </div>
 
             <div className="grid gap-2">
-              <div className="text-xs font-semibold uppercase text-muted-foreground">Gekoppelt</div>
-              {pairedList.length === 0 && <div className="text-sm text-muted-foreground">Keine</div>}
+              <div className="text-muted-foreground text-xs font-semibold uppercase">Gekoppelt</div>
+              {pairedList.length === 0 && <div className="text-muted-foreground text-sm">Keine</div>}
               {pairedList.map((p) => (
                 <div key={p.address} className="flex items-center justify-between rounded-md border p-2">
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium">{p.name || p.address}</div>
-                    <div className="truncate text-xs text-muted-foreground">{p.address}</div>
+                    <div className="text-muted-foreground truncate text-xs">{p.address}</div>
                   </div>
                   <div className="flex items-center gap-2">
                     {selected === p.address ? (
-                      <span className="text-emerald-600 inline-flex items-center text-xs">
+                      <span className="inline-flex items-center text-xs text-emerald-600">
                         <Check className="mr-1 size-4" /> Ausgewählt
                       </span>
                     ) : (
@@ -206,18 +207,18 @@ export function PrinterSelector() {
             </div>
 
             <div className="grid gap-2">
-              <div className="text-xs font-semibold uppercase text-muted-foreground">Gefunden</div>
-              {foundList.length === 0 && <div className="text-sm text-muted-foreground">Noch keine</div>}
+              <div className="text-muted-foreground text-xs font-semibold uppercase">Gefunden</div>
+              {foundList.length === 0 && <div className="text-muted-foreground text-sm">Noch keine</div>}
               {foundList.map((p) => (
                 <div key={p.address} className="flex items-center justify-between rounded-md border p-2">
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium">{p.name || p.address}</div>
-                    <div className="truncate text-xs text-muted-foreground">{p.address}</div>
+                    <div className="text-muted-foreground truncate text-xs">{p.address}</div>
                   </div>
                   <div className="flex items-center gap-2">
                     {p.bonded ? (
                       selected === p.address ? (
-                        <span className="text-emerald-600 inline-flex items-center text-xs">
+                        <span className="inline-flex items-center text-xs text-emerald-600">
                           <Check className="mr-1 size-4" /> Ausgewählt
                         </span>
                       ) : (
@@ -245,4 +246,3 @@ export function PrinterSelector() {
     </>
   )
 }
-
