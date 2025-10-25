@@ -3,7 +3,7 @@ resource "azurerm_container_app_environment" "this" {
   location            = var.location
   resource_group_name = var.resource_group_name
 
-  infrastructure_subnet_id       = var.subnet_id
+  infrastructure_subnet_id = var.subnet_id
   # When using Workload Profiles, Azure requires a separate, non-delegated
   # subnet for the agent pool. If provided, wire it explicitly.
   workload_profile_subnet_id     = var.workload_profile_subnet_id

@@ -23,11 +23,11 @@ variable "alert_emails" {
 variable "config" {
   description = "Environment-specific configuration"
   type = object({
-    rg_name                  = string
-    vnet_name                = string
-    subnet_name              = string
-    vnet_cidr                = string
-    subnet_cidr              = string
+    rg_name     = string
+    vnet_name   = string
+    subnet_name = string
+    vnet_cidr   = string
+    subnet_cidr = string
     # Optional workload profiles subnet (non-delegated)
     wp_subnet_name           = optional(string, "aca-workload-subnet")
     wp_subnet_cidr           = optional(string, "10.1.9.0/24")
