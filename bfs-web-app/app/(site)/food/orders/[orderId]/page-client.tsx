@@ -137,6 +137,19 @@ export default function OrderPageClient() {
     return roots.map((root) => ({ parent: root, children: childrenByRoot[root.id] || [] }))
   }, [serverOrder])
 
+  const qrDisplay = (() => {
+    if (!mounted) {
+      return <div className="mx-auto h-[260px] w-[260px] animate-pulse rounded-[11px] border-2 bg-gray-100" />
+    }
+    if (!orderId) {
+      return <p className="text-red-600">Bestellnummer fehlt.</p>
+    }
+    if (qrReady) {
+      return <QRCode value={pickupCode ?? orderId ?? ""} size={260} className="mx-auto rounded-[11px] border-2 p-1" />
+    }
+    return <div className="mx-auto h-[260px] w-[260px] animate-pulse rounded-[11px] border-2 bg-gray-100" />
+  })()
+
   return (
     <div className="flex flex-col p-4" style={{ paddingBottom: footerHeight ? footerHeight + 16 : 16 }}>
       <h1 className="mb-2 text-2xl font-semibold">Dein Abhol-QR-Code</h1>
@@ -148,20 +161,7 @@ export default function OrderPageClient() {
           Du kannst diesen QR-Code jederzeit in deinen Bestellungen finden.
         </p>
       )}
-
-      {mounted ? (
-        orderId ? (
-          qrReady ? (
-            <QRCode value={pickupCode ?? orderId ?? ""} size={260} className="mx-auto rounded-[11px] border-2 p-1" />
-          ) : (
-            <div className="mx-auto h-[260px] w-[260px] animate-pulse rounded-[11px] border-2 bg-gray-100" />
-          )
-        ) : (
-          <p className="text-red-600">Bestellnummer fehlt.</p>
-        )
-      ) : (
-        <div className="mx-auto h-[260px] w-[260px] animate-pulse rounded-[11px] border-2 bg-gray-100" />
-      )}
+      {qrDisplay}
 
       {/* Order items summary */}
       {mounted && serverOrder && groupedItems.length > 0 ? (

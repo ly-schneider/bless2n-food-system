@@ -8,7 +8,8 @@ export async function POST(_req: Request) {
   const cookieStore = await cookies()
   const names = await resolveCookieNames()
   // Read refresh token from either secure or non-secure cookie name
-  const rt = cookieStore.get(names.rtName)?.value || cookieStore.get(names.rtName === "__Host-rt" ? "rt" : "__Host-rt")?.value
+  const rt =
+    cookieStore.get(names.rtName)?.value || cookieStore.get(names.rtName === "__Host-rt" ? "rt" : "__Host-rt")?.value
 
   if (!rt) {
     return NextResponse.json({ error: true, message: "Unauthorized" }, { status: 401 })
