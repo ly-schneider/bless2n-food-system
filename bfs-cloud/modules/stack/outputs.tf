@@ -13,6 +13,11 @@ output "subnet_id" {
   value       = module.net.subnet_id
 }
 
+output "workload_profile_subnet_id" {
+  description = "ID of the workload profiles subnet"
+  value       = module.net.workload_profile_subnet_id
+}
+
 output "container_app_environment_id" {
   description = "ID of the container app environment"
   value       = module.aca_env.id

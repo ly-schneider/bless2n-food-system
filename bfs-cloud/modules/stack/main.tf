@@ -28,6 +28,9 @@ variable "config" {
     subnet_name              = string
     vnet_cidr                = string
     subnet_cidr              = string
+    # Optional workload profiles subnet (non-delegated)
+    wp_subnet_name           = optional(string, "aca-workload-subnet")
+    wp_subnet_cidr           = optional(string, "10.1.9.0/24")
     pe_subnet_name           = optional(string, "private-endpoints-subnet")
     pe_subnet_cidr           = optional(string, "10.1.8.0/24")
     env_name                 = string
@@ -173,6 +176,8 @@ module "net" {
   vnet_cidr                     = var.config.vnet_cidr
   subnet_name                   = var.config.subnet_name
   subnet_cidr                   = var.config.subnet_cidr
+  workload_profiles_subnet_name = try(var.config.wp_subnet_name, "aca-workload-subnet")
+  workload_profiles_subnet_cidr = try(var.config.wp_subnet_cidr, "10.1.9.0/24")
   private_endpoints_subnet_name = try(var.config.pe_subnet_name, "private-endpoints-subnet")
   private_endpoints_subnet_cidr = try(var.config.pe_subnet_cidr, "10.1.8.0/24")
   tags                          = var.tags
@@ -195,6 +200,7 @@ module "aca_env" {
   location                   = var.location
   resource_group_name        = module.rg.name
   subnet_id                  = module.net.subnet_id
+  workload_profile_subnet_id = module.net.workload_profile_subnet_id
   logs_destination           = "azure-monitor"
   log_analytics_workspace_id = module.obs.log_analytics_id
   tags                       = var.tags

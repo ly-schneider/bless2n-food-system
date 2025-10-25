@@ -22,6 +22,8 @@ module "bfs_infrastructure" {
     subnet_name              = "container-apps-subnet"
     vnet_cidr                = "10.1.0.0/16"
     subnet_cidr              = "10.1.0.0/21"
+    wp_subnet_name           = "aca-workload-subnet"
+    wp_subnet_cidr           = "10.1.9.0/24"
     pe_subnet_name           = "private-endpoints-subnet"
     pe_subnet_cidr           = "10.1.8.0/24"
     env_name                 = "bfs-production-env"
