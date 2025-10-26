@@ -48,8 +48,8 @@ module "bfs_infrastructure" {
         image                          = local.frontend_image
         revision_suffix                = var.revision_suffix
         external_ingress               = true
-        cpu                            = 0.25
-        memory                         = "0.5Gi"
+        cpu                            = 1
+        memory                         = "2Gi"
         min_replicas                   = 1
         max_replicas                   = 20
         health_check_path              = "/health"
@@ -97,8 +97,8 @@ module "bfs_infrastructure" {
         liveness_path                  = "/ping"
         liveness_interval_seconds      = 60
         liveness_initial_delay_seconds = 30
-        cpu                            = 0.5
-        memory                         = "1Gi"
+        cpu                            = 1
+        memory                         = "2Gi"
         min_replicas                   = 1
         max_replicas                   = 20
         registries                     = []

@@ -36,6 +36,12 @@ async function handle(req: Request, params: Promise<{ path: string[] }>) {
 
   const pathName = target.pathname
   const csrfExempt =
+    // Auth flows that establish or rotate cookies should not require CSRF
+    pathName === "/v1/auth/otp/request" ||
+    pathName === "/v1/auth/otp/verify" ||
+    pathName === "/v1/auth/google/code" ||
+    pathName === "/v1/auth/refresh" ||
+    // Public or device-gated endpoints
     pathName.startsWith("/v1/pos/") ||
     pathName.startsWith("/v1/stations/") ||
     pathName.startsWith("/v1/health") ||
