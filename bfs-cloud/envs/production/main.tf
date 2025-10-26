@@ -70,7 +70,7 @@ module "bfs_infrastructure" {
 
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = "pk_live_51PBsTW2LfBQkI29zWnUaY1HAsP34VeFoYsInuhNNpyHjrZiHhrDZrMGvCIzZuZOXJEzxpOXhQyW8wfi6qiwelHkh00TTmNdU4k"
 
-          NEXT_PUBLIC_GOOGLE_CLIENT_ID = "728225904671-h9cp0badsuvamscrn6k2lnkksiinld99.apps.googleusercontent.com"
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID = "728225904671-bsdo738sald74qkbg38etqjqj5jjfh66.apps.googleusercontent.com"
         }
         key_vault_secrets = merge(
           lookup(var.app_secrets, "frontend-production", {}),
@@ -119,7 +119,7 @@ module "bfs_infrastructure" {
           SMTP_FROM       = "BlessThun Food <levyn.schneider@rentro.ch>"
           SMTP_TLS_POLICY = "starttls"
 
-          GOOGLE_CLIENT_ID = "728225904671-h9cp0badsuvamscrn6k2lnkksiinld99.apps.googleusercontent.com"
+          GOOGLE_CLIENT_ID = "728225904671-bsdo738sald74qkbg38etqjqj5jjfh66.apps.googleusercontent.com"
 
           MONGO_DATABASE = "bless2n_food_system"
 
