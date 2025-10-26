@@ -179,6 +179,7 @@ module "net" {
   private_endpoints_subnet_cidr = try(var.config.pe_subnet_cidr, "10.1.8.0/24")
   delegate_containerapps_subnet = try(var.config.delegate_aca_subnet, false)
   tags                          = var.tags
+  depends_on                    = [module.tfc_rbac]
 }
 
 module "obs" {
@@ -205,7 +206,7 @@ module "tfc_rbac" {
   uaa_scopes                 = [module.rg.id]
   cosmos_account_scopes      = [module.rg.id]
   grant_cosmos_account_contributor = true
-  grant_cosmos_keys_reader         = true
+  grant_cosmos_keys_reader         = false
 }
 
 module "aca_env" {

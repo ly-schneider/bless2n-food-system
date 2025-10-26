@@ -51,6 +51,12 @@ variable "grant_cosmos_account_contributor" {
   default     = true
 }
 
+variable "cosmos_management_role_definition_name" {
+  description = "Role definition name used for Cosmos management (create/update). Defaults to 'Contributor' for broad compatibility."
+  type        = string
+  default     = "Contributor"
+}
+
 variable "grant_cosmos_keys_reader" {
   description = "Grant minimal reader for cosmos keys on cosmos_account_scopes (uses built-in 'Cosmos DB Account Reader Role')"
   type        = bool
@@ -68,4 +74,3 @@ variable "baseline_enable_uaa_on_rg" {
   type        = bool
   default     = false
 }
-

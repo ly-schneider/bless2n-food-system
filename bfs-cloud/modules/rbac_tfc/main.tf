@@ -65,7 +65,7 @@ resource "azurerm_role_assignment" "uaa" {
 resource "azurerm_role_assignment" "cosmos_account_contributor" {
   for_each            = var.grant_cosmos_account_contributor ? toset(var.cosmos_account_scopes) : []
   scope               = each.value
-  role_definition_name = "Cosmos DB Account Contributor"
+  role_definition_name = var.cosmos_management_role_definition_name
   principal_id        = local.principal_object_id
 }
 
