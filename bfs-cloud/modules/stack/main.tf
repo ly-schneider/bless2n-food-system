@@ -192,6 +192,22 @@ module "obs" {
   tags                = var.tags
 }
 
+module "tfc_rbac" {
+  source = "../rbac_tfc"
+
+  # Scope all assignments to the environment resource group
+  target_rg_id = module.rg.id
+
+  # Grant least-privilege roles required by this stack
+  network_scopes             = [module.rg.id]
+  private_dns_zone_scopes    = try(var.config.enable_private_endpoint, false) ? [module.rg.id] : []
+  managed_identity_scopes    = [module.rg.id]
+  uaa_scopes                 = [module.rg.id]
+  cosmos_account_scopes      = [module.rg.id]
+  grant_cosmos_account_contributor = true
+  grant_cosmos_keys_reader         = true
+}
+
 module "aca_env" {
   source                     = "../containerapps_env"
   name                       = var.config.env_name
@@ -229,6 +245,9 @@ module "cosmos" {
   enable_private_endpoint    = try(var.config.enable_private_endpoint, false)
   log_analytics_workspace_id = module.obs.log_analytics_id
   tags                       = var.tags
+
+  # Ensure RBAC assignments (e.g., Cosmos roles) are in place before reading keys/connection string
+  depends_on = [module.tfc_rbac]
 }
 
 module "apps_backend" {

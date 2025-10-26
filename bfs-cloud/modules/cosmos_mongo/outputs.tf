@@ -11,3 +11,6 @@ output "private_endpoint_id" {
 output "private_dns_zone_name" {
   value = length(azurerm_private_dns_zone.cosmos_mongo) > 0 ? azurerm_private_dns_zone.cosmos_mongo[0].name : null
 }
+output "private_dns_zone_id" {
+  value = length(azurerm_private_dns_zone.cosmos_mongo) > 0 ? azurerm_private_dns_zone.cosmos_mongo[0].id : null
+}

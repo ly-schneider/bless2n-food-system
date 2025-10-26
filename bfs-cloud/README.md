@@ -143,6 +143,26 @@ If `enable_acr` is false, the env can use GHCR via:
 - Workspace variables: `enable_acr=true`, `acr_name=<your-acr-name>`
 - Provider credentials: `ARM_CLIENT_ID`, `ARM_CLIENT_SECRET`, `ARM_TENANT_ID`, `ARM_SUBSCRIPTION_ID`
 
+### Least-Privilege RBAC for Terraform Cloud
+
+The stack includes a module (`modules/rbac_tfc`) that grants the minimal roles your Terraform Cloud service principal needs at the environment Resource Group scope:
+- Network Contributor: manage VNets/subnets and Private Endpoints
+- Private DNS Zone Contributor: manage Private DNS zones/links (when enabled)
+- Cosmos DB Account Contributor: create/update Cosmos resources
+- User Access Administrator: create RBAC role assignments (Key Vault access, ACR Pull, etc.)
+- Managed Identity Contributor: create user-assigned identities used by Container Apps
+
+By default, the module targets the current Terraform principal. If you want to target a different principal (e.g., bootstrap run), pass its client ID into the module via `principal_client_id` and ensure the AzureAD provider is configured.
+
+Verify effective assignments after apply:
+```
+az role assignment list --assignee-object-id $(az ad sp show --id $AZURE_CLIENT_ID --query id -o tsv) \
+  --scope $(az group show -n <rg-name> --query id -o tsv) --include-inherited -o table
+```
+
+Cosmos keys vs AAD note:
+- If local auth is disabled on Cosmos, keys cannot be listed. Switch apps to AAD data-plane auth and set the RBAC module to avoid key-related permissions.
+
 ### Providing App Secrets and Registries
 
 Provide secrets and registries via env variables or tfvars at the env root:
