@@ -88,8 +88,8 @@ cp .env.example .env
 
 # 2. Generate JWT keys (REQUIRED)
 mkdir -p secrets/dev
-openssl genpkey -algorithm Ed25519 -out secrets/dev/ed25519.pem
-openssl pkey -in secrets/dev/ed25519.pem -pubout -out secrets/dev/ed25519.pub.pem
+openssl genpkey -algorithm Ed25519 -out secrets/dev/jwt-priv.pem
+openssl pkey -in secrets/dev/jwt-priv.pem -pubout -out secrets/dev/jwt-pub.pub.pem
 
 # 3. Start supporting services (MongoDB, Mailpit, etc.)
 make docker-up

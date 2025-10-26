@@ -50,7 +50,7 @@ module "bfs_infrastructure" {
         external_ingress               = true
         cpu                            = 0.25
         memory                         = "0.5Gi"
-        min_replicas                   = 0
+        min_replicas                   = 1
         max_replicas                   = 20
         health_check_path              = "/health"
         liveness_path                  = "/health"
@@ -99,7 +99,7 @@ module "bfs_infrastructure" {
         liveness_initial_delay_seconds = 30
         cpu                            = 0.5
         memory                         = "1Gi"
-        min_replicas                   = 0
+        min_replicas                   = 1
         max_replicas                   = 20
         registries                     = []
         secrets                        = lookup(var.app_secrets, "backend-production", {})
