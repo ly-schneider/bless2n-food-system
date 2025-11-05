@@ -39,7 +39,6 @@ module "bfs_infrastructure" {
     enable_security_features = true
     enable_private_endpoint  = false
     key_vault_name           = "bfs-production-kv"
-    enable_acr               = false
     budget_amount            = var.budget_amount
     budget_start_date        = "2025-11-01T00:00:00Z"
     apps = {
