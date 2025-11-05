@@ -1,11 +1,12 @@
 locals {
-  registry_host = "${var.acr_name}.azurecr.io"
+  registry_host = "ghcr.io"
+  repo_prefix   = "ly-schneider/bless2n-food-system"
   frontend_repo = "frontend"
   backend_repo  = "backend"
 
-  frontend_image = var.frontend_digest != "" ? "${local.registry_host}/${local.frontend_repo}@${var.frontend_digest}" : "${local.registry_host}/${local.frontend_repo}:${var.image_tag}"
+  frontend_image = var.frontend_digest != "" ? "${local.registry_host}/${local.repo_prefix}/${local.frontend_repo}@${var.frontend_digest}" : "${local.registry_host}/${local.repo_prefix}/${local.frontend_repo}:${var.image_tag}"
 
-  backend_image = var.backend_digest != "" ? "${local.registry_host}/${local.backend_repo}@${var.backend_digest}" : "${local.registry_host}/${local.backend_repo}:${var.image_tag}"
+  backend_image = var.backend_digest != "" ? "${local.registry_host}/${local.repo_prefix}/${local.backend_repo}@${var.backend_digest}" : "${local.registry_host}/${local.repo_prefix}/${local.backend_repo}:${var.image_tag}"
 }
 
 module "bfs_infrastructure" {
@@ -36,8 +37,7 @@ module "bfs_infrastructure" {
     enable_security_features = true
     enable_private_endpoint  = false
     key_vault_name           = "bfs-staging-kv"
-    enable_acr               = true
-    acr_name                 = var.acr_name
+    enable_acr               = false
     budget_amount            = var.budget_amount
     budget_start_date        = "2025-11-01T00:00:00Z"
     apps = {

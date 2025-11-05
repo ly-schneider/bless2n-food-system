@@ -1,11 +1,12 @@
 locals {
-  registry_host = "${var.acr_name}.azurecr.io"
+  registry_host = "ghcr.io"
+  repo_prefix   = "ly-schneider/bless2n-food-system"
   frontend_repo = "frontend"
   backend_repo  = "backend"
 
-  frontend_image = var.frontend_digest != "" ? "${local.registry_host}/${local.frontend_repo}@${var.frontend_digest}" : "${local.registry_host}/${local.frontend_repo}:${var.image_tag}"
+  frontend_image = var.frontend_digest != "" ? "${local.registry_host}/${local.repo_prefix}/${local.frontend_repo}@${var.frontend_digest}" : "${local.registry_host}/${local.repo_prefix}/${local.frontend_repo}:${var.image_tag}"
 
-  backend_image = var.backend_digest != "" ? "${local.registry_host}/${local.backend_repo}@${var.backend_digest}" : "${local.registry_host}/${local.backend_repo}:${var.image_tag}"
+  backend_image = var.backend_digest != "" ? "${local.registry_host}/${local.repo_prefix}/${local.backend_repo}@${var.backend_digest}" : "${local.registry_host}/${local.repo_prefix}/${local.backend_repo}:${var.image_tag}"
 }
 
 module "bfs_infrastructure" {
@@ -38,8 +39,7 @@ module "bfs_infrastructure" {
     enable_security_features = true
     enable_private_endpoint  = false
     key_vault_name           = "bfs-production-kv"
-    enable_acr               = true
-    acr_name                 = var.acr_name
+    enable_acr               = false
     budget_amount            = var.budget_amount
     budget_start_date        = "2025-11-01T00:00:00Z"
     apps = {
@@ -48,9 +48,9 @@ module "bfs_infrastructure" {
         image                          = local.frontend_image
         revision_suffix                = var.revision_suffix
         external_ingress               = true
-        cpu                            = 1
-        memory                         = "2Gi"
-        min_replicas                   = 1
+        cpu                            = 0.5
+        memory                         = "1Gi"
+        min_replicas                   = 0
         max_replicas                   = 20
         health_check_path              = "/health"
         liveness_path                  = "/health"
@@ -97,9 +97,9 @@ module "bfs_infrastructure" {
         liveness_path                  = "/ping"
         liveness_interval_seconds      = 60
         liveness_initial_delay_seconds = 30
-        cpu                            = 1
-        memory                         = "2Gi"
-        min_replicas                   = 1
+        cpu                            = 0.5
+        memory                         = "1Gi"
+        min_replicas                   = 0
         max_replicas                   = 20
         registries                     = []
         secrets                        = lookup(var.app_secrets, "backend-production", {})

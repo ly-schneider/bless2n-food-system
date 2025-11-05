@@ -14,12 +14,6 @@ variable "alert_emails" {
   }
 }
 
-variable "acr_name" {
-  description = "Azure Container Registry name (without .azurecr.io)"
-  type        = string
-  default     = "bfsproductionacr"
-}
-
 variable "image_tag" {
   description = "Tag to use for images (commit SHA, tag, or branch)"
   type        = string

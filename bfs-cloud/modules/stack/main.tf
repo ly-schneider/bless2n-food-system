@@ -42,11 +42,6 @@ variable "config" {
     enable_alerts            = bool
     requests_5xx_threshold   = number
     enable_security_features = optional(bool, true)
-    enable_acr               = optional(bool, true)
-    acr_login_server         = optional(string)
-    acr_resource_id          = optional(string)
-    acr_name                 = optional(string)
-    acr_sku                  = optional(string, "Basic")
     key_vault_name           = optional(string)
     enable_private_endpoint  = optional(bool, false)
     allowed_ip_ranges        = optional(list(string), [])
@@ -120,47 +115,7 @@ module "rg" {
   tags     = var.tags
 }
 
-# Create ACR if enabled
-module "acr" {
-  count  = try(var.config.enable_acr, true) ? 1 : 0
-  source = "../acr"
-
-  name                = var.config.acr_name
-  resource_group_name = module.rg.name
-  location            = var.location
-  sku                 = var.config.acr_sku
-  admin_enabled       = false
-
-  depends_on = [module.rg]
-}
-
-data "azurerm_container_registry" "acr" {
-  count               = var.config.acr_login_server == null && var.config.acr_name != null && try(var.config.enable_acr, true) == false ? 1 : 0
-  name                = var.config.acr_name
-  resource_group_name = module.rg.name
-}
-
 locals {
-  acr_login_server = try(
-    module.acr[0].login_server,
-    try(data.azurerm_container_registry.acr[0].login_server, var.config.acr_login_server)
-  )
-  acr_scope_id = try(
-    module.acr[0].id,
-    try(data.azurerm_container_registry.acr[0].id, var.config.acr_resource_id)
-  )
-  # Enable ACR pull role assignment when we can determine ACR by inputs alone.
-  # This avoids making `count` depend on computed values that are unknown at plan time.
-  enable_uami_acr_pull = (
-    try(var.config.enable_acr, true)
-    || var.config.acr_resource_id != null
-    || (
-      var.config.acr_login_server == null &&
-      var.config.acr_name != null &&
-      try(var.config.enable_acr, true) == false
-    )
-  )
-
   # Split apps by convention to allow ordering: backends first, then frontends
   # This enables wiring frontend -> backend using the backend's stable FQDN via data.azurerm_container_app
   backend_apps  = { for k, v in var.config.apps : k => v if can(regex("^backend", k)) }
@@ -285,15 +240,7 @@ module "apps_backend" {
       format("%ssecrets/%s", module.security[0].key_vault_uri, secret_name)
     } : {}
   )
-  registries = concat(
-    local.acr_login_server != null ? [
-      {
-        server   = local.acr_login_server
-        identity = azurerm_user_assigned_identity.aca_uami.id
-      }
-    ] : [],
-    each.value.registries
-  )
+  registries = each.value.registries
   http_scale_rule         = each.value.http_scale_rule
   cpu_scale_rule          = each.value.cpu_scale_rule
   memory_scale_rule       = each.value.memory_scale_rule
@@ -343,30 +290,13 @@ module "apps_frontend" {
       format("%ssecrets/%s", module.security[0].key_vault_uri, secret_name)
     } : {}
   )
-  registries = concat(
-    local.acr_login_server != null ? [
-      {
-        server   = local.acr_login_server
-        identity = azurerm_user_assigned_identity.aca_uami.id
-      }
-    ] : [],
-    each.value.registries
-  )
+  registries = each.value.registries
   http_scale_rule         = each.value.http_scale_rule
   cpu_scale_rule          = each.value.cpu_scale_rule
   memory_scale_rule       = each.value.memory_scale_rule
   azure_queue_scale_rules = each.value.azure_queue_scale_rules
   custom_scale_rules      = each.value.custom_scale_rules
   tags                    = merge(var.tags, { app = each.key })
-}
-
-# Grant UAMI pull access to ACR when enabled
-resource "azurerm_role_assignment" "uami_acr_pull" {
-  # Use a boolean derived only from input variables so `count` is known during plan.
-  count                = local.enable_uami_acr_pull ? 1 : 0
-  scope                = local.acr_scope_id
-  role_definition_name = "AcrPull"
-  principal_id         = azurerm_user_assigned_identity.aca_uami.principal_id
 }
 
 module "alerts" {
