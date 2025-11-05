@@ -4,11 +4,25 @@
 
 **Important:** Even when Container Apps are scaled to 0, the infrastructure (Container Apps Environment, VNet, Log Analytics, ACR) still incurs costs (~CHF 16-27/month).
 
-**To reduce costs below CHF 10/month, see [COST_OPTIMIZATION.md](./COST_OPTIMIZATION.md)** for strategies including:
-- Destroy/recreate infrastructure when not in use
-- Share Container Registry between environments
-- Use GitHub Container Registry instead of ACR
-- Optimize Log Analytics retention
+**Goal: Reduce to under CHF 10/month**
+
+### Quick Wins (No Infrastructure Deletion)
+
+1. **Switch to GitHub Container Registry** → Save CHF 4-6/month
+   - See [GHCR_MIGRATION.md](./GHCR_MIGRATION.md) for step-by-step guide
+2. **Reduce Cosmos DB logging** → Save CHF 1-2/month
+3. **Optimize backups** → Save CHF 0.5-1/month
+4. **Share ACR between environments** → Save CHF 4-6/month
+
+**Combined savings: CHF 10-14/month** ✅ Target achieved!
+
+### Maximum Savings (With Infrastructure Deletion)
+
+For intermittent usage, destroy/recreate infrastructure during idle periods:
+- **Destroy** when not in use → CHF 0-2/month
+- **Recreate** in 10-15 minutes when needed
+
+**See [COST_OPTIMIZATION.md](./COST_OPTIMIZATION.md)** for complete details on all strategies.
 
 ## Architecture Overview
 
