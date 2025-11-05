@@ -52,18 +52,24 @@ bfs-cloud/
 ### Current Configuration
 
 **Production Apps:**
-- **Frontend**: Scales 0-20 replicas based on 30 concurrent requests + 70% CPU
-- **Backend**: Scales 0-20 replicas based on 50 concurrent requests + 80% CPU + 85% memory
+- **Frontend**: Scales 0-20 replicas (0.5 CPU, 1Gi RAM) based on 20 concurrent requests + 75% CPU
+- **Backend**: Scales 0-20 replicas (1 CPU, 2Gi RAM) based on 40 concurrent requests + 80% CPU
 
 **Staging Apps:**
-- **Frontend**: Scales 0-20 replicas based on 20 concurrent requests + 75% CPU  
-- **Backend**: Scales 0-20 replicas based on 40 concurrent requests + 80% CPU
+- **Frontend**: Scales 0-20 replicas (0.25 CPU, 0.5Gi RAM) based on 20 concurrent requests + 75% CPU  
+- **Backend**: Scales 0-20 replicas (0.5 CPU, 1Gi RAM) based on 40 concurrent requests + 80% CPU
 
 ### Scaling Benefits
-- **Cost Optimization**: Zero cost when applications are idle
+- **Cost Optimization**: Zero cost when applications are idle - both environments scale to 0 replicas
 - **Performance**: Automatic scaling based on real demand
 - **Reliability**: Multiple scaling triggers prevent bottlenecks
-- **Environment-Appropriate**: Thresholds for staging
+- **Environment-Appropriate**: Optimized resource allocation per environment
+
+### Cost-Saving Features
+- **Scale-to-Zero**: All apps (staging and production) scale to 0 replicas when idle
+- **No Load Balancer Costs**: When scaled to 0, no load balancer or IP address charges
+- **Minimal ACR Costs**: Using Basic SKU with managed identity authentication
+- **Right-Sized Resources**: Production uses 0.5-1 CPU and 1-2Gi RAM per app, optimal for workload
 
 ## Usage
 
