@@ -1,5 +1,15 @@
 # Bless2n Food System (BFS) — Azure Terraform
 
+## 💰 Cost Optimization
+
+**Important:** Even when Container Apps are scaled to 0, the infrastructure (Container Apps Environment, VNet, Log Analytics, ACR) still incurs costs (~CHF 16-27/month).
+
+**To reduce costs below CHF 10/month, see [COST_OPTIMIZATION.md](./COST_OPTIMIZATION.md)** for strategies including:
+- Destroy/recreate infrastructure when not in use
+- Share Container Registry between environments
+- Use GitHub Container Registry instead of ACR
+- Optimize Log Analytics retention
+
 ## Architecture Overview
 
 This Terraform setup uses a single, concrete approach: deploy from `envs/<env>` (staging, production) as the root module. Shared building blocks live under `modules/`. No separate `common/` or `env-configs/` flow.

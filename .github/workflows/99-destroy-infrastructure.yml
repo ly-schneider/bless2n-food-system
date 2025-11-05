@@ -1,0 +1,59 @@
+name: Destroy Infrastructure (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to destroy (staging or production)'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      confirm:
+        description: 'Type "DESTROY" to confirm'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  validate-confirmation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "DESTROY" ]; then
+            echo "❌ Confirmation failed. Please type 'DESTROY' to proceed."
+            exit 1
+          fi
+          echo "✅ Confirmation validated"
+
+  destroy:
+    needs: validate-confirmation
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - uses: actions/checkout@v5
+        with: { fetch-depth: 0 }
+
+      - name: Log destroy action
+        run: |
+          echo "🗑️ Destroying infrastructure for environment: ${{ github.event.inputs.environment }}"
+          echo "This will remove all resources to reduce costs to near-zero."
+          echo "You can recreate the infrastructure later using the deploy workflow."
+
+      - name: Notify about Terraform Cloud
+        run: |
+          echo "⚠️ This workflow is designed for Terraform Cloud (TFC) managed infrastructure."
+          echo "To destroy infrastructure, go to:"
+          echo "1. https://app.terraform.io/app/leys-services/workspaces/bfs-${{ github.event.inputs.environment }}"
+          echo "2. Click 'Settings' → 'Destruction and Deletion'"
+          echo "3. Click 'Queue destroy plan'"
+          echo "4. Review and confirm the destroy plan"
+          echo ""
+          echo "💡 Alternatively, use the Terraform CLI with appropriate credentials:"
+          echo "   cd bfs-cloud/envs/${{ github.event.inputs.environment }}"
+          echo "   terraform destroy"
