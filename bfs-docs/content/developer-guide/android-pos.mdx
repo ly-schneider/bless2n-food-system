@@ -1,0 +1,37 @@
+---
+title: Android POS App
+description: SumUp Integration, WebView Bridge, Drucker‑Discovery, ESC/POS & Rasterdruck und Release‑Prozess
+---
+
+# Build Variants & Signing
+
+- Varianten: `release`, `staging`, `dev`; `applicationIdSuffix` für Non‑Prod.
+- Signing: CI injiziert `BFS_UPLOAD_*` Env Vars für Release Signing; `staging` nutzt debug signing standardmäßig.
+- POS URL: `BuildConfig.POS_URL` pro Variante; Release erfordert explizite `POS_URL`.
+
+# SumUp Integration
+
+- SDK in `ShopApplication.kt` mit `SumUpState.init` initialisieren.
+- `WebPosActivity` bridged `payWithCard(json)`:
+  - `{ amountCents, currency, reference }` → `SumUpPayment` bauen.
+  - `SUMUP_AFFILIATE_KEY` sicherstellen; bei Bedarf Login triggern.
+  - `onActivityResult` liest `TX_INFO`, ergänzt nicht‑sensitive Card Details, sendet `bfs:sumup:result`.
+
+# WebView Bridge
+
+- `PosBridge` bietet:
+  - `payWithCard(json)`: Startet Checkout; sendet `bfs:sumup:result` mit `{ success, error?, txId?, correlationId }`.
+  - `print(json)`: Druckt via System Print (HTML) oder ESC/POS; sendet `bfs:print:result`.
+- Drucker‑Discovery: sendet `bfs:printer:found`, `bfs:printer:bond:state`, `bfs:printer:discovery:finished`.
+
+# Printing
+
+- ESC/POS: DantSu Library; Verbindung zu gekoppeltem Gerät (oder Adresse aus Payload); formattierter Beleg mit Summen und optionalem Pickup‑QR.
+- Phomemo‑ähnlicher Rasterpfad: Raw Bluetooth SPP für Geräte wie T02, wenn ESC/POS nicht verfügbar.
+- Beleginhalt kann mit letzten SumUp‑Transaktionsdaten per `correlationId` ergänzt werden.
+
+# Release Prozess
+
+- Affiliate Key: `SUMUP_AFFILIATE_KEY` in CI setzen; Release‑Build schlägt sonst fehl.
+- POS URL pro Umgebung: Via `-PposUrl`/`POS_URL`; Staging/Prod Endpoints prüfen.
+- Play Store Hinweise: Affiliate Key Voraussetzung & Nutzung externer Peripherie (Bluetooth‑Drucker).
