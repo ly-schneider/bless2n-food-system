@@ -69,7 +69,7 @@ bfs-cloud/
 - **Scale-to-Zero**: All apps (staging and production) scale to 0 replicas when idle
 - **No Load Balancer Costs**: When scaled to 0, no load balancer or IP address charges
 - **Minimal ACR Costs**: Using Basic SKU with managed identity authentication
-- **Right-Sized Resources**: Production uses 0.5-1 CPU and 1-2Gi RAM per app, optimal for workload
+- **Right-Sized Resources**: Frontend uses 0.5 CPU and 1Gi RAM, Backend uses 1 CPU and 2Gi RAM
 
 ## Usage
 
