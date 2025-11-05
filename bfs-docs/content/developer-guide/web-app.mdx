@@ -1,0 +1,40 @@
+---
+title: Web App (Next.js)
+description: Struktur, Security‑Middleware, POS‑Seite & Bridge, Checkout, Admin und Analytics
+---
+
+# Struktur
+
+- App Router unter `bfs-web-app/app` mit Layouts und Pages; `/app/layout.tsx` bindet Analytics‑Consent und Auth Provider ein.
+- Middleware `middleware.ts`:
+  - Leichtgewichtiges Request‑Logging; schützt `/profile` und `/admin` via Refresh‑Cookie.
+  - Setzt Security‑Header und CSP (Stripe/Google Hosts erlaubt).
+  - Setzt CSRF‑Cookie (Double‑Submit) für gleich‑origin API.
+
+# API Proxy
+
+- `lib/api.ts` nutzt gleich‑origin `/api` und leitet an das Backend (`NEXT_PUBLIC_API_BASE_URL`).
+- Setzt automatisch `X-CSRF` bei mutierenden Requests im Browser.
+
+# POS Page & Bridge
+
+- Web‑POS erkennt `window.PosBridge` Funktionen:
+  - `print(json)`: druckt Beleg; hört auf `bfs:print:result` (Erfolg/Fehler).
+  - `payWithCard(payload)`: startet SumUp; hört auf `bfs:sumup:result`.
+- Bei erfolgreicher Karte: Order erstellen (`/api/v1/pos/orders`), Tender anhängen (`/api/v1/pos/orders/{id}/pay-card`), Pickup‑QR holen, Beleg im Hintergrund drucken.
+
+# Checkout Flow (TWINT)
+
+- `clientSecret` via `/v1/payments/create-intent` mit Items holen.
+- Stripe Elements nutzen; auf der Return‑Seite `/v1/payments/{id}` pollen.
+- Optional vor Bestätigung `PATCH /v1/payments/attach-email` setzen (E‑Mail‑Receipt).
+
+# Admin UI
+
+- Features: Users, Products, Categories, Stations, Menus; Orders CSV Export.
+- Nutzt Authorized‑Fetch Hooks; CSRF für Admin‑Mutationen durch Backend‑Middleware erzwungen.
+
+# Analytics
+
+- Google Measurement ID via `NEXT_PUBLIC_GA_MEASUREMENT_ID`.
+- Einfaches Cookie‑Gate (`ga_consent`) steuert Scripts und `ga-consent-changed` Events.

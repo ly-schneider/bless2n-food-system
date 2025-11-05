@@ -1,0 +1,28 @@
+---
+title: Security & Access Control
+description: Azure RBAC, Least Privilege, Key Vault Zugriff und App‑Auth
+---
+
+# Azure RBAC
+
+- Terraform Principal (Terraform Cloud oder GitHub OIDC) erhält minimale Rollen auf RG‑Scope der Umgebung:
+  - Network Contributor, Private DNS Zone Contributor, Cosmos DB Account Contributor,
+  - User Access Administrator (für Rollenzuweisungen), Managed Identity Contributor.
+- Container Apps Identities erhalten `AcrPull` und Key Vault Secrets User Rechte.
+
+# Key Vault Zugriff
+
+- KV pro Umgebung (z. B. `bfs-staging-kv`): speichert Secrets für Backend und Frontend.
+- Secret‑Namen u. a.: `mongo-uri`, `jwt-priv-pem`, `jwt-pub-pem`, `station-qr-secret`, `google-client-secret`, `stripe-secret-key`, `stripe-webhook-secret`, `smtp-password`, `security-trusted-origins`, `public-base-url`, `jwt-issuer`, `next-public-api-base-url`, `backend-internal-url`.
+- Apps referenzieren KV‑Secrets über Container Apps `key_vault_secrets` oder `key_vault_secret_refs`.
+
+# Application Security
+
+- Backend JWT & JWKS: Access/Refresh Tokens; JWKS unter `/.well-known/jwks.json`.
+- Auth Flows: OTP und Google Authorization Code + PKCE; CSRF Double‑Submit Cookie für Admin‑Writes.
+- Web CSP: Middleware setzt CSP (Stripe/Google Ressourcen erlaubt); HSTS in Prod; CORS für Trusted Origins.
+
+# Least Privilege
+
+- Breite Contributor‑Rollen vermeiden; gezielt Data‑Plane/Identity‑Rollen vergeben.
+- Zugriff auf KV und Cosmos minimieren; Operationen via Runbooks und CI/CD‑Variablen.

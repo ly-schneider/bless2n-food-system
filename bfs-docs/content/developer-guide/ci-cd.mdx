@@ -1,0 +1,24 @@
+---
+title: CI/CD
+description: Build, Push und Deploy Workflows; Release Versioning; Digests und Revision Suffix
+---
+
+# Build & Push Images
+
+- Trigger bei Push nach `staging` und `production`, oder manuell.
+- Baut `backend` und `frontend` Images und pusht nach ACR und GHCR.
+- Veröffentlicht `image-digests` Artifact mit immutablen Digests je Image.
+
+# Deploy
+
+- Auto: „Deploy • Auto (after Build)“ konsumiert Digests aus Build und stößt Terraform Cloud apply an.
+- Manuell: „Reusable • Terraform Cloud Apply“ Inputs: `target_branch`, `image_tag`, `frontend_digest`, `backend_digest`, `revision_suffix`.
+
+# Release Versioning
+
+- Release Please für Android: leitet Semver aus Tags ab; App berechnet `versionCode`/`versionName` aus Tag.
+
+# Secrets & Variables
+
+- GitHub Environment Variablen für öffentliche Frontend Config (z. B. `NEXT_PUBLIC_*`, URLs) und Azure OIDC.
+- CI‑Secrets inkl. Android Signing‑Creds und `SUMUP_AFFILIATE_KEY`.

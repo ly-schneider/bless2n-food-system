@@ -1,0 +1,69 @@
+---
+title: Start
+description: Überblick, Systemfluss und Quickstarts für das Bless2n Food System
+---
+
+# Was ist das Bless2n Food System (BFS)
+
+Das Bless2n Food System ist eine produktionsreife Plattform für Food‑Bestellungen und Point‑of‑Sale. Sie besteht aus:
+
+- Web App (Next.js): Öffentlicher Shop (Bestellen), Admin Dashboard und eine POS‑Seite für Android WebView.
+- Backend (Go): REST API mit Chi, Clean Architecture Schichten und MongoDB (in der Cloud via Cosmos DB Mongo API).
+- Android POS App: WebView‑basierte POS‑Shell, die native Kartenzahlung (SumUp) und Drucken für die Web‑POS ermöglicht.
+- Cloud (Terraform auf Azure): Reproduzierbare Infrastruktur mit Azure Container Apps, Cosmos DB, Key Vault, Log Analytics und ACR.
+- Docs: Diese Seite (Fumadocs) mit Anleitungen, Runbooks und API‑Spezifikationen.
+
+Repository‑Überblick:
+
+- `bfs-web-app`: Next.js App Router mit `/app` und Middleware CSP; Proxy zum Backend via `/api`.
+- `bfs-backend`: Go‑Service mit Handlers, Services, Repositories; Stripe TWINT, Google OAuth, SMTP.
+- `bfs-android-app`: Android WebView + SumUp SDK + Bluetooth‑Druck (ESC/POS + Phomemo Fallback).
+- `bfs-cloud`: Terraform‑Module und Umgebungen (`envs/staging`, `envs/production`).
+- `bfs-http`: HTTP‑Request‑Sammlung für Tests.
+- `bfs-docs`: Diese Dokumentation.
+
+Wesentliche Designpunkte:
+
+- Sauber getrennte Schichten und Infrastruktur; Digest‑first Deployments; Scale‑to‑Zero zur Kostenkontrolle.
+- Passwordless‑Auth mit OTP und Google OAuth; JWT mit JWKS Endpoint.
+- Zahlungen via Stripe Payment Intents, aktiviert mit TWINT.
+- POS unterstützt Bar und Karte (SumUp) inkl. Abhol‑QR und Belegdruck.
+
+Siehe auch: Entwicklerhandbuch → Repository‑Map und Lokale Entwicklung.
+
+---
+
+# System auf einen Blick
+
+Ablauf auf hoher Ebene:
+
+- Nutzer → Web App: Produkte/Menus ansehen, in den Warenkorb, Checkout.
+- Web App → Backend: API über gleich-origin `/api` Proxy; Auth und Bestellungen.
+- Backend → Stripe: Erzeugt Payment Intents (TWINT); Webhook finalisiert Bestellungen.
+- Backend → MongoDB/Cosmos: Persistiert Benutzer, Bestellungen, Produkte, Inventory, Sessions.
+- Backend → SMTP: Versendet OTP‑Login und E‑Mail‑Änderungsbestätigungen.
+- Android POS → Web‑POS: WebView lädt `/pos`, Kommunikation via `window.PosBridge`.
+- Android POS → SumUp SDK: Startet Kartenzahlung; Ergebnis als Event zurück an Web‑POS.
+- Android POS → Drucker: ESC/POS oder Phomemo Rasterdruck für Quittungen.
+
+Zentrale Datenflüsse:
+
+- Ordering (Web): Client erhält `clientSecret` vom Backend, nutzt Stripe Elements (TWINT) → Webhook → Bestellung auf „paid“.
+- POS (In‑Store): Warenkorb via `X-Pos-Token` → Order erstellt → Tender (cash/card) angehängt → optional Abhol‑QR.
+- Auth: OTP‑Mail oder Google Authorization Code + PKCE; Backend stellt JWTs aus; `/v1/.well-known/jwks.json` veröffentlicht.
+
+---
+
+# Personas & Quickstarts
+
+- User: Siehe User Guides → Online bestellen und Troubleshooting.
+- Admin/Operator: Siehe Admin Operations, Cost Management und Runbooks.
+- Developer: Siehe Developer Guide zu Architektur, lokaler Entwicklung und APIs.
+
+Schnellzugriff:
+
+- User Guides: /user-guides
+- Admin Operations: /admin-operations
+- Runbooks: /runbooks
+- Developer Guide: /developer-guide
+- API Reference: /api-reference

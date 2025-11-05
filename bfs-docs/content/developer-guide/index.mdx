@@ -1,0 +1,121 @@
+---
+title: Entwicklerhandbuch
+description: Architektur, lokale Entwicklung und Komponenten‑Deep‑Dives
+---
+
+# Repository‑Map
+
+- `bfs-web-app`: Next.js App Router; `/app`, Middleware CSP, `hooks/`, `contexts/`, `components/`, `/api` Proxy in `/lib/api.ts`.
+- `bfs-backend`: Go‑Service; Clean Architecture: `internal/{app,config,database,domain,handler,middleware,repository,service,http}` und `cmd/backend`.
+- `bfs-android-app`: Android App (WebView POS‑Shell), SumUp SDK, ESC/POS Druck, Drucker‑Discovery.
+- `bfs-cloud`: Terraform‑Module und Env‑Roots; ACR‑first, Digest‑first Deploys, Container Apps.
+- `bfs-docs`: Dokumentations‑Site mit Fumadocs.
+
+---
+
+# Lokale Entwicklung
+
+Voraussetzungen:
+
+- Go (1.24.3+), Node 20+, PNPM, Docker, Make, Android SDK (für POS‑App), Stripe & Google Sandbox‑Creds.
+
+Backend:
+
+- `.env.example` nach `.env` kopieren; Ed25519 JWT Keys generieren; Support‑Services starten:
+  - `make docker-up` (MongoDB, Mailpit), danach `make dev` (Air Live‑Reload).
+- API Base: `http://localhost:8080`; Mailpit UI: `http://localhost:8025`; Mongo Express: `http://localhost:8081`.
+
+Web App:
+
+- `NEXT_PUBLIC_API_BASE_URL=http://localhost:8080` und `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` setzen.
+- `pnpm install && pnpm dev` in `bfs-web-app`.
+- Alle API‑Calls gehen über gleich‑origin `/api` mit CSRF‑Cookie für mutierende Requests.
+
+Android POS:
+
+- In Dev‑Builds ist `POS_URL` standardmäßig `http://127.0.0.1:3000/pos`; eigene URL via `-PposUrl`.
+- SumUp Affiliate Key optional in Dev; für Release erforderlich (`SUMUP_AFFILIATE_KEY`).
+
+Cloud (optional):
+
+- `bfs-cloud/envs/staging`: `terraform init && terraform apply` mit lokalem Backend oder via Terraform Cloud.
+
+---
+
+# Backend (Go) — Architektur & Layer
+
+- Router: `chi` mit Middleware für Security Headers, CORS, Logging, CSRF für Admin‑Writes.
+- Layer: Handlers → Services → Repositories → Domain Entities.
+- Config: `internal/config/config.go` liest Env; unterstützt `.env` außerhalb von Docker.
+- JWT & Sessions: Access Tokens und Refresh Tokens (Rotation, Revoke). JWKS Endpoint für Public Keys.
+
+Auth & Security:
+
+- OTP‑E‑Mails und Google Auth Code + PKCE. Trusted Origins steuern CORS; HSTS/CSP konfigurierbar.
+
+Payments (Stripe/TWINT):
+
+- Endpoints:
+  - `POST /v1/payments/create-intent` (liefert `clientSecret`, `paymentIntentId`, `orderId`).
+  - `PATCH /v1/payments/attach-email`.
+  - `GET /v1/payments/{id}`; `POST /v1/payments/webhook`.
+- Finalisierung der Bestellung im Webhook (`payment_intent.succeeded`/`payment_intent.payment_failed`).
+
+Data Model:
+
+- Collections: `users`, `products`, `categories`, `orders`, `order_items`, `inventory_ledger`, `stations`, `station_requests`, `pos_devices`, `pos_requests`, `refresh_tokens`, `identity_links`, `admin_invites`.
+- Key Fields: Siehe `internal/domain/*.go` für Types, Enums und Constraints.
+
+E‑Mail:
+
+- SMTP Konfiguration mit entwicklungsfreundlichen TLS Policies; Dev‑Preview‑Endpoints für Staging‑Builds.
+
+Testing & Tooling:
+
+- Air für Live‑Reload; Make‑Targets für Docker‑Services/Logs. Unit/Integration Tests unter `test/` geplant.
+
+---
+
+# Web App (Next.js)
+
+- Struktur: App Router (`/app`), Middleware setzt CSP/HSTS und CSRF‑Cookie; Schutz für `/profile` und `/admin`.
+- API Proxy: `/lib/api.ts` nutzt gleich‑origin `/api` und leitet zum Backend (`NEXT_PUBLIC_API_BASE_URL`).
+- POS Page & Bridge: Web‑POS erkennt `window.PosBridge` und reagiert auf `bfs:sumup:result` und `bfs:print:result`.
+- Checkout Flow: Stripe Elements mit Publishable Key; nutzt gecachten `clientSecret` bis bezahlt/expired.
+- Admin UI: Users, Products, Stations; Hooks wie `use-authorized-fetch` setzen Tokens.
+- Analytics: Google Measurement ID mit Consent Gate (Cookie `ga_consent`).
+
+---
+
+# Android POS App
+
+- Build Variants: `release`, `staging`, `dev`; Signing via `BFS_UPLOAD_*` Env Vars in CI.
+- SumUp Integration: Init mit `SUMUP_AFFILIATE_KEY`; Login/Checkout; Ergebnisse als JSON → `bfs:sumup:result` Event.
+- WebView Bridge: `PosBridge.payWithCard(json)` und `PosBridge.print(json)`; Printer‑Discovery Events (Bond State, Discovery Finished).
+- Printing: ESC/POS (DantSu); Phomemo Raster Fallback; Beleg wird um nicht‑sensitive Kartendaten ergänzt.
+
+---
+
+# Cloud Infra (Terraform auf Azure)
+
+- Module: `modules/stack` komponiert RG, Network, ACA, Cosmos, LAW, KV, ACR.
+- Envs: `envs/<env>` setzen Scale Rules, Images (Tag/Digest) und Secret Refs.
+- Key Vault Secrets Map wird zu versionless IDs aufgelöst und in Container Apps injiziert.
+
+---
+
+# CI/CD
+
+- Build & Push: Workflow baut beide Images in ACR und GHCR; veröffentlicht Digests.
+- Deploy: Reusable Terraform Cloud Apply nutzt Digests und `revision_suffix` für neue Revisions.
+- Release Versioning: Release Please für Android Tags; App leitet versionName/code aus Semver ab.
+
+---
+
+# Debugging & Troubleshooting
+
+- Auth (401/403): Refresh‑Cookie vorhanden? CORS Origins? JWKS erreichbar?
+- Payments: `clientSecret`‑Konflikte, Webhook‑Signatur, TWINT Mobile Flows.
+- POS Bridge: Keine native Bridge (Browser), Berechtigungen für Bluetooth/Druck; SumUp‑Loginstatus.
+- Backend: Mongo URI/DB; erforderliche Env Vars; CSRF Header für Admin Writes.
+- Web: CSP‑Verstöße (Stripe/Google), Next Middleware Logs.

@@ -1,0 +1,17 @@
+{
+  "title": "Dokumentation",
+  "pages": [
+    "index",
+    "user-guides",
+    "admin-operations",
+    "cost-management",
+    "runbooks",
+    "security-access",
+    "developer-guide",
+    "api-reference",
+    "data-privacy",
+    "appendix",
+    "einleitung"
+  ]
+}
+

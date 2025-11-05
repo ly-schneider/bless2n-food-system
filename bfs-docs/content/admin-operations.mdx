@@ -1,0 +1,72 @@
+---
+title: Admin Operations
+description: Azure‑Umgebungen, Kernressourcen, Sicherheit, Observability und Registry
+---
+
+# Azure Überblick & Ressourcen‑Map
+
+Umgebungen:
+
+- Staging und Production: Separate Terraform‑Wurzeln unter `bfs-cloud/envs/staging` und `bfs-cloud/envs/production` mit isolierten Resource Groups.
+
+Ressourcen‑Namen (Staging Beispiele):
+
+- Resource Group: `bfs-staging-rg`
+- Container Apps Environment: `bfs-staging-env`
+- VNet + Subnets: `bfs-staging-vnet`, `container-apps-subnet` (+ optional Private Endpoints Subnet)
+- Cosmos DB (Mongo API): `bfs-staging-cosmos`
+- Log Analytics: `bfs-logs-workspace`
+- Application Insights: `bfs-staging-insights` (optional)
+- Key Vault: `bfs-staging-kv`
+- ACR: `bfsstagingacr`
+
+Apps (Azure Container Apps):
+
+- Frontend: `frontend-staging` (Port 3000)
+- Backend: `backend-staging` (Port 8080)
+
+---
+
+# Container Apps
+
+- Image References: In CI bevorzugt immutable Digests; sonst Tags + `revision_suffix` je Deployment.
+- Ingress: External; Health‑Endpoints `/health` (Frontend) und `/health` + `/ping` (Backend Liveness).
+- Scaling (Staging Default):
+  - Frontend: 0–20 Replicas; HTTP Concurrent Requests = 20; CPU = 75%.
+  - Backend: 0–20 Replicas; HTTP Concurrent Requests = 40; CPU = 80%.
+- Env Vars & Secrets: Über Container Apps gesetzt; sensible Werte via Key Vault Secret Refs.
+
+---
+
+# Datenbank (Cosmos DB — Mongo API)
+
+- Datenbankname: `bless2n_food_system`.
+- Throughput: Staging Standard 400 RU/s (provisioned); Serverless vs. Provisioned je nach Workload prüfen.
+- Bekannte Hotspots: Orders Listing und Admin Exports; Indizes sicherstellen; „hot partitions“ vermeiden.
+- Kompatibilität: Keine Text‑Indizes in Cosmos Mongo; Code nutzt kompatible Indizes (siehe Seed‑Hinweise).
+
+---
+
+# Security
+
+- Key Vault: Speichert Verbindungsgeheimnisse (Mongo URI), JWT Keys, Stripe Webhook Secret, Google Client Secret, SMTP Passwort, Station‑QR Secret, URL‑Secrets.
+- Managed Identity: Container Apps Identities für ACR Pull und Key Vault Zugriff.
+- RBAC: Minimale Rollen für Terraform Principal und Container Apps. Backend veröffentlicht JWKS unter `/.well-known/jwks.json`.
+- App Security Headers: HSTS, CSP in Produktion; CORS für Trusted Origins.
+
+---
+
+# Observability
+
+- Log Analytics Workspace (LAW): Zentrale Logs; Retention standardmäßig 30 Tage.
+- Diagnostic Settings: Für Key Vault u. a. Ressourcen aktiviert.
+- Alerts (metrisch): z. B. 5xx für Container Apps; konfiguriert unter `modules/alerts`.
+- KQL‑Snippets: Nach App‑Name filtern, 5xx‑Trends, Latenzen.
+
+---
+
+# Registry (ACR)
+
+- Naming: `${ACR_NAME}.azurecr.io/{repo}:{tag}`; Repos: `frontend`, `backend`.
+- Digest‑first Deployments: CI veröffentlicht Image Digest Artifacts; Terraform nutzt `frontend_digest` / `backend_digest`.
+- Zugriff: Container Apps erhalten `AcrPull` via Identity.
