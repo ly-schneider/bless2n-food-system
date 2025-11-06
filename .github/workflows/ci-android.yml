@@ -3,10 +3,10 @@ name: CI • Android
 on:
   pull_request:
     branches: [staging, production]
-    paths: ['bfs-android-app/**', '.github/workflows/01-ci-android.yml']
+    paths: ['bfs-android-app/**', '.github/workflows/ci-android.yml']
   push:
     branches: [staging, production]
-    paths: ['bfs-android-app/**', '.github/workflows/01-ci-android.yml']
+    paths: ['bfs-android-app/**', '.github/workflows/ci-android.yml']
 
 permissions:
   contents: read
@@ -21,8 +21,9 @@ jobs:
     defaults:
       run: { working-directory: bfs-android-app }
     steps:
-      - uses: actions/checkout@v5
-        with: { fetch-depth: 0 }
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
+        with:
+          persist-credentials: false
       - name: Setup JDK
         uses: actions/setup-java@v5
         with:

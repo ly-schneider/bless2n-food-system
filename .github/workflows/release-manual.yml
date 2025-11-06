@@ -153,7 +153,7 @@ jobs:
     name: Android • Build & Attach
     if: ${{ inputs.dry_run != 'true' }}
     needs: tag-and-release
-    uses: ./.github/workflows/31-release-android-app.yml
+    uses: ./.github/workflows/release-android.yml
     with:
       tag_name: ${{ inputs.version }}
       environment: ${{ inputs.environment }}

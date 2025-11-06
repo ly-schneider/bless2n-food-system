@@ -43,8 +43,9 @@ jobs:
       ORG_GRADLE_PROJECT_bfsEnv: ${{ inputs.environment || vars.BFS_ENV || 'production' }}
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
         with:
+          persist-credentials: false
           fetch-depth: 0
           ref: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag_name || github.ref }}
 

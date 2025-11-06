@@ -22,13 +22,16 @@ jobs:
       affected: ${{ steps.affected.outputs.projects }}
 
     steps:
-      - uses: actions/checkout@v5
+      # actions/checkout@v5.1.0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       # Secrets scanning
+      # trufflesecurity/trufflehog@v3.82.13
       - name: Scan for secrets
-        uses: trufflesecurity/trufflehog@v3
+        uses: trufflesecurity/trufflehog@8d6b8c4b174d10b8c9d0f00c90fdbb01b4b69b1f
         with:
           path: ./
           base: ${{ github.event.pull_request.base.sha || 'HEAD~1' }}
@@ -36,15 +39,17 @@ jobs:
           extra_args: --only-verified
 
       # Commit message linting
+      # wagoid/commitlint-github-action@v6.1.2
       - name: Lint commit messages
         if: github.event_name == 'pull_request'
-        uses: wagoid/commitlint-github-action@v6
+        uses: wagoid/commitlint-github-action@4b2406c5f25a1e7bb0d40aa63a0201e7527f42c8
         continue-on-error: true
 
       # Determine affected projects using path filtering
+      # dorny/paths-filter@v3.0.2
       - name: Detect affected projects
         id: filter
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
         with:
           filters: |
             backend:
@@ -77,9 +82,10 @@ jobs:
           echo "Affected projects: $PROJECTS"
 
       # Post comment with affected projects
+      # actions/github-script@v7.0.1
       - name: Comment affected projects
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
         with:
           script: |
             const affected = ${{ steps.affected.outputs.projects }};

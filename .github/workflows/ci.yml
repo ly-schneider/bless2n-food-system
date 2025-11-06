@@ -25,11 +25,12 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       terraform: ${{ steps.filter.outputs.terraform }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
         with:
+          persist-credentials: false
           fetch-depth: 0
 
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36  # v3.0.2
         id: filter
         with:
           filters: |
@@ -57,18 +58,19 @@ jobs:
         working-directory: bfs-backend
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
         with:
+          persist-credentials: false
           fetch-depth: 0
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32  # v5.0.2
         with:
-          go-version: "1.25"
+          go-version: "1.23.x"
           cache: true
           cache-dependency-path: bfs-backend/go.sum
 
       # Advanced caching
-      - uses: actions/cache@v4
+      - uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9  # v4.0.2
         with:
           path: |
             ~/.cache/go-build
@@ -156,11 +158,13 @@ jobs:
         working-directory: bfs-backend
 
     steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
         with:
-          go-version: "1.25"
+          persist-credentials: false
+
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32  # v5.0.2
+        with:
+          go-version: "1.23.x"
 
       - name: Download all coverage reports
         uses: actions/download-artifact@v4
@@ -198,6 +202,7 @@ jobs:
           files: bfs-backend/coverage-merged.out
           flags: backend
           fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
         continue-on-error: true
 
   # Frontend CI with comprehensive checks
@@ -210,22 +215,23 @@ jobs:
         working-directory: bfs-web-app
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
         with:
+          persist-credentials: false
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@fe1e16a95b1f2ec91981aea63e50e504e32c814a  # v4.0.0
         with:
           version: 10
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b  # v4.0.3
         with:
           node-version: 22
           cache: pnpm
           cache-dependency-path: bfs-web-app/pnpm-lock.yaml
 
       # Advanced caching
-      - uses: actions/cache@v4
+      - uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9  # v4.0.2
         id: cache
         with:
           path: |
@@ -260,6 +266,7 @@ jobs:
           files: bfs-web-app/coverage/coverage-final.json
           flags: frontend,unit
           fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
         continue-on-error: true
 
       # Build
@@ -306,13 +313,15 @@ jobs:
         working-directory: bfs-web-app
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
+        with:
+          persist-credentials: false
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@fe1e16a95b1f2ec91981aea63e50e504e32c814a  # v4.0.0
         with:
           version: 10
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b  # v4.0.3
         with:
           node-version: 22
           cache: pnpm
@@ -352,9 +361,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
+        with:
+          persist-credentials: false
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd  # v3.1.2
         with:
           terraform_version: 1.10.3
 

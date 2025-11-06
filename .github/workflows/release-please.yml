@@ -18,8 +18,10 @@ jobs:
            startsWith(github.event.pull_request.title, 'chore') && contains(github.event.pull_request.title, 'release')) }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-        with: { fetch-depth: 0 }
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0
       - uses: googleapis/release-please-action@v4
         with:
           config-file: release-please-config.json
