@@ -163,7 +163,7 @@ jobs:
         continue-on-error: true
 
       - name: Build
-        run: go build -v ./cmd/api
+        run: go build -v ./cmd/backend
 
   frontend:
     needs: changes
