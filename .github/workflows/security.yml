@@ -1,0 +1,214 @@
+name: Security Scanning
+
+on:
+  pull_request:
+  push:
+    branches: [staging, production]
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM UTC
+
+permissions:
+  contents: read
+  security-events: write
+  issues: write
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secrets-scan:
+    name: Scan for secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog scan
+        uses: trufflesecurity/trufflehog@v3
+        with:
+          path: ./
+          base: ${{ github.event.pull_request.base.sha || github.event.before || 'HEAD~1' }}
+          head: ${{ github.sha }}
+          extra_args: --only-verified
+
+  dependency-scan:
+    name: Dependency vulnerability scan
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v5
+
+      # Backend dependencies
+      - name: Setup Go
+        if: matrix.component == 'backend'
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache: true
+          cache-dependency-path: bfs-backend/go.sum
+
+      - name: Go vulnerability check
+        if: matrix.component == 'backend'
+        working-directory: bfs-backend
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+      # Frontend dependencies
+      - name: Setup pnpm
+        if: matrix.component == 'frontend'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        if: matrix.component == 'frontend'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: bfs-web-app/pnpm-lock.yaml
+
+      - name: Install dependencies
+        if: matrix.component == 'frontend'
+        working-directory: bfs-web-app
+        run: pnpm install --frozen-lockfile
+
+      - name: npm audit
+        if: matrix.component == 'frontend'
+        working-directory: bfs-web-app
+        run: |
+          # Run audit but don't fail on moderate
+          pnpm audit --audit-level=high || true
+
+      # SBOM generation
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: ${{ matrix.component == 'backend' && 'bfs-backend' || 'bfs-web-app' }}
+          format: cyclonedx-json
+          output-file: sbom-${{ matrix.component }}.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.component }}
+          path: sbom-${{ matrix.component }}.json
+          retention-days: 90
+
+  container-scan:
+    name: Container image scanning
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'schedule'
+    strategy:
+      matrix:
+        image: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v5
+
+      # Build image (without pushing)
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.image == 'backend' && 'bfs-backend' || 'bfs-web-app' }}
+          file: ${{ matrix.image == 'backend' && 'bfs-backend' || 'bfs-web-app' }}/Dockerfile
+          tags: local/${{ matrix.image }}:scan
+          load: true
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+      # Trivy scan
+      - name: Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: local/${{ matrix.image }}:scan
+          format: 'sarif'
+          output: 'trivy-${{ matrix.image }}.sarif'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-${{ matrix.image }}.sarif
+        continue-on-error: true
+
+      # Grype scan
+      - name: Grype vulnerability scan
+        uses: anchore/scan-action@v4
+        with:
+          image: local/${{ matrix.image }}:scan
+          fail-build: false
+          severity-cutoff: high
+
+  license-compliance:
+    name: License compliance check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Check Go licenses
+        working-directory: bfs-backend
+        run: |
+          go install github.com/google/go-licenses@latest
+          go-licenses report ./... || true
+          # Check for forbidden licenses
+          if go-licenses check --disallowed_types=forbidden,restricted ./... 2>&1 | grep -q "forbidden\|restricted"; then
+            echo "⚠️  Found potentially problematic licenses"
+          else
+            echo "✅ No problematic licenses found"
+          fi
+        continue-on-error: true
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check npm licenses
+        working-directory: bfs-web-app
+        run: |
+          pnpm install --frozen-lockfile
+          npx license-checker --production --summary || true
+        continue-on-error: true
+
+  security-report:
+    name: Security report
+    runs-on: ubuntu-latest
+    needs: [secrets-scan, dependency-scan, container-scan, license-compliance]
+    if: always() && (failure() || cancelled())
+    steps:
+      - name: Create security issue
+        if: github.event_name == 'schedule' || github.ref == 'refs/heads/production'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `${context.payload.repository.html_url}/actions/runs/${context.runId}`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🔒 Security Scan Detected Issues',
+              body: `Security vulnerabilities or compliance issues were detected in the latest scan.
+
+              **Scan Details:**
+              - Workflow: ${context.workflow}
+              - Run: [View Results](${runUrl})
+              - Branch: ${context.ref}
+              - Commit: ${context.sha.substring(0, 7)}
+
+              Please review the scan results and take appropriate action.`,
+              labels: ['security', 'automated']
+            });

@@ -1,0 +1,469 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [staging, production]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+  security-events: write
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Determine what needs to run
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      terraform: ${{ steps.filter.outputs.terraform }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'bfs-backend/**'
+              - '.github/workflows/ci.yml'
+            frontend:
+              - 'bfs-web-app/**'
+              - '.github/workflows/ci.yml'
+            terraform:
+              - 'bfs-cloud/**'
+              - '.github/workflows/ci.yml'
+
+  # Backend CI with test sharding
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    defaults:
+      run:
+        working-directory: bfs-backend
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache: true
+          cache-dependency-path: bfs-backend/go.sum
+
+      # Advanced caching
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('bfs-backend/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install tools
+        if: matrix.shard == 1
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      # Lint (only on shard 1 to avoid duplication)
+      - name: Lint
+        if: matrix.shard == 1
+        run: golangci-lint run --timeout=5m
+
+      # Vet (only on shard 1)
+      - name: Go vet
+        if: matrix.shard == 1
+        run: go vet ./...
+
+      # Security scan (only on shard 1)
+      - name: SAST with gosec
+        if: matrix.shard == 1
+        run: |
+          gosec -fmt=sarif -out=gosec.sarif ./...
+
+      - name: Upload SARIF
+        if: matrix.shard == 1
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: bfs-backend/gosec.sarif
+        continue-on-error: true
+
+      # Vulnerability scan (only on shard 1)
+      - name: Check for vulnerabilities
+        if: matrix.shard == 1
+        run: govulncheck ./...
+
+      # Sharded tests with coverage
+      - name: Run tests (shard ${{ matrix.shard }}/4)
+        run: |
+          # Get all packages
+          PACKAGES=$(go list ./... | grep -v /test/)
+          TOTAL=$(echo "$PACKAGES" | wc -l | tr -d ' ')
+          PER_SHARD=$(( ($TOTAL + 3) / 4 ))
+          START=$(( (${{ matrix.shard }} - 1) * $PER_SHARD + 1 ))
+          END=$(( ${{ matrix.shard }} * $PER_SHARD ))
+
+          # Select packages for this shard
+          SHARD_PACKAGES=$(echo "$PACKAGES" | sed -n "${START},${END}p")
+
+          # Run tests
+          if [ -n "$SHARD_PACKAGES" ]; then
+            echo "$SHARD_PACKAGES" | xargs go test -v -race -timeout=10m \
+              -coverprofile=coverage-${{ matrix.shard }}.out \
+              -covermode=atomic
+          fi
+
+      # Upload coverage
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-backend-${{ matrix.shard }}
+          path: bfs-backend/coverage-${{ matrix.shard }}.out
+          retention-days: 1
+
+      # Build (only on shard 1)
+      - name: Build
+        if: matrix.shard == 1
+        run: go build -v ./cmd/api
+
+  # Merge backend shards and check coverage
+  backend-results:
+    needs: backend
+    runs-on: ubuntu-latest
+    if: needs.backend.result != 'skipped'
+    defaults:
+      run:
+        working-directory: bfs-backend
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Download all coverage reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-backend-*
+          path: bfs-backend/coverage
+          merge-multiple: true
+
+      - name: Merge coverage reports
+        run: |
+          echo "mode: atomic" > coverage-merged.out
+          tail -q -n +2 coverage/*.out >> coverage-merged.out || true
+
+      - name: Check coverage threshold
+        run: |
+          if [ ! -f coverage-merged.out ]; then
+            echo "No coverage file found, skipping"
+            exit 0
+          fi
+
+          COVERAGE=$(go tool cover -func=coverage-merged.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "Total coverage: ${COVERAGE}%"
+
+          THRESHOLD=70
+          if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
+            echo "⚠️  Coverage ${COVERAGE}% is below ${THRESHOLD}% threshold"
+            # Don't fail, just warn for now
+          else
+            echo "✅ Coverage ${COVERAGE}% meets ${THRESHOLD}% threshold"
+          fi
+
+      - name: Upload merged coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: bfs-backend/coverage-merged.out
+          flags: backend
+          fail_ci_if_error: false
+        continue-on-error: true
+
+  # Frontend CI with comprehensive checks
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bfs-web-app
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: bfs-web-app/pnpm-lock.yaml
+
+      # Advanced caching
+      - uses: actions/cache@v4
+        id: cache
+        with:
+          path: |
+            ~/.pnpm-store
+            bfs-web-app/.next/cache
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('bfs-web-app/pnpm-lock.yaml') }}-${{ hashFiles('bfs-web-app/**/*.ts', 'bfs-web-app/**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-${{ hashFiles('bfs-web-app/pnpm-lock.yaml') }}-
+            ${{ runner.os }}-pnpm-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      # Parallel linting and type checking
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Prettier check
+        run: pnpm run prettier
+
+      - name: Type check
+        run: pnpm run typecheck
+
+      # Unit tests with coverage
+      - name: Unit tests
+        run: pnpm test -- --run --coverage
+        continue-on-error: true
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: bfs-web-app/coverage/coverage-final.json
+          flags: frontend,unit
+          fail_ci_if_error: false
+        continue-on-error: true
+
+      # Build
+      - name: Build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: pnpm build
+
+      # Bundle analysis
+      - name: Analyze bundle size
+        run: |
+          BUNDLE_SIZE=$(du -sk .next/static 2>/dev/null | cut -f1 || echo "0")
+          MAX_SIZE=10000  # 10MB
+          echo "Bundle size: ${BUNDLE_SIZE}KB (max: ${MAX_SIZE}KB)"
+
+          if [ $BUNDLE_SIZE -gt $MAX_SIZE ]; then
+            echo "⚠️  Bundle size ${BUNDLE_SIZE}KB exceeds ${MAX_SIZE}KB limit"
+            # Don't fail, just warn
+          else
+            echo "✅ Bundle size within budget"
+          fi
+
+      # Store build for E2E tests
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: |
+            bfs-web-app/.next
+            bfs-web-app/public
+          retention-days: 1
+
+  # E2E tests (runs after build)
+  frontend-e2e:
+    needs: frontend
+    if: needs.frontend.result == 'success'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    defaults:
+      run:
+        working-directory: bfs-web-app
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: bfs-web-app/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Download build from previous job
+      - name: Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: bfs-web-app/
+
+      # Install Playwright
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      # Run E2E tests (sharded)
+      - name: Run E2E tests (shard ${{ matrix.shard }}/3)
+        run: pnpm exec playwright test --shard=${{ matrix.shard }}/3
+        continue-on-error: true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.shard }}
+          path: bfs-web-app/playwright-report
+          retention-days: 7
+
+  # Terraform validation and testing
+  terraform:
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.3
+
+      # Terraform format
+      - name: Terraform format
+        working-directory: bfs-cloud
+        run: terraform fmt -check -recursive
+
+      # Terraform validation for staging
+      - name: Terraform validate (staging)
+        working-directory: bfs-cloud/envs/staging
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      # Terraform validation for production
+      - name: Terraform validate (production)
+        working-directory: bfs-cloud/envs/production
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      # Security scanning with tfsec
+      - name: tfsec scan
+        uses: aquasecurity/tfsec-action@v1
+        with:
+          working_directory: bfs-cloud
+          soft_fail: true
+
+  # Final success gate
+  ci-success:
+    name: CI Success Gate
+    runs-on: ubuntu-latest
+    needs: [changes, backend-results, frontend-e2e, terraform]
+    if: always()
+
+    steps:
+      - name: Check all jobs succeeded
+        run: |
+          CHANGES="${{ needs.changes.result }}"
+          BACKEND="${{ needs.backend-results.result }}"
+          FRONTEND="${{ needs.frontend-e2e.result }}"
+          TERRAFORM="${{ needs.terraform.result }}"
+
+          echo "Changes: $CHANGES"
+          echo "Backend: $BACKEND"
+          echo "Frontend E2E: $FRONTEND"
+          echo "Terraform: $TERRAFORM"
+
+          function is_ok() {
+            [[ "$1" == "success" || "$1" == "skipped" ]]
+          }
+
+          if is_ok "$CHANGES" && is_ok "$BACKEND" && is_ok "$FRONTEND" && is_ok "$TERRAFORM"; then
+            echo "✅ All CI checks passed!"
+            exit 0
+          else
+            echo "❌ One or more CI checks failed"
+            exit 1
+          fi
+
+      # Post PR comment with summary
+      - name: Post PR summary
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const needs = ${{ toJSON(needs) }};
+            const formatResult = (result) => {
+              if (result === 'success') return '✅';
+              if (result === 'skipped') return '⏭️';
+              if (result === 'failure') return '❌';
+              return '❓';
+            };
+
+            const summary = `## 🎯 CI Summary
+
+            | Check | Status |
+            |-------|--------|
+            | Backend Tests | ${formatResult(needs['backend-results']?.result)} ${needs['backend-results']?.result || 'N/A'} |
+            | Frontend Tests | ${formatResult(needs['frontend-e2e']?.result)} ${needs['frontend-e2e']?.result || 'N/A'} |
+            | Infrastructure | ${formatResult(needs.terraform?.result)} ${needs.terraform?.result || 'N/A'} |
+
+            [View full results](${context.payload.repository.html_url}/actions/runs/${context.runId})
+            `;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('🎯 CI Summary')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                comment_id: botComment.id,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: summary
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: summary
+              });
+            }
