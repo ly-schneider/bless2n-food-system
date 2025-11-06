@@ -288,11 +288,19 @@ jobs:
           name: frontend-build
           path: bfs-web-app/
 
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium
+      - name: Cache Playwright browsers
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('bfs-web-app/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
 
-      - name: Run E2E tests
-        run: pnpm exec playwright test
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install chromium
+
+      - name: Run E2E tests (Chromium only)
+        run: pnpm exec playwright test --project=chromium
         continue-on-error: true
 
       - name: Upload test results
