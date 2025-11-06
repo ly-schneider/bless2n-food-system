@@ -35,11 +35,6 @@ jobs:
           head: ${{ github.sha }}
           extra_args: --only-verified
 
-      - name: Lint commit messages
-        if: github.event_name == 'pull_request'
-        uses: wagoid/commitlint-github-action@b948419dd99f3fd78a6548d48f94e3df7f6bf3ed
-        continue-on-error: true
-
       - name: Detect affected projects
         id: filter
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
@@ -71,16 +66,22 @@ jobs:
           if [ "${{ steps.filter.outputs.terraform }}" == "true" ]; then
             PROJECTS=$(echo "$PROJECTS" | jq '. + ["terraform"]')
           fi
-          echo "projects=$PROJECTS" >> $GITHUB_OUTPUT
+          {
+            echo "projects<<EOF"
+            echo "$PROJECTS"
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
           echo "Affected projects: $PROJECTS"
 
       - name: Comment affected projects
         if: github.event_name == 'pull_request'
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        env:
+          AFFECTED_JSON: ${{ steps.affected.outputs.projects }}
         with:
           script: |
-            const affected = ${{ steps.affected.outputs.projects }};
-            if (affected.length === 0) {
+            const affected = JSON.parse(process.env.AFFECTED_JSON || '[]');
+            if (!Array.isArray(affected) || affected.length === 0) {
               return;
             }
 

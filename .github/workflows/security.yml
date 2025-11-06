@@ -92,6 +92,7 @@ jobs:
           path: ${{ matrix.component == 'backend' && 'bfs-backend' || 'bfs-web-app' }}
           format: cyclonedx-json
           output-file: sbom-${{ matrix.component }}.json
+          upload-artifact: false
 
       - name: Upload SBOM
         uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874
