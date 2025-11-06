@@ -23,11 +23,11 @@ variable "alert_emails" {
 variable "config" {
   description = "Environment-specific configuration"
   type = object({
-    rg_name                  = string
-    vnet_name                = string
-    subnet_name              = string
-    vnet_cidr                = string
-    subnet_cidr              = string
+    rg_name     = string
+    vnet_name   = string
+    subnet_name = string
+    vnet_cidr   = string
+    subnet_cidr = string
     # Whether to delegate the Container Apps subnet (Consumption needs delegation; Workload Profiles requires non-delegated).
     delegate_aca_subnet      = optional(bool, false)
     pe_subnet_name           = optional(string, "private-endpoints-subnet")
@@ -155,11 +155,11 @@ module "tfc_rbac" {
   target_rg_id = module.rg.id
 
   # Grant least-privilege roles required by this stack
-  network_scopes             = [module.rg.id]
-  private_dns_zone_scopes    = try(var.config.enable_private_endpoint, false) ? [module.rg.id] : []
-  managed_identity_scopes    = [module.rg.id]
-  uaa_scopes                 = [module.rg.id]
-  cosmos_account_scopes      = [module.rg.id]
+  network_scopes                   = [module.rg.id]
+  private_dns_zone_scopes          = try(var.config.enable_private_endpoint, false) ? [module.rg.id] : []
+  managed_identity_scopes          = [module.rg.id]
+  uaa_scopes                       = [module.rg.id]
+  cosmos_account_scopes            = [module.rg.id]
   grant_cosmos_account_contributor = true
   grant_cosmos_keys_reader         = false
 }
@@ -240,7 +240,7 @@ module "apps_backend" {
       format("%ssecrets/%s", module.security[0].key_vault_uri, secret_name)
     } : {}
   )
-  registries = each.value.registries
+  registries              = each.value.registries
   http_scale_rule         = each.value.http_scale_rule
   cpu_scale_rule          = each.value.cpu_scale_rule
   memory_scale_rule       = each.value.memory_scale_rule
@@ -290,7 +290,7 @@ module "apps_frontend" {
       format("%ssecrets/%s", module.security[0].key_vault_uri, secret_name)
     } : {}
   )
-  registries = each.value.registries
+  registries              = each.value.registries
   http_scale_rule         = each.value.http_scale_rule
   cpu_scale_rule          = each.value.cpu_scale_rule
   memory_scale_rule       = each.value.memory_scale_rule

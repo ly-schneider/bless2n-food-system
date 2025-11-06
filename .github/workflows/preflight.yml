@@ -37,7 +37,7 @@ jobs:
 
       - name: Lint commit messages
         if: github.event_name == 'pull_request'
-        uses: wagoid/commitlint-github-action@4b2406c5f25a1e7bb0d40aa63a0201e7527f42c8
+        uses: wagoid/commitlint-github-action@b948419dd99f3fd78a6548d48f94e3df7f6bf3ed
         continue-on-error: true
 
       - name: Detect affected projects

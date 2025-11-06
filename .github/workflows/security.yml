@@ -62,7 +62,7 @@ jobs:
 
       - name: Setup pnpm
         if: matrix.component == 'frontend'
-        uses: pnpm/action-setup@fe1e16a95b1f2ec91981aea63e50e504e32c814a
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10
 
@@ -170,7 +170,7 @@ jobs:
           fi
         continue-on-error: true
 
-      - uses: pnpm/action-setup@fe1e16a95b1f2ec91981aea63e50e504e32c814a
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10
 

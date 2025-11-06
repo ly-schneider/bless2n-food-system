@@ -59,7 +59,7 @@ jobs:
 
       - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
         with:
-          go-version: "1.23.x"
+          go-version: "1.25.x"
           cache: true
           cache-dependency-path: bfs-backend/go.sum
 
@@ -178,7 +178,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@fe1e16a95b1f2ec91981aea63e50e504e32c814a
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10
 
@@ -268,7 +268,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: pnpm/action-setup@fe1e16a95b1f2ec91981aea63e50e504e32c814a
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 10
 
