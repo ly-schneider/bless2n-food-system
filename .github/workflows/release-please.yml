@@ -11,18 +11,17 @@ permissions:
 
 jobs:
   release-please:
-    # Only create a release when the release-please PR is merged into production
     if: >-
       ${{ github.event.pull_request.merged == true &&
           (github.event.pull_request.user.login == 'release-please[bot]' ||
            startsWith(github.event.pull_request.title, 'chore') && contains(github.event.pull_request.title, 'release')) }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           persist-credentials: false
           fetch-depth: 0
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@16a9c90856f42705d54a6fda1823352bdc62cf38
         with:
           config-file: release-please-config.json
           manifest-file: release-please-manifest.json

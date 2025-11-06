@@ -17,7 +17,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Determine what needs to run
   changes:
     runs-on: ubuntu-latest
     outputs:
@@ -25,12 +24,12 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       terraform: ${{ steps.filter.outputs.terraform }}
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           persist-credentials: false
           fetch-depth: 0
 
-      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36  # v3.0.2
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
         id: filter
         with:
           filters: |
@@ -44,33 +43,27 @@ jobs:
               - 'bfs-cloud/**'
               - '.github/workflows/ci.yml'
 
-  # Backend CI with test sharding
   backend:
     needs: changes
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
     defaults:
       run:
         working-directory: bfs-backend
 
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           persist-credentials: false
           fetch-depth: 0
 
-      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32  # v5.0.2
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
         with:
           go-version: "1.23.x"
           cache: true
           cache-dependency-path: bfs-backend/go.sum
 
-      # Advanced caching
-      - uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9  # v4.0.2
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: |
             ~/.cache/go-build
@@ -80,103 +73,69 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Install tools
-        if: matrix.shard == 1
         run: |
           go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
           go install github.com/securego/gosec/v2/cmd/gosec@latest
           go install golang.org/x/vuln/cmd/govulncheck@latest
 
-      # Lint (only on shard 1 to avoid duplication)
       - name: Lint
-        if: matrix.shard == 1
         run: golangci-lint run --timeout=5m
 
-      # Vet (only on shard 1)
       - name: Go vet
-        if: matrix.shard == 1
         run: go vet ./...
 
-      # Security scan (only on shard 1)
       - name: SAST with gosec
-        if: matrix.shard == 1
         run: |
           gosec -fmt=sarif -out=gosec.sarif ./...
 
       - name: Upload SARIF
-        if: matrix.shard == 1
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@0499de31b99561a6d14a36a5f662c2a54f91beee
         with:
           sarif_file: bfs-backend/gosec.sarif
         continue-on-error: true
 
-      # Vulnerability scan (only on shard 1)
       - name: Check for vulnerabilities
-        if: matrix.shard == 1
         run: govulncheck ./...
 
-      # Sharded tests with coverage
-      - name: Run tests (shard ${{ matrix.shard }}/4)
+      - name: Run tests (4 shards in parallel)
         run: |
-          # Get all packages
+          set -e
           PACKAGES=$(go list ./... | grep -v /test/)
           TOTAL=$(echo "$PACKAGES" | wc -l | tr -d ' ')
-          PER_SHARD=$(( ($TOTAL + 3) / 4 ))
-          START=$(( (${{ matrix.shard }} - 1) * $PER_SHARD + 1 ))
-          END=$(( ${{ matrix.shard }} * $PER_SHARD ))
+          SHARDS=4
+          PER_SHARD=$(( (TOTAL + SHARDS - 1) / SHARDS ))
 
-          # Select packages for this shard
-          SHARD_PACKAGES=$(echo "$PACKAGES" | sed -n "${START},${END}p")
+          i=1
+          PIDS=()
+          while [ $i -le $SHARDS ]; do
+            START=$(( (i - 1) * PER_SHARD + 1 ))
+            END=$(( i * PER_SHARD ))
+            SHARD_PACKAGES=$(echo "$PACKAGES" | sed -n "${START},${END}p")
+            if [ -n "$SHARD_PACKAGES" ]; then
+              echo "Running shard $i with packages:"
+              echo "$SHARD_PACKAGES"
+              echo "$SHARD_PACKAGES" | xargs go test -v -race -timeout=10m -coverprofile=coverage-$i.out -covermode=atomic &
+              PIDS+=("$!")
+            fi
+            i=$((i+1))
+          done
 
-          # Run tests
-          if [ -n "$SHARD_PACKAGES" ]; then
-            echo "$SHARD_PACKAGES" | xargs go test -v -race -timeout=10m \
-              -coverprofile=coverage-${{ matrix.shard }}.out \
-              -covermode=atomic
+          # Wait for all shards
+          FAILED=0
+          for pid in "${PIDS[@]}"; do
+            if ! wait "$pid"; then
+              FAILED=1
+            fi
+          done
+          if [ $FAILED -ne 0 ]; then
+            echo "One or more test shards failed"
+            exit 1
           fi
-
-      # Upload coverage
-      - name: Upload coverage
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-backend-${{ matrix.shard }}
-          path: bfs-backend/coverage-${{ matrix.shard }}.out
-          retention-days: 1
-
-      # Build (only on shard 1)
-      - name: Build
-        if: matrix.shard == 1
-        run: go build -v ./cmd/api
-
-  # Merge backend shards and check coverage
-  backend-results:
-    needs: backend
-    runs-on: ubuntu-latest
-    if: needs.backend.result != 'skipped'
-    defaults:
-      run:
-        working-directory: bfs-backend
-
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32  # v5.0.2
-        with:
-          go-version: "1.23.x"
-
-      - name: Download all coverage reports
-        uses: actions/download-artifact@v4
-        with:
-          pattern: coverage-backend-*
-          path: bfs-backend/coverage
-          merge-multiple: true
 
       - name: Merge coverage reports
         run: |
           echo "mode: atomic" > coverage-merged.out
-          tail -q -n +2 coverage/*.out >> coverage-merged.out || true
+          tail -q -n +2 coverage-*.out >> coverage-merged.out || true
 
       - name: Check coverage threshold
         run: |
@@ -184,20 +143,17 @@ jobs:
             echo "No coverage file found, skipping"
             exit 0
           fi
-
           COVERAGE=$(go tool cover -func=coverage-merged.out | grep total | awk '{print $3}' | sed 's/%//')
           echo "Total coverage: ${COVERAGE}%"
-
           THRESHOLD=70
           if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
             echo "⚠️  Coverage ${COVERAGE}% is below ${THRESHOLD}% threshold"
-            # Don't fail, just warn for now
           else
             echo "✅ Coverage ${COVERAGE}% meets ${THRESHOLD}% threshold"
           fi
 
-      - name: Upload merged coverage
-        uses: codecov/codecov-action@v4
+      - name: Upload merged coverage to Codecov
+        uses: codecov/codecov-action@5c47607acb93fed5485fdbf7232e8a31425f672a
         with:
           files: bfs-backend/coverage-merged.out
           flags: backend
@@ -205,7 +161,9 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
         continue-on-error: true
 
-  # Frontend CI with comprehensive checks
+      - name: Build
+        run: go build -v ./cmd/api
+
   frontend:
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
@@ -215,23 +173,22 @@ jobs:
         working-directory: bfs-web-app
 
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           persist-credentials: false
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@fe1e16a95b1f2ec91981aea63e50e504e32c814a  # v4.0.0
+      - uses: pnpm/action-setup@fe1e16a95b1f2ec91981aea63e50e504e32c814a
         with:
           version: 10
 
-      - uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b  # v4.0.3
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
         with:
           node-version: 22
           cache: pnpm
           cache-dependency-path: bfs-web-app/pnpm-lock.yaml
 
-      # Advanced caching
-      - uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9  # v4.0.2
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         id: cache
         with:
           path: |
@@ -245,7 +202,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
 
-      # Parallel linting and type checking
       - name: Lint
         run: pnpm run lint
 
@@ -255,13 +211,12 @@ jobs:
       - name: Type check
         run: pnpm run typecheck
 
-      # Unit tests with coverage
       - name: Unit tests
         run: pnpm test -- --run --coverage
         continue-on-error: true
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@5c47607acb93fed5485fdbf7232e8a31425f672a
         with:
           files: bfs-web-app/coverage/coverage-final.json
           flags: frontend,unit
@@ -269,13 +224,11 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
         continue-on-error: true
 
-      # Build
       - name: Build
         env:
           NEXT_TELEMETRY_DISABLED: "1"
         run: pnpm build
 
-      # Bundle analysis
       - name: Analyze bundle size
         run: |
           BUNDLE_SIZE=$(du -sk .next/static 2>/dev/null | cut -f1 || echo "0")
@@ -289,9 +242,8 @@ jobs:
             echo "✅ Bundle size within budget"
           fi
 
-      # Store build for E2E tests
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874
         with:
           name: frontend-build
           path: |
@@ -299,7 +251,6 @@ jobs:
             bfs-web-app/public
           retention-days: 1
 
-  # E2E tests (runs after build)
   frontend-e2e:
     needs: frontend
     if: needs.frontend.result == 'success'
@@ -313,15 +264,15 @@ jobs:
         working-directory: bfs-web-app
 
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           persist-credentials: false
 
-      - uses: pnpm/action-setup@fe1e16a95b1f2ec91981aea63e50e504e32c814a  # v4.0.0
+      - uses: pnpm/action-setup@fe1e16a95b1f2ec91981aea63e50e504e32c814a
         with:
           version: 10
 
-      - uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b  # v4.0.3
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
         with:
           node-version: 22
           cache: pnpm
@@ -330,83 +281,74 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Download build from previous job
       - name: Download build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
         with:
           name: frontend-build
           path: bfs-web-app/
 
-      # Install Playwright
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
 
-      # Run E2E tests (sharded)
       - name: Run E2E tests (shard ${{ matrix.shard }}/3)
         run: pnpm exec playwright test --shard=${{ matrix.shard }}/3
         continue-on-error: true
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874
         with:
           name: playwright-report-${{ matrix.shard }}
           path: bfs-web-app/playwright-report
           retention-days: 7
 
-  # Terraform validation and testing
   terraform:
     needs: changes
     if: needs.changes.outputs.terraform == 'true'
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           persist-credentials: false
 
-      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd  # v3.1.2
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
         with:
           terraform_version: 1.10.3
 
-      # Terraform format
       - name: Terraform format
         working-directory: bfs-cloud
         run: terraform fmt -check -recursive
 
-      # Terraform validation for staging
       - name: Terraform validate (staging)
         working-directory: bfs-cloud/envs/staging
         run: |
           terraform init -backend=false
           terraform validate
 
-      # Terraform validation for production
       - name: Terraform validate (production)
         working-directory: bfs-cloud/envs/production
         run: |
           terraform init -backend=false
           terraform validate
 
-      # Security scanning with tfsec
       - name: tfsec scan
-        uses: aquasecurity/tfsec-action@v1
+        uses: aquasecurity/tfsec-action@b466648d6e39e7c75324f25d83891162a721f2d6
         with:
           working_directory: bfs-cloud
           soft_fail: true
 
-  # Final success gate
   ci-success:
     name: CI Success Gate
     runs-on: ubuntu-latest
-    needs: [changes, backend-results, frontend-e2e, terraform]
+    needs: [changes, backend, frontend-e2e, terraform]
     if: always()
 
     steps:
       - name: Check all jobs succeeded
         run: |
           CHANGES="${{ needs.changes.result }}"
-          BACKEND="${{ needs.backend-results.result }}"
+          BACKEND="${{ needs.backend.result }}"
           FRONTEND="${{ needs.frontend-e2e.result }}"
           TERRAFORM="${{ needs.terraform.result }}"
 
@@ -427,10 +369,9 @@ jobs:
             exit 1
           fi
 
-      # Post PR comment with summary
       - name: Post PR summary
         if: github.event_name == 'pull_request' && always()
-        uses: actions/github-script@v7
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         with:
           script: |
             const needs = ${{ toJSON(needs) }};
@@ -445,7 +386,7 @@ jobs:
 
             | Check | Status |
             |-------|--------|
-            | Backend Tests | ${formatResult(needs['backend-results']?.result)} ${needs['backend-results']?.result || 'N/A'} |
+            | Backend Tests | ${formatResult(needs['backend']?.result)} ${needs['backend']?.result || 'N/A'} |
             | Frontend Tests | ${formatResult(needs['frontend-e2e']?.result)} ${needs['frontend-e2e']?.result || 'N/A'} |
             | Infrastructure | ${formatResult(needs.terraform?.result)} ${needs.terraform?.result || 'N/A'} |
 

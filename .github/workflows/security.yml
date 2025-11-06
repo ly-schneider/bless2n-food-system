@@ -5,7 +5,7 @@ on:
   push:
     branches: [staging, production]
   schedule:
-    - cron: '0 2 * * *'  # Daily at 2 AM UTC
+    - cron: '0 2 * * *' 
 
 permissions:
   contents: read
@@ -21,13 +21,13 @@ jobs:
     name: Scan for secrets
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           persist-credentials: false
           fetch-depth: 0
 
       - name: TruffleHog scan
-        uses: trufflesecurity/trufflehog@v3
+        uses: trufflesecurity/trufflehog@f15cb8b37b9b70056bc82a8eb7151f75fad27a71
         with:
           path: ./
           base: ${{ github.event.pull_request.base.sha || github.event.before || 'HEAD~1' }}
@@ -41,16 +41,15 @@ jobs:
       matrix:
         component: [backend, frontend]
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           persist-credentials: false
 
-      # Backend dependencies
       - name: Setup Go
         if: matrix.component == 'backend'
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
         with:
-          go-version: "1.23.x"
+          go-version: "1.25.x"
           cache: true
           cache-dependency-path: bfs-backend/go.sum
 
@@ -61,16 +60,15 @@ jobs:
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
 
-      # Frontend dependencies
       - name: Setup pnpm
         if: matrix.component == 'frontend'
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@fe1e16a95b1f2ec91981aea63e50e504e32c814a
         with:
           version: 10
 
       - name: Setup Node
         if: matrix.component == 'frontend'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
         with:
           node-version: 22
           cache: pnpm
@@ -88,16 +86,15 @@ jobs:
           # Run audit but don't fail on moderate
           pnpm audit --audit-level=high || true
 
-      # SBOM generation
       - name: Generate SBOM
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@8e94d75ddd33f69f691467e42275782e4bfefe84
         with:
           path: ${{ matrix.component == 'backend' && 'bfs-backend' || 'bfs-web-app' }}
           format: cyclonedx-json
           output-file: sbom-${{ matrix.component }}.json
 
       - name: Upload SBOM
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874
         with:
           name: sbom-${{ matrix.component }}
           path: sbom-${{ matrix.component }}.json
@@ -111,15 +108,14 @@ jobs:
       matrix:
         image: [backend, frontend]
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           persist-credentials: false
 
-      # Build image (without pushing)
-      - uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db  # v3.6.1
+      - uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db
 
       - name: Build image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75
         with:
           context: ${{ matrix.image == 'backend' && 'bfs-backend' || 'bfs-web-app' }}
           file: ${{ matrix.image == 'backend' && 'bfs-backend' || 'bfs-web-app' }}/Dockerfile
@@ -128,9 +124,8 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
-      # Trivy scan
       - name: Trivy vulnerability scan
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8
         with:
           image-ref: local/${{ matrix.image }}:scan
           format: 'sarif'
@@ -138,14 +133,13 @@ jobs:
           severity: 'CRITICAL,HIGH,MEDIUM'
 
       - name: Upload Trivy SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@0499de31b99561a6d14a36a5f662c2a54f91beee
         with:
           sarif_file: trivy-${{ matrix.image }}.sarif
         continue-on-error: true
 
-      # Grype scan
       - name: Grype vulnerability scan
-        uses: anchore/scan-action@v4
+        uses: anchore/scan-action@64a33b277ea7a1215a3c142735a1091341939ff5
         with:
           image: local/${{ matrix.image }}:scan
           fail-build: false
@@ -155,13 +149,13 @@ jobs:
     name: License compliance check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           persist-credentials: false
 
-      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32  # v5.0.2
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
         with:
-          go-version: "1.23.x"
+          go-version: "1.25.x"
 
       - name: Check Go licenses
         working-directory: bfs-backend
@@ -176,11 +170,11 @@ jobs:
           fi
         continue-on-error: true
 
-      - uses: pnpm/action-setup@fe1e16a95b1f2ec91981aea63e50e504e32c814a  # v4.0.0
+      - uses: pnpm/action-setup@fe1e16a95b1f2ec91981aea63e50e504e32c814a
         with:
           version: 10
 
-      - uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b  # v4.0.3
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
         with:
           node-version: 22
 
@@ -199,7 +193,7 @@ jobs:
     steps:
       - name: Create security issue
         if: github.event_name == 'schedule' || github.ref == 'refs/heads/production'
-        uses: actions/github-script@v7
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         with:
           script: |
             const runUrl = `${context.payload.repository.html_url}/actions/runs/${context.runId}`;

@@ -34,12 +34,11 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           persist-credentials: false
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
-      # Verify build succeeded (for workflow_run trigger)
       - name: Check build workflow
         if: github.event_name == 'workflow_run'
         run: |
@@ -49,7 +48,6 @@ jobs:
           fi
           echo "✅ Build workflow succeeded"
 
-      # Determine environment and workspace
       - name: Set environment variables
         id: env
         run: |
@@ -82,10 +80,9 @@ jobs:
           echo "image_tag=$TAG" >> $GITHUB_OUTPUT
           echo "sha=$SHA" >> $GITHUB_OUTPUT
 
-      # Download image digests
       - name: Download image digests
         if: github.event_name == 'workflow_run'
-        uses: dawidd6/action-download-artifact@v6
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
         with:
           workflow: build-images.yml
           run_id: ${{ github.event.workflow_run.id }}
@@ -109,9 +106,8 @@ jobs:
           echo "Backend digest: ${BACKEND_DIGEST:-<none>}"
           echo "Frontend digest: ${FRONTEND_DIGEST:-<none>}"
 
-      # Queue Terraform Cloud run
       - name: Trigger Terraform Cloud deployment
-        uses: kvrhdn/tfe-run@v1.0.9
+        uses: kvrhdn/tfe-run@c5b4a5e8a83c6c0bc59ada8ac90e45f78f54a73c
         with:
           token: ${{ secrets.TF_API_TOKEN }}
           organization: ${{ vars.TF_ORG_NAME }}

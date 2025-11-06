@@ -56,15 +56,13 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           persist-credentials: false
 
-      # Wait for deployment to settle
       - name: Wait for deployment
         run: sleep 30
 
-      # Health checks
       - name: Health check
         run: |
           MAX_RETRIES=5
@@ -84,7 +82,6 @@ jobs:
           echo "❌ Health check failed after $MAX_RETRIES retries"
           exit 1
 
-      # Critical path tests
       - name: Test critical paths
         run: |
           BASE_URL="${{ needs.determine-environment.outputs.url }}"
@@ -109,13 +106,13 @@ jobs:
         working-directory: bfs-backend
 
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           persist-credentials: false
 
-      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32  # v5.0.2
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
         with:
-          go-version: "1.23.x"
+          go-version: "1.25.x"
 
       - name: Run integration tests
         working-directory: bfs-backend/test/integration
@@ -136,7 +133,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v5.1.0
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           persist-credentials: false
 
@@ -183,7 +180,7 @@ jobs:
 
     steps:
       - name: Generate validation report
-        uses: actions/github-script@v7
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         with:
           script: |
             const results = {
