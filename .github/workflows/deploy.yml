@@ -110,7 +110,7 @@ jobs:
 
       # Queue Terraform Cloud run
       - name: Trigger Terraform Cloud deployment
-        uses: kvrhdn/tfe-run@v1
+        uses: kvrhdn/tfe-run@v1.0.9
         with:
           token: ${{ secrets.TF_API_TOKEN }}
           organization: ${{ vars.TF_ORG_NAME }}
