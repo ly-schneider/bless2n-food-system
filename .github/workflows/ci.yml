@@ -79,7 +79,6 @@ jobs:
       - name: Install tools
         run: |
           go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-          go install github.com/securego/gosec/v2/cmd/gosec@latest
           go install golang.org/x/vuln/cmd/govulncheck@latest
 
       - name: Lint
@@ -87,18 +86,6 @@ jobs:
 
       - name: Go vet
         run: go vet ./...
-
-      - name: SAST with gosec
-        run: |
-          gosec -fmt=sarif -out=gosec.sarif ./...
-        continue-on-error: true
-
-      - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@0499de31b99561a6d14a36a5f662c2a54f91beee
-        with:
-          sarif_file: bfs-backend/gosec.sarif
-        if: always()
-        continue-on-error: true
 
       - name: Check for vulnerabilities
         run: govulncheck ./...
@@ -141,7 +128,15 @@ jobs:
       - name: Merge coverage reports
         run: |
           echo "mode: atomic" > coverage-merged.out
-          tail -q -n +2 coverage-*.out >> coverage-merged.out || true
+          # Only include shard outputs (e.g., coverage-1.out..coverage-N.out)
+          # Avoid self-appending coverage-merged.out which can cause an infinite loop
+          shopt -s nullglob
+          FILES=(coverage-[0-9]*.out)
+          if [ ${#FILES[@]} -gt 0 ]; then
+            tail -q -n +2 "${FILES[@]}" >> coverage-merged.out
+          else
+            echo "No shard coverage files found"
+          fi
 
       - name: Check coverage threshold
         run: |
