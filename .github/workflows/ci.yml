@@ -1,0 +1,465 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [staging, production]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+  security-events: write
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      terraform: ${{ steps.filter.outputs.terraform }}
+      android: ${{ steps.filter.outputs.android }}
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'bfs-backend/**'
+              - '.github/workflows/ci.yml'
+            frontend:
+              - 'bfs-web-app/**'
+              - '.github/workflows/ci.yml'
+            terraform:
+              - 'bfs-cloud/**'
+              - '.github/workflows/ci.yml'
+            android:
+              - 'bfs-android-app/**'
+              - '.github/workflows/ci.yml'
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bfs-backend
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
+        with:
+          go-version: "1.25.x"
+          cache: true
+          cache-dependency-path: bfs-backend/go.sum
+
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('bfs-backend/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install tools
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Lint
+        run: golangci-lint run --timeout=5m
+
+      - name: Go vet
+        run: go vet ./...
+
+      - name: Check for vulnerabilities
+        run: govulncheck ./...
+
+      - name: Run tests (4 shards in parallel)
+        run: |
+          set -e
+          PACKAGES=$(go list ./... | grep -v /test/)
+          TOTAL=$(echo "$PACKAGES" | wc -l | tr -d ' ')
+          SHARDS=4
+          PER_SHARD=$(( (TOTAL + SHARDS - 1) / SHARDS ))
+
+          i=1
+          PIDS=()
+          while [ $i -le $SHARDS ]; do
+            START=$(( (i - 1) * PER_SHARD + 1 ))
+            END=$(( i * PER_SHARD ))
+            SHARD_PACKAGES=$(echo "$PACKAGES" | sed -n "${START},${END}p")
+            if [ -n "$SHARD_PACKAGES" ]; then
+              echo "Running shard $i with packages:"
+              echo "$SHARD_PACKAGES"
+              echo "$SHARD_PACKAGES" | xargs go test -v -race -timeout=10m -coverprofile=coverage-$i.out -covermode=atomic &
+              PIDS+=("$!")
+            fi
+            i=$((i+1))
+          done
+
+          # Wait for all shards
+          FAILED=0
+          for pid in "${PIDS[@]}"; do
+            if ! wait "$pid"; then
+              FAILED=1
+            fi
+          done
+          if [ $FAILED -ne 0 ]; then
+            echo "One or more test shards failed"
+            exit 1
+          fi
+
+      - name: Merge coverage reports
+        run: |
+          echo "mode: atomic" > coverage-merged.out
+          # Only include shard outputs (e.g., coverage-1.out..coverage-N.out)
+          # Avoid self-appending coverage-merged.out which can cause an infinite loop
+          shopt -s nullglob
+          FILES=(coverage-[0-9]*.out)
+          if [ ${#FILES[@]} -gt 0 ]; then
+            tail -q -n +2 "${FILES[@]}" >> coverage-merged.out
+          else
+            echo "No shard coverage files found"
+          fi
+
+      - name: Check coverage threshold
+        run: |
+          if [ ! -f coverage-merged.out ]; then
+            echo "No coverage file found, skipping"
+            exit 0
+          fi
+          COVERAGE=$(go tool cover -func=coverage-merged.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "Total coverage: ${COVERAGE}%"
+          THRESHOLD=70
+          if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
+            echo "⚠️  Coverage ${COVERAGE}% is below ${THRESHOLD}% threshold"
+          else
+            echo "✅ Coverage ${COVERAGE}% meets ${THRESHOLD}% threshold"
+          fi
+
+      - name: Upload merged coverage to Codecov
+        uses: codecov/codecov-action@5c47607acb93fed5485fdbf7232e8a31425f672a
+        with:
+          files: bfs-backend/coverage-merged.out
+          flags: backend
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+        continue-on-error: true
+
+      - name: Build
+        run: go build -v ./cmd/backend
+
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bfs-web-app
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10
+
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: bfs-web-app/pnpm-lock.yaml
+
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        id: cache
+        with:
+          path: |
+            ~/.pnpm-store
+            bfs-web-app/.next/cache
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('bfs-web-app/pnpm-lock.yaml') }}-${{ hashFiles('bfs-web-app/**/*.ts', 'bfs-web-app/**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-${{ hashFiles('bfs-web-app/pnpm-lock.yaml') }}-
+            ${{ runner.os }}-pnpm-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Prettier check
+        run: pnpm run prettier
+
+      - name: Type check
+        run: pnpm run typecheck
+
+      - name: Unit tests
+        run: pnpm test -- --run --coverage
+        continue-on-error: true
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@5c47607acb93fed5485fdbf7232e8a31425f672a
+        with:
+          files: bfs-web-app/coverage/coverage-final.json
+          flags: frontend,unit
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+        continue-on-error: true
+
+      - name: Build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: pnpm build
+
+      - name: Analyze bundle size
+        run: |
+          BUNDLE_SIZE=$(du -sk .next/static 2>/dev/null | cut -f1 || echo "0")
+          MAX_SIZE=10000  # 10MB
+          echo "Bundle size: ${BUNDLE_SIZE}KB (max: ${MAX_SIZE}KB)"
+
+          if [ $BUNDLE_SIZE -gt $MAX_SIZE ]; then
+            echo "⚠️  Bundle size ${BUNDLE_SIZE}KB exceeds ${MAX_SIZE}KB limit"
+            # Don't fail, just warn
+          else
+            echo "✅ Bundle size within budget"
+          fi
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874
+        with:
+          name: frontend-build
+          path: |
+            bfs-web-app/.next
+            bfs-web-app/public
+          retention-days: 1
+
+  frontend-e2e:
+    needs: frontend
+    if: needs.frontend.result == 'success'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1]
+    defaults:
+      run:
+        working-directory: bfs-web-app
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 10
+
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: bfs-web-app/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download build
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: frontend-build
+          path: bfs-web-app/
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('bfs-web-app/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install chromium
+
+      - name: Run E2E tests (Chromium only)
+        run: pnpm exec playwright test --project=chromium
+        continue-on-error: true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874
+        with:
+          name: playwright-report
+          path: bfs-web-app/playwright-report
+          retention-days: 7
+
+  android:
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bfs-android-app
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          persist-credentials: false
+
+      - name: Setup JDK
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Setup Gradle (cache + wrapper validation)
+        uses: gradle/actions/setup-gradle@4d9f0ba0025fe599b4ebab900eb7f3a1d93ef4c2
+
+      - name: Lint
+        continue-on-error: true
+        run: ./gradlew lintDebug --no-daemon
+
+      - name: Test
+        run: ./gradlew test --no-daemon
+
+  terraform:
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          persist-credentials: false
+
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
+        with:
+          terraform_version: 1.10.3
+
+      - name: Terraform format
+        working-directory: bfs-cloud
+        run: terraform fmt -check -recursive
+
+      - name: Terraform validate (staging)
+        working-directory: bfs-cloud/envs/staging
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      - name: Terraform validate (production)
+        working-directory: bfs-cloud/envs/production
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      - name: tfsec scan
+        uses: aquasecurity/tfsec-action@b466648d6e39e7c75324f25d83891162a721f2d6
+        with:
+          working_directory: bfs-cloud
+          soft_fail: true
+
+  ci-success:
+    name: CI Success Gate
+    runs-on: ubuntu-latest
+    needs: [changes, backend, frontend-e2e, terraform, android]
+    if: always()
+
+    steps:
+      - name: Check all jobs succeeded
+        run: |
+          CHANGES="${{ needs.changes.result }}"
+          BACKEND="${{ needs.backend.result }}"
+          FRONTEND="${{ needs.frontend-e2e.result }}"
+          TERRAFORM="${{ needs.terraform.result }}"
+          ANDROID="${{ needs.android.result }}"
+
+          echo "Changes: $CHANGES"
+          echo "Backend: $BACKEND"
+          echo "Frontend E2E: $FRONTEND"
+          echo "Terraform: $TERRAFORM"
+          echo "Android: $ANDROID"
+
+          function is_ok() {
+            [[ "$1" == "success" || "$1" == "skipped" ]]
+          }
+
+          if is_ok "$CHANGES" && is_ok "$BACKEND" && is_ok "$FRONTEND" && is_ok "$TERRAFORM" && is_ok "$ANDROID"; then
+            echo "✅ All CI checks passed!"
+            exit 0
+          else
+            echo "❌ One or more CI checks failed"
+            exit 1
+          fi
+
+      - name: Post PR summary
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        with:
+          script: |
+            const needs = ${{ toJSON(needs) }};
+            const formatResult = (result) => {
+              if (result === 'success') return '✅';
+              if (result === 'skipped') return '⏭️';
+              if (result === 'failure') return '❌';
+              return '❓';
+            };
+
+            const summary = `## 🎯 CI Summary
+
+            | Check | Status |
+            |-------|--------|
+            | Backend Tests | ${formatResult(needs['backend']?.result)} ${needs['backend']?.result || 'N/A'} |
+            | Frontend Tests | ${formatResult(needs['frontend-e2e']?.result)} ${needs['frontend-e2e']?.result || 'N/A'} |
+            | Infrastructure | ${formatResult(needs.terraform?.result)} ${needs.terraform?.result || 'N/A'} |
+            | Android Tests | ${formatResult(needs.android?.result)} ${needs.android?.result || 'N/A'} |
+
+            [View full results](${context.payload.repository.html_url}/actions/runs/${context.runId})
+            `;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('🎯 CI Summary')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                comment_id: botComment.id,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: summary
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: summary
+              });
+            }

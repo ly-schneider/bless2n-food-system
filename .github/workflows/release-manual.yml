@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout (full history)
-        uses: actions/checkout@v5
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           fetch-depth: 0
 
@@ -61,7 +61,7 @@ jobs:
 
       - name: Resolve target commit
         id: resolve
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         with:
           tag: ${{ inputs.version }}
           target: ${{ inputs.target }}
@@ -95,7 +95,7 @@ jobs:
 
       - name: Check if tag already exists
         id: exists
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         with:
           tag: ${{ inputs.version }}
           script: |
@@ -119,7 +119,7 @@ jobs:
 
       - name: Create GitHub Release (creates tag if missing)
         if: ${{ inputs.dry_run != 'true' }}
-        uses: actions/github-script@v8
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         with:
           tag: ${{ inputs.version }}
           target: ${{ inputs.target }}
@@ -153,7 +153,7 @@ jobs:
     name: Android • Build & Attach
     if: ${{ inputs.dry_run != 'true' }}
     needs: tag-and-release
-    uses: ./.github/workflows/31-release-android-app.yml
+    uses: ./.github/workflows/release-android.yml
     with:
       tag_name: ${{ inputs.version }}
       environment: ${{ inputs.environment }}
