@@ -1,0 +1,145 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  build-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    if: >
+      ${{
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        (github.event.workflow_run.head_branch == 'staging' || github.event.workflow_run.head_branch == 'production')
+      }}
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push Frontend image
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75
+        with:
+          context: ./bfs-web-app
+          file: ./bfs-web-app/Dockerfile
+          push: true
+          tags: ghcr.io/ly-schneider/bless2n-food-system/frontend:${{ github.event.workflow_run.head_sha }}
+
+      - name: Build & push Backend image
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75
+        with:
+          context: ./bfs-backend
+          file: ./bfs-backend/Dockerfile
+          push: true
+          tags: ghcr.io/ly-schneider/bless2n-food-system/backend:${{ github.event.workflow_run.head_sha }}
+
+  android-release:
+    name: Build & Release Android App
+    runs-on: ubuntu-latest
+    needs: build-images
+    if: >
+      ${{
+        needs.build-images.result == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'production'
+      }}
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Set up Java
+        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407
+
+      - name: Decode keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > bfs-android-app/release.keystore
+
+      - name: Build Android release (APK)
+        working-directory: bfs-android-app
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_ALIAS_PASSWORD: ${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}
+        run: |
+          ./gradlew clean assembleRelease
+
+      - name: Create GitHub Release and upload APK
+        uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: android-${{ github.event.workflow_run.head_sha }}
+          release_name: bfs-android-app-${{ github.event.workflow_run.head_sha }}
+          draft: true
+          prerelease: false
+          files: |
+            bfs-android-app/app/build/outputs/apk/release/*.apk
+
+  deploy:
+    name: Trigger Terraform Cloud Run
+    runs-on: ubuntu-latest
+    needs:
+      - build-images
+      - android-release
+    if: >
+      ${{
+        needs.build-images.result == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        (github.event.workflow_run.head_branch == 'staging' || github.event.workflow_run.head_branch == 'production')
+      }}
+    steps:
+      - name: Trigger Terraform Cloud run for matching workspace
+        env:
+          TF_TOKEN: ${{ secrets.TF_API_TOKEN }}
+          TF_ORG_NAME: ${{ secrets.TF_ORG_NAME }}
+          TF_WORKSPACE: ${{ secrets.TF_WORKSPACE }}
+          BRANCH: ${{ github.event.workflow_run.head_branch }}
+          COMMIT_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          cat > run.json <<EOF
+          {
+            "data": {
+              "attributes": {
+                "message": "Deploy from GitHub Actions for commit $COMMIT_SHA on branch $BRANCH",
+                "source": "tfe-api"
+              },
+              "type": "runs",
+              "relationships": {
+                "workspace": {
+                  "data": {
+                    "type": "workspaces",
+                    "id": "$WORKSPACE_ID"
+                  }
+                }
+              }
+            }
+          }
+          EOF
+
+          curl \
+            --header "Content-Type: application/vnd.api+json" \
+            --header "Authorization: Bearer $TF_TOKEN" \
+            --request POST \
+            --data @run.json \
+            https://app.terraform.io/api/v2/runs
