@@ -170,9 +170,9 @@ kotlin {
 }
 
 dependencies {
-    implementation("com.sumup:merchant-sdk:5.0.3")
-    implementation("com.github.DantSu:ESCPOS-ThermalPrinter-Android:3.3.0")
-    implementation("com.google.zxing:core:3.5.2")
+    implementation("com.sumup:merchant-sdk:5.0.4")
+    implementation("com.github.DantSu:ESCPOS-ThermalPrinter-Android:3.4.0")
+    implementation("com.google.zxing:core:3.5.3")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
     implementation("androidx.webkit:webkit:1.14.0")
 
@@ -193,5 +193,5 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 
     // Compile-only annotations used by transitive libraries to satisfy R8 analysis
-    compileOnly("com.google.errorprone:error_prone_annotations:2.21.1")
+    compileOnly("com.google.errorprone:error_prone_annotations:2.44.0")
 }
