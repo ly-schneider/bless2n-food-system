@@ -4,6 +4,7 @@ on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
+    branches: [staging, production]
   workflow_dispatch:
     inputs:
       target_branch:
