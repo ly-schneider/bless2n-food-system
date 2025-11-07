@@ -147,7 +147,7 @@ jobs:
         working-directory: bfs-web-app
         run: |
           pnpm install --frozen-lockfile
-          pnpm test -- --ci
+          pnpm test
 
       - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
         with:
