@@ -382,7 +382,7 @@ jobs:
   ci-success:
     name: CI Success Gate
     runs-on: ubuntu-latest
-    needs: [changes, backend, frontend-e2e, terraform, android]
+    needs: [changes, backend, frontend, frontend-e2e, terraform, android]
     if: always()
 
     steps:
@@ -390,13 +390,15 @@ jobs:
         run: |
           CHANGES="${{ needs.changes.result }}"
           BACKEND="${{ needs.backend.result }}"
-          FRONTEND="${{ needs.frontend-e2e.result }}"
+          FRONTEND="${{ needs.frontend.result }}"
+          FRONTEND_E2E="${{ needs.frontend-e2e.result }}"
           TERRAFORM="${{ needs.terraform.result }}"
           ANDROID="${{ needs.android.result }}"
 
           echo "Changes: $CHANGES"
           echo "Backend: $BACKEND"
-          echo "Frontend E2E: $FRONTEND"
+          echo "Frontend: $FRONTEND"
+          echo "Frontend E2E: $FRONTEND_E2E"
           echo "Terraform: $TERRAFORM"
           echo "Android: $ANDROID"
 
@@ -404,7 +406,7 @@ jobs:
             [[ "$1" == "success" || "$1" == "skipped" ]]
           }
 
-          if is_ok "$CHANGES" && is_ok "$BACKEND" && is_ok "$FRONTEND" && is_ok "$TERRAFORM" && is_ok "$ANDROID"; then
+          if is_ok "$CHANGES" && is_ok "$BACKEND" && is_ok "$FRONTEND" && is_ok "$FRONTEND_E2E" && is_ok "$TERRAFORM" && is_ok "$ANDROID"; then
             echo "✅ All CI checks passed!"
             exit 0
           else
@@ -430,7 +432,8 @@ jobs:
             | Check | Status |
             |-------|--------|
             | Backend Tests | ${formatResult(needs['backend']?.result)} ${needs['backend']?.result || 'N/A'} |
-            | Frontend Tests | ${formatResult(needs['frontend-e2e']?.result)} ${needs['frontend-e2e']?.result || 'N/A'} |
+            | Frontend Build | ${formatResult(needs['frontend']?.result)} ${needs['frontend']?.result || 'N/A'} |
+            | Frontend E2E | ${formatResult(needs['frontend-e2e']?.result)} ${needs['frontend-e2e']?.result || 'N/A'} |
             | Infrastructure | ${formatResult(needs.terraform?.result)} ${needs.terraform?.result || 'N/A'} |
             | Android Tests | ${formatResult(needs.android?.result)} ${needs.android?.result || 'N/A'} |
 
