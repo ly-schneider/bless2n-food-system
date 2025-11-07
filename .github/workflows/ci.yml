@@ -104,17 +104,18 @@ jobs:
         run: go vet ./...
 
       - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
+        with:
+          terraform_version: 1.13.3
       - name: Terraform validate (staging)
         working-directory: bfs-cloud/envs/staging
         run: |
-          terraform init -backend=false
+          terraform init -upgrade -backend=false
           terraform validate
 
-      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
       - name: Terraform validate (production)
         working-directory: bfs-cloud/envs/production
         run: |
-          terraform init -backend=false
+          terraform init -upgrade -backend=false
           terraform validate
 
       - name: Set up Java for Android
@@ -155,20 +156,6 @@ jobs:
       - name: Go tests
         working-directory: bfs-backend
         run: go test ./...
-
-      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
-      - name: Terraform plan (staging)
-        working-directory: bfs-cloud/envs/staging
-        run: |
-          terraform init -backend=false
-          terraform plan
-
-      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
-      - name: Terraform plan (production)
-        working-directory: bfs-cloud/envs/production
-        run: |
-          terraform init -backend=false
-          terraform plan
 
   security:
     name: Vulnerabilities Check
