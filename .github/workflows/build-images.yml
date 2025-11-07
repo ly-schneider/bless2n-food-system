@@ -4,7 +4,6 @@ on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
-    branches: [staging, production]
   workflow_dispatch:
     inputs:
       target_branch:
@@ -30,6 +29,11 @@ concurrency:
 
 jobs:
   verify-ci:
+    # Only run for (a) CI-completed runs on staging/production, or (b) manual builds
+    if: |
+      (github.event_name == 'workflow_run' &&
+       (github.event.workflow_run.head_branch == 'staging' || github.event.workflow_run.head_branch == 'production')) ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Ensure CI succeeded for target branch
@@ -42,6 +46,11 @@ jobs:
 
             if (eventName === 'workflow_run') {
               const conclusion = context.payload.workflow_run?.conclusion;
+              const headBranch = context.payload.workflow_run?.head_branch;
+              if (!['staging','production'].includes(headBranch)) {
+                core.setFailed(`Ignoring workflow_run for non-deploy branch '${headBranch}'.`);
+                return;
+              }
               if (conclusion !== 'success') {
                 core.setFailed(`CI workflow did not succeed (conclusion: ${conclusion})`);
               } else {
@@ -71,7 +80,7 @@ jobs:
 
   changes:
     needs: [verify-ci]
-    if: always() && (needs.verify-ci.result == 'success' || needs.verify-ci.result == 'skipped')
+    if: needs.verify-ci.result == 'success'
     runs-on: ubuntu-latest
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
