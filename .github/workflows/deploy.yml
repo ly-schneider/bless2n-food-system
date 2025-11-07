@@ -4,7 +4,6 @@ on:
   workflow_run:
     workflows: ["Build Images"]
     types: [completed]
-    branches: [staging, production]
   workflow_dispatch:
     inputs:
       environment:
@@ -28,6 +27,11 @@ concurrency:
 
 jobs:
   verify-and-deploy:
+    # Only run automatically for staging/production build runs, or when dispatched manually
+    if: |
+      (github.event_name == 'workflow_run' &&
+       (github.event.workflow_run.head_branch == 'staging' || github.event.workflow_run.head_branch == 'production')) ||
+      github.event_name == 'workflow_dispatch'
     name: Deploy to ${{ github.event.workflow_run.head_branch || github.event.inputs.environment }}
     runs-on: ubuntu-latest
     environment: ${{ github.event.workflow_run.head_branch || github.event.inputs.environment }}
