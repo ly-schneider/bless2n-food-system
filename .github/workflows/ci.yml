@@ -25,7 +25,7 @@ jobs:
         working-directory: bfs-web-app
         run: |
           pnpm install --frozen-lockfile
-          pnpm run format:check
+          pnpm run prettier
 
       - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
         with:
