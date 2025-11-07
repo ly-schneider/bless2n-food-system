@@ -20,7 +20,7 @@ on:
 permissions:
   contents: read
   packages: write
-  actions: read
+  actions: write
   attestations: write
   id-token: write
 
@@ -242,3 +242,35 @@ jobs:
           else
             echo "❌ Image build failed" >> $GITHUB_STEP_SUMMARY
           fi
+
+  trigger-deploy:
+    name: Trigger Deploy
+    runs-on: ubuntu-latest
+    needs: [changes, build, merge-digests]
+    if: |
+      needs.build.result == 'success' &&
+      needs.merge-digests.result == 'success' &&
+      (needs.changes.outputs.branch == 'staging' || needs.changes.outputs.branch == 'production')
+    steps:
+      - name: Trigger deploy workflow
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const environment = '${{ needs.changes.outputs.branch }}';
+            const imageTag = '${{ needs.changes.outputs.branch }}';
+
+            console.log(`Triggering deploy workflow for environment: ${environment}`);
+
+            await github.rest.actions.createWorkflowDispatch({
+              owner,
+              repo,
+              workflow_id: 'deploy.yml',
+              ref: environment,
+              inputs: {
+                environment: environment,
+                image_tag: imageTag
+              }
+            });
+
+            console.log('✅ Deploy workflow triggered successfully');
