@@ -13,13 +13,13 @@ jobs:
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
 
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 9
       - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
         with:
           node-version: 22
           cache: pnpm
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
-        with:
-          version: 9
       - name: Web format check
         working-directory: bfs-web-app
         run: |
@@ -40,13 +40,13 @@ jobs:
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
 
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 9
       - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
         with:
           node-version: 22
           cache: pnpm
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
-        with:
-          version: 9
       - name: Web lint
         working-directory: bfs-web-app
         run: |
@@ -80,13 +80,13 @@ jobs:
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
 
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 9
       - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
         with:
           node-version: 22
           cache: pnpm
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
-        with:
-          version: 9
       - name: Web type check
         working-directory: bfs-web-app
         run: |
@@ -132,13 +132,13 @@ jobs:
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
 
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 9
       - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
         with:
           node-version: 22
           cache: pnpm
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
-        with:
-          version: 9
       - name: Web tests
         working-directory: bfs-web-app
         run: |
@@ -173,13 +173,13 @@ jobs:
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
 
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 9
       - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
         with:
           node-version: 22
           cache: pnpm
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
-        with:
-          version: 9
       - name: Web vuln scan
         working-directory: bfs-web-app
         run: |
