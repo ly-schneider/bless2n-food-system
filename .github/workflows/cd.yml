@@ -52,6 +52,8 @@ jobs:
     name: Build & Release Android App
     runs-on: ubuntu-latest
     environment: ${{ github.event.workflow_run.head_branch }}
+    permissions:
+      contents: write
     needs: build-images
     if: >
       ${{
@@ -96,11 +98,9 @@ jobs:
 
       - name: Create GitHub Release and upload APK
         uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: android-${{ github.event.workflow_run.head_sha }}
-          release_name: bfs-android-app-${{ github.event.workflow_run.head_sha }}
+          name: bfs-android-app-${{ github.event.workflow_run.head_sha }}
           draft: true
           prerelease: false
           files: |
