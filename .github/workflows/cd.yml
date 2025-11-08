@@ -1,23 +1,33 @@
 name: CD
 
+run-name: "${{ github.event.workflow_run.head_commit.message }}"
+
 on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
 
 jobs:
-  build-images:
-    name: Build Docker Images
+  check-ci-success:
+    name: Verify CI Success
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
     if: >
       ${{
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.event == 'push' &&
         (github.event.workflow_run.head_branch == 'staging' || github.event.workflow_run.head_branch == 'production')
       }}
+    steps:
+      - name: CI succeeded
+        run: echo "CI workflow succeeded, proceeding with CD"
+
+  build-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: check-ci-success
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
