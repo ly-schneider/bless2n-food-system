@@ -149,3 +149,4 @@ jobs:
           tf-vars: |
             image_tag        = "${{ github.event.workflow_run.head_sha }}"
             revision_suffix  = "${{ github.event.workflow_run.head_sha }}"
+            ghcr_token       = "${{ secrets.GHCR_TOKEN }}"

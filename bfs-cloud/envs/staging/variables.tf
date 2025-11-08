@@ -45,6 +45,12 @@ variable "app_secrets" {
   default     = {}
 }
 
+variable "ghcr_token" {
+  description = "GitHub Container Registry personal access token for pulling images"
+  type        = string
+  sensitive   = true
+}
+
 variable "budget_amount" {
   description = "Monthly cost budget amount for the staging resource group (billing currency)"
   type        = number

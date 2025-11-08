@@ -58,10 +58,12 @@ module "bfs_infrastructure" {
           username             = "ly-schneider"
           password_secret_name = "ghcr-token"
         }]
-        secrets = lookup(var.app_secrets, "frontend-staging", {})
-        key_vault_secret_refs = {
-          ghcr-token = "ghcr-token"
-        }
+        secrets = merge(
+          lookup(var.app_secrets, "frontend-staging", {}),
+          {
+            ghcr-token = var.ghcr_token
+          }
+        )
         environment_variables = {
           NODE_ENV = "production"
 
@@ -110,10 +112,12 @@ module "bfs_infrastructure" {
           username             = "ly-schneider"
           password_secret_name = "ghcr-token"
         }]
-        secrets = lookup(var.app_secrets, "backend-staging", {})
-        key_vault_secret_refs = {
-          ghcr-token = "ghcr-token"
-        }
+        secrets = merge(
+          lookup(var.app_secrets, "backend-staging", {}),
+          {
+            ghcr-token = var.ghcr_token
+          }
+        )
         environment_variables = {
           APP_ENV  = "staging"
           APP_PORT = "8080"
