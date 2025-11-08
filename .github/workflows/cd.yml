@@ -77,7 +77,8 @@ jobs:
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > bfs-android-app/release.keystore
+          echo -n "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload-keystore.jks"
+          echo "BFS_UPLOAD_STORE_FILE=$RUNNER_TEMP/upload-keystore.jks" >> "$GITHUB_ENV"
 
       - name: Build Android release (APK)
         working-directory: bfs-android-app
@@ -87,9 +88,9 @@ jobs:
           ORG_GRADLE_PROJECT_sumupAffiliateKey: ${{ secrets.SUMUP_AFFILIATE_KEY }}
           ORG_GRADLE_PROJECT_posUrl: ${{ secrets.POS_URL }}
           ORG_GRADLE_PROJECT_bfsEnv: ${{ vars.BFS_ENV || 'production' }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_ALIAS_PASSWORD: ${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}
+          BFS_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          BFS_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          BFS_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}
         run: |
           ./gradlew clean assembleRelease
 
