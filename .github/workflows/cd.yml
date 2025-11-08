@@ -107,8 +107,12 @@ jobs:
             bfs-android-app/app/build/outputs/apk/release/*.apk
 
   deploy:
-    name: Trigger Terraform Cloud Run
+    name: Deploy ${{ github.event.workflow_run.head_branch }}
     runs-on: ubuntu-latest
+    environment: ${{ github.event.workflow_run.head_branch }}
+    permissions:
+      contents: read
+      actions: read
     needs:
       - build-images
       - android-release
@@ -119,37 +123,19 @@ jobs:
         (github.event.workflow_run.head_branch == 'staging' || github.event.workflow_run.head_branch == 'production')
       }}
     steps:
-      - name: Trigger Terraform Cloud run for matching workspace
-        env:
-          TF_TOKEN: ${{ secrets.TF_API_TOKEN }}
-          TF_ORG_NAME: ${{ secrets.TF_ORG_NAME }}
-          TF_WORKSPACE: ${{ secrets.TF_WORKSPACE }}
-          BRANCH: ${{ github.event.workflow_run.head_branch }}
-          COMMIT_SHA: ${{ github.event.workflow_run.head_sha }}
-        run: |
-          cat > run.json <<EOF
-          {
-            "data": {
-              "attributes": {
-                "message": "Deploy from GitHub Actions for commit $COMMIT_SHA on branch $BRANCH",
-                "source": "tfe-api"
-              },
-              "type": "runs",
-              "relationships": {
-                "workspace": {
-                  "data": {
-                    "type": "workspaces",
-                    "id": "$WORKSPACE_ID"
-                  }
-                }
-              }
-            }
-          }
-          EOF
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
 
-          curl \
-            --header "Content-Type: application/vnd.api+json" \
-            --header "Authorization: Bearer $TF_TOKEN" \
-            --request POST \
-            --data @run.json \
-            https://app.terraform.io/api/v2/runs
+      - name: Terraform Cloud apply
+        uses: kvrhdn/tfe-run@4953a73eaf2b24b7fc7c2a98bc8d112eea1b34c7
+        with:
+          token: ${{ secrets.TF_API_TOKEN }}
+          organization: ${{ vars.TF_ORG_NAME }}
+          workspace: ${{ vars.TF_WORKSPACE }}
+          message: "CD deploy | branch=${{ github.event.workflow_run.head_branch }} | commit=${{ github.event.workflow_run.head_sha }}"
+          wait-for-completion: ${{ github.event.workflow_run.head_branch == 'staging' }}
+          tf-vars: |
+            image_tag        = "${{ github.event.workflow_run.head_sha }}"
+            revision_suffix  = "${{ github.event.workflow_run.head_sha }}"
