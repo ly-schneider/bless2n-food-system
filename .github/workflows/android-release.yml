@@ -10,6 +10,10 @@ on:
         options:
           - staging
           - production
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+        type: string
 
 jobs:
   quality-checks:
@@ -78,9 +82,27 @@ jobs:
           echo -n "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload-keystore.jks"
           echo "BFS_UPLOAD_STORE_FILE=$RUNNER_TEMP/upload-keystore.jks" >> "$GITHUB_ENV"
 
+      - name: Validate version format
+        id: version
+        run: |
+          VERSION="${{ inputs.version }}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Version must be in format X.Y.Z (e.g., 1.0.0)"
+            exit 1
+          fi
+
+          # Calculate version code (major * 10000 + minor * 100 + patch)
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          VERSION_CODE=$((MAJOR * 10000 + MINOR * 100 + PATCH))
+
+          echo "version_name=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "date=$(date +'%Y-%m-%d %H:%M:%S')" >> "$GITHUB_OUTPUT"
+
       - name: Build Android release APK
         working-directory: bfs-android-app
         env:
+          VERSION_TAG: ${{ inputs.version }}
           SUMUP_AFFILIATE_KEY: ${{ secrets.SUMUP_AFFILIATE_KEY }}
           POS_URL: ${{ secrets.POS_URL }}
           ORG_GRADLE_PROJECT_sumupAffiliateKey: ${{ secrets.SUMUP_AFFILIATE_KEY }}
@@ -92,33 +114,23 @@ jobs:
         run: |
           ./gradlew clean assembleRelease
 
-      - name: Get version info
-        id: version
-        working-directory: bfs-android-app
-        run: |
-          VERSION_NAME=$(./gradlew -q printVersionName | tail -n 1)
-          VERSION_CODE=$(./gradlew -q printVersionCode | tail -n 1)
-          echo "version_name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
-          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
-          echo "date=$(date +'%Y-%m-%d %H:%M:%S')" >> "$GITHUB_OUTPUT"
-
       - name: Rename APK with environment
         run: |
           cd bfs-android-app/app/build/outputs/apk/release
           for apk in *.apk; do
-            mv "$apk" "bfs-pos-${{ inputs.environment }}-v${{ steps.version.version_name }}.apk"
+            mv "$apk" "bfs-pos-${{ inputs.environment }}-v${{ inputs.version }}.apk"
           done
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090
         with:
-          tag_name: android-${{ inputs.environment }}-v${{ steps.version.version_name }}-${{ steps.version.version_code }}
-          name: Android POS - ${{ inputs.environment }} v${{ steps.version.version_name }}
+          tag_name: android-${{ inputs.environment }}-v${{ inputs.version }}
+          name: Android POS - ${{ inputs.environment }} v${{ inputs.version }}
           body: |
             ## Android POS Release
 
             **Environment:** ${{ inputs.environment }}
-            **Version:** ${{ steps.version.version_name }} (build ${{ steps.version.version_code }})
+            **Version:** ${{ inputs.version }} (build ${{ steps.version.version_code }})
             **Built:** ${{ steps.version.date }}
             **Branch:** ${{ github.ref_name }}
             **Commit:** ${{ github.sha }}
@@ -136,8 +148,9 @@ jobs:
           echo "## Android Release Created ✅" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Environment:** ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version:** ${{ steps.version.version_name }} (build ${{ steps.version.version_code }})" >> $GITHUB_STEP_SUMMARY
-          echo "- **Tag:** android-${{ inputs.environment }}-v${{ steps.version.version_name }}-${{ steps.version.version_code }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** ${{ inputs.version }} (build ${{ steps.version.version_code }})" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag:** android-${{ inputs.environment }}-v${{ inputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **APK:** bfs-pos-${{ inputs.environment }}-v${{ inputs.version }}.apk" >> $GITHUB_STEP_SUMMARY
           echo "- **Prerelease:** ${{ inputs.environment == 'staging' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "APK is available in the [Releases](https://github.com/${{ github.repository }}/releases) page." >> $GITHUB_STEP_SUMMARY
