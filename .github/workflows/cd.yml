@@ -58,6 +58,10 @@ jobs:
         github.event.workflow_run.event == 'push' &&
         github.event.workflow_run.head_branch == 'production'
       }}
+    env:
+      ORG_GRADLE_PROJECT_sumupAffiliateKey: ${{ secrets.SUMUP_AFFILIATE_KEY }}
+      ORG_GRADLE_PROJECT_posUrl: ${{ secrets.POS_URL }}
+      ORG_GRADLE_PROJECT_bfsEnv: ${{ vars.BFS_ENV || 'production' }}
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:

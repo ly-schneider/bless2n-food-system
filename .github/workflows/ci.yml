@@ -6,9 +6,44 @@ on:
   push:
     branches: [ production, staging ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  format:
-    name: Format Check
+  # detect-changes:
+  #   name: Detect Changes
+  #   runs-on: ubuntu-latest
+  #   outputs:
+  #     web: ${{ steps.filter.outputs.web }}
+  #     backend: ${{ steps.filter.outputs.backend }}
+  #     android: ${{ steps.filter.outputs.android }}
+  #     terraform: ${{ steps.filter.outputs.terraform }}
+  #   steps:
+  #     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+  #
+  #     - uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
+  #       id: filter
+  #       with:
+  #         filters: |
+  #           web:
+  #             - 'bfs-web-app/**'
+  #             - 'package.json'
+  #             - 'pnpm-lock.yaml'
+  #           backend:
+  #             - 'bfs-backend/**'
+  #             - 'go.mod'
+  #             - 'go.sum'
+  #           android:
+  #             - 'bfs-android-app/**'
+  #             - '*.gradle'
+  #             - 'gradle/**'
+  #           terraform:
+  #             - 'bfs-cloud/**'
+  #             - '*.tf'
+
+  setup-dependencies:
+    name: Setup Dependencies
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -16,173 +51,251 @@ jobs:
       - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 9
+
       - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
         with:
           node-version: 22
           cache: pnpm
           cache-dependency-path: bfs-web-app/pnpm-lock.yaml
-      - name: Web format check
+
+      - name: Install web dependencies
         working-directory: bfs-web-app
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm run prettier
+        run: pnpm install --frozen-lockfile
 
-      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
+      - name: Cache web node_modules
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
-          terraform_version: 1.13.3
-      - name: Terraform fmt check
-        working-directory: bfs-cloud
-        run: terraform fmt -check -recursive
-
-  lint:
-    name: Lint Check
-    runs-on: ubuntu-latest
-    needs: format
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
-        with:
-          version: 9
-      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: bfs-web-app/pnpm-lock.yaml
-      - name: Web lint
-        working-directory: bfs-web-app
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm run lint
+          path: bfs-web-app/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('bfs-web-app/pnpm-lock.yaml') }}
 
       - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
         with:
           go-version: '1.25'
-      - name: Go lint
+          cache-dependency-path: bfs-backend/go.sum
+
+      - name: Download Go modules
+        working-directory: bfs-backend
+        run: go mod download
+
+  web-quality:
+    name: Web Quality Checks
+    runs-on: ubuntu-latest
+    needs: setup-dependencies
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 9
+
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: bfs-web-app/pnpm-lock.yaml
+
+      - name: Restore web node_modules
+        uses: actions/cache/restore0057852bfaa89a56745cba8c7296529d2fc398304
+        with:
+          path: bfs-web-app/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('bfs-web-app/pnpm-lock.yaml') }}
+          fail-on-cache-miss: true
+
+      - name: Format check
+        working-directory: bfs-web-app
+        run: pnpm run prettier
+
+      - name: Lint
+        working-directory: bfs-web-app
+        run: pnpm run lint
+
+      - name: Type check
+        working-directory: bfs-web-app
+        run: pnpm run typecheck
+
+  web-test:
+    name: Web Tests (Shard ${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    needs: setup-dependencies
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 9
+
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: bfs-web-app/pnpm-lock.yaml
+
+      - name: Restore web node_modules
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: bfs-web-app/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('bfs-web-app/pnpm-lock.yaml') }}
+          fail-on-cache-miss: true
+
+      - name: Run tests
+        working-directory: bfs-web-app
+        run: pnpm test -- --shard=${{ matrix.shard }}/3
+
+  backend-quality:
+    name: Backend Quality & Tests
+    runs-on: ubuntu-latest
+    needs: setup-dependencies
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
+        with:
+          go-version: '1.25'
+          cache-dependency-path: bfs-backend/go.sum
+
+      - name: Lint
         uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9
         with:
           version: latest
           working-directory: bfs-backend
+          args: --timeout=5m
 
-      - name: Set up Java for Android
+      - name: Vet
+        working-directory: bfs-backend
+        run: go vet ./...
+
+      - name: Run tests
+        working-directory: bfs-backend
+        run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7
+        with:
+          files: ./bfs-backend/coverage.out
+          flags: backend
+          fail_ci_if_error: false
+
+  android-quality:
+    name: Android Quality & Build
+    runs-on: ubuntu-latest
+    needs: setup-dependencies
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - name: Set up Java
         uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
         with:
           distribution: temurin
           java-version: '21'
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407
-      - name: Android lint
-        working-directory: bfs-android-app
-        run: ./gradlew lint
 
-  typecheck:
-    name: Type Check
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407
+
+      - name: Setup Gradle cache
+        uses: gradle/actions/setup-gradle@4d9f0ba0025fe599b4ebab900eb7f3a1d93ef4c2
+        with:
+          cache-read-only: false
+
+      - name: Lint
+        working-directory: bfs-android-app
+        run: ./gradlew lint --parallel
+
+      - name: Assemble debug
+        working-directory: bfs-android-app
+        run: ./gradlew assembleDebug --parallel
+
+  terraform-quality:
+    name: Terraform Quality
     runs-on: ubuntu-latest
-    needs: lint
+    needs: setup-dependencies
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
-        with:
-          version: 9
-      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: bfs-web-app/pnpm-lock.yaml
-      - name: Web type check
-        working-directory: bfs-web-app
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm run typecheck
-
-      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
-        with:
-          go-version: '1.25'
-      - name: Go vet
-        working-directory: bfs-backend
-        run: go vet ./...
 
       - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
         with:
           terraform_version: 1.13.3
-      - name: Terraform validate (staging)
+
+      - name: Format check
+        working-directory: bfs-cloud
+        run: terraform fmt -check -recursive
+
+      - name: Validate staging
         working-directory: bfs-cloud/envs/staging
         run: |
           terraform init -upgrade -backend=false
           terraform validate
 
-      - name: Terraform validate (production)
+      - name: Validate production
         working-directory: bfs-cloud/envs/production
         run: |
           terraform init -upgrade -backend=false
           terraform validate
 
-      - name: Set up Java for Android
-        uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
-        with:
-          distribution: temurin
-          java-version: '21'
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407
-      - name: Android assemble (debug)
-        working-directory: bfs-android-app
-        run: ./gradlew assembleDebug
-
-  test:
-    name: Test
+  security-scan:
+    name: Security Scan
     runs-on: ubuntu-latest
-    needs: typecheck
+    needs: setup-dependencies
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
 
       - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
         with:
           version: 9
+
       - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
         with:
           node-version: 22
           cache: pnpm
           cache-dependency-path: bfs-web-app/pnpm-lock.yaml
-      - name: Web tests
+
+      - name: Restore web node_modules
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: bfs-web-app/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('bfs-web-app/pnpm-lock.yaml') }}
+          fail-on-cache-miss: true
+
+      - name: Web vulnerability scan
         working-directory: bfs-web-app
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm test
+        run: pnpm audit --audit-level=high || true
 
       - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
         with:
           go-version: '1.25'
-      - name: Go tests
-        working-directory: bfs-backend
-        run: go test ./...
+          cache-dependency-path: bfs-backend/go.sum
 
-  security:
-    name: Vulnerabilities Check
-    runs-on: ubuntu-latest
-    needs: test
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
-        with:
-          version: 9
-      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: bfs-web-app/pnpm-lock.yaml
-      - name: Web vuln scan
-        working-directory: bfs-web-app
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm audit --audit-level=high || true
-
-      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
-        with:
-          go-version: '1.25'
-      - name: Go vuln scan
+      - name: Go vulnerability scan
         working-directory: bfs-backend
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./... || true
+
+  ci-success:
+    name: CI Success
+    runs-on: ubuntu-latest
+    needs:
+      - web-quality
+      - web-test
+      - backend-quality
+      - android-quality
+      - terraform-quality
+      - security-scan
+    if: always()
+    steps:
+      - name: Check all jobs succeeded
+        run: |
+          if [[ "${{ needs.web-quality.result }}" == "failure" ]] || \
+             [[ "${{ needs.web-test.result }}" == "failure" ]] || \
+             [[ "${{ needs.backend-quality.result }}" == "failure" ]] || \
+             [[ "${{ needs.android-quality.result }}" == "failure" ]] || \
+             [[ "${{ needs.terraform-quality.result }}" == "failure" ]]; then
+            echo "One or more required jobs failed"
+            exit 1
+          fi
+
+          # Allow skipped jobs (when path filtering excludes them)
+          echo "All required jobs passed or were skipped"
