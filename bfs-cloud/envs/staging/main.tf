@@ -53,8 +53,15 @@ module "bfs_infrastructure" {
         liveness_path                  = "/health"
         liveness_interval_seconds      = 30
         liveness_initial_delay_seconds = 20
-        registries                     = []
-        secrets                        = lookup(var.app_secrets, "frontend-staging", {})
+        registries = [{
+          server               = "ghcr.io"
+          username             = "ly-schneider"
+          password_secret_name = "ghcr-token"
+        }]
+        secrets = lookup(var.app_secrets, "frontend-staging", {})
+        key_vault_secret_refs = {
+          ghcr-token = "ghcr-token"
+        }
         environment_variables = {
           NODE_ENV = "production"
 
@@ -98,8 +105,15 @@ module "bfs_infrastructure" {
         memory                         = "1Gi"
         min_replicas                   = 0
         max_replicas                   = 20
-        registries                     = []
-        secrets                        = lookup(var.app_secrets, "backend-staging", {})
+        registries = [{
+          server               = "ghcr.io"
+          username             = "ly-schneider"
+          password_secret_name = "ghcr-token"
+        }]
+        secrets = lookup(var.app_secrets, "backend-staging", {})
+        key_vault_secret_refs = {
+          ghcr-token = "ghcr-token"
+        }
         environment_variables = {
           APP_ENV  = "staging"
           APP_PORT = "8080"
