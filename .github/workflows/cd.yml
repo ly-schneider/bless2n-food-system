@@ -58,10 +58,6 @@ jobs:
         github.event.workflow_run.event == 'push' &&
         github.event.workflow_run.head_branch == 'production'
       }}
-    env:
-      SUMUP_AFFILIATE_KEY: ${{ secrets.SUMUP_AFFILIATE_KEY }}
-      POS_URL: ${{ secrets.POS_URL }}
-      BFS_ENV: ${{ vars.BFS_ENV || 'production' }}
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
@@ -85,6 +81,9 @@ jobs:
       - name: Build Android release (APK)
         working-directory: bfs-android-app
         env:
+          SUMUP_AFFILIATE_KEY: ${{ secrets.SUMUP_AFFILIATE_KEY }}
+          POS_URL: ${{ secrets.POS_URL }}
+          BFS_ENV: ${{ vars.BFS_ENV || 'production' }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_ALIAS_PASSWORD: ${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}
