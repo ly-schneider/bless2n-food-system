@@ -95,7 +95,7 @@ jobs:
           cache-dependency-path: bfs-web-app/pnpm-lock.yaml
 
       - name: Restore web node_modules
-        uses: actions/cache/restore0057852bfaa89a56745cba8c7296529d2fc398304
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc398304
         with:
           path: bfs-web-app/node_modules
           key: node-modules-${{ runner.os }}-${{ hashFiles('bfs-web-app/pnpm-lock.yaml') }}
