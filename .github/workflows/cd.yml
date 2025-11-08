@@ -81,9 +81,9 @@ jobs:
       - name: Build Android release (APK)
         working-directory: bfs-android-app
         env:
-          SUMUP_AFFILIATE_KEY: ${{ secrets.SUMUP_AFFILIATE_KEY }}
-          POS_URL: ${{ secrets.POS_URL }}
-          BFS_ENV: ${{ vars.BFS_ENV || 'production' }}
+          ORG_GRADLE_PROJECT_sumupAffiliateKey: ${{ secrets.SUMUP_AFFILIATE_KEY }}
+          ORG_GRADLE_PROJECT_posUrl: ${{ secrets.POS_URL }}
+          ORG_GRADLE_PROJECT_bfsEnv: ${{ vars.BFS_ENV || 'production' }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_ALIAS_PASSWORD: ${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}
