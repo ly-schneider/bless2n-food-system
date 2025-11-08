@@ -120,7 +120,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1]
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
 
@@ -143,7 +143,7 @@ jobs:
 
       - name: Run tests
         working-directory: bfs-web-app
-        run: pnpm test -- --shard=${{ matrix.shard }}/3
+        run: pnpm test -- --shard=${{ matrix.shard }}/1
 
   backend-quality:
     name: Backend Quality & Tests
