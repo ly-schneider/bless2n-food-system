@@ -76,7 +76,7 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           fetch-depth: 0
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: refs/heads/${{ github.event.workflow_run.head_branch }}
 
       - name: Terraform Cloud apply
         uses: kvrhdn/tfe-run@4953a73eaf2b24b7fc7c2a98bc8d112eea1b34c7
