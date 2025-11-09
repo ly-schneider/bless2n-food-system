@@ -112,11 +112,22 @@ jobs:
           BFS_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           BFS_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}
         run: |
-          ./gradlew clean assembleRelease
+          # Build the appropriate variant based on environment
+          if [ "${{ inputs.environment }}" == "staging" ]; then
+            ./gradlew clean assembleStaging
+          else
+            ./gradlew clean assembleRelease
+          fi
 
       - name: Rename APK with environment
         run: |
-          cd bfs-android-app/app/build/outputs/apk/release
+          # Navigate to the correct output directory based on build type
+          if [ "${{ inputs.environment }}" == "staging" ]; then
+            cd bfs-android-app/app/build/outputs/apk/staging
+          else
+            cd bfs-android-app/app/build/outputs/apk/release
+          fi
+
           for apk in *.apk; do
             mv "$apk" "bfs-pos-${{ inputs.environment }}-v${{ inputs.version }}.apk"
           done
@@ -141,6 +152,7 @@ jobs:
           draft: false
           prerelease: ${{ inputs.environment == 'staging' }}
           files: |
+            bfs-android-app/app/build/outputs/apk/staging/*.apk
             bfs-android-app/app/build/outputs/apk/release/*.apk
 
       - name: Build summary
