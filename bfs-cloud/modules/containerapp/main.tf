@@ -237,6 +237,7 @@ resource "azapi_resource" "managed_certificate" {
   type      = "Microsoft.App/managedEnvironments/managedCertificates@2024-03-01"
   parent_id = var.environment_id
   name      = replace(each.key, ".", "-")
+  location  = var.environment_location
 
   body = {
     properties = {

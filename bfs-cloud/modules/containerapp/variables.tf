@@ -1,6 +1,10 @@
 variable "name" { type = string }
 variable "resource_group_name" { type = string }
 variable "environment_id" { type = string }
+variable "environment_location" {
+  type        = string
+  description = "Azure region of the Container Apps environment (for managed certificate resource location)"
+}
 variable "image" { type = string }
 variable "target_port" { type = number }
 variable "external_ingress" {

@@ -222,6 +222,7 @@ module "apps_backend" {
   name                           = each.key
   resource_group_name            = module.rg.name
   environment_id                 = module.aca_env.id
+  environment_location           = var.location
   image                          = each.value.image
   target_port                    = each.value.port
   health_check_path              = lookup(each.value, "health_check_path", "/health")
@@ -269,6 +270,7 @@ module "apps_frontend" {
   name                           = each.key
   resource_group_name            = module.rg.name
   environment_id                 = module.aca_env.id
+  environment_location           = var.location
   image                          = each.value.image
   target_port                    = each.value.port
   health_check_path              = lookup(each.value, "health_check_path", "/api/health")
