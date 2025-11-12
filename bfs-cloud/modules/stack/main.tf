@@ -28,7 +28,6 @@ variable "config" {
     subnet_name = string
     vnet_cidr   = string
     subnet_cidr = string
-    # Whether to delegate the Container Apps subnet (Consumption needs delegation; Workload Profiles requires non-delegated).
     delegate_aca_subnet      = optional(bool, false)
     pe_subnet_name           = optional(string, "private-endpoints-subnet")
     pe_subnet_cidr           = optional(string, "10.1.8.0/24")
@@ -47,6 +46,9 @@ variable "config" {
     allowed_ip_ranges        = optional(list(string), [])
     budget_amount            = optional(number)
     budget_start_date        = optional(string, "2025-01-01T00:00:00Z")
+    dns_zone_name                 = optional(string)
+    dns_zone_resource_group_name  = optional(string)
+    create_dns_zone               = optional(bool, false)
     apps = map(object({
       port            = number
       image           = string
@@ -55,7 +57,6 @@ variable "config" {
       min_replicas    = number
       max_replicas    = number
       revision_suffix = optional(string)
-      # Probes
       health_check_path              = optional(string)
       liveness_path                  = optional(string)
       liveness_interval_seconds      = optional(number)
@@ -64,6 +65,12 @@ variable "config" {
       secrets                        = optional(map(string), {})
       key_vault_secrets              = optional(map(string), {})
       key_vault_secret_refs          = optional(map(string), {})
+      custom_domains = optional(list(object({
+        hostname                     = string
+        dns_zone_name                = optional(string)
+        dns_zone_resource_group_name = optional(string)
+        ttl                          = optional(number)
+      })), [])
       registries = optional(list(object({
         server               = string
         username             = optional(string)
@@ -116,10 +123,17 @@ module "rg" {
 }
 
 locals {
-  # Split apps by convention to allow ordering: backends first, then frontends
-  # This enables wiring frontend -> backend using the backend's stable FQDN via data.azurerm_container_app
   backend_apps  = { for k, v in var.config.apps : k => v if can(regex("^backend", k)) }
   frontend_apps = { for k, v in var.config.apps : k => v if can(regex("^frontend", k)) }
+  dns_zone_name    = try(var.config.dns_zone_name, null)
+  dns_zone_rg_name = try(var.config.create_dns_zone, false) ? module.rg.name : try(var.config.dns_zone_resource_group_name, null)
+}
+
+resource "azurerm_dns_zone" "public" {
+  count               = try(var.config.create_dns_zone, false) && try(var.config.dns_zone_name, null) != null ? 1 : 0
+  name                = var.config.dns_zone_name
+  resource_group_name = module.rg.name
+  tags                = var.tags
 }
 
 module "net" {
@@ -151,10 +165,8 @@ module "obs" {
 module "tfc_rbac" {
   source = "../rbac_tfc"
 
-  # Scope all assignments to the environment resource group
   target_rg_id = module.rg.id
 
-  # Grant least-privilege roles required by this stack
   network_scopes                   = [module.rg.id]
   private_dns_zone_scopes          = try(var.config.enable_private_endpoint, false) ? [module.rg.id] : []
   managed_identity_scopes          = [module.rg.id]
@@ -180,8 +192,6 @@ module "env_diag" {
   name                       = "${var.config.env_name}-diag"
   target_resource_id         = module.aca_env.id
   log_analytics_workspace_id = module.obs.log_analytics_id
-  # Container Apps Environment does not support category_group "allLogs".
-  # Use metrics only for now to avoid API errors.
   category_groups = []
   enable_metrics  = true
 }
@@ -202,7 +212,6 @@ module "cosmos" {
   log_analytics_workspace_id = module.obs.log_analytics_id
   tags                       = var.tags
 
-  # Ensure RBAC assignments (e.g., Cosmos roles) are in place before reading keys/connection string
   depends_on = [module.tfc_rbac]
 }
 
@@ -246,10 +255,12 @@ module "apps_backend" {
   memory_scale_rule       = each.value.memory_scale_rule
   azure_queue_scale_rules = each.value.azure_queue_scale_rules
   custom_scale_rules      = each.value.custom_scale_rules
+  custom_domains          = [for d in try(each.value.custom_domains, []) : merge(d, {
+    dns_zone_name                = try(d.dns_zone_name, local.dns_zone_name)
+    dns_zone_resource_group_name = try(d.dns_zone_resource_group_name, local.dns_zone_rg_name)
+  })]
   tags                    = merge(var.tags, { app = each.key })
 }
-
-# Backend app FQDNs are available from the module output; no data source needed
 
 module "apps_frontend" {
   for_each = local.frontend_apps
@@ -279,8 +290,6 @@ module "apps_frontend" {
   secrets           = each.value.secrets
   key_vault_secrets = each.value.key_vault_secrets
   revision_suffix   = try(each.value.revision_suffix, null)
-  # Resolve Key Vault secret IDs inside the stack to avoid referencing module outputs from the caller
-  # Prefer module.security-provided versionless IDs; otherwise, construct proper Key Vault URI format.
   key_vault_secret_refs = merge(
     try(each.value.key_vault_secret_refs, {}),
     var.config.enable_security_features && length(module.security) > 0 ? {
@@ -296,6 +305,10 @@ module "apps_frontend" {
   memory_scale_rule       = each.value.memory_scale_rule
   azure_queue_scale_rules = each.value.azure_queue_scale_rules
   custom_scale_rules      = each.value.custom_scale_rules
+  custom_domains          = [for d in try(each.value.custom_domains, []) : merge(d, {
+    dns_zone_name                = try(d.dns_zone_name, local.dns_zone_name)
+    dns_zone_resource_group_name = try(d.dns_zone_resource_group_name, local.dns_zone_rg_name)
+  })]
   tags                    = merge(var.tags, { app = each.key })
 }
 
@@ -318,7 +331,6 @@ module "alerts" {
 
 data "azurerm_client_config" "current" {}
 
-# Create User-Assigned Managed Identity for Container Apps
 resource "azurerm_user_assigned_identity" "aca_uami" {
   name                = "${var.environment}-aca-uami"
   resource_group_name = module.rg.name

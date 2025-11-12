@@ -1,12 +1,7 @@
 locals {
   kv_secret_identity = var.enable_system_identity && length(var.user_assigned_identity_ids) == 0 ? "System" : (length(var.user_assigned_identity_ids) > 0 ? var.user_assigned_identity_ids[0] : null)
   _kv_identity_guard = length(var.key_vault_secret_refs) == 0 || local.kv_secret_identity != null ? true : tomap({})["force_error"]
-
-  # Azure Container Apps revision names have format: {app-name}--{revision-suffix}
-  # Total length must be ≤54 characters, alphanumeric + hyphens only
-  # Calculate max suffix length: 54 - length(app_name) - 2 (for '--')
   max_suffix_length = max(0, 54 - length(var.name) - 2)
-  # Truncate and sanitize revision suffix to comply with Azure naming rules
   safe_revision_suffix = var.revision_suffix != null ? substr(replace(var.revision_suffix, "/[^a-z0-9-]/", ""), 0, local.max_suffix_length) : null
 }
 
@@ -18,7 +13,6 @@ resource "azurerm_container_app" "this" {
 
   revision_mode = "Single"
 
-  # Optional secrets for use by registries or app config
   dynamic "secret" {
     for_each = var.secrets
     content {
@@ -27,26 +21,21 @@ resource "azurerm_container_app" "this" {
     }
   }
 
-  # Key Vault secret references
   dynamic "secret" {
     for_each = var.key_vault_secret_refs
     content {
       name                = secret.key
       key_vault_secret_id = secret.value
-      # Required by AzureRM when referencing Key Vault secrets
       identity = local.kv_secret_identity
     }
   }
 
-  # Optional container registry credentials (e.g., GHCR)
   dynamic "registry" {
     for_each = var.registries
     content {
       server = registry.value.server
-      # Support username/password-based registries (e.g., GHCR)
       username             = try(registry.value.username, null)
       password_secret_name = try(registry.value.password_secret_name, null)
-      # Support managed identity-based ACR pull
       identity = try(registry.value.identity, null)
     }
   }
@@ -54,7 +43,7 @@ resource "azurerm_container_app" "this" {
   ingress {
     external_enabled           = var.external_ingress
     target_port                = var.target_port
-    transport                  = "auto"
+    transport                  = "http"
     allow_insecure_connections = false
 
     traffic_weight {
@@ -193,14 +182,30 @@ resource "azurerm_container_app" "this" {
   }
 }
 
+locals {
+  _custom_domains_map = { for d in var.custom_domains : d.hostname => d }
+}
+
+resource "azurerm_container_app_custom_domain" "this" {
+  for_each = local._custom_domains_map
+
+  container_app_id = azurerm_container_app.this.id
+  name             = each.key
+
+  lifecycle {
+    ignore_changes = [
+      certificate_binding_type,
+      container_app_environment_certificate_id
+    ]
+  }
+}
+
 module "diag" {
   source                     = "../diagnostic_setting"
   target_resource_id         = azurerm_container_app.this.id
   name                       = "${var.name}-diag"
   log_analytics_workspace_id = var.log_analytics_workspace_id
   categories                 = []
-  # Azure Container Apps do not support category_group "allLogs".
-  # Keep logs empty for now and enable metrics only to avoid API errors.
   category_groups = []
   enable_metrics  = true
 }

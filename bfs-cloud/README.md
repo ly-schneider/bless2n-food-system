@@ -9,6 +9,9 @@ This Terraform setup uses a single, concrete approach: deploy from `envs/<env>` 
 ### Infrastructure Components
 - **Per-environment isolation**: Resource Groups, VNets, delegated Subnets, Container Apps Environment
 - **Container Apps**: Auto-scaling web applications with intelligent scaling rules
+  - HTTPS ingress enabled by default (no standalone IPs)
+  - Default `azurecontainerapps.io` FQDNs for each app
+  - Optional custom domains with ACA-managed certificates and DNS CNAMEs
 - **Database**: Cosmos DB with MongoDB API
 - **Observability**: Log Analytics (both envs), Diagnostic Settings
 - **Monitoring**: Metric-based alerts and monitoring (configurable per environment)
@@ -81,6 +84,47 @@ terraform apply
   - `frontend-url`: public HTTPS URL for the frontend (used by backend `SECURITY_TRUSTED_ORIGINS`, `JWT_ISSUER`, `PUBLIC_BASE_URL`).
 - Create or update these secrets in Azure Portal > Key Vaults > `<kv-name>` > Secrets, or via CI/CD.
 - The previous `shared_config` module and its separate env have been removed; no extra Terraform step is required.
+
+### Custom Domains (Managed Certs + Delegated Subzone)
+- Each app supports an optional `custom_domains` list to bind hostnames using ACA-managed certificates.
+- Production creates an Azure DNS zone for `food.bless2n.ch` only. The parent zone `bless2n.ch` stays at your provider.
+- With the current config, Terraform does not create TXT/CNAME records; you will add them manually after delegating the subdomain.
+- Apex records are not supported with CNAMEs; use subdomains under `food.bless2n.ch`.
+
+Example per-app config under `config.apps` in `envs/<env>/main.tf`:
+```hcl
+apps = {
+  frontend-staging = {
+    # ...existing config...
+    custom_domains = [
+      {
+        hostname                     = "app.example.com"
+        dns_zone_name                = "example.com"
+        dns_zone_resource_group_name = "dns-zones-rg" # existing Azure DNS zone RG
+        ttl                          = 300             # optional
+      }
+    ]
+  }
+}
+```
+
+What Terraform creates now:
+- `azurerm_dns_zone`: `food.bless2n.ch` (in production only)
+- `azurerm_container_app_custom_domain` can be enabled later (once DNS is in place)
+
+Manual steps (current configuration):
+- Delegate `food.bless2n.ch` at your existing DNS provider by adding NS records pointing to the nameservers output from Terraform.
+- Add records at the delegated Azure DNS zone (or at your provider if you don’t delegate):
+  - TXT `asuid.food.bless2n.ch` = `<frontend custom_domain_verification_id>`
+  - TXT `asuid.api.food.bless2n.ch` = `<backend custom_domain_verification_id>`
+  - TXT `asuid.staging.food.bless2n.ch` = `<staging FE verification_id>`
+  - TXT `asuid.api.staging.food.bless2n.ch` = `<staging API verification_id>`
+  - CNAME `food.bless2n.ch` → `<frontend app azurecontainerapps.io fqdn>`
+  - CNAME `api.food.bless2n.ch` → `<backend app azurecontainerapps.io fqdn>`
+  - CNAME `staging.food.bless2n.ch` → `<staging frontend fqdn>`
+  - CNAME `api.staging.food.bless2n.ch` → `<staging backend fqdn>`
+
+Once DNS is set and propagated, run `terraform apply` again so the `azurerm_container_app_custom_domain` resources can succeed and ACA-managed certificates can be issued and bound. If DNS is not ready yet, the apply may fail during domain binding; create DNS first, then re-apply.
 
 ### Two-State Layout (Staging & Prod)
 - Use `envs/staging` and `envs/production` to maintain separate Terraform states and configurations.
