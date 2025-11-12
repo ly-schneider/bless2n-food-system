@@ -238,12 +238,12 @@ resource "azapi_resource" "managed_certificate" {
   parent_id = var.environment_id
   name      = replace(each.key, ".", "-")
 
-  body = jsonencode({
+  body = {
     properties = {
       subjectName             = each.key
       domainControlValidation = "TXT"
     }
-  })
+  }
 
   depends_on = [azurerm_dns_txt_record.asuid]
 }
