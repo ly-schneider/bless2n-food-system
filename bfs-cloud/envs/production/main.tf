@@ -38,7 +38,7 @@ module "bfs_infrastructure" {
     enable_security_features = true
     enable_private_endpoint  = false
     key_vault_name           = "bfs-production-kv"
-    dns_zone_name            = "food.bless2n.ch"
+    dns_zone_name            = "food.leys.ch"
     create_dns_zone          = true
     budget_amount            = var.budget_amount
     budget_start_date        = "2025-11-01T00:00:00Z"
@@ -97,7 +97,7 @@ module "bfs_infrastructure" {
           cpu_percentage = 75
         }
         custom_domains = [
-          { hostname = "food.bless2n.ch" }
+          { hostname = "food.leys.ch" }
         ]
       }
       backend-production = {
@@ -171,7 +171,7 @@ module "bfs_infrastructure" {
           cpu_percentage = 80
         }
         custom_domains = [
-          { hostname = "api.food.bless2n.ch" }
+          { hostname = "api.food.leys.ch" }
         ]
       }
     }
