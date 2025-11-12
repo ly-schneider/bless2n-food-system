@@ -200,3 +200,9 @@ variable "custom_domains" {
   }))
   default = []
 }
+
+variable "manage_dns_records" {
+  type        = bool
+  description = "If true and dns_zone_* is provided, create Azure DNS TXT+CNAME records. If false, assume DNS is managed externally."
+  default     = false
+}
