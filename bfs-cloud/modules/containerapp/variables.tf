@@ -193,10 +193,10 @@ variable "volumes" {
 variable "custom_domains" {
   description = "Optional custom domains to bind with managed certificates. If a DNS zone is provided, a CNAME is created to the app's azurecontainerapps.io FQDN. Note: CNAMEs cannot be used at the zone apex."
   type = list(object({
-    hostname                      = string
-    dns_zone_name                 = optional(string)
-    dns_zone_resource_group_name  = optional(string)
-    ttl                           = optional(number)
+    hostname                     = string
+    dns_zone_name                = optional(string)
+    dns_zone_resource_group_name = optional(string)
+    ttl                          = optional(number)
   }))
   default = []
 }

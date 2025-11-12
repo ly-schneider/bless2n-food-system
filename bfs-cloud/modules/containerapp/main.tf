@@ -1,7 +1,7 @@
 locals {
-  kv_secret_identity = var.enable_system_identity && length(var.user_assigned_identity_ids) == 0 ? "System" : (length(var.user_assigned_identity_ids) > 0 ? var.user_assigned_identity_ids[0] : null)
-  _kv_identity_guard = length(var.key_vault_secret_refs) == 0 || local.kv_secret_identity != null ? true : tomap({})["force_error"]
-  max_suffix_length = max(0, 54 - length(var.name) - 2)
+  kv_secret_identity   = var.enable_system_identity && length(var.user_assigned_identity_ids) == 0 ? "System" : (length(var.user_assigned_identity_ids) > 0 ? var.user_assigned_identity_ids[0] : null)
+  _kv_identity_guard   = length(var.key_vault_secret_refs) == 0 || local.kv_secret_identity != null ? true : tomap({})["force_error"]
+  max_suffix_length    = max(0, 54 - length(var.name) - 2)
   safe_revision_suffix = var.revision_suffix != null ? substr(replace(var.revision_suffix, "/[^a-z0-9-]/", ""), 0, local.max_suffix_length) : null
 }
 
@@ -26,17 +26,17 @@ resource "azurerm_container_app" "this" {
     content {
       name                = secret.key
       key_vault_secret_id = secret.value
-      identity = local.kv_secret_identity
+      identity            = local.kv_secret_identity
     }
   }
 
   dynamic "registry" {
     for_each = var.registries
     content {
-      server = registry.value.server
+      server               = registry.value.server
       username             = try(registry.value.username, null)
       password_secret_name = try(registry.value.password_secret_name, null)
-      identity = try(registry.value.identity, null)
+      identity             = try(registry.value.identity, null)
     }
   }
 
@@ -206,6 +206,6 @@ module "diag" {
   name                       = "${var.name}-diag"
   log_analytics_workspace_id = var.log_analytics_workspace_id
   categories                 = []
-  category_groups = []
-  enable_metrics  = true
+  category_groups            = []
+  enable_metrics             = true
 }

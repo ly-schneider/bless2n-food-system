@@ -23,40 +23,40 @@ variable "alert_emails" {
 variable "config" {
   description = "Environment-specific configuration"
   type = object({
-    rg_name     = string
-    vnet_name   = string
-    subnet_name = string
-    vnet_cidr   = string
-    subnet_cidr = string
-    delegate_aca_subnet      = optional(bool, false)
-    pe_subnet_name           = optional(string, "private-endpoints-subnet")
-    pe_subnet_cidr           = optional(string, "10.1.8.0/24")
-    env_name                 = string
-    law_name                 = string
-    appi_name                = string
-    enable_app_insights      = bool
-    retention_days           = number
-    cosmos_name              = string
-    database_throughput      = number
-    enable_alerts            = bool
-    requests_5xx_threshold   = number
-    enable_security_features = optional(bool, true)
-    key_vault_name           = optional(string)
-    enable_private_endpoint  = optional(bool, false)
-    allowed_ip_ranges        = optional(list(string), [])
-    budget_amount            = optional(number)
-    budget_start_date        = optional(string, "2025-01-01T00:00:00Z")
-    dns_zone_name                 = optional(string)
-    dns_zone_resource_group_name  = optional(string)
-    create_dns_zone               = optional(bool, false)
+    rg_name                      = string
+    vnet_name                    = string
+    subnet_name                  = string
+    vnet_cidr                    = string
+    subnet_cidr                  = string
+    delegate_aca_subnet          = optional(bool, false)
+    pe_subnet_name               = optional(string, "private-endpoints-subnet")
+    pe_subnet_cidr               = optional(string, "10.1.8.0/24")
+    env_name                     = string
+    law_name                     = string
+    appi_name                    = string
+    enable_app_insights          = bool
+    retention_days               = number
+    cosmos_name                  = string
+    database_throughput          = number
+    enable_alerts                = bool
+    requests_5xx_threshold       = number
+    enable_security_features     = optional(bool, true)
+    key_vault_name               = optional(string)
+    enable_private_endpoint      = optional(bool, false)
+    allowed_ip_ranges            = optional(list(string), [])
+    budget_amount                = optional(number)
+    budget_start_date            = optional(string, "2025-01-01T00:00:00Z")
+    dns_zone_name                = optional(string)
+    dns_zone_resource_group_name = optional(string)
+    create_dns_zone              = optional(bool, false)
     apps = map(object({
-      port            = number
-      image           = string
-      cpu             = number
-      memory          = string
-      min_replicas    = number
-      max_replicas    = number
-      revision_suffix = optional(string)
+      port                           = number
+      image                          = string
+      cpu                            = number
+      memory                         = string
+      min_replicas                   = number
+      max_replicas                   = number
+      revision_suffix                = optional(string)
       health_check_path              = optional(string)
       liveness_path                  = optional(string)
       liveness_interval_seconds      = optional(number)
@@ -123,8 +123,8 @@ module "rg" {
 }
 
 locals {
-  backend_apps  = { for k, v in var.config.apps : k => v if can(regex("^backend", k)) }
-  frontend_apps = { for k, v in var.config.apps : k => v if can(regex("^frontend", k)) }
+  backend_apps     = { for k, v in var.config.apps : k => v if can(regex("^backend", k)) }
+  frontend_apps    = { for k, v in var.config.apps : k => v if can(regex("^frontend", k)) }
   dns_zone_name    = try(var.config.dns_zone_name, null)
   dns_zone_rg_name = try(var.config.create_dns_zone, false) ? module.rg.name : try(var.config.dns_zone_resource_group_name, null)
 }
@@ -192,8 +192,8 @@ module "env_diag" {
   name                       = "${var.config.env_name}-diag"
   target_resource_id         = module.aca_env.id
   log_analytics_workspace_id = module.obs.log_analytics_id
-  category_groups = []
-  enable_metrics  = true
+  category_groups            = []
+  enable_metrics             = true
 }
 
 module "cosmos" {
@@ -255,11 +255,11 @@ module "apps_backend" {
   memory_scale_rule       = each.value.memory_scale_rule
   azure_queue_scale_rules = each.value.azure_queue_scale_rules
   custom_scale_rules      = each.value.custom_scale_rules
-  custom_domains          = [for d in try(each.value.custom_domains, []) : merge(d, {
+  custom_domains = [for d in try(each.value.custom_domains, []) : merge(d, {
     dns_zone_name                = try(d.dns_zone_name, local.dns_zone_name)
     dns_zone_resource_group_name = try(d.dns_zone_resource_group_name, local.dns_zone_rg_name)
   })]
-  tags                    = merge(var.tags, { app = each.key })
+  tags = merge(var.tags, { app = each.key })
 }
 
 module "apps_frontend" {
@@ -305,11 +305,11 @@ module "apps_frontend" {
   memory_scale_rule       = each.value.memory_scale_rule
   azure_queue_scale_rules = each.value.azure_queue_scale_rules
   custom_scale_rules      = each.value.custom_scale_rules
-  custom_domains          = [for d in try(each.value.custom_domains, []) : merge(d, {
+  custom_domains = [for d in try(each.value.custom_domains, []) : merge(d, {
     dns_zone_name                = try(d.dns_zone_name, local.dns_zone_name)
     dns_zone_resource_group_name = try(d.dns_zone_resource_group_name, local.dns_zone_rg_name)
   })]
-  tags                    = merge(var.tags, { app = each.key })
+  tags = merge(var.tags, { app = each.key })
 }
 
 module "alerts" {
