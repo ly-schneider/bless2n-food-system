@@ -260,7 +260,8 @@ module "apps_backend" {
     dns_zone_name                = try(d.dns_zone_name, local.dns_zone_name)
     dns_zone_resource_group_name = try(d.dns_zone_resource_group_name, local.dns_zone_rg_name)
   })]
-  tags = merge(var.tags, { app = each.key })
+  manage_dns_records = local.dns_zone_name != null && local.dns_zone_rg_name != null
+  tags               = merge(var.tags, { app = each.key })
 }
 
 module "apps_frontend" {
@@ -311,7 +312,8 @@ module "apps_frontend" {
     dns_zone_name                = try(d.dns_zone_name, local.dns_zone_name)
     dns_zone_resource_group_name = try(d.dns_zone_resource_group_name, local.dns_zone_rg_name)
   })]
-  tags = merge(var.tags, { app = each.key })
+  manage_dns_records = local.dns_zone_name != null && local.dns_zone_rg_name != null
+  tags               = merge(var.tags, { app = each.key })
 }
 
 module "alerts" {

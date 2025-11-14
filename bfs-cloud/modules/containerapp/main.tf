@@ -202,8 +202,8 @@ resource "azurerm_container_app_custom_domain" "this" {
     ]
   }
 
-  certificate_binding_type                 = contains(keys(azapi_resource.managed_certificate), each.key) ? "SniEnabled" : null
-  container_app_environment_certificate_id = contains(keys(azapi_resource.managed_certificate), each.key) ? azapi_resource.managed_certificate[each.key].id : null
+  certificate_binding_type                 = null
+  container_app_environment_certificate_id = null
 
   depends_on = [azurerm_dns_txt_record.asuid]
 }
@@ -246,7 +246,11 @@ resource "azapi_resource" "managed_certificate" {
     }
   }
 
-  depends_on = [azurerm_dns_txt_record.asuid]
+  depends_on = [
+    azurerm_dns_txt_record.asuid,
+    azurerm_dns_cname_record.cname,
+    azurerm_container_app_custom_domain.this
+  ]
 }
 
 module "diag" {
