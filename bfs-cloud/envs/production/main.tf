@@ -18,12 +18,11 @@ module "bfs_infrastructure" {
   alert_emails = var.alert_emails
 
   config = {
-    rg_name     = "bfs-production-rg"
-    vnet_name   = "bfs-production-vnet"
-    subnet_name = "container-apps-subnet"
-    vnet_cidr   = "10.1.0.0/16"
-    subnet_cidr = "10.1.0.0/21"
-    # For Container Apps with Workload Profiles, the subnet must be non-delegated
+    rg_name                  = "bfs-production-rg"
+    vnet_name                = "bfs-production-vnet"
+    subnet_name              = "container-apps-subnet"
+    vnet_cidr                = "10.1.0.0/16"
+    subnet_cidr              = "10.1.0.0/21"
     delegate_aca_subnet      = false
     pe_subnet_name           = "private-endpoints-subnet"
     pe_subnet_cidr           = "10.1.8.0/24"
@@ -39,6 +38,8 @@ module "bfs_infrastructure" {
     enable_security_features = true
     enable_private_endpoint  = false
     key_vault_name           = "bfs-production-kv"
+    dns_zone_name            = "food.leys.ch"
+    create_dns_zone          = true
     budget_amount            = var.budget_amount
     budget_start_date        = "2025-11-01T00:00:00Z"
     apps = {
@@ -95,6 +96,9 @@ module "bfs_infrastructure" {
           name           = "frontend-cpu-scale"
           cpu_percentage = 75
         }
+        custom_domains = [
+          { hostname = "food.leys.ch" }
+        ]
       }
       backend-production = {
         port                           = 8080
@@ -166,6 +170,9 @@ module "bfs_infrastructure" {
           name           = "backend-cpu-scale"
           cpu_percentage = 80
         }
+        custom_domains = [
+          { hostname = "api.food.leys.ch" }
+        ]
       }
     }
   }

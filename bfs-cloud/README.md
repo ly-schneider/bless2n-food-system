@@ -9,6 +9,9 @@ This Terraform setup uses a single, concrete approach: deploy from `envs/<env>` 
 ### Infrastructure Components
 - **Per-environment isolation**: Resource Groups, VNets, delegated Subnets, Container Apps Environment
 - **Container Apps**: Auto-scaling web applications with intelligent scaling rules
+  - HTTPS ingress enabled by default (no standalone IPs)
+  - Default `azurecontainerapps.io` FQDNs for each app
+  - Optional custom domains with ACA-managed certificates and DNS CNAMEs
 - **Database**: Cosmos DB with MongoDB API
 - **Observability**: Log Analytics (both envs), Diagnostic Settings
 - **Monitoring**: Metric-based alerts and monitoring (configurable per environment)
@@ -81,6 +84,44 @@ terraform apply
   - `frontend-url`: public HTTPS URL for the frontend (used by backend `SECURITY_TRUSTED_ORIGINS`, `JWT_ISSUER`, `PUBLIC_BASE_URL`).
 - Create or update these secrets in Azure Portal > Key Vaults > `<kv-name>` > Secrets, or via CI/CD.
 - The previous `shared_config` module and its separate env have been removed; no extra Terraform step is required.
+
+### Custom Domains (Managed Certs + DNS Optional)
+- Each app supports an optional `custom_domains` list to bind hostnames using ACA‑managed certificates.
+- If you provide a DNS zone (name + RG), Terraform now:
+  - Creates the required TXT `asuid.<host>` record using the Container App verification ID.
+  - Creates the CNAME `<host>` → `<app azurecontainerapps.io fqdn>`.
+  - Requests an ACA managed certificate and binds it to the app.
+- If you don’t provide a DNS zone, you can manage DNS at any provider (Cloudflare, Route53, etc.): add TXT/CNAME there and Terraform will still request/bind the managed certificate once validation passes.
+- Apex records are not supported with CNAMEs; use subdomains under `food.bless2n.ch`.
+
+Example per-app config under `config.apps` in `envs/<env>/main.tf`:
+```hcl
+apps = {
+  frontend-staging = {
+    # ...existing config...
+    custom_domains = [
+      {
+        hostname                     = "app.example.com"
+        dns_zone_name                = "example.com"
+        dns_zone_resource_group_name = "dns-zones-rg" # existing Azure DNS zone RG
+        ttl                          = 300             # optional
+      }
+    ]
+  }
+}
+```
+
+What Terraform creates now:
+- `azurerm_dns_zone`: `food.bless2n.ch` (in production only, delegated from your parent zone)
+ - Per custom domain when `manage_dns_records = true` and a zone is specified:
+  - `azurerm_dns_txt_record` for `asuid.<host>`
+  - `azurerm_dns_cname_record` for `<host>` → app FQDN
+  - `Microsoft.App/managedEnvironments/managedCertificates` (via AzAPI) and host binding
+ - Without a zone or with `manage_dns_records = false`: only the managed certificate + host binding; you must create TXT/CNAME at your DNS provider.
+
+Manual steps (when managing DNS outside Azure DNS):
+- Delegate `food.bless2n.ch` at your DNS provider (NS records) or add equivalent TXT/CNAMEs at your provider.
+- If you manage DNS externally, omit `dns_zone_*` in `custom_domains` and bind later (or add Cloudflare provider to manage those records).
 
 ### Two-State Layout (Staging & Prod)
 - Use `envs/staging` and `envs/production` to maintain separate Terraform states and configurations.

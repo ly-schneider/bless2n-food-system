@@ -1,12 +1,7 @@
 locals {
-  kv_secret_identity = var.enable_system_identity && length(var.user_assigned_identity_ids) == 0 ? "System" : (length(var.user_assigned_identity_ids) > 0 ? var.user_assigned_identity_ids[0] : null)
-  _kv_identity_guard = length(var.key_vault_secret_refs) == 0 || local.kv_secret_identity != null ? true : tomap({})["force_error"]
-
-  # Azure Container Apps revision names have format: {app-name}--{revision-suffix}
-  # Total length must be ≤54 characters, alphanumeric + hyphens only
-  # Calculate max suffix length: 54 - length(app_name) - 2 (for '--')
-  max_suffix_length = max(0, 54 - length(var.name) - 2)
-  # Truncate and sanitize revision suffix to comply with Azure naming rules
+  kv_secret_identity   = var.enable_system_identity && length(var.user_assigned_identity_ids) == 0 ? "System" : (length(var.user_assigned_identity_ids) > 0 ? var.user_assigned_identity_ids[0] : null)
+  _kv_identity_guard   = length(var.key_vault_secret_refs) == 0 || local.kv_secret_identity != null ? true : tomap({})["force_error"]
+  max_suffix_length    = max(0, 54 - length(var.name) - 2)
   safe_revision_suffix = var.revision_suffix != null ? substr(replace(var.revision_suffix, "/[^a-z0-9-]/", ""), 0, local.max_suffix_length) : null
 }
 
@@ -18,7 +13,6 @@ resource "azurerm_container_app" "this" {
 
   revision_mode = "Single"
 
-  # Optional secrets for use by registries or app config
   dynamic "secret" {
     for_each = var.secrets
     content {
@@ -27,34 +21,29 @@ resource "azurerm_container_app" "this" {
     }
   }
 
-  # Key Vault secret references
   dynamic "secret" {
     for_each = var.key_vault_secret_refs
     content {
       name                = secret.key
       key_vault_secret_id = secret.value
-      # Required by AzureRM when referencing Key Vault secrets
-      identity = local.kv_secret_identity
+      identity            = local.kv_secret_identity
     }
   }
 
-  # Optional container registry credentials (e.g., GHCR)
   dynamic "registry" {
     for_each = var.registries
     content {
-      server = registry.value.server
-      # Support username/password-based registries (e.g., GHCR)
+      server               = registry.value.server
       username             = try(registry.value.username, null)
       password_secret_name = try(registry.value.password_secret_name, null)
-      # Support managed identity-based ACR pull
-      identity = try(registry.value.identity, null)
+      identity             = try(registry.value.identity, null)
     }
   }
 
   ingress {
     external_enabled           = var.external_ingress
     target_port                = var.target_port
-    transport                  = "auto"
+    transport                  = "http"
     allow_insecure_connections = false
 
     traffic_weight {
@@ -193,14 +182,79 @@ resource "azurerm_container_app" "this" {
   }
 }
 
+locals {
+  _custom_domains_map = { for d in var.custom_domains : d.hostname => d }
+  _custom_domains_with_zone = {
+    for h, d in local._custom_domains_map : h => d if var.manage_dns_records && try(d.dns_zone_name, null) != null && try(d.dns_zone_resource_group_name, null) != null
+  }
+}
+
+resource "azurerm_container_app_custom_domain" "this" {
+  for_each = local._custom_domains_map
+
+  container_app_id = azurerm_container_app.this.id
+  name             = each.key
+
+  lifecycle {
+    ignore_changes = [
+      certificate_binding_type,
+      container_app_environment_certificate_id
+    ]
+  }
+
+  certificate_binding_type                 = contains(keys(azapi_resource.managed_certificate), each.key) ? "SniEnabled" : null
+  container_app_environment_certificate_id = contains(keys(azapi_resource.managed_certificate), each.key) ? azapi_resource.managed_certificate[each.key].id : null
+
+  depends_on = [azurerm_dns_txt_record.asuid]
+}
+
+resource "azurerm_dns_txt_record" "asuid" {
+  for_each = local._custom_domains_with_zone
+
+  name                = "asuid.${replace(each.key, ".${each.value.dns_zone_name}", "")}"
+  zone_name           = each.value.dns_zone_name
+  resource_group_name = each.value.dns_zone_resource_group_name
+  ttl                 = coalesce(try(each.value.ttl, null), 300)
+
+  record {
+    value = azurerm_container_app.this.custom_domain_verification_id
+  }
+}
+
+resource "azurerm_dns_cname_record" "cname" {
+  for_each = local._custom_domains_with_zone
+
+  name                = replace(each.key, ".${each.value.dns_zone_name}", "")
+  zone_name           = each.value.dns_zone_name
+  resource_group_name = each.value.dns_zone_resource_group_name
+  ttl                 = coalesce(try(each.value.ttl, null), 300)
+  record              = azurerm_container_app.this.ingress[0].fqdn
+}
+
+resource "azapi_resource" "managed_certificate" {
+  for_each = local._custom_domains_map
+
+  type      = "Microsoft.App/managedEnvironments/managedCertificates@2024-03-01"
+  parent_id = var.environment_id
+  name      = replace(each.key, ".", "-")
+  location  = var.environment_location
+
+  body = {
+    properties = {
+      subjectName             = each.key
+      domainControlValidation = "TXT"
+    }
+  }
+
+  depends_on = [azurerm_dns_txt_record.asuid]
+}
+
 module "diag" {
   source                     = "../diagnostic_setting"
   target_resource_id         = azurerm_container_app.this.id
   name                       = "${var.name}-diag"
   log_analytics_workspace_id = var.log_analytics_workspace_id
   categories                 = []
-  # Azure Container Apps do not support category_group "allLogs".
-  # Keep logs empty for now and enable metrics only to avoid API errors.
-  category_groups = []
-  enable_metrics  = true
+  category_groups            = []
+  enable_metrics             = true
 }
