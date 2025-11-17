@@ -177,3 +177,13 @@ module "bfs_infrastructure" {
     }
   }
 }
+
+import {
+  to = module.bfs_infrastructure.module.apps_frontend["frontend-staging"].azapi_resource.managed_certificate["staging.food.leys.ch"]
+  id = "/subscriptions/5c3f67c0-445b-4317-a959-e9d5c663dc16/resourceGroups/bfs-staging-rg/providers/Microsoft.App/managedEnvironments/bfs-staging-env/managedCertificates/staging-food-leys-ch"
+}
+
+import {
+  to = module.bfs_infrastructure.module.apps_backend["backend-staging"].azapi_resource.managed_certificate["api.staging.food.leys.ch"]
+  id = "/subscriptions/5c3f67c0-445b-4317-a959-e9d5c663dc16/resourceGroups/bfs-staging-rg/providers/Microsoft.App/managedEnvironments/bfs-staging-env/managedCertificates/api-staging-food-leys-ch"
+}
