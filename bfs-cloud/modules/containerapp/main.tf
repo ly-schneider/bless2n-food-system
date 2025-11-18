@@ -187,6 +187,10 @@ locals {
   _custom_domains_with_zone = {
     for h, d in local._custom_domains_map : h => d if var.manage_dns_records && try(d.dns_zone_name, null) != null && try(d.dns_zone_resource_group_name, null) != null
   }
+  _custom_domains_relative_names = {
+    for h, d in local._custom_domains_with_zone :
+    h => h == d.dns_zone_name ? "@" : trimsuffix(h, ".${d.dns_zone_name}")
+  }
 }
 
 resource "azurerm_container_app_custom_domain" "this" {
@@ -202,8 +206,8 @@ resource "azurerm_container_app_custom_domain" "this" {
     ]
   }
 
-  certificate_binding_type                 = null
-  container_app_environment_certificate_id = null
+  certificate_binding_type                 = "SniEnabled"
+  container_app_environment_certificate_id = azapi_resource.managed_certificate[each.key].id
 
   depends_on = [azurerm_dns_txt_record.asuid]
 }
@@ -211,7 +215,7 @@ resource "azurerm_container_app_custom_domain" "this" {
 resource "azurerm_dns_txt_record" "asuid" {
   for_each = local._custom_domains_with_zone
 
-  name                = "asuid.${replace(each.key, ".${each.value.dns_zone_name}", "")}"
+  name = local._custom_domains_relative_names[each.key] == "@" ? "asuid" : "asuid.${local._custom_domains_relative_names[each.key]}"
   zone_name           = each.value.dns_zone_name
   resource_group_name = each.value.dns_zone_resource_group_name
   ttl                 = coalesce(try(each.value.ttl, null), 300)
@@ -224,7 +228,7 @@ resource "azurerm_dns_txt_record" "asuid" {
 resource "azurerm_dns_cname_record" "cname" {
   for_each = local._custom_domains_with_zone
 
-  name                = replace(each.key, ".${each.value.dns_zone_name}", "")
+  name = local._custom_domains_relative_names[each.key]
   zone_name           = each.value.dns_zone_name
   resource_group_name = each.value.dns_zone_resource_group_name
   ttl                 = coalesce(try(each.value.ttl, null), 300)
@@ -248,8 +252,7 @@ resource "azapi_resource" "managed_certificate" {
 
   depends_on = [
     azurerm_dns_txt_record.asuid,
-    azurerm_dns_cname_record.cname,
-    azurerm_container_app_custom_domain.this
+    azurerm_dns_cname_record.cname
   ]
 }
 
