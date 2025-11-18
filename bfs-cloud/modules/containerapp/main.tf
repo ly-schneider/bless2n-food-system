@@ -215,7 +215,7 @@ resource "azurerm_container_app_custom_domain" "this" {
 resource "azurerm_dns_txt_record" "asuid" {
   for_each = local._custom_domains_with_zone
 
-  name = local._custom_domains_relative_names[each.key] == "@" ? "asuid" : "asuid.${local._custom_domains_relative_names[each.key]}"
+  name                = local._custom_domains_relative_names[each.key] == "@" ? "asuid" : "asuid.${local._custom_domains_relative_names[each.key]}"
   zone_name           = each.value.dns_zone_name
   resource_group_name = each.value.dns_zone_resource_group_name
   ttl                 = coalesce(try(each.value.ttl, null), 300)
@@ -228,7 +228,7 @@ resource "azurerm_dns_txt_record" "asuid" {
 resource "azurerm_dns_cname_record" "cname" {
   for_each = local._custom_domains_with_zone
 
-  name = local._custom_domains_relative_names[each.key]
+  name                = local._custom_domains_relative_names[each.key]
   zone_name           = each.value.dns_zone_name
   resource_group_name = each.value.dns_zone_resource_group_name
   ttl                 = coalesce(try(each.value.ttl, null), 300)
