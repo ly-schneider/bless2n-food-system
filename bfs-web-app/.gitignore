@@ -31,4 +31,7 @@ storybook-static/
 /playwright-report/
 /playwright/.cache/
 
+# TypeScript build info
+*.tsbuildinfo
+
 /.npm-only-allow
