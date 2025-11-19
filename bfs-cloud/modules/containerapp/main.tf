@@ -238,10 +238,11 @@ resource "azurerm_dns_cname_record" "cname" {
 resource "azapi_resource" "managed_certificate" {
   for_each = local._custom_domains_map
 
-  type      = "Microsoft.App/managedEnvironments/managedCertificates@2024-03-01"
+  type      = "Microsoft.App/managedEnvironments/certificates@2024-03-01"
   parent_id = var.environment_id
   name      = replace(each.key, ".", "-")
   location  = var.environment_location
+  schema_validation_enabled = false
 
   body = {
     properties = {
