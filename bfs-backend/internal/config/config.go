@@ -29,6 +29,7 @@ type AppConfig struct {
 	JWTPubPEM     string
 	PublicBaseURL string
 	FrontendHosts []string
+	BackendHosts  []string
 }
 
 type MongoConfig struct {
@@ -102,6 +103,7 @@ func Load() Config {
 			JWTPubPEM:     getEnv("JWT_PUB_PEM"),
 			PublicBaseURL: getEnv("PUBLIC_BASE_URL"),
 			FrontendHosts: getEnvAsListOptional("FRONTEND_ALLOWED_HOSTS"),
+			BackendHosts:  getEnvAsListOptional("BACKEND_ALLOWED_HOSTS"),
 		},
 		Mongo: MongoConfig{
 			URI:      getEnv("MONGO_URI"),

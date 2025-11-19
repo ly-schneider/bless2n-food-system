@@ -13,25 +13,34 @@ type OriginConfig struct {
 	DefaultFrontendOrigin string
 	DefaultBackendOrigin  string
 	AllowedFrontendHosts  []string
+	AllowedBackendHosts   []string
 }
 
 type OriginMiddleware struct {
-	defaultFrontend string
-	defaultBackend  string
-	allowedHosts    map[string]struct{}
+	defaultFrontend     string
+	defaultBackend      string
+	allowedFrontendHosts map[string]struct{}
+	allowedBackendHosts  map[string]struct{}
 }
 
 func NewOriginMiddleware(cfg OriginConfig) *OriginMiddleware {
-	allowed := make(map[string]struct{})
+	allowedFrontend := make(map[string]struct{})
 	for _, host := range cfg.AllowedFrontendHosts {
 		if h := canonicalHost(host); h != "" {
-			allowed[h] = struct{}{}
+			allowedFrontend[h] = struct{}{}
+		}
+	}
+	allowedBackend := make(map[string]struct{})
+	for _, host := range cfg.AllowedBackendHosts {
+		if h := canonicalHost(host); h != "" {
+			allowedBackend[h] = struct{}{}
 		}
 	}
 	return &OriginMiddleware{
-		defaultFrontend: strings.TrimRight(cfg.DefaultFrontendOrigin, "/"),
-		defaultBackend:  strings.TrimRight(cfg.DefaultBackendOrigin, "/"),
-		allowedHosts:    allowed,
+		defaultFrontend:     strings.TrimRight(cfg.DefaultFrontendOrigin, "/"),
+		defaultBackend:      strings.TrimRight(cfg.DefaultBackendOrigin, "/"),
+		allowedFrontendHosts: allowedFrontend,
+		allowedBackendHosts:  allowedBackend,
 	}
 }
 
@@ -53,10 +62,10 @@ func (m *OriginMiddleware) resolveFrontend(r *http.Request) string {
 	}
 
 	if host != "" {
-		if len(m.allowedHosts) == 0 {
+		if len(m.allowedFrontendHosts) == 0 {
 			return m.defaultFrontend
 		}
-		if _, ok := m.allowedHosts[host]; ok {
+		if _, ok := m.allowedFrontendHosts[host]; ok {
 			return fmt.Sprintf("%s://%s", proto, host)
 		}
 	}
@@ -72,10 +81,29 @@ func (m *OriginMiddleware) resolveBackend(r *http.Request) string {
 			proto = "http"
 		}
 	}
-	host := canonicalHost(r.Header.Get("X-Forwarded-Host"))
+	
+	// Validate X-Forwarded-Host to prevent header forgery attacks
+	forwardedHost := canonicalHost(r.Header.Get("X-Forwarded-Host"))
+	var host string
+	
+	if forwardedHost != "" {
+		// If AllowedBackendHosts is configured, validate the header
+		if len(m.allowedBackendHosts) > 0 {
+			if _, ok := m.allowedBackendHosts[forwardedHost]; ok {
+				host = forwardedHost
+			}
+			// If not in allowlist, fall through to use default
+		} else {
+			// No allowlist configured - trust the header (backward compatible)
+			host = forwardedHost
+		}
+	}
+	
+	// Fall back to r.Host if X-Forwarded-Host is not trusted or not present
 	if host == "" {
 		host = canonicalHost(r.Host)
 	}
+	
 	if host == "" {
 		return m.defaultBackend
 	}

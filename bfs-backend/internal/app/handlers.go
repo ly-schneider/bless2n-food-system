@@ -51,5 +51,6 @@ func NewOriginMiddleware(cfg config.Config) *middleware.OriginMiddleware {
 		DefaultFrontendOrigin: cfg.App.PublicBaseURL,
 		DefaultBackendOrigin:  cfg.App.JWTIssuer,
 		AllowedFrontendHosts:  cfg.App.FrontendHosts,
+		AllowedBackendHosts:   cfg.App.BackendHosts,
 	})
 }
