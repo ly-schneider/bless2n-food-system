@@ -142,7 +142,7 @@ func (j *jwtService) ValidateAccessToken(ctx context.Context, tokenString string
 			expectedIssuer = info.Backend
 		}
 	}
-	if claims.Issuer != expectedIssuer && claims.Issuer != j.issuer {
+	if claims.Issuer != expectedIssuer {
 		return nil, fmt.Errorf("unexpected issuer: %s", claims.Issuer)
 	}
 	return &claims, nil
