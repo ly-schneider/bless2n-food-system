@@ -54,7 +54,7 @@ func (m *OriginMiddleware) resolveFrontend(r *http.Request) string {
 
 	if host != "" {
 		if len(m.allowedHosts) == 0 {
-			return fmt.Sprintf("%s://%s", proto, host)
+			return m.defaultFrontend
 		}
 		if _, ok := m.allowedHosts[host]; ok {
 			return fmt.Sprintf("%s://%s", proto, host)
