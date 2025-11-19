@@ -14,7 +14,7 @@ async function handle(req: Request, params: Promise<{ path: string[] }>) {
   const inHeaders = new Headers(req.headers)
   const outHeaders = new Headers()
   const frontendHost = req.headers.get("host") || undefined
-  const forwardedProto = req.headers.get("x-forwarded-proto") || req.headers.get("X-Forwarded-Proto")
+  const forwardedProto = req.headers.get("x-forwarded-proto")
   const frontendProto = forwardedProto || (req.url?.startsWith("http://") ? "http" : "https")
 
   const auth = inHeaders.get("authorization")
