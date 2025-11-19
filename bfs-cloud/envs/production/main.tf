@@ -83,10 +83,7 @@ module "bfs_infrastructure" {
         }
         key_vault_secrets = merge(
           lookup(var.app_secrets, "frontend-production", {}),
-          {
-            "NEXT_PUBLIC_API_BASE_URL" = "next-public-api-base-url"
-            "BACKEND_INTERNAL_URL"     = "backend-internal-url"
-          }
+          {}
         )
         http_scale_rule = {
           name                = "frontend-http-scale"
@@ -157,9 +154,6 @@ module "bfs_infrastructure" {
             "STRIPE_SECRET_KEY"        = "stripe-secret-key"
             "STRIPE_WEBHOOK_SECRET"    = "stripe-webhook-secret"
             "SMTP_PASSWORD"            = "smtp-password"
-            "SECURITY_TRUSTED_ORIGINS" = "security-trusted-origins"
-            "PUBLIC_BASE_URL"          = "public-base-url"
-            "JWT_ISSUER"               = "jwt-issuer"
           }
         )
         http_scale_rule = {

@@ -28,6 +28,7 @@ type AppConfig struct {
 	JWTPrivPEM    string
 	JWTPubPEM     string
 	PublicBaseURL string
+	FrontendHosts []string
 }
 
 type MongoConfig struct {
@@ -100,6 +101,7 @@ func Load() Config {
 			JWTPrivPEM:    getEnv("JWT_PRIV_PEM"),
 			JWTPubPEM:     getEnv("JWT_PUB_PEM"),
 			PublicBaseURL: getEnv("PUBLIC_BASE_URL"),
+			FrontendHosts: getEnvAsListOptional("FRONTEND_ALLOWED_HOSTS"),
 		},
 		Mongo: MongoConfig{
 			URI:      getEnv("MONGO_URI"),
@@ -207,4 +209,20 @@ func getEnvAsInt(key string, def int) int {
 		return i
 	}
 	return def
+}
+
+// getEnvAsListOptional parses comma-separated values into a slice (empty if unset)
+func getEnvAsListOptional(key string) []string {
+	value := os.Getenv(key)
+	if value == "" {
+		return []string{}
+	}
+	parts := strings.Split(value, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if trimmed := strings.TrimSpace(part); trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
 }

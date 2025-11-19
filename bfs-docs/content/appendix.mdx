@@ -7,10 +7,10 @@ description: Environment Variablen, Key Vault Secrets Map, Azure Ressourcen, Ter
 
 Backend (Go):
 
-- Core: `APP_ENV`, `APP_PORT`, `PUBLIC_BASE_URL`, `JWT_ISSUER`, `JWT_PRIV_PEM`, `JWT_PUB_PEM`.
+- Core: `APP_ENV`, `APP_PORT`, `PUBLIC_BASE_URL` (Fallback), `JWT_ISSUER` (Fallback), `JWT_PRIV_PEM`, `JWT_PUB_PEM`.
 - Mongo: `MONGO_URI`, `MONGO_DATABASE`.
 - SMTP: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TLS_POLICY`.
-- Security: `SECURITY_ENABLE_HSTS`, `SECURITY_ENABLE_CSP`, `SECURITY_TRUSTED_ORIGINS` (comma‑separated).
+- Security: `SECURITY_ENABLE_HSTS`, `SECURITY_ENABLE_CSP`, `SECURITY_TRUSTED_ORIGINS` (comma‑separated, auto-derived).
 - OAuth: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
 - Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
 - Stations: `STATION_QR_SECRET`, `STATION_QR_MAX_AGE_SECONDS`.
@@ -18,7 +18,7 @@ Backend (Go):
 
 Web App (Next.js):
 
-- URLs: `NEXT_PUBLIC_API_BASE_URL`, `BACKEND_INTERNAL_URL` (für server‑seitige Fetches falls genutzt).
+- URLs/API: `BACKEND_INTERNAL_URL` (internal fetch target, auto-derived); Browser nutzt stets `/api`.
 - Stripe: `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`.
 - Google: `NEXT_PUBLIC_GOOGLE_CLIENT_ID`.
 - POS: `NEXT_PUBLIC_POS_PIN`, `NEXT_PUBLIC_POS_IDLE_TIMEOUT`.
@@ -43,12 +43,8 @@ Typische Namen und Consumer:
   - `stripe-secret-key` → `STRIPE_SECRET_KEY`
   - `stripe-webhook-secret` → `STRIPE_WEBHOOK_SECRET`
   - `smtp-password` → `SMTP_PASSWORD`
-  - `security-trusted-origins` → `SECURITY_TRUSTED_ORIGINS`
-  - `public-base-url` → `PUBLIC_BASE_URL`
-  - `jwt-issuer` → `JWT_ISSUER`
 - Frontend:
-  - `next-public-api-base-url` → `NEXT_PUBLIC_API_BASE_URL`
-  - `backend-internal-url` → `BACKEND_INTERNAL_URL`
+  - (runtime secrets only via `var.app_secrets`; domain URLs werden automatisch aus Terraform-Domains gesetzt)
 
 ---
 

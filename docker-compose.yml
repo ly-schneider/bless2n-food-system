@@ -72,7 +72,6 @@ services:
       context: ./bfs-web-app
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
         BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL}
     restart: unless-stopped
     depends_on:
@@ -81,7 +80,6 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
       BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL}
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]

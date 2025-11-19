@@ -2,6 +2,7 @@ package service
 
 import (
 	"backend/internal/config"
+	"backend/internal/origin"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -147,8 +148,11 @@ type inviteData struct {
 }
 
 func (e *emailService) SendAdminInvite(ctx context.Context, to, token string, expiresAt time.Time) error {
-	// Build accept URL; public landing page handles acceptance
+	// Build accept URL; default to configured origin but prefer request-scoped origin if available
 	base := strings.TrimRight(e.cfg.App.PublicBaseURL, "/")
+	if info, ok := origin.FromContext(ctx); ok && info.Frontend != "" {
+		base = strings.TrimRight(info.Frontend, "/")
+	}
 	acceptURL := base + "/invite/accept?token=" + token
 	ttl := time.Until(expiresAt)
 	data := inviteData{Brand: "BlessThun Food", AcceptURL: acceptURL, TTL: friendlyTTL(ttl)}
@@ -169,6 +173,9 @@ func (e *emailService) PreviewAdminInvite(ctx context.Context, token string, ttl
 		token = "preview-token"
 	}
 	base := strings.TrimRight(e.cfg.App.PublicBaseURL, "/")
+	if info, ok := origin.FromContext(ctx); ok && info.Frontend != "" {
+		base = strings.TrimRight(info.Frontend, "/")
+	}
 	acceptURL := base + "/invite/accept?token=" + token
 	data := inviteData{Brand: "BlessThun Food", AcceptURL: acceptURL, TTL: friendlyTTL(ttl)}
 	htmlT := template.Must(template.New("invite_html").Parse(adminInviteHTML))

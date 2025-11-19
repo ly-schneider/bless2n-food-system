@@ -149,7 +149,7 @@ func (a *authService) VerifyWithCode(ctx context.Context, email, code string, cl
 
 func (a *authService) issueSession(ctx context.Context, user *domain.User, clientID string) (*TokenPairResponse, *domain.User, error) {
 	// Access token
-	access, err := a.jwtService.GenerateAccessToken(user)
+	access, err := a.jwtService.GenerateAccessToken(ctx, user)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -210,7 +210,7 @@ func (a *authService) Refresh(ctx context.Context, refreshToken string, clientID
 		return nil, nil, err
 	}
 	// Issue new access and rotated refresh within same family
-	access, err := a.jwtService.GenerateAccessToken(user)
+	access, err := a.jwtService.GenerateAccessToken(ctx, user)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -13,8 +13,8 @@ description: Azure RBAC, Least Privilege, Key Vault Zugriff und App‑Auth
 # Key Vault Zugriff
 
 - KV pro Umgebung (z. B. `bfs-staging-kv`): speichert Secrets für Backend und Frontend.
-- Secret‑Namen u. a.: `mongo-uri`, `jwt-priv-pem`, `jwt-pub-pem`, `station-qr-secret`, `google-client-secret`, `stripe-secret-key`, `stripe-webhook-secret`, `smtp-password`, `security-trusted-origins`, `public-base-url`, `jwt-issuer`, `next-public-api-base-url`, `backend-internal-url`.
-- Apps referenzieren KV‑Secrets über Container Apps `key_vault_secrets` oder `key_vault_secret_refs`.
+- Secret‑Namen u. a.: `mongo-uri`, `jwt-priv-pem`, `jwt-pub-pem`, `station-qr-secret`, `google-client-secret`, `stripe-secret-key`, `stripe-webhook-secret`, `smtp-password`.
+- Apps referenzieren KV‑Secrets über Container Apps `key_vault_secrets` oder `key_vault_secret_refs`; Hostnamen/URLs werden aus Terraform-Domains direkt als Environment Variablen gesetzt.
 
 # Application Security
 

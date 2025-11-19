@@ -222,7 +222,7 @@ func (h *AdminInviteHandler) Accept(w http.ResponseWriter, r *http.Request) {
 	// Issue session (access + refresh) and set cookies similar to OTP flow
 	if h.jwt != nil && h.refresh != nil {
 		// Generate tokens and persist refresh token family
-		access, err := h.jwt.GenerateAccessToken(u)
+		access, err := h.jwt.GenerateAccessToken(r.Context(), u)
 		if err != nil {
 			response.WriteError(w, http.StatusInternalServerError, "token error")
 			return

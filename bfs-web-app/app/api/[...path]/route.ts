@@ -13,6 +13,9 @@ async function handle(req: Request, params: Promise<{ path: string[] }>) {
   const method = req.method
   const inHeaders = new Headers(req.headers)
   const outHeaders = new Headers()
+  const frontendHost = req.headers.get("host") || undefined
+  const forwardedProto = req.headers.get("x-forwarded-proto") || req.headers.get("X-Forwarded-Proto")
+  const frontendProto = forwardedProto || (req.url?.startsWith("http://") ? "http" : "https")
 
   const auth = inHeaders.get("authorization")
   if (auth) outHeaders.set("authorization", auth)
@@ -27,6 +30,8 @@ async function handle(req: Request, params: Promise<{ path: string[] }>) {
   if (xStationKey) outHeaders.set("X-Station-Key", xStationKey)
   const idempotencyKey = inHeaders.get("idempotency-key") || inHeaders.get("Idempotency-Key")
   if (idempotencyKey) outHeaders.set("Idempotency-Key", idempotencyKey)
+  if (frontendHost) outHeaders.set("X-Frontend-Host", frontendHost)
+  if (frontendProto) outHeaders.set("X-Frontend-Proto", frontendProto)
 
   const headerToken = inHeaders.get("x-csrf") || inHeaders.get("X-CSRF") || undefined
   const { csrfName } = await resolveCookieNames()

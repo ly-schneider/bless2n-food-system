@@ -27,9 +27,9 @@ Backend:
 
 Web App:
 
-- `NEXT_PUBLIC_API_BASE_URL=http://localhost:8080` und `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` setzen.
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` setzen; `BACKEND_INTERNAL_URL` verweist lokal auf `http://localhost:8080`.
 - `pnpm install && pnpm dev` in `bfs-web-app`.
-- Alle API‑Calls gehen über gleich‑origin `/api` mit CSRF‑Cookie für mutierende Requests.
+- Alle API‑Calls gehen über gleich‑origin `/api`; Server‑Routen sprechen per `BACKEND_INTERNAL_URL` direkt mit dem Backend.
 
 Android POS:
 
@@ -79,7 +79,7 @@ Testing & Tooling:
 # Web App (Next.js)
 
 - Struktur: App Router (`/app`), Middleware setzt CSP/HSTS und CSRF‑Cookie; Schutz für `/profile` und `/admin`.
-- API Proxy: `/lib/api.ts` nutzt gleich‑origin `/api` und leitet zum Backend (`NEXT_PUBLIC_API_BASE_URL`).
+- API Proxy: `/lib/api.ts` nutzt gleich‑origin `/api` und leitet mithilfe von `BACKEND_INTERNAL_URL` zum Backend.
 - POS Page & Bridge: Web‑POS erkennt `window.PosBridge` und reagiert auf `bfs:sumup:result` und `bfs:print:result`.
 - Checkout Flow: Stripe Elements mit Publishable Key; nutzt gecachten `clientSecret` bis bezahlt/expired.
 - Admin UI: Users, Products, Stations; Hooks wie `use-authorized-fetch` setzen Tokens.

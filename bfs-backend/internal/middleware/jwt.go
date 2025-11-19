@@ -34,7 +34,7 @@ func (m *JWTMiddleware) RequireAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		claims, err := m.jwtService.ValidateAccessToken(token)
+		claims, err := m.jwtService.ValidateAccessToken(r.Context(), token)
 		if err != nil {
 			zap.L().Debug("token validation failed", zap.Error(err))
 			m.writeErrorResponse(w, http.StatusUnauthorized, "Invalid or expired token")
@@ -51,7 +51,7 @@ func (m *JWTMiddleware) OptionalAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := m.extractToken(r)
 		if token != "" {
-			if claims, err := m.jwtService.ValidateAccessToken(token); err == nil {
+			if claims, err := m.jwtService.ValidateAccessToken(r.Context(), token); err == nil {
 				ctx := context.WithValue(r.Context(), UserContextKey, claims)
 				r = r.WithContext(ctx)
 			}

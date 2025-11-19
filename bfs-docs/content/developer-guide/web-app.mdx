@@ -13,7 +13,7 @@ description: Struktur, Security‑Middleware, POS‑Seite & Bridge, Checkout, Ad
 
 # API Proxy
 
-- `lib/api.ts` nutzt gleich‑origin `/api` und leitet an das Backend (`NEXT_PUBLIC_API_BASE_URL`).
+- `lib/api.ts` nutzt gleich‑origin `/api` und leitet mithilfe von `BACKEND_INTERNAL_URL` an das Backend (auch auf azurecontainerapps.io FQDNs).
 - Setzt automatisch `X-CSRF` bei mutierenden Requests im Browser.
 
 # POS Page & Bridge

@@ -34,6 +34,7 @@ func NewRouter(
 	jwksHandler *handler.JWKSHandler,
 	jwtMw *jwtMiddleware.JWTMiddleware,
 	securityMw *jwtMiddleware.SecurityMiddleware,
+	originMw *jwtMiddleware.OriginMiddleware,
 	productRepo repository.ProductRepository,
 	inventoryRepo repository.InventoryLedgerRepository,
 	auditRepo repository.AuditRepository,
@@ -59,6 +60,7 @@ func NewRouter(
 	handler.ChiURLParamFn = chi.URLParam
 
 	// Security middleware (applied first for all requests)
+	r.Use(originMw.Inject)
 	r.Use(securityMw.SecurityHeaders)
 	r.Use(securityMw.CacheControlForSensitive)
 	r.Use(securityMw.CORS)

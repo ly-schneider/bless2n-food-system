@@ -78,12 +78,12 @@ terraform init
 terraform apply
 ```
 
-### App URLs via Key Vault
-- Terraform provisions a Key Vault; apps reference the following secret names (not auto-created to avoid overwriting existing values):
-  - `backend-url`: public HTTPS URL for the backend (used by frontend `NEXT_PUBLIC_API_BASE_URL` and `BACKEND_INTERNAL_URL`).
-  - `frontend-url`: public HTTPS URL for the frontend (used by backend `SECURITY_TRUSTED_ORIGINS`, `JWT_ISSUER`, `PUBLIC_BASE_URL`).
-- Create or update these secrets in Azure Portal > Key Vaults > `<kv-name>` > Secrets, or via CI/CD.
-- The previous `shared_config` module and its separate env have been removed; no extra Terraform step is required.
+### Domain-Derived URLs (no custom secrets)
+- ACA gives every Container App a default `*.azurecontainerapps.io` FQDN; you can add `custom_domains` for pretty hostnames.
+- Terraform now derives all runtime URLs from those declarations:
+  - Frontend apps receive `BACKEND_INTERNAL_URL` pointing at the matching backend’s ACA FQDN (no Key Vault secret needed).
+  - Backend apps get `SECURITY_TRUSTED_ORIGINS`, `FRONTEND_ALLOWED_HOSTS`, `PUBLIC_BASE_URL`, and `JWT_ISSUER` automatically populated from frontend/backend `custom_domains` (first entry becomes the default).
+- Result: add/remove domains in the Terraform config and both apps automatically trust and advertise the right hosts, while the fallback ACA domains keep working for staging/testing.
 
 ### Custom Domains (Managed Certs + DNS Optional)
 - Each app supports an optional `custom_domains` list to bind hostnames using ACA‑managed certificates.

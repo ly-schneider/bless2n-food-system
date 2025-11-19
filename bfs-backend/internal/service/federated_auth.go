@@ -149,7 +149,7 @@ func (s *federatedAuthService) linkAndIssue(ctx context.Context, provider domain
 }
 
 func (s *federatedAuthService) issueSession(ctx context.Context, user *domain.User, clientID string) (*TokenPairResponse, *domain.User, error) {
-	access, err := s.jwtService.GenerateAccessToken(user)
+	access, err := s.jwtService.GenerateAccessToken(ctx, user)
 	if err != nil {
 		return nil, nil, err
 	}

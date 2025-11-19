@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/x509"
@@ -12,6 +13,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 
 	"backend/internal/domain"
+	"backend/internal/origin"
 )
 
 const (
@@ -28,10 +30,10 @@ type TokenClaims struct {
 }
 
 type JWTService interface {
-	GenerateAccessToken(user *domain.User) (string, error)
+	GenerateAccessToken(ctx context.Context, user *domain.User) (string, error)
 	GenerateRefreshToken() (string, error)
-	ValidateAccessToken(tokenString string) (*TokenClaims, error)
-	GenerateTokenPair(user *domain.User, clientID string) (*TokenPairResponse, error)
+	ValidateAccessToken(ctx context.Context, tokenString string) (*TokenClaims, error)
+	GenerateTokenPair(ctx context.Context, user *domain.User, clientID string) (*TokenPairResponse, error)
 	GetPublicKey() ed25519.PublicKey
 }
 
@@ -62,12 +64,19 @@ func NewJWTService(jwtPrivPEM string, jwtPubPEM string, issuer string) JWTServic
 	}
 }
 
-func (j *jwtService) GenerateAccessToken(user *domain.User) (string, error) {
+func (j *jwtService) GenerateAccessToken(ctx context.Context, user *domain.User) (string, error) {
 	now := time.Now().UTC()
 
 	jti, err := generateJTI()
 	if err != nil {
 		return "", fmt.Errorf("failed to generate JTI: %w", err)
+	}
+
+	issuer := j.issuer
+	if ctx != nil {
+		if info, ok := origin.FromContext(ctx); ok && info.Backend != "" {
+			issuer = info.Backend
+		}
 	}
 
 	claims := TokenClaims{
@@ -78,7 +87,7 @@ func (j *jwtService) GenerateAccessToken(user *domain.User) (string, error) {
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(AccessTokenDuration)),
 			NotBefore: jwt.NewNumericDate(now),
-			Issuer:    j.issuer,
+			Issuer:    issuer,
 			Audience:  []string{j.audience},
 		},
 	}
@@ -106,11 +115,10 @@ func (j *jwtService) GenerateRefreshToken() (string, error) {
 	return string(out), nil
 }
 
-func (j *jwtService) ValidateAccessToken(tokenString string) (*TokenClaims, error) {
+func (j *jwtService) ValidateAccessToken(ctx context.Context, tokenString string) (*TokenClaims, error) {
 	// Add small leeway to tolerate minor clock skew across replicas/clients.
 	parser := jwt.NewParser(
 		jwt.WithValidMethods([]string{jwt.SigningMethodEdDSA.Alg()}),
-		jwt.WithIssuer(j.issuer),
 		jwt.WithAudience(j.audience),
 		jwt.WithLeeway(5*time.Second),
 	)
@@ -128,11 +136,20 @@ func (j *jwtService) ValidateAccessToken(tokenString string) (*TokenClaims, erro
 	if !token.Valid {
 		return nil, fmt.Errorf("invalid token")
 	}
+	expectedIssuer := j.issuer
+	if ctx != nil {
+		if info, ok := origin.FromContext(ctx); ok && info.Backend != "" {
+			expectedIssuer = info.Backend
+		}
+	}
+	if claims.Issuer != expectedIssuer && claims.Issuer != j.issuer {
+		return nil, fmt.Errorf("unexpected issuer: %s", claims.Issuer)
+	}
 	return &claims, nil
 }
 
-func (j *jwtService) GenerateTokenPair(user *domain.User, clientID string) (*TokenPairResponse, error) {
-	accessToken, err := j.GenerateAccessToken(user)
+func (j *jwtService) GenerateTokenPair(ctx context.Context, user *domain.User, clientID string) (*TokenPairResponse, error) {
+	accessToken, err := j.GenerateAccessToken(ctx, user)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate access token: %w", err)
 	}

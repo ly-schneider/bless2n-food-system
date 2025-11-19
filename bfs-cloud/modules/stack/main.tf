@@ -61,6 +61,7 @@ variable "config" {
       liveness_path                  = optional(string)
       liveness_interval_seconds      = optional(number)
       liveness_initial_delay_seconds = optional(number)
+      backend_app_name               = optional(string)
       environment_variables          = optional(map(string), {})
       secrets                        = optional(map(string), {})
       key_vault_secrets              = optional(map(string), {})
@@ -123,8 +124,20 @@ module "rg" {
 }
 
 locals {
-  backend_apps     = { for k, v in var.config.apps : k => v if can(regex("^backend", k)) }
-  frontend_apps    = { for k, v in var.config.apps : k => v if can(regex("^frontend", k)) }
+  backend_apps            = { for k, v in var.config.apps : k => v if can(regex("^backend", k)) }
+  frontend_apps           = { for k, v in var.config.apps : k => v if can(regex("^frontend", k)) }
+  backend_app_names       = keys(local.backend_apps)
+  default_backend_app     = length(local.backend_app_names) > 0 ? local.backend_app_names[0] : null
+  frontend_backend_map    = { for k, v in local.frontend_apps : k => coalesce(try(v.backend_app_name, null), local.default_backend_app) }
+  frontend_custom_hosts   = distinct(flatten([for _, app in local.frontend_apps : [for cd in try(app.custom_domains, []) : cd.hostname]]))
+  frontend_custom_origins = [for host in local.frontend_custom_hosts : format("https://%s", host)]
+  frontend_primary_origin = length(local.frontend_custom_origins) > 0 ? local.frontend_custom_origins[0] : null
+  frontend_origins_csv    = length(local.frontend_custom_origins) > 0 ? join(",", local.frontend_custom_origins) : ""
+  frontend_hosts_csv      = length(local.frontend_custom_hosts) > 0 ? join(",", local.frontend_custom_hosts) : ""
+  backend_public_origins = {
+    for name, app in local.backend_apps :
+    name => distinct(flatten([for cd in try(app.custom_domains, []) : format("https://%s", cd.hostname)]))
+  }
   dns_zone_name    = try(var.config.dns_zone_name, null)
   dns_zone_rg_name = try(var.config.create_dns_zone, false) ? module.rg.name : try(var.config.dns_zone_resource_group_name, null)
 }
@@ -237,7 +250,14 @@ module "apps_backend" {
   enable_system_identity         = false
   user_assigned_identity_ids     = [azurerm_user_assigned_identity.aca_uami.id]
   log_analytics_workspace_id     = module.obs.log_analytics_id
-  environment_variables          = merge(local.environment_variables, each.value.environment_variables)
+  environment_variables = merge(
+    local.environment_variables,
+    each.value.environment_variables,
+    local.frontend_origins_csv != "" ? { SECURITY_TRUSTED_ORIGINS = local.frontend_origins_csv } : {},
+    local.frontend_hosts_csv != "" ? { FRONTEND_ALLOWED_HOSTS = local.frontend_hosts_csv } : {},
+    local.frontend_primary_origin != null ? { PUBLIC_BASE_URL = local.frontend_primary_origin } : {},
+    length(try(local.backend_public_origins[each.key], [])) > 0 ? { JWT_ISSUER = local.backend_public_origins[each.key][0] } : {}
+  )
   secrets                        = each.value.secrets
   key_vault_secrets              = each.value.key_vault_secrets
   revision_suffix                = try(each.value.revision_suffix, null)
@@ -264,6 +284,20 @@ module "apps_backend" {
   tags               = merge(var.tags, { app = each.key })
 }
 
+locals {
+  backend_internal_urls = {
+    for name, app in module.apps_backend :
+    name => format("https://%s", app.fqdn)
+  }
+}
+
+locals {
+  frontend_backend_urls = {
+    for name, backend_name in local.frontend_backend_map :
+    name => backend_name != null && contains(keys(local.backend_internal_urls), backend_name) ? local.backend_internal_urls[backend_name] : null
+  }
+}
+
 module "apps_frontend" {
   for_each = local.frontend_apps
   source   = "../containerapp"
@@ -288,7 +322,8 @@ module "apps_frontend" {
   log_analytics_workspace_id     = module.obs.log_analytics_id
   environment_variables = merge(
     local.environment_variables,
-    each.value.environment_variables
+    each.value.environment_variables,
+    lookup(local.frontend_backend_urls, each.key, null) != null ? { BACKEND_INTERNAL_URL = local.frontend_backend_urls[each.key] } : {}
   )
   secrets           = each.value.secrets
   key_vault_secrets = each.value.key_vault_secrets

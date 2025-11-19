@@ -27,6 +27,7 @@ func NewRouter(
 	jwksHandler *handler.JWKSHandler,
 	jwtMw *middleware.JWTMiddleware,
 	securityMw *middleware.SecurityMiddleware,
+	originMw *middleware.OriginMiddleware,
 	productRepo repository.ProductRepository,
 	inventoryRepo repository.InventoryLedgerRepository,
 	auditRepo repository.AuditRepository,
@@ -50,7 +51,7 @@ func NewRouter(
 	enableDocs := cfg.App.AppEnv != "production"
 	return httpRouter.NewRouter(
 		authHandler, devHandler, adminHandler, userHandler, orderHandler, stationHandler, posHandler, categoryHandler, productHandler, paymentHandler, redemptionHandler, healthHandler, jwksHandler,
-		jwtMw, securityMw,
+		jwtMw, securityMw, originMw,
 		productRepo, inventoryRepo, auditRepo, orderRepo, orderItemRepo, userRepo, menuSlotRepo, menuSlotItemRepo, categoryRepo, adminInviteRepo, refreshTokenRepo, stationRepo, stationRequestRepo, posDeviceRepo, posRequestRepo, stationProductRepo, emailSvc,
 		jwtSvc, enableDocs,
 	)

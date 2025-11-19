@@ -28,6 +28,7 @@ func NewHandlers() fx.Option {
 			handler.NewJWKSHandler,
 			middleware.NewJWTMiddleware,
 			NewSecurityMiddleware,
+			NewOriginMiddleware,
 		),
 	)
 }
@@ -42,5 +43,13 @@ func NewSecurityMiddleware(cfg config.Config) *middleware.SecurityMiddleware {
 		EnableCSP:      cfg.Security.EnableCSP,
 		TrustedOrigins: cfg.Security.TrustedOrigins,
 		AppEnv:         cfg.App.AppEnv,
+	})
+}
+
+func NewOriginMiddleware(cfg config.Config) *middleware.OriginMiddleware {
+	return middleware.NewOriginMiddleware(middleware.OriginConfig{
+		DefaultFrontendOrigin: cfg.App.PublicBaseURL,
+		DefaultBackendOrigin:  cfg.App.JWTIssuer,
+		AllowedFrontendHosts:  cfg.App.FrontendHosts,
 	})
 }
