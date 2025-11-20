@@ -209,8 +209,8 @@ resource "azurerm_container_app_custom_domain" "this" {
   certificate_binding_type = "SniEnabled"
   container_app_environment_certificate_id = replace(
     azapi_resource.managed_certificate[each.key].id,
-    "/managedCertificates/",
-    "/certificates/"
+    "managedCertificates",
+    "certificates"
   )
 
   depends_on = [azurerm_dns_txt_record.asuid]

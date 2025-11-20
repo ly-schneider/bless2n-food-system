@@ -1,0 +1,84 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/bfs-web-app"
+    schedule:
+      interval: "daily"
+      time: "02:00"
+      timezone: "Europe/Zurich"
+    target-branch: "staging"
+    labels:
+      - "dependencies"
+      - "area/web-app"
+    groups:
+      web-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+  - package-ecosystem: "npm"
+    directory: "/bfs-docs"
+    schedule:
+      interval: "daily"
+      time: "02:00"
+      timezone: "Europe/Zurich"
+    target-branch: "staging"
+    labels:
+      - "dependencies"
+      - "documentation"
+    groups:
+      web-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+  - package-ecosystem: "gomod"
+    directory: "/bfs-backend"
+    schedule:
+      interval: "daily"
+      time: "02:00"
+      timezone: "Europe/Zurich"
+    target-branch: "staging"
+    labels:
+      - "dependencies"
+      - "area/backend"
+    groups:
+      go-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+  - package-ecosystem: "terraform"
+    directory: "/bfs-cloud"
+    schedule:
+      interval: "daily"
+      time: "02:00"
+      timezone: "Europe/Zurich"
+    target-branch: "staging"
+    labels:
+      - "dependencies"
+      - "area/cloud"
+    groups:
+      terraform-all:
+        patterns:
+          - "*"
+  - package-ecosystem: "gradle"
+    directory: "/bfs-android-app"
+    schedule:
+      interval: "daily"
+      time: "02:00"
+      timezone: "Europe/Zurich"
+    target-branch: "staging"
+    labels:
+      - "dependencies"
+      - "area/android-app"
+    groups:
+      android-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
