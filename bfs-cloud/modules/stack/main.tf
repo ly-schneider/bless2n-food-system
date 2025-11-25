@@ -65,12 +65,6 @@ variable "config" {
       secrets                        = optional(map(string), {})
       key_vault_secrets              = optional(map(string), {})
       key_vault_secret_refs          = optional(map(string), {})
-      custom_domains = optional(list(object({
-        hostname                     = string
-        dns_zone_name                = optional(string)
-        dns_zone_resource_group_name = optional(string)
-        ttl                          = optional(number)
-      })), [])
       registries = optional(list(object({
         server               = string
         username             = optional(string)
@@ -222,7 +216,6 @@ module "apps_backend" {
   name                           = each.key
   resource_group_name            = module.rg.name
   environment_id                 = module.aca_env.id
-  environment_location           = var.location
   image                          = each.value.image
   target_port                    = each.value.port
   health_check_path              = lookup(each.value, "health_check_path", "/health")
@@ -256,12 +249,7 @@ module "apps_backend" {
   memory_scale_rule       = each.value.memory_scale_rule
   azure_queue_scale_rules = each.value.azure_queue_scale_rules
   custom_scale_rules      = each.value.custom_scale_rules
-  custom_domains = [for d in try(each.value.custom_domains, []) : merge(d, {
-    dns_zone_name                = try(d.dns_zone_name, local.dns_zone_name)
-    dns_zone_resource_group_name = try(d.dns_zone_resource_group_name, local.dns_zone_rg_name)
-  })]
-  manage_dns_records = local.dns_zone_name != null && local.dns_zone_rg_name != null
-  tags               = merge(var.tags, { app = each.key })
+  tags                    = merge(var.tags, { app = each.key })
 }
 
 module "apps_frontend" {
@@ -271,7 +259,6 @@ module "apps_frontend" {
   name                           = each.key
   resource_group_name            = module.rg.name
   environment_id                 = module.aca_env.id
-  environment_location           = var.location
   image                          = each.value.image
   target_port                    = each.value.port
   health_check_path              = lookup(each.value, "health_check_path", "/api/health")
@@ -308,12 +295,7 @@ module "apps_frontend" {
   memory_scale_rule       = each.value.memory_scale_rule
   azure_queue_scale_rules = each.value.azure_queue_scale_rules
   custom_scale_rules      = each.value.custom_scale_rules
-  custom_domains = [for d in try(each.value.custom_domains, []) : merge(d, {
-    dns_zone_name                = try(d.dns_zone_name, local.dns_zone_name)
-    dns_zone_resource_group_name = try(d.dns_zone_resource_group_name, local.dns_zone_rg_name)
-  })]
-  manage_dns_records = local.dns_zone_name != null && local.dns_zone_rg_name != null
-  tags               = merge(var.tags, { app = each.key })
+  tags                    = merge(var.tags, { app = each.key })
 }
 
 module "alerts" {

@@ -96,9 +96,6 @@ module "bfs_infrastructure" {
           name           = "frontend-cpu-scale"
           cpu_percentage = 75
         }
-        custom_domains = [
-          { hostname = "food.leys.ch" }
-        ]
       }
       backend-production = {
         port                           = 8080
@@ -170,9 +167,6 @@ module "bfs_infrastructure" {
           name           = "backend-cpu-scale"
           cpu_percentage = 80
         }
-        custom_domains = [
-          { hostname = "api.food.leys.ch" }
-        ]
       }
     }
   }
