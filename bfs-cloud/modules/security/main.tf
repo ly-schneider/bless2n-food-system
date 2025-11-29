@@ -76,7 +76,7 @@ resource "azurerm_key_vault" "basic" {
 
   public_network_access_enabled = true
   # CHANGED: Use Access Policies instead of RBAC to avoid needing User Access Administrator role
-  enable_rbac_authorization = false
+  rbac_authorization_enabled = false
 
   network_acls {
     default_action = "Allow"
@@ -144,7 +144,7 @@ resource "azurerm_key_vault_access_policy" "container_apps_identity" {
 }
 
 resource "azurerm_key_vault_secret" "cosmos_connection_string" {
-  count = var.enable_key_vault && length(var.cosmos_connection_string) > 0 ? 1 : 0
+  count = var.enable_key_vault ? 1 : 0
 
   name         = "mongo-uri"
   value        = var.cosmos_connection_string
