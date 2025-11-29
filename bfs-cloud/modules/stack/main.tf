@@ -142,7 +142,6 @@ module "net" {
   private_endpoints_subnet_cidr = try(var.config.pe_subnet_cidr, "10.1.8.0/24")
   delegate_containerapps_subnet = try(var.config.delegate_aca_subnet, false)
   tags                          = var.tags
-  depends_on                    = [module.tfc_rbac]
 }
 
 module "obs" {
@@ -156,19 +155,14 @@ module "obs" {
   tags                = var.tags
 }
 
-module "tfc_rbac" {
-  source = "../rbac_tfc"
-
-  target_rg_id = module.rg.id
-
-  network_scopes                   = [module.rg.id]
-  private_dns_zone_scopes          = try(var.config.enable_private_endpoint, false) ? [module.rg.id] : []
-  managed_identity_scopes          = [module.rg.id]
-  uaa_scopes                       = [module.rg.id]
-  cosmos_account_scopes            = [module.rg.id]
-  grant_cosmos_account_contributor = true
-  grant_cosmos_keys_reader         = false
-}
+# REMOVED: rbac_tfc module - not needed with Contributor service principal
+# The Contributor role already includes permissions to:
+# - Manage networks (Network Contributor)
+# - Create managed identities (Managed Identity Contributor)
+# - Manage Cosmos DB (Cosmos DB Contributor)
+# - Manage DNS zones (Private DNS Zone Contributor)
+# Only User Access Administrator role is missing, but we don't need it
+# if we use Key Vault Access Policies instead of RBAC
 
 module "aca_env" {
   source                     = "../containerapps_env"
@@ -205,8 +199,6 @@ module "cosmos" {
   enable_private_endpoint    = try(var.config.enable_private_endpoint, false)
   log_analytics_workspace_id = module.obs.log_analytics_id
   tags                       = var.tags
-
-  depends_on = [module.tfc_rbac]
 }
 
 module "apps_backend" {
