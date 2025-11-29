@@ -7,13 +7,6 @@ variable "tags" {
   default = { project = "bfs", env = "staging" }
 }
 
-variable "alert_emails" {
-  type = map(string)
-  default = {
-    dev = "levyn.schneider@leys.ch"
-  }
-}
-
 variable "image_tag" {
   description = "Tag to use for images (commit SHA, tag, or branch)"
   type        = string
@@ -49,10 +42,4 @@ variable "ghcr_token" {
   description = "GitHub Container Registry personal access token for pulling images"
   type        = string
   sensitive   = true
-}
-
-variable "budget_amount" {
-  description = "Monthly cost budget amount for the staging resource group (billing currency)"
-  type        = number
-  default     = 10
 }

@@ -1,3 +1,8 @@
+import {
+  to = module.bfs_infrastructure.module.cosmos.azurerm_cosmosdb_account.this
+  id = "/subscriptions/a6e97570-b80b-4a4d-a27c-081fe6c7e7f3/resourceGroups/bfs-staging-rg/providers/Microsoft.DocumentDB/databaseAccounts/bfs-staging-cosmos"
+}
+
 locals {
   registry_host = "ghcr.io"
   repo_prefix   = "ly-schneider/bless2n-food-system"
@@ -12,10 +17,9 @@ locals {
 module "bfs_infrastructure" {
   source = "../../modules/stack"
 
-  environment  = "staging"
-  location     = var.location
-  tags         = var.tags
-  alert_emails = var.alert_emails
+  environment = "staging"
+  location    = var.location
+  tags        = var.tags
 
   config = {
     rg_name                      = "bfs-staging-rg"
@@ -32,16 +36,12 @@ module "bfs_infrastructure" {
     retention_days               = 30
     cosmos_name                  = "bfs-staging-cosmos"
     database_throughput          = 400
-    enable_alerts                = true
-    requests_5xx_threshold       = 5
     enable_security_features     = true
     enable_private_endpoint      = false
     key_vault_name               = "bfs-staging-kv"
     dns_zone_name                = "food.leys.ch"
     dns_zone_resource_group_name = "bfs-production-rg"
     create_dns_zone              = false
-    budget_amount                = var.budget_amount
-    budget_start_date            = "2025-11-01T00:00:00Z"
     apps = {
       frontend-staging = {
         port                           = 3000

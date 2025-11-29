@@ -19,25 +19,3 @@ output "key_vault_secret_ids" {
     "mongo-uri" = azurerm_key_vault_secret.cosmos_connection_string[0].versionless_id
   } : {}
 }
-
-output "cost_savings_summary" {
-  description = "Estimated monthly cost savings"
-  value = {
-    removed_features = [
-      "Azure Security Center Standard (~$150/month)",
-      "Web Application Firewall (~$40/month)",
-      "Private Endpoints (~$30/month)",
-      "Recovery Services Vault (~$20/month)",
-      "Key Vault Premium upgrade (~$10/month)"
-    ]
-    total_estimated_savings = "~$250/month"
-    retained_security = [
-      "Network Security Groups (free)",
-      "Managed Identities (free)",
-      "Basic Key Vault Standard (~$1/month)",
-      "Container security contexts (free)",
-      "Basic monitoring alerts (~$2/month)"
-    ]
-    total_estimated_cost = "~$3/month"
-  }
-}

@@ -12,10 +12,9 @@ locals {
 module "bfs_infrastructure" {
   source = "../../modules/stack"
 
-  environment  = "production"
-  location     = var.location
-  tags         = var.tags
-  alert_emails = var.alert_emails
+  environment = "production"
+  location    = var.location
+  tags        = var.tags
 
   config = {
     rg_name                  = "bfs-production-rg"
@@ -33,15 +32,11 @@ module "bfs_infrastructure" {
     retention_days           = 30
     cosmos_name              = "bfs-production-cosmos"
     database_throughput      = 400
-    enable_alerts            = true
-    requests_5xx_threshold   = 5
     enable_security_features = true
     enable_private_endpoint  = false
     key_vault_name           = "bfs-production-kv"
     dns_zone_name            = "food.leys.ch"
     create_dns_zone          = true
-    budget_amount            = var.budget_amount
-    budget_start_date        = "2025-11-01T00:00:00Z"
     apps = {
       frontend-production = {
         port                           = 3000

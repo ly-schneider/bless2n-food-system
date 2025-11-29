@@ -14,12 +14,6 @@ variable "tags" {
   default     = {}
 }
 
-variable "alert_emails" {
-  description = "Email addresses for alerts"
-  type        = map(string)
-  default     = {}
-}
-
 variable "config" {
   description = "Environment-specific configuration"
   type = object({
@@ -38,14 +32,10 @@ variable "config" {
     retention_days               = number
     cosmos_name                  = string
     database_throughput          = number
-    enable_alerts                = bool
-    requests_5xx_threshold       = number
     enable_security_features     = optional(bool, true)
     key_vault_name               = optional(string)
     enable_private_endpoint      = optional(bool, false)
     allowed_ip_ranges            = optional(list(string), [])
-    budget_amount                = optional(number)
-    budget_start_date            = optional(string, "2025-01-01T00:00:00Z")
     dns_zone_name                = optional(string)
     dns_zone_resource_group_name = optional(string)
     create_dns_zone              = optional(bool, false)
@@ -154,15 +144,6 @@ module "obs" {
   retention_days      = var.config.retention_days
   tags                = var.tags
 }
-
-# REMOVED: rbac_tfc module - not needed with Contributor service principal
-# The Contributor role already includes permissions to:
-# - Manage networks (Network Contributor)
-# - Create managed identities (Managed Identity Contributor)
-# - Manage Cosmos DB (Cosmos DB Contributor)
-# - Manage DNS zones (Private DNS Zone Contributor)
-# Only User Access Administrator role is missing, but we don't need it
-# if we use Key Vault Access Policies instead of RBAC
 
 module "aca_env" {
   source                     = "../containerapps_env"
@@ -290,23 +271,6 @@ module "apps_frontend" {
   tags                    = merge(var.tags, { app = each.key })
 }
 
-module "alerts" {
-  count = var.config.enable_alerts ? 1 : 0
-
-  source              = "../alerts"
-  name                = "${var.environment}-alerts"
-  short_name          = var.environment
-  resource_group_name = module.rg.name
-  email_receivers     = var.alert_emails
-  action_group_id     = module.ag.id
-  container_app_ids = merge(
-    { for k, m in module.apps_backend : k => m.id },
-    { for k, m in module.apps_frontend : k => m.id }
-  )
-  requests_5xx_threshold = var.config.requests_5xx_threshold
-  tags                   = var.tags
-}
-
 data "azurerm_client_config" "current" {}
 
 resource "azurerm_user_assigned_identity" "aca_uami" {
@@ -330,31 +294,6 @@ module "security" {
   key_vault_admins           = [data.azurerm_client_config.current.object_id]
   uami_principal_id          = azurerm_user_assigned_identity.aca_uami.principal_id
   cosmos_connection_string   = module.cosmos.connection_string
-  enable_basic_monitoring    = false
-  container_app_ids          = {}
-  action_group_id            = null
   log_analytics_workspace_id = module.obs.log_analytics_id
   tags                       = var.tags
-}
-
-module "rg_budget" {
-  count  = try(var.config.budget_amount, null) != null ? 1 : 0
-  source = "../budget"
-
-  name              = "${var.environment}-rg-budget"
-  resource_group_id = module.rg.id
-  amount            = var.config.budget_amount
-  start_date        = try(var.config.budget_start_date, "2025-01-01T00:00:00Z")
-  action_group_id   = module.ag.id
-  tags              = var.tags
-}
-
-module "ag" {
-  source = "../action_group"
-
-  name                = "bfs-${var.environment}-ag"
-  short_name          = var.environment
-  resource_group_name = module.rg.name
-  email_receivers     = var.alert_emails
-  tags                = var.tags
 }

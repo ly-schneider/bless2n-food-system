@@ -53,24 +53,6 @@ variable "cosmos_connection_string" {
   default     = ""
 }
 
-variable "enable_basic_monitoring" {
-  description = "Enable basic monitoring alerts"
-  type        = bool
-  default     = true
-}
-
-variable "container_app_ids" {
-  description = "Map of container app names to their resource IDs"
-  type        = map(string)
-  default     = {}
-}
-
-variable "action_group_id" {
-  description = "Action group ID for alerts"
-  type        = string
-  default     = null
-}
-
 variable "log_analytics_workspace_id" {
   description = "Log Analytics workspace ID for basic logging"
   type        = string
