@@ -40,6 +40,7 @@ module "bfs_infrastructure" {
         image                          = local.frontend_image
         revision_suffix                = var.revision_suffix
         external_ingress               = true
+        allow_insecure_connections     = true
         cpu                            = 0.25
         memory                         = "0.5Gi"
         min_replicas                   = 0
@@ -94,6 +95,7 @@ module "bfs_infrastructure" {
         image                          = local.backend_image
         revision_suffix                = var.revision_suffix
         external_ingress               = true
+        allow_insecure_connections     = true
         health_check_path              = "/health"
         liveness_path                  = "/ping"
         liveness_interval_seconds      = 60

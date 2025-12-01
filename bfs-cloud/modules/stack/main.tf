@@ -44,6 +44,8 @@ variable "config" {
       min_replicas                   = number
       max_replicas                   = number
       revision_suffix                = optional(string)
+      external_ingress               = optional(bool, true)
+      allow_insecure_connections     = optional(bool, false)
       health_check_path              = optional(string)
       liveness_path                  = optional(string)
       liveness_interval_seconds      = optional(number)
@@ -184,6 +186,7 @@ module "apps_backend" {
   liveness_interval_seconds      = lookup(each.value, "liveness_interval_seconds", 60)
   liveness_initial_delay_seconds = lookup(each.value, "liveness_initial_delay_seconds", 20)
   external_ingress               = try(each.value.external_ingress, true)
+  allow_insecure_connections     = try(each.value.allow_insecure_connections, false)
   cpu                            = each.value.cpu
   memory                         = each.value.memory
   min_replicas                   = each.value.min_replicas
@@ -227,6 +230,7 @@ module "apps_frontend" {
   liveness_interval_seconds      = lookup(each.value, "liveness_interval_seconds", 30)
   liveness_initial_delay_seconds = lookup(each.value, "liveness_initial_delay_seconds", 20)
   external_ingress               = try(each.value.external_ingress, true)
+  allow_insecure_connections     = try(each.value.allow_insecure_connections, false)
   cpu                            = each.value.cpu
   memory                         = each.value.memory
   min_replicas                   = each.value.min_replicas

@@ -3,10 +3,20 @@ variable "resource_group_name" { type = string }
 variable "environment_id" { type = string }
 variable "image" { type = string }
 variable "target_port" { type = number }
+variable "enable_ingress" {
+  type        = bool
+  description = "Enable ingress for the container app"
+  default     = true
+}
 variable "external_ingress" {
   type        = bool
   description = "Whether ingress is exposed externally (true) or internal-only (false)"
   default     = true
+}
+variable "allow_insecure_connections" {
+  type        = bool
+  description = "Allow HTTP connections in addition to HTTPS (set to true for plain HTTP access)"
+  default     = false
 }
 variable "cpu" {
   type    = number
