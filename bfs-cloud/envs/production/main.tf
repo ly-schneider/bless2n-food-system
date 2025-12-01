@@ -78,7 +78,7 @@ module "bfs_infrastructure" {
         key_vault_secrets = merge(
           lookup(var.app_secrets, "frontend-production", {}),
           {
-            "BACKEND_INTERNAL_URL"     = "backend-internal-url"
+            "BACKEND_INTERNAL_URL" = "backend-internal-url"
           }
         )
         http_scale_rule = {
