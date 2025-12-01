@@ -34,9 +34,7 @@ module "bfs_infrastructure" {
     database_throughput      = 400
     enable_security_features = true
     enable_private_endpoint  = false
-    key_vault_name           = "bfs-production-kv"
-    dns_zone_name            = "food.leys.ch"
-    create_dns_zone          = true
+    key_vault_name           = "bfs-production-keyvault"
     apps = {
       frontend-production = {
         port                           = 3000

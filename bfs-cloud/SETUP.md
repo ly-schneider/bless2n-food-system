@@ -151,7 +151,6 @@ terraform apply
 - **User-Assigned Managed Identity**: For Container Apps to access Key Vault
 - **Log Analytics Workspace**: Monitoring and diagnostics
 - **Action Groups**: Email alerts
-- **DNS Zone**: `food.leys.ch` (production only)
 
 ### Removed Features
 

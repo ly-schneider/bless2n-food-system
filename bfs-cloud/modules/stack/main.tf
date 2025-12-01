@@ -36,9 +36,6 @@ variable "config" {
     key_vault_name               = optional(string)
     enable_private_endpoint      = optional(bool, false)
     allowed_ip_ranges            = optional(list(string), [])
-    dns_zone_name                = optional(string)
-    dns_zone_resource_group_name = optional(string)
-    create_dns_zone              = optional(bool, false)
     apps = map(object({
       port                           = number
       image                          = string
@@ -107,17 +104,8 @@ module "rg" {
 }
 
 locals {
-  backend_apps     = { for k, v in var.config.apps : k => v if can(regex("^backend", k)) }
-  frontend_apps    = { for k, v in var.config.apps : k => v if can(regex("^frontend", k)) }
-  dns_zone_name    = try(var.config.dns_zone_name, null)
-  dns_zone_rg_name = try(var.config.create_dns_zone, false) ? module.rg.name : try(var.config.dns_zone_resource_group_name, null)
-}
-
-resource "azurerm_dns_zone" "public" {
-  count               = try(var.config.create_dns_zone, false) && try(var.config.dns_zone_name, null) != null ? 1 : 0
-  name                = var.config.dns_zone_name
-  resource_group_name = module.rg.name
-  tags                = var.tags
+  backend_apps  = { for k, v in var.config.apps : k => v if can(regex("^backend", k)) }
+  frontend_apps = { for k, v in var.config.apps : k => v if can(regex("^frontend", k)) }
 }
 
 module "net" {

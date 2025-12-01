@@ -33,10 +33,7 @@ module "bfs_infrastructure" {
     database_throughput          = 400
     enable_security_features     = true
     enable_private_endpoint      = false
-    key_vault_name               = "bfs-staging-kv"
-    dns_zone_name                = "food.leys.ch"
-    dns_zone_resource_group_name = "bfs-production-rg"
-    create_dns_zone              = false
+    key_vault_name               = "bfs-staging-keyvault"
     apps = {
       frontend-staging = {
         port                           = 3000
