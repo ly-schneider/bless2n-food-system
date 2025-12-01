@@ -78,7 +78,6 @@ module "bfs_infrastructure" {
         key_vault_secrets = merge(
           lookup(var.app_secrets, "frontend-production", {}),
           {
-            "NEXT_PUBLIC_API_BASE_URL" = "next-public-api-base-url"
             "BACKEND_INTERNAL_URL"     = "backend-internal-url"
           }
         )
