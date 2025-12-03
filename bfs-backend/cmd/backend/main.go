@@ -14,7 +14,7 @@ import (
 // @title Bless2n Food System API
 // @version 1.0
 // @description Internal BlessThun Food System API
-// @schemes http https
+// @schemes https http
 // @BasePath /
 // @securityDefinitions.apikey BearerAuth
 // @in header
