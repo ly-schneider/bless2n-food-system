@@ -31,7 +31,8 @@ COPY --chown=nodejs:nodejs . .
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1
 
-RUN if [ -f pnpm-lock.yaml ]; then pnpm run build; \
+RUN --mount=type=cache,target=/home/nodejs/.next/cache,uid=1001,gid=1001 \
+    if [ -f pnpm-lock.yaml ]; then pnpm run build; \
     elif [ -f yarn.lock ]; then yarn run build; \
     else npm run build; fi
 

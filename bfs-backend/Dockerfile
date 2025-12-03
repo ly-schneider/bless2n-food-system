@@ -17,21 +17,25 @@ COPY go.mod go.sum ./
 RUN chown -R appbuild:appbuild /src
 
 USER appbuild
-RUN go mod download && go mod verify
-
-COPY --chown=appbuild:appbuild . .
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download && go mod verify
 
 USER root
-RUN go install github.com/swaggo/swag/cmd/swag@v1.16.6
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    go install github.com/swaggo/swag/cmd/swag@v1.16.6
+
 USER appbuild
+COPY --chown=appbuild:appbuild . .
 
 RUN swag init -g cmd/backend/main.go --parseInternal --parseDependency --generatedTime=false
 
 ARG BUILD_TAGS="docs"
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+RUN --mount=type=cache,target=/home/appbuild/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -tags="${BUILD_TAGS}" \
     -ldflags='-w -s -extldflags "-static"' \
-    -a -installsuffix cgo \
     -o backend ./cmd/backend
 
 FROM gcr.io/distroless/static-debian12:nonroot
