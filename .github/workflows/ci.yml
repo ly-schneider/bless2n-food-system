@@ -283,7 +283,28 @@ jobs:
       contents: read
       actions: write
     steps:
+      - name: Check commit message for skip flag
+        id: check-skip
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const commit = await github.rest.repos.getCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: context.sha,
+            });
+
+            const message = commit.data.commit.message;
+            const shouldSkip = message.includes('[skip cd]') || message.includes('[skip-cd]');
+
+            console.log(`Commit message: ${message}`);
+            console.log(`Should skip CD: ${shouldSkip}`);
+
+            return shouldSkip;
+
       - name: Trigger CD workflow via workflow_dispatch
+        if: steps.check-skip.outputs.result == 'false'
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
