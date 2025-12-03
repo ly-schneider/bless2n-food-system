@@ -252,6 +252,7 @@ jobs:
     permissions:
       contents: read
       actions: write
+      pull-requests: read
     steps:
       - name: Check commit message for skip flag
         id: check-skip
