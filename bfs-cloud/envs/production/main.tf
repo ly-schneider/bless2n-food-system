@@ -12,10 +12,9 @@ locals {
 module "bfs_infrastructure" {
   source = "../../modules/stack"
 
-  environment  = "production"
-  location     = var.location
-  tags         = var.tags
-  alert_emails = var.alert_emails
+  environment = "production"
+  location    = var.location
+  tags        = var.tags
 
   config = {
     rg_name                  = "bfs-production-rg"
@@ -33,21 +32,16 @@ module "bfs_infrastructure" {
     retention_days           = 30
     cosmos_name              = "bfs-production-cosmos"
     database_throughput      = 400
-    enable_alerts            = true
-    requests_5xx_threshold   = 5
     enable_security_features = true
     enable_private_endpoint  = false
-    key_vault_name           = "bfs-production-kv"
-    dns_zone_name            = "food.leys.ch"
-    create_dns_zone          = true
-    budget_amount            = var.budget_amount
-    budget_start_date        = "2025-11-01T00:00:00Z"
+    key_vault_name           = "bfs-production-keyvault"
     apps = {
       frontend-production = {
         port                           = 3000
         image                          = local.frontend_image
         revision_suffix                = var.revision_suffix
         external_ingress               = true
+        allow_insecure_connections     = true
         cpu                            = 0.5
         memory                         = "1Gi"
         min_replicas                   = 0
@@ -84,8 +78,7 @@ module "bfs_infrastructure" {
         key_vault_secrets = merge(
           lookup(var.app_secrets, "frontend-production", {}),
           {
-            "NEXT_PUBLIC_API_BASE_URL" = "next-public-api-base-url"
-            "BACKEND_INTERNAL_URL"     = "backend-internal-url"
+            "BACKEND_INTERNAL_URL" = "backend-internal-url"
           }
         )
         http_scale_rule = {
@@ -96,15 +89,13 @@ module "bfs_infrastructure" {
           name           = "frontend-cpu-scale"
           cpu_percentage = 75
         }
-        custom_domains = [
-          { hostname = "food.leys.ch" }
-        ]
       }
       backend-production = {
         port                           = 8080
         image                          = local.backend_image
         revision_suffix                = var.revision_suffix
         external_ingress               = true
+        allow_insecure_connections     = true
         health_check_path              = "/health"
         liveness_path                  = "/ping"
         liveness_interval_seconds      = 60
@@ -170,20 +161,7 @@ module "bfs_infrastructure" {
           name           = "backend-cpu-scale"
           cpu_percentage = 80
         }
-        custom_domains = [
-          { hostname = "api.food.leys.ch" }
-        ]
       }
     }
   }
-}
-
-import {
-  to = module.bfs_infrastructure.module.apps_frontend["frontend-production"].azapi_resource.managed_certificate["food.leys.ch"]
-  id = "/subscriptions/5c3f67c0-445b-4317-a959-e9d5c663dc16/resourceGroups/bfs-production-rg/providers/Microsoft.App/managedEnvironments/bfs-production-env/managedCertificates/food-leys-ch"
-}
-
-import {
-  to = module.bfs_infrastructure.module.apps_backend["backend-production"].azapi_resource.managed_certificate["api.food.leys.ch"]
-  id = "/subscriptions/5c3f67c0-445b-4317-a959-e9d5c663dc16/resourceGroups/bfs-production-rg/providers/Microsoft.App/managedEnvironments/bfs-production-env/managedCertificates/api-food-leys-ch"
 }

@@ -14,41 +14,28 @@ variable "tags" {
   default     = {}
 }
 
-variable "alert_emails" {
-  description = "Email addresses for alerts"
-  type        = map(string)
-  default     = {}
-}
-
 variable "config" {
   description = "Environment-specific configuration"
   type = object({
-    rg_name                      = string
-    vnet_name                    = string
-    subnet_name                  = string
-    vnet_cidr                    = string
-    subnet_cidr                  = string
-    delegate_aca_subnet          = optional(bool, false)
-    pe_subnet_name               = optional(string, "private-endpoints-subnet")
-    pe_subnet_cidr               = optional(string, "10.1.8.0/24")
-    env_name                     = string
-    law_name                     = string
-    appi_name                    = string
-    enable_app_insights          = bool
-    retention_days               = number
-    cosmos_name                  = string
-    database_throughput          = number
-    enable_alerts                = bool
-    requests_5xx_threshold       = number
-    enable_security_features     = optional(bool, true)
-    key_vault_name               = optional(string)
-    enable_private_endpoint      = optional(bool, false)
-    allowed_ip_ranges            = optional(list(string), [])
-    budget_amount                = optional(number)
-    budget_start_date            = optional(string, "2025-01-01T00:00:00Z")
-    dns_zone_name                = optional(string)
-    dns_zone_resource_group_name = optional(string)
-    create_dns_zone              = optional(bool, false)
+    rg_name                  = string
+    vnet_name                = string
+    subnet_name              = string
+    vnet_cidr                = string
+    subnet_cidr              = string
+    delegate_aca_subnet      = optional(bool, false)
+    pe_subnet_name           = optional(string, "private-endpoints-subnet")
+    pe_subnet_cidr           = optional(string, "10.1.8.0/24")
+    env_name                 = string
+    law_name                 = string
+    appi_name                = string
+    enable_app_insights      = bool
+    retention_days           = number
+    cosmos_name              = string
+    database_throughput      = number
+    enable_security_features = optional(bool, true)
+    key_vault_name           = optional(string)
+    enable_private_endpoint  = optional(bool, false)
+    allowed_ip_ranges        = optional(list(string), [])
     apps = map(object({
       port                           = number
       image                          = string
@@ -57,6 +44,8 @@ variable "config" {
       min_replicas                   = number
       max_replicas                   = number
       revision_suffix                = optional(string)
+      external_ingress               = optional(bool, true)
+      allow_insecure_connections     = optional(bool, false)
       health_check_path              = optional(string)
       liveness_path                  = optional(string)
       liveness_interval_seconds      = optional(number)
@@ -65,12 +54,6 @@ variable "config" {
       secrets                        = optional(map(string), {})
       key_vault_secrets              = optional(map(string), {})
       key_vault_secret_refs          = optional(map(string), {})
-      custom_domains = optional(list(object({
-        hostname                     = string
-        dns_zone_name                = optional(string)
-        dns_zone_resource_group_name = optional(string)
-        ttl                          = optional(number)
-      })), [])
       registries = optional(list(object({
         server               = string
         username             = optional(string)
@@ -123,17 +106,8 @@ module "rg" {
 }
 
 locals {
-  backend_apps     = { for k, v in var.config.apps : k => v if can(regex("^backend", k)) }
-  frontend_apps    = { for k, v in var.config.apps : k => v if can(regex("^frontend", k)) }
-  dns_zone_name    = try(var.config.dns_zone_name, null)
-  dns_zone_rg_name = try(var.config.create_dns_zone, false) ? module.rg.name : try(var.config.dns_zone_resource_group_name, null)
-}
-
-resource "azurerm_dns_zone" "public" {
-  count               = try(var.config.create_dns_zone, false) && try(var.config.dns_zone_name, null) != null ? 1 : 0
-  name                = var.config.dns_zone_name
-  resource_group_name = module.rg.name
-  tags                = var.tags
+  backend_apps  = { for k, v in var.config.apps : k => v if can(regex("^backend", k)) }
+  frontend_apps = { for k, v in var.config.apps : k => v if can(regex("^frontend", k)) }
 }
 
 module "net" {
@@ -148,7 +122,6 @@ module "net" {
   private_endpoints_subnet_cidr = try(var.config.pe_subnet_cidr, "10.1.8.0/24")
   delegate_containerapps_subnet = try(var.config.delegate_aca_subnet, false)
   tags                          = var.tags
-  depends_on                    = [module.tfc_rbac]
 }
 
 module "obs" {
@@ -160,20 +133,6 @@ module "obs" {
   enable_app_insights = var.config.enable_app_insights
   retention_days      = var.config.retention_days
   tags                = var.tags
-}
-
-module "tfc_rbac" {
-  source = "../rbac_tfc"
-
-  target_rg_id = module.rg.id
-
-  network_scopes                   = [module.rg.id]
-  private_dns_zone_scopes          = try(var.config.enable_private_endpoint, false) ? [module.rg.id] : []
-  managed_identity_scopes          = [module.rg.id]
-  uaa_scopes                       = [module.rg.id]
-  cosmos_account_scopes            = [module.rg.id]
-  grant_cosmos_account_contributor = true
-  grant_cosmos_keys_reader         = false
 }
 
 module "aca_env" {
@@ -211,8 +170,6 @@ module "cosmos" {
   enable_private_endpoint    = try(var.config.enable_private_endpoint, false)
   log_analytics_workspace_id = module.obs.log_analytics_id
   tags                       = var.tags
-
-  depends_on = [module.tfc_rbac]
 }
 
 module "apps_backend" {
@@ -222,7 +179,6 @@ module "apps_backend" {
   name                           = each.key
   resource_group_name            = module.rg.name
   environment_id                 = module.aca_env.id
-  environment_location           = var.location
   image                          = each.value.image
   target_port                    = each.value.port
   health_check_path              = lookup(each.value, "health_check_path", "/health")
@@ -230,6 +186,7 @@ module "apps_backend" {
   liveness_interval_seconds      = lookup(each.value, "liveness_interval_seconds", 60)
   liveness_initial_delay_seconds = lookup(each.value, "liveness_initial_delay_seconds", 20)
   external_ingress               = try(each.value.external_ingress, true)
+  allow_insecure_connections     = try(each.value.allow_insecure_connections, false)
   cpu                            = each.value.cpu
   memory                         = each.value.memory
   min_replicas                   = each.value.min_replicas
@@ -256,12 +213,7 @@ module "apps_backend" {
   memory_scale_rule       = each.value.memory_scale_rule
   azure_queue_scale_rules = each.value.azure_queue_scale_rules
   custom_scale_rules      = each.value.custom_scale_rules
-  custom_domains = [for d in try(each.value.custom_domains, []) : merge(d, {
-    dns_zone_name                = try(d.dns_zone_name, local.dns_zone_name)
-    dns_zone_resource_group_name = try(d.dns_zone_resource_group_name, local.dns_zone_rg_name)
-  })]
-  manage_dns_records = local.dns_zone_name != null && local.dns_zone_rg_name != null
-  tags               = merge(var.tags, { app = each.key })
+  tags                    = merge(var.tags, { app = each.key })
 }
 
 module "apps_frontend" {
@@ -271,7 +223,6 @@ module "apps_frontend" {
   name                           = each.key
   resource_group_name            = module.rg.name
   environment_id                 = module.aca_env.id
-  environment_location           = var.location
   image                          = each.value.image
   target_port                    = each.value.port
   health_check_path              = lookup(each.value, "health_check_path", "/api/health")
@@ -279,6 +230,7 @@ module "apps_frontend" {
   liveness_interval_seconds      = lookup(each.value, "liveness_interval_seconds", 30)
   liveness_initial_delay_seconds = lookup(each.value, "liveness_initial_delay_seconds", 20)
   external_ingress               = try(each.value.external_ingress, true)
+  allow_insecure_connections     = try(each.value.allow_insecure_connections, false)
   cpu                            = each.value.cpu
   memory                         = each.value.memory
   min_replicas                   = each.value.min_replicas
@@ -308,29 +260,7 @@ module "apps_frontend" {
   memory_scale_rule       = each.value.memory_scale_rule
   azure_queue_scale_rules = each.value.azure_queue_scale_rules
   custom_scale_rules      = each.value.custom_scale_rules
-  custom_domains = [for d in try(each.value.custom_domains, []) : merge(d, {
-    dns_zone_name                = try(d.dns_zone_name, local.dns_zone_name)
-    dns_zone_resource_group_name = try(d.dns_zone_resource_group_name, local.dns_zone_rg_name)
-  })]
-  manage_dns_records = local.dns_zone_name != null && local.dns_zone_rg_name != null
-  tags               = merge(var.tags, { app = each.key })
-}
-
-module "alerts" {
-  count = var.config.enable_alerts ? 1 : 0
-
-  source              = "../alerts"
-  name                = "${var.environment}-alerts"
-  short_name          = var.environment
-  resource_group_name = module.rg.name
-  email_receivers     = var.alert_emails
-  action_group_id     = module.ag.id
-  container_app_ids = merge(
-    { for k, m in module.apps_backend : k => m.id },
-    { for k, m in module.apps_frontend : k => m.id }
-  )
-  requests_5xx_threshold = var.config.requests_5xx_threshold
-  tags                   = var.tags
+  tags                    = merge(var.tags, { app = each.key })
 }
 
 data "azurerm_client_config" "current" {}
@@ -356,31 +286,6 @@ module "security" {
   key_vault_admins           = [data.azurerm_client_config.current.object_id]
   uami_principal_id          = azurerm_user_assigned_identity.aca_uami.principal_id
   cosmos_connection_string   = module.cosmos.connection_string
-  enable_basic_monitoring    = false
-  container_app_ids          = {}
-  action_group_id            = null
   log_analytics_workspace_id = module.obs.log_analytics_id
   tags                       = var.tags
-}
-
-module "rg_budget" {
-  count  = try(var.config.budget_amount, null) != null ? 1 : 0
-  source = "../budget"
-
-  name              = "${var.environment}-rg-budget"
-  resource_group_id = module.rg.id
-  amount            = var.config.budget_amount
-  start_date        = try(var.config.budget_start_date, "2025-01-01T00:00:00Z")
-  action_group_id   = module.ag.id
-  tags              = var.tags
-}
-
-module "ag" {
-  source = "../action_group"
-
-  name                = "bfs-${var.environment}-ag"
-  short_name          = var.environment
-  resource_group_name = module.rg.name
-  email_receivers     = var.alert_emails
-  tags                = var.tags
 }

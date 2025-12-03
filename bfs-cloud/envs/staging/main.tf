@@ -12,42 +12,35 @@ locals {
 module "bfs_infrastructure" {
   source = "../../modules/stack"
 
-  environment  = "staging"
-  location     = var.location
-  tags         = var.tags
-  alert_emails = var.alert_emails
+  environment = "staging"
+  location    = var.location
+  tags        = var.tags
 
   config = {
-    rg_name                      = "bfs-staging-rg"
-    vnet_name                    = "bfs-staging-vnet"
-    subnet_name                  = "container-apps-subnet"
-    vnet_cidr                    = "10.1.0.0/16"
-    subnet_cidr                  = "10.1.0.0/21"
-    pe_subnet_name               = "private-endpoints-subnet"
-    pe_subnet_cidr               = "10.1.8.0/24"
-    env_name                     = "bfs-staging-env"
-    law_name                     = "bfs-logs-workspace"
-    appi_name                    = "bfs-staging-insights"
-    enable_app_insights          = false
-    retention_days               = 30
-    cosmos_name                  = "bfs-staging-cosmos"
-    database_throughput          = 400
-    enable_alerts                = true
-    requests_5xx_threshold       = 5
-    enable_security_features     = true
-    enable_private_endpoint      = false
-    key_vault_name               = "bfs-staging-kv"
-    dns_zone_name                = "food.leys.ch"
-    dns_zone_resource_group_name = "bfs-production-rg"
-    create_dns_zone              = false
-    budget_amount                = var.budget_amount
-    budget_start_date            = "2025-11-01T00:00:00Z"
+    rg_name                  = "bfs-staging-rg"
+    vnet_name                = "bfs-staging-vnet"
+    subnet_name              = "container-apps-subnet"
+    vnet_cidr                = "10.1.0.0/16"
+    subnet_cidr              = "10.1.0.0/21"
+    pe_subnet_name           = "private-endpoints-subnet"
+    pe_subnet_cidr           = "10.1.8.0/24"
+    env_name                 = "bfs-staging-env"
+    law_name                 = "bfs-logs-workspace"
+    appi_name                = "bfs-staging-insights"
+    enable_app_insights      = false
+    retention_days           = 30
+    cosmos_name              = "bfs-staging-cosmos"
+    database_throughput      = 400
+    enable_security_features = true
+    enable_private_endpoint  = false
+    key_vault_name           = "bfs-staging-keyvault"
     apps = {
       frontend-staging = {
         port                           = 3000
         image                          = local.frontend_image
         revision_suffix                = var.revision_suffix
         external_ingress               = true
+        allow_insecure_connections     = true
         cpu                            = 0.25
         memory                         = "0.5Gi"
         min_replicas                   = 0
@@ -84,8 +77,7 @@ module "bfs_infrastructure" {
         key_vault_secrets = merge(
           lookup(var.app_secrets, "frontend-staging", {}),
           {
-            "NEXT_PUBLIC_API_BASE_URL" = "next-public-api-base-url"
-            "BACKEND_INTERNAL_URL"     = "backend-internal-url"
+            "BACKEND_INTERNAL_URL" = "backend-internal-url"
           }
         )
         http_scale_rule = {
@@ -96,15 +88,13 @@ module "bfs_infrastructure" {
           name           = "frontend-cpu-scale"
           cpu_percentage = 75
         }
-        custom_domains = [
-          { hostname = "staging.food.leys.ch" }
-        ]
       }
       backend-staging = {
         port                           = 8080
         image                          = local.backend_image
         revision_suffix                = var.revision_suffix
         external_ingress               = true
+        allow_insecure_connections     = true
         health_check_path              = "/health"
         liveness_path                  = "/ping"
         liveness_interval_seconds      = 60
@@ -170,9 +160,6 @@ module "bfs_infrastructure" {
           name           = "backend-cpu-scale"
           cpu_percentage = 80
         }
-        custom_domains = [
-          { hostname = "api.staging.food.leys.ch" }
-        ]
       }
     }
   }

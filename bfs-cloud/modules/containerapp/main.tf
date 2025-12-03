@@ -40,15 +40,18 @@ resource "azurerm_container_app" "this" {
     }
   }
 
-  ingress {
-    external_enabled           = var.external_ingress
-    target_port                = var.target_port
-    transport                  = "http"
-    allow_insecure_connections = false
+  dynamic "ingress" {
+    for_each = var.enable_ingress ? [1] : []
+    content {
+      external_enabled           = var.external_ingress
+      target_port                = var.target_port
+      transport                  = "http"
+      allow_insecure_connections = var.allow_insecure_connections
 
-    traffic_weight {
-      latest_revision = true
-      percentage      = 100
+      traffic_weight {
+        latest_revision = true
+        percentage      = 100
+      }
     }
   }
 
@@ -180,77 +183,6 @@ resource "azurerm_container_app" "this" {
     type         = var.enable_system_identity && length(var.user_assigned_identity_ids) == 0 ? "SystemAssigned" : length(var.user_assigned_identity_ids) > 0 ? "UserAssigned" : "None"
     identity_ids = length(var.user_assigned_identity_ids) > 0 ? var.user_assigned_identity_ids : null
   }
-}
-
-locals {
-  _custom_domains_map = { for d in var.custom_domains : d.hostname => d }
-  _custom_domains_with_zone = {
-    for h, d in local._custom_domains_map : h => d if var.manage_dns_records && try(d.dns_zone_name, null) != null && try(d.dns_zone_resource_group_name, null) != null
-  }
-}
-
-resource "azurerm_container_app_custom_domain" "this" {
-  for_each = local._custom_domains_map
-
-  container_app_id = azurerm_container_app.this.id
-  name             = each.key
-
-  lifecycle {
-    ignore_changes = [
-      certificate_binding_type,
-      container_app_environment_certificate_id
-    ]
-  }
-
-  certificate_binding_type                 = null
-  container_app_environment_certificate_id = null
-
-  depends_on = [azurerm_dns_txt_record.asuid]
-}
-
-resource "azurerm_dns_txt_record" "asuid" {
-  for_each = local._custom_domains_with_zone
-
-  name                = "asuid.${replace(each.key, ".${each.value.dns_zone_name}", "")}"
-  zone_name           = each.value.dns_zone_name
-  resource_group_name = each.value.dns_zone_resource_group_name
-  ttl                 = coalesce(try(each.value.ttl, null), 300)
-
-  record {
-    value = azurerm_container_app.this.custom_domain_verification_id
-  }
-}
-
-resource "azurerm_dns_cname_record" "cname" {
-  for_each = local._custom_domains_with_zone
-
-  name                = replace(each.key, ".${each.value.dns_zone_name}", "")
-  zone_name           = each.value.dns_zone_name
-  resource_group_name = each.value.dns_zone_resource_group_name
-  ttl                 = coalesce(try(each.value.ttl, null), 300)
-  record              = azurerm_container_app.this.ingress[0].fqdn
-}
-
-resource "azapi_resource" "managed_certificate" {
-  for_each = local._custom_domains_map
-
-  type      = "Microsoft.App/managedEnvironments/managedCertificates@2024-03-01"
-  parent_id = var.environment_id
-  name      = replace(each.key, ".", "-")
-  location  = var.environment_location
-
-  body = {
-    properties = {
-      subjectName             = each.key
-      domainControlValidation = "TXT"
-    }
-  }
-
-  depends_on = [
-    azurerm_dns_txt_record.asuid,
-    azurerm_dns_cname_record.cname,
-    azurerm_container_app_custom_domain.this
-  ]
 }
 
 module "diag" {

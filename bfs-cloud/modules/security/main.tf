@@ -75,7 +75,7 @@ resource "azurerm_key_vault" "basic" {
   soft_delete_retention_days = 7
 
   public_network_access_enabled = true
-  rbac_authorization_enabled    = true
+  rbac_authorization_enabled    = false
 
   network_acls {
     default_action = "Allow"
@@ -87,63 +87,66 @@ resource "azurerm_key_vault" "basic" {
 
 data "azurerm_client_config" "current" {}
 
-resource "azurerm_role_assignment" "kv_admin" {
+# Access Policy for Terraform service principal (admin access)
+resource "azurerm_key_vault_access_policy" "terraform_admin" {
   count = var.enable_key_vault ? length(var.key_vault_admins) : 0
 
-  scope                = azurerm_key_vault.basic[0].id
-  role_definition_name = "Key Vault Administrator"
-  principal_id         = var.key_vault_admins[count.index]
+  key_vault_id = azurerm_key_vault.basic[0].id
+  tenant_id    = data.azurerm_client_config.current.tenant_id
+  object_id    = var.key_vault_admins[count.index]
+
+  secret_permissions = [
+    "Get",
+    "List",
+    "Set",
+    "Delete",
+    "Purge",
+    "Recover",
+    "Backup",
+    "Restore"
+  ]
+
+  key_permissions = [
+    "Get",
+    "List",
+    "Create",
+    "Delete",
+    "Purge",
+    "Recover"
+  ]
+
+  certificate_permissions = [
+    "Get",
+    "List",
+    "Create",
+    "Delete",
+    "Purge",
+    "Recover"
+  ]
 }
 
-resource "azurerm_role_assignment" "kv_secrets_user" {
+# Access Policy for Container Apps Managed Identity (read-only access to secrets)
+resource "azurerm_key_vault_access_policy" "container_apps_identity" {
   count = var.enable_key_vault ? 1 : 0
 
-  scope                = azurerm_key_vault.basic[0].id
-  role_definition_name = "Key Vault Secrets User"
-  principal_id         = var.uami_principal_id
+  key_vault_id = azurerm_key_vault.basic[0].id
+  tenant_id    = data.azurerm_client_config.current.tenant_id
+  object_id    = var.uami_principal_id
+
+  secret_permissions = [
+    "Get",
+    "List"
+  ]
 }
 
 resource "azurerm_key_vault_secret" "cosmos_connection_string" {
-  count = var.enable_key_vault && length(var.cosmos_connection_string) > 0 ? 1 : 0
+  count = var.enable_key_vault ? 1 : 0
 
   name         = "mongo-uri"
   value        = var.cosmos_connection_string
   key_vault_id = azurerm_key_vault.basic[0].id
 
-  depends_on = [azurerm_role_assignment.kv_admin]
-}
-
-resource "azurerm_monitor_metric_alert" "high_error_rate" {
-  count = var.enable_basic_monitoring ? length(var.container_app_ids) : 0
-
-  name                = "${var.name_prefix}-high-errors-${count.index}"
-  resource_group_name = var.resource_group_name
-  scopes              = [values(var.container_app_ids)[count.index]]
-  description         = "High error rate detected"
-
-  frequency   = "PT5M"
-  window_size = "PT15M"
-  severity    = 2
-
-  criteria {
-    metric_namespace = "Microsoft.App/containerapps"
-    metric_name      = "Requests"
-    aggregation      = "Count"
-    operator         = "GreaterThan"
-    threshold        = 50
-
-    dimension {
-      name     = "StatusCodeCategory"
-      operator = "Include"
-      values   = ["4xx", "5xx"]
-    }
-  }
-
-  action {
-    action_group_id = var.action_group_id
-  }
-
-  tags = var.tags
+  depends_on = [azurerm_key_vault_access_policy.terraform_admin]
 }
 
 resource "azurerm_monitor_diagnostic_setting" "basic_security_logs" {

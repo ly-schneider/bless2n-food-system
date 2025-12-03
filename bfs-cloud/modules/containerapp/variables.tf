@@ -1,16 +1,22 @@
 variable "name" { type = string }
 variable "resource_group_name" { type = string }
 variable "environment_id" { type = string }
-variable "environment_location" {
-  type        = string
-  description = "Azure region of the Container Apps environment (for managed certificate resource location)"
-}
 variable "image" { type = string }
 variable "target_port" { type = number }
+variable "enable_ingress" {
+  type        = bool
+  description = "Enable ingress for the container app"
+  default     = true
+}
 variable "external_ingress" {
   type        = bool
   description = "Whether ingress is exposed externally (true) or internal-only (false)"
   default     = true
+}
+variable "allow_insecure_connections" {
+  type        = bool
+  description = "Allow HTTP connections in addition to HTTPS (set to true for plain HTTP access)"
+  default     = false
 }
 variable "cpu" {
   type    = number
@@ -192,21 +198,4 @@ variable "volumes" {
   }))
   description = "Volumes for the container app"
   default     = []
-}
-
-variable "custom_domains" {
-  description = "Optional custom domains to bind with managed certificates. If a DNS zone is provided, a CNAME is created to the app's azurecontainerapps.io FQDN. Note: CNAMEs cannot be used at the zone apex."
-  type = list(object({
-    hostname                     = string
-    dns_zone_name                = optional(string)
-    dns_zone_resource_group_name = optional(string)
-    ttl                          = optional(number)
-  }))
-  default = []
-}
-
-variable "manage_dns_records" {
-  type        = bool
-  description = "If true and dns_zone_* is provided, create Azure DNS TXT+CNAME records. If false, assume DNS is managed externally."
-  default     = false
 }

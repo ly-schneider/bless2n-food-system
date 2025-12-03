@@ -57,21 +57,3 @@ output "key_vault_secret_ids" {
   description = "Map of Key Vault secret names to their versionless IDs"
   value       = jsonencode(var.config.enable_security_features ? module.security[0].key_vault_secret_ids : {})
 }
-
-output "dns_zone_name" {
-  description = "Public DNS zone name if created (e.g., food.bless2n.ch)"
-  value       = length(azurerm_dns_zone.public) > 0 ? azurerm_dns_zone.public[0].name : null
-}
-
-output "dns_zone_name_servers" {
-  description = "Nameservers for the public DNS zone (delegate at parent provider)"
-  value       = length(azurerm_dns_zone.public) > 0 ? azurerm_dns_zone.public[0].name_servers : null
-}
-
-output "domain_verification_ids" {
-  description = "Map of app name -> custom_domain_verification_id"
-  value = jsonencode(merge(
-    { for k, m in module.apps_backend : k => m.custom_domain_verification_id },
-    { for k, m in module.apps_frontend : k => m.custom_domain_verification_id }
-  ))
-}
