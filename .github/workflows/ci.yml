@@ -296,12 +296,46 @@ jobs:
             });
 
             const message = commit.data.commit.message;
-            const shouldSkip = message.includes('[skip cd]') || message.includes('[skip-cd]');
+            const author = commit.data.commit.author.name;
+
+            // Check commit message for skip flag
+            let shouldSkip = message.includes('[skip cd]') || message.includes('[skip-cd]');
+
+            // Check if this is a Dependabot commit
+            const isDependabot = author === 'dependabot[bot]' ||
+                                 author === 'dependabot-preview[bot]' ||
+                                 message.includes('dependabot');
+
+            // If it's a merge commit, check the PR title
+            if (message.startsWith('Merge pull request')) {
+              const prMatch = message.match(/#(\d+)/);
+              if (prMatch) {
+                const prNumber = parseInt(prMatch[1]);
+                const pr = await github.rest.pulls.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: prNumber,
+                });
+
+                const prTitle = pr.data.title;
+                const prIsDependabot = pr.data.user.login.includes('dependabot');
+
+                console.log(`PR #${prNumber} title: ${prTitle}`);
+                console.log(`PR is from Dependabot: ${prIsDependabot}`);
+
+                shouldSkip = shouldSkip ||
+                            prTitle.includes('[skip cd]') ||
+                            prTitle.includes('[skip-cd]') ||
+                            prIsDependabot;
+              }
+            }
 
             console.log(`Commit message: ${message}`);
-            console.log(`Should skip CD: ${shouldSkip}`);
+            console.log(`Commit author: ${author}`);
+            console.log(`Is Dependabot: ${isDependabot}`);
+            console.log(`Should skip CD: ${shouldSkip || isDependabot}`);
 
-            return shouldSkip;
+            return shouldSkip || isDependabot;
 
       - name: Trigger CD workflow via workflow_dispatch
         if: steps.check-skip.outputs.result == 'false'
