@@ -7,6 +7,8 @@ updates:
       time: "02:00"
       timezone: "Europe/Zurich"
     target-branch: "staging"
+    commit-message:
+      prefix: "[skip cd]"
     labels:
       - "dependencies"
       - "area/web-app"
@@ -24,6 +26,8 @@ updates:
       time: "02:00"
       timezone: "Europe/Zurich"
     target-branch: "staging"
+    commit-message:
+      prefix: "[skip cd]"
     labels:
       - "dependencies"
       - "documentation"
@@ -41,6 +45,8 @@ updates:
       time: "02:00"
       timezone: "Europe/Zurich"
     target-branch: "staging"
+    commit-message:
+      prefix: "[skip cd]"
     labels:
       - "dependencies"
       - "area/backend"
@@ -52,12 +58,30 @@ updates:
           - "minor"
           - "patch"
   - package-ecosystem: "terraform"
-    directory: "/bfs-cloud"
+    directory: "/bfs-cloud/envs/staging"
     schedule:
       interval: "daily"
       time: "02:00"
       timezone: "Europe/Zurich"
     target-branch: "staging"
+    commit-message:
+      prefix: "[skip cd]"
+    labels:
+      - "dependencies"
+      - "area/cloud"
+    groups:
+      terraform-all:
+        patterns:
+          - "*"
+  - package-ecosystem: "terraform"
+    directory: "/bfs-cloud/envs/production"
+    schedule:
+      interval: "daily"
+      time: "02:00"
+      timezone: "Europe/Zurich"
+    target-branch: "staging"
+    commit-message:
+      prefix: "[skip cd]"
     labels:
       - "dependencies"
       - "area/cloud"
@@ -72,6 +96,8 @@ updates:
       time: "02:00"
       timezone: "Europe/Zurich"
     target-branch: "staging"
+    commit-message:
+      prefix: "[skip cd]"
     labels:
       - "dependencies"
       - "area/android-app"
