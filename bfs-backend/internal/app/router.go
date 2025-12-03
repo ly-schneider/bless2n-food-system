@@ -47,11 +47,12 @@ func NewRouter(
 	jwtSvc service.JWTService,
 	cfg config.Config,
 ) http.Handler {
-	enableDocs := cfg.App.AppEnv != "production"
+	isDev := cfg.App.AppEnv == "dev"
+
 	return httpRouter.NewRouter(
 		authHandler, devHandler, adminHandler, userHandler, orderHandler, stationHandler, posHandler, categoryHandler, productHandler, paymentHandler, redemptionHandler, healthHandler, jwksHandler,
 		jwtMw, securityMw,
 		productRepo, inventoryRepo, auditRepo, orderRepo, orderItemRepo, userRepo, menuSlotRepo, menuSlotItemRepo, categoryRepo, adminInviteRepo, refreshTokenRepo, stationRepo, stationRequestRepo, posDeviceRepo, posRequestRepo, stationProductRepo, emailSvc,
-		jwtSvc, enableDocs,
+		jwtSvc, isDev,
 	)
 }
