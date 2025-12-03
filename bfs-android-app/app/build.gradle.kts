@@ -170,7 +170,7 @@ kotlin {
 }
 
 dependencies {
-    implementation("com.sumup:merchant-sdk:5.0.3")
+    implementation("com.sumup:merchant-sdk:6.0.0")
     implementation("com.github.DantSu:ESCPOS-ThermalPrinter-Android:3.4.0")
     implementation("com.google.zxing:core:3.5.4")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
