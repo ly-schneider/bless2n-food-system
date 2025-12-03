@@ -28,7 +28,8 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 USER appbuild
 COPY --chown=appbuild:appbuild . .
 
-RUN swag init -g cmd/backend/main.go --parseInternal --parseDependency --generatedTime=false
+RUN --mount=type=cache,target=/go/pkg/mod,uid=1001,gid=1001 \
+    swag init -g cmd/backend/main.go --parseInternal --parseDependency --generatedTime=false
 
 ARG BUILD_TAGS="docs"
 RUN --mount=type=cache,target=/home/appbuild/.cache/go-build,uid=1001,gid=1001 \
