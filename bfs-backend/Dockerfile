@@ -17,7 +17,7 @@ COPY go.mod go.sum ./
 RUN chown -R appbuild:appbuild /src
 
 USER appbuild
-RUN --mount=type=cache,target=/go/pkg/mod \
+RUN --mount=type=cache,target=/go/pkg/mod,uid=1001,gid=1001 \
     go mod download && go mod verify
 
 USER root
@@ -31,8 +31,8 @@ COPY --chown=appbuild:appbuild . .
 RUN swag init -g cmd/backend/main.go --parseInternal --parseDependency --generatedTime=false
 
 ARG BUILD_TAGS="docs"
-RUN --mount=type=cache,target=/home/appbuild/.cache/go-build \
-    --mount=type=cache,target=/go/pkg/mod \
+RUN --mount=type=cache,target=/home/appbuild/.cache/go-build,uid=1001,gid=1001 \
+    --mount=type=cache,target=/go/pkg/mod,uid=1001,gid=1001 \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     -tags="${BUILD_TAGS}" \
     -ldflags='-w -s -extldflags "-static"' \
