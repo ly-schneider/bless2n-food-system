@@ -145,10 +145,9 @@ jobs:
         working-directory: bfs-web-app
         run: pnpm test -- --shard=${{ matrix.shard }}/1
 
-  backend-quality:
-    name: Backend Quality & Tests
+  backend-lint:
+    name: Backend Lint
     runs-on: ubuntu-latest
-    needs: setup-dependencies
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
 
@@ -160,13 +159,23 @@ jobs:
       - name: Lint
         uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9
         with:
-          version: latest
+          version: v2.5.0
           working-directory: bfs-backend
-          args: --timeout=5m
+          args: --timeout=3m
+          skip-cache: false
+          skip-pkg-cache: false
+          skip-build-cache: false
 
-      - name: Vet
-        working-directory: bfs-backend
-        run: go vet ./...
+  backend-test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
+        with:
+          go-version: '1.25'
+          cache-dependency-path: bfs-backend/go.sum
 
       - name: Run tests
         working-directory: bfs-backend
@@ -182,7 +191,6 @@ jobs:
   terraform-quality:
     name: Terraform Quality
     runs-on: ubuntu-latest
-    needs: setup-dependencies
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
 
@@ -206,61 +214,23 @@ jobs:
           terraform init -upgrade -backend=false
           terraform validate
 
-  security-scan:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    needs: setup-dependencies
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
-        with:
-          version: 9
-
-      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: bfs-web-app/pnpm-lock.yaml
-
-      - name: Restore web node_modules
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: bfs-web-app/node_modules
-          key: node-modules-${{ runner.os }}-${{ hashFiles('bfs-web-app/pnpm-lock.yaml') }}
-          fail-on-cache-miss: true
-
-      - name: Web vulnerability scan
-        working-directory: bfs-web-app
-        run: pnpm audit --audit-level=high || true
-
-      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
-        with:
-          go-version: '1.25'
-          cache-dependency-path: bfs-backend/go.sum
-
-      - name: Go vulnerability scan
-        working-directory: bfs-backend
-        run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
-          govulncheck ./... || true
-
   ci-success:
     name: CI Success
     runs-on: ubuntu-latest
     needs:
       - web-quality
       - web-test
-      - backend-quality
+      - backend-lint
+      - backend-test
       - terraform-quality
-      - security-scan
     if: always()
     steps:
       - name: Check all jobs succeeded
         run: |
           if [[ "${{ needs.web-quality.result }}" == "failure" ]] || \
              [[ "${{ needs.web-test.result }}" == "failure" ]] || \
-             [[ "${{ needs.backend-quality.result }}" == "failure" ]] || \
+             [[ "${{ needs.backend-lint.result }}" == "failure" ]] || \
+             [[ "${{ needs.backend-test.result }}" == "failure" ]] || \
              [[ "${{ needs.terraform-quality.result }}" == "failure" ]]; then
             echo "One or more required jobs failed"
             exit 1

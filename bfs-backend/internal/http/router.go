@@ -52,7 +52,7 @@ func NewRouter(
 	stationProductRepo repository.StationProductRepository,
 	emailSvc service.EmailService,
 	jwtSvc service.JWTService,
-	enableDocs bool,
+	isDev bool,
 ) http.Handler {
 	r := chi.NewRouter()
 	// wire chi URLParam to admin handler helpers
@@ -77,8 +77,13 @@ func NewRouter(
 	// JWKS endpoint (public access for JWT verification)
 	r.Get("/.well-known/jwks.json", jwksHandler.GetJWKS)
 
-	if enableDocs && swag.GetSwagger(swag.Name) != nil {
+	// Swagger documentation (available when docs are generated)
+	if swag.GetSwagger(swag.Name) != nil {
 		r.Get("/swagger/*", httpSwagger.WrapHandler)
+	}
+
+	// Dev-only email preview endpoints (only accessible in dev/local environments)
+	if isDev {
 		r.Get("/dev/email/preview/login", devHandler.PreviewLoginEmail)
 		r.Get("/dev/email/preview/email-change", devHandler.PreviewEmailChangeEmail)
 		r.Get("/dev/email/preview/admin-invite", devHandler.PreviewAdminInviteEmail)

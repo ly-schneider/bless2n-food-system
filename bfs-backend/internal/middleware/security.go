@@ -93,30 +93,38 @@ func (s *SecurityMiddleware) SecurityHeaders(next http.Handler) http.Handler {
 					headerName = "Content-Security-Policy-Report-Only"
 				}
 
-				// Base policy (nonce-based JS)
 				var csp strings.Builder
-				fmt.Fprintf(&csp,
-					"default-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; script-src 'self' 'nonce-%s';",
-					nonce,
-				)
 
-				// Dev: allow HMR / API calls to your dev servers via connect-src
-				if s.appEnv == "dev" {
-					connect := make([]string, 0, 1+len(s.trustedOrigins)*2)
-					connect = append(connect, "'self'")
-					for _, o := range s.trustedOrigins {
-						connect = append(connect, o)
-						// Derive ws(s) URL from http(s) origin for dev tooling (HMR)
-						if u, err := url.Parse(o); err == nil && u.Host != "" {
-							switch u.Scheme {
-							case "http":
-								connect = append(connect, "ws://"+u.Host)
-							case "https":
-								connect = append(connect, "wss://"+u.Host)
+				// Relaxed CSP for Swagger UI (requires inline styles/scripts and API calls)
+				if strings.HasPrefix(r.URL.Path, "/swagger/") {
+					fmt.Fprintf(&csp,
+						"default-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src *;",
+					)
+				} else {
+					// Base policy (nonce-based JS)
+					fmt.Fprintf(&csp,
+						"default-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; script-src 'self' 'nonce-%s';",
+						nonce,
+					)
+
+					// Dev: allow HMR / API calls to your dev servers via connect-src
+					if s.appEnv == "dev" {
+						connect := make([]string, 0, 1+len(s.trustedOrigins)*2)
+						connect = append(connect, "'self'")
+						for _, o := range s.trustedOrigins {
+							connect = append(connect, o)
+							// Derive ws(s) URL from http(s) origin for dev tooling (HMR)
+							if u, err := url.Parse(o); err == nil && u.Host != "" {
+								switch u.Scheme {
+								case "http":
+									connect = append(connect, "ws://"+u.Host)
+								case "https":
+									connect = append(connect, "wss://"+u.Host)
+								}
 							}
 						}
+						fmt.Fprintf(&csp, " connect-src %s;", strings.Join(connect, " "))
 					}
-					fmt.Fprintf(&csp, " connect-src %s;", strings.Join(connect, " "))
 				}
 
 				w.Header().Set(headerName, csp.String())
