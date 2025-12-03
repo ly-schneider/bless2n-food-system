@@ -44,8 +44,8 @@ module "bfs_infrastructure" {
         allow_insecure_connections     = true
         cpu                            = 0.5
         memory                         = "1Gi"
-        min_replicas                   = 0
-        max_replicas                   = 20
+        min_replicas                   = 1
+        max_replicas                   = 10
         health_check_path              = "/health"
         liveness_path                  = "/health"
         liveness_interval_seconds      = 30
@@ -102,8 +102,8 @@ module "bfs_infrastructure" {
         liveness_initial_delay_seconds = 30
         cpu                            = 0.5
         memory                         = "1Gi"
-        min_replicas                   = 0
-        max_replicas                   = 20
+        min_replicas                   = 1
+        max_replicas                   = 10
         registries = [{
           server               = "ghcr.io"
           username             = "ly-schneider"
