@@ -43,11 +43,7 @@ jobs:
     name: Setup Dependencies
     runs-on: ubuntu-latest
     needs: detect-changes
-    if: >
-      ${{
-        needs.detect-changes.outputs.web == 'true' ||
-        needs.detect-changes.outputs.backend == 'true'
-      }}
+    if: ${{ fromJSON(needs.detect-changes.outputs.web || 'false') || fromJSON(needs.detect-changes.outputs.backend || 'false') }}
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
 
