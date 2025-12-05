@@ -24,7 +24,7 @@ plugins {
 
 android {
     namespace = "ch.leys.bless2n"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "ch.leys.bless2n"
@@ -148,6 +148,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
     }
     // Kotlin options moved to compilerOptions DSL below
     buildFeatures {
@@ -171,6 +172,7 @@ kotlin {
 
 dependencies {
     implementation("com.sumup:merchant-sdk:6.0.0")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
     implementation("com.github.DantSu:ESCPOS-ThermalPrinter-Android:3.4.0")
     implementation("com.google.zxing:core:3.5.4")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
@@ -193,5 +195,5 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 
     // Compile-only annotations used by transitive libraries to satisfy R8 analysis
-    compileOnly("com.google.errorprone:error_prone_annotations:2.45.0")
+    compileOnly("com.google.errorprone:error_prone_annotations:2.15.0")
 }

@@ -15,12 +15,10 @@ const config: NextConfig = {
     remotePatterns: [
       { protocol: "http", hostname: "localhost", port: "8080", pathname: "/**" },
       { protocol: "http", hostname: "127.0.0.1", port: "8080", pathname: "/**" },
-      { protocol: "https", hostname: "**", pathname: "/**" },
+      { protocol: "https", hostname: "*.blessthun.ch", pathname: "/**" },
+      { protocol: "https", hostname: "*.food.blessthun.ch", pathname: "/**" },
     ],
     qualities: [90],
-  },
-  eslint: {
-    dirs: ["."],
   },
 }
 
