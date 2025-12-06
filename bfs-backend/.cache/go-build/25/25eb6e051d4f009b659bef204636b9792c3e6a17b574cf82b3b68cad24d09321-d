@@ -1,4 +1,0 @@
-./crypto.go
-./hash.go
-./crypto_test.go
-./hash_test.go
