@@ -106,11 +106,9 @@ func ensureIndexes(ctx context.Context, db *mongo.Database, logger *zap.Logger) 
 		database.EmailChangeTokensCollection,
 		database.RefreshTokensCollection,
 		database.StationsCollection,
-		database.StationRequestsCollection,
 		database.StationProductsCollection,
 		database.AuditLogsCollection,
 		database.PosDevicesCollection,
-		database.PosRequestsCollection,
 	}
 	for _, name := range collections {
 		if err := ensureCollectionExists(ctx, db, name, logger); err != nil {
@@ -277,21 +275,11 @@ func ensureIndexes(ctx context.Context, db *mongo.Database, logger *zap.Logger) 
 	stIdx := []mongo.IndexModel{
 		{Keys: bson.D{{Key: "device_key", Value: 1}}, Options: options.Index().SetUnique(true)},
 		{Keys: bson.D{{Key: "approved", Value: 1}}},
+		{Keys: bson.D{{Key: "status", Value: 1}}},
 		{Keys: bson.D{{Key: "created_at", Value: 1}}},
 	}
 	if _, err := stations.Indexes().CreateMany(ctx, stIdx); err != nil {
 		return fmt.Errorf("failed to create %s indexes: %w", database.StationsCollection, err)
-	}
-
-	// Station requests: device_key + status, expiry TTL, created_at
-	stationReqs := db.Collection(database.StationRequestsCollection)
-	srIdx := []mongo.IndexModel{
-		{Keys: bson.D{{Key: "device_key", Value: 1}, {Key: "status", Value: 1}}},
-		{Keys: bson.D{{Key: "expires_at", Value: 1}}, Options: options.Index().SetExpireAfterSeconds(0)},
-		{Keys: bson.D{{Key: "created_at", Value: 1}}},
-	}
-	if _, err := stationReqs.Indexes().CreateMany(ctx, srIdx); err != nil {
-		return fmt.Errorf("failed to create %s indexes: %w", database.StationRequestsCollection, err)
 	}
 
 	// Station products: unique (station_id, product_id)
@@ -308,21 +296,11 @@ func ensureIndexes(ctx context.Context, db *mongo.Database, logger *zap.Logger) 
 	pdIdx := []mongo.IndexModel{
 		{Keys: bson.D{{Key: "device_token", Value: 1}}, Options: options.Index().SetUnique(true)},
 		{Keys: bson.D{{Key: "approved", Value: 1}}},
+		{Keys: bson.D{{Key: "status", Value: 1}}},
 		{Keys: bson.D{{Key: "created_at", Value: 1}}},
 	}
 	if _, err := posDevices.Indexes().CreateMany(ctx, pdIdx); err != nil {
 		return fmt.Errorf("failed to create %s indexes: %w", database.PosDevicesCollection, err)
-	}
-
-	// POS requests: device_token + status, expiry TTL, created_at
-	posRequests := db.Collection(database.PosRequestsCollection)
-	prIdx := []mongo.IndexModel{
-		{Keys: bson.D{{Key: "device_token", Value: 1}, {Key: "status", Value: 1}}},
-		{Keys: bson.D{{Key: "expires_at", Value: 1}}, Options: options.Index().SetExpireAfterSeconds(0)},
-		{Keys: bson.D{{Key: "created_at", Value: 1}}},
-	}
-	if _, err := posRequests.Indexes().CreateMany(ctx, prIdx); err != nil {
-		return fmt.Errorf("failed to create %s indexes: %w", database.PosRequestsCollection, err)
 	}
 
 	// Audit logs: entity, actor, created_at

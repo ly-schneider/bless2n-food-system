@@ -4,21 +4,14 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
 
-type StationRequest = {
-  id: string
-  name: string
-  model: string
-  os: string
-  status: string
-  createdAt: string
-  expiresAt: string
-}
-
 type Station = {
   id: string
   name: string
+  model?: string
+  os?: string
   deviceKey: string
   approved: boolean
+  status: string
   approvedAt?: string
   createdAt: string
 }
@@ -27,7 +20,6 @@ type Product = { id: string; name: string }
 
 export default function AdminStationRequestsPage() {
   const fetchAuth = useAuthorizedFetch()
-  const [items, setItems] = useState<StationRequest[]>([])
   const [stations, setStations] = useState<Station[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
   const [assigned, setAssigned] = useState<Record<string, { productId: string; name: string }[]>>({})
@@ -40,12 +32,9 @@ export default function AdminStationRequestsPage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetchAuth(`/api/v1/admin/stations/requests?status=pending`)
-      const json = (await res.json()) as { items: StationRequest[] }
-      setItems(json.items || [])
-      const rs = await fetchAuth(`/api/v1/admin/stations`)
-      const js = (await rs.json()) as { items: Station[] }
-      setStations(js.items || [])
+      const res = await fetchAuth(`/api/v1/admin/stations`)
+      const json = (await res.json()) as { items: Station[] }
+      setStations(json.items || [])
       // Load products for selection
       const pr = await fetchAuth(`/api/v1/products?limit=500`)
       const pj = (await pr.json()) as { items?: { id: string; name: string }[] }
@@ -61,20 +50,44 @@ export default function AdminStationRequestsPage() {
     load()
   }, [])
 
-  async function act(id: string, action: "approve" | "reject") {
+  const sortedStations = [...stations].sort(
+    (a, b) =>
+      statusOrder(a.status) - statusOrder(b.status) ||
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  )
+
+  async function act(id: string, action: "approve" | "reject" | "revoke") {
     try {
       const res = await fetchAuth(`/api/v1/admin/stations/requests/${id}/${action}`, { method: "POST" })
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { detail?: string; message?: string }
         throw new Error(j.detail || j.message || `Error ${res.status}`)
       }
-      setItems((prev) => prev.filter((x) => x.id !== id))
+      const nextStatus = action === "approve" ? "approved" : action === "revoke" ? "revoked" : "rejected"
+      const approvedAt = action === "approve" ? new Date().toISOString() : undefined
+      setStations((prev) =>
+        prev.map((s) =>
+          s.id === id ? { ...s, status: nextStatus, approved: action === "approve", approvedAt } : s,
+        ),
+      )
+      if (action !== "approve" && editingId === id) {
+        setEditingId(null)
+      }
     } catch {
-      setError(action === "approve" ? "Annahme fehlgeschlagen" : "Ablehnung fehlgeschlagen")
+      setError(
+        action === "approve"
+          ? "Annahme fehlgeschlagen"
+          : action === "revoke"
+            ? "Sperrung fehlgeschlagen"
+            : "Ablehnung fehlgeschlagen",
+      )
     }
   }
 
   async function openEditor(st: Station) {
+    if (st.status !== "approved") {
+      return
+    }
     const next = st.id === editingId ? null : st.id
     setEditingId(next)
     if (next) {
@@ -109,18 +122,19 @@ export default function AdminStationRequestsPage() {
 
   return (
     <div className="pt-4">
-      <h1 className="font-primary mb-4 text-2xl">Stationen & Anfragen</h1>
+      <h1 className="font-primary mb-4 text-2xl">Stationen</h1>
       {error && (
         <div role="alert" className="text-destructive bg-destructive/10 mb-3 rounded px-3 py-2">
           {error}
         </div>
       )}
       {loading && <div className="text-muted-foreground">Lädt…</div>}
-      {/* Stations list */}
-      <h2 className="mt-2 mb-2 text-lg font-semibold">Stationen</h2>
-      {!loading && stations.length === 0 && <div className="text-muted-foreground">Keine Stationen vorhanden.</div>}
-      <div className="mb-6 space-y-3">
-        {stations.map((st) => {
+      <h2 className="mt-2 mb-2 text-lg font-semibold">Übersicht</h2>
+      {!loading && sortedStations.length === 0 && (
+        <div className="text-muted-foreground">Keine Stationen vorhanden.</div>
+      )}
+      <div className="space-y-3">
+        {sortedStations.map((st) => {
           const isEditing = editingId === st.id
           const assignedList = assigned[st.id] || []
           const unassigned = allProducts.filter((p) => !assignedList.some((a) => a.productId === p.id))
@@ -129,18 +143,45 @@ export default function AdminStationRequestsPage() {
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-semibold">{st.name}</div>
+                  <div className="text-muted-foreground truncate text-sm">
+                    {st.model || "Unbekanntes Modell"} • {st.os || "Unbekanntes OS"}
+                  </div>
                   <div className="text-muted-foreground truncate text-sm">{maskKey(st.deviceKey)}</div>
                   <div className="text-muted-foreground text-xs">
                     Erstellt: {new Date(st.createdAt).toLocaleString()}
+                    {st.approvedAt && st.status === "approved" && <> • Freigegeben: {new Date(st.approvedAt).toLocaleString()}</>}
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <Button variant="outline" onClick={() => openEditor(st)}>
-                    Produkte bearbeiten
-                  </Button>
+                  <StatusBadge status={st.status} />
+                  {st.status === "pending" && (
+                    <>
+                      <Button variant="destructive" onClick={() => act(st.id, "reject")}>
+                        Ablehnen
+                      </Button>
+                      <Button variant="success" onClick={() => act(st.id, "approve")}>
+                        Annehmen
+                      </Button>
+                    </>
+                  )}
+                  {st.status === "approved" && (
+                    <>
+                      <Button variant="outline" onClick={() => openEditor(st)}>
+                        Produkte bearbeiten
+                      </Button>
+                      <Button variant="destructive" onClick={() => act(st.id, "revoke")}>
+                        Entfernen
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
-              {isEditing && (
+              {st.status !== "approved" && (
+                <div className="text-muted-foreground mt-2 text-sm">
+                  Produkte können erst nach Freigabe verwaltet werden.
+                </div>
+              )}
+              {isEditing && st.status === "approved" && (
                 <div className="border-border mt-3 rounded-lg border p-3">
                   <div className="flex flex-col gap-2">
                     <label className="text-sm">Produkt hinzufügen</label>
@@ -198,36 +239,29 @@ export default function AdminStationRequestsPage() {
           )
         })}
       </div>
-
-      {/* Requests list */}
-      <h2 className="mt-2 mb-2 text-lg font-semibold">Offene Anfragen</h2>
-      {!loading && items.length === 0 && <div className="text-muted-foreground">Keine offenen Anfragen.</div>}
-      <div className="space-y-3">
-        {items.map((it) => (
-          <div
-            key={it.id}
-            className="bg-card border-border flex items-center justify-between gap-4 rounded-[11px] border p-3"
-          >
-            <div className="min-w-0 flex-1">
-              <div className="truncate font-semibold">{it.name}</div>
-              <div className="text-muted-foreground truncate text-sm">
-                {it.model} • {it.os}
-              </div>
-              <div className="text-muted-foreground text-xs">Erstellt: {new Date(it.createdAt).toLocaleString()}</div>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <Button variant="destructive" onClick={() => act(it.id, "reject")}>
-                Ablehnen
-              </Button>
-              <Button variant="success" onClick={() => act(it.id, "approve")}>
-                Annehmen
-              </Button>
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   )
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const label =
+    status === "approved" ? "Angenommen" : status === "rejected" ? "Abgelehnt" : status === "revoked" ? "Gesperrt" : "Ausstehend"
+  const tone =
+    status === "approved"
+      ? "bg-emerald-100 text-emerald-800"
+      : status === "rejected"
+        ? "bg-destructive/10 text-destructive"
+        : status === "revoked"
+          ? "bg-slate-200 text-slate-700"
+          : "bg-amber-100 text-amber-800"
+  return <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${tone}`}>{label}</span>
+}
+
+function statusOrder(status: string) {
+  if (status === "pending") return 0
+  if (status === "approved") return 1
+  if (status === "revoked") return 2
+  return 2
 }
 
 function maskKey(k: string) {

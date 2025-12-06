@@ -1,5 +1,8 @@
 "use client"
 
+import { BarcodeFormat, BrowserMultiFormatReader } from "@zxing/browser"
+import type { IScannerControls } from "@zxing/browser"
+import { DecodeHintType } from "@zxing/library"
 import Image from "next/image"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
@@ -46,7 +49,7 @@ export default function StationPage() {
   const [stationName, setStationName] = useState("")
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [requestSubmitted, setRequestSubmitted] = useState(false)
-  // ZXing removed; using native BarcodeDetector
+  // Prefer native BarcodeDetector with ZXing fallback for older browsers
   const [scanningPaused, setScanningPaused] = useState(false)
   const pausedRef = useRef(false)
   interface DetectedBarcode {
@@ -62,6 +65,9 @@ export default function StationPage() {
   const rafRef = useRef<number | null>(null)
   const lastCodeRef = useRef<string | null>(null)
   const lastAtRef = useRef<number>(0)
+  const zxingRef = useRef<BrowserMultiFormatReader | null>(null)
+  const zxingControlsRef = useRef<IScannerControls | null>(null)
+  const [hasNativeDetector, setHasNativeDetector] = useState<boolean | null>(null)
   useEffect(() => {
     pausedRef.current = scanningPaused || drawerOpen
   }, [scanningPaused, drawerOpen])
@@ -93,6 +99,16 @@ export default function StationPage() {
       }
     })()
   }, [stationKey])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const BD =
+      (window as unknown as { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector ??
+      undefined
+    const supported = !!BD
+    setHasNativeDetector(supported)
+    if (!supported) log("Native BarcodeDetector missing; will use ZXing fallback")
+  }, [])
 
   // After approval: request camera permission, enumerate devices, and start scanning
   useEffect(() => {
@@ -138,7 +154,7 @@ export default function StationPage() {
       typeof window !== "undefined"
         ? (window as unknown as { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector
         : undefined
-    if (!BD) return
+    if (!BD || hasNativeDetector !== true) return
     if (!detectorRef.current) {
       try {
         detectorRef.current = new BD({ formats: ["qr_code"] })
@@ -176,7 +192,49 @@ export default function StationPage() {
       cancelled = true
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
     }
-  }, [status?.approved, scanningPaused, drawerOpen])
+  }, [status?.approved, scanningPaused, drawerOpen, hasNativeDetector])
+
+  // ZXing fallback for browsers without BarcodeDetector (e.g., older Safari)
+  useEffect(() => {
+    if (!status?.approved) return
+    if (hasNativeDetector !== false) return
+    const v = videoRef.current
+    if (!v) return
+    if (!zxingRef.current) {
+      const hints = new Map<DecodeHintType, unknown>()
+      hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.QR_CODE])
+      zxingRef.current = new BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 250 })
+      log("ZXing reader initialized")
+    }
+    const reader = zxingRef.current
+    let cancelled = false
+    reader
+      .decodeFromVideoElement(v, async (result, err, controls) => {
+        if (cancelled) return
+        if (!zxingControlsRef.current && controls) zxingControlsRef.current = controls
+        if (result && !(scanningPaused || drawerOpen)) {
+          const value = result.getText()
+          const now = Date.now()
+          const isRepeat = lastCodeRef.current === value && now - lastAtRef.current < 1500
+          if (!isRepeat && value) {
+            lastCodeRef.current = value
+            lastAtRef.current = now
+            setScanningPaused(true)
+            log("QR detected (fallback)", value.slice(0, 24) + (value.length > 24 ? "…" : ""))
+            await handleScanned(value)
+          }
+        } else if (err && (err as Error).name !== "NotFoundException") {
+          log("ZXing error", err)
+        }
+      })
+      .catch(() => log("ZXing decode failed to start"))
+    return () => {
+      cancelled = true
+      zxingControlsRef.current?.stop?.()
+      zxingControlsRef.current = null
+      ;(reader as { reset?: () => void }).reset?.()
+    }
+  }, [status?.approved, hasNativeDetector, deviceId])
 
   // Start/keep camera stream on device change; no need to restart detector
   useEffect(() => {
@@ -184,9 +242,14 @@ export default function StationPage() {
     ;(async () => {
       try {
         log("Starting camera stream", { deviceId: deviceId || "default" })
+        const baseVideo: MediaTrackConstraints = {
+          facingMode: { ideal: "environment" },
+          // focusMode is non-standard but helps iOS Safari auto-focus when supported
+          focusMode: "continuous",
+        } as MediaTrackConstraints
         const constraints: MediaStreamConstraints = deviceId
-          ? { video: { deviceId: { exact: deviceId } } as MediaTrackConstraints }
-          : { video: true }
+          ? { video: { ...baseVideo, deviceId: { exact: deviceId } } as MediaTrackConstraints }
+          : { video: baseVideo }
         const v = videoRef.current
         if (!v) return
         try {
@@ -195,7 +258,21 @@ export default function StationPage() {
         const stream = await navigator.mediaDevices.getUserMedia(constraints)
         v.srcObject = stream
         await v.play().catch(() => {})
-        log("Camera stream active", { tracks: stream.getTracks().map((t) => ({ kind: t.kind, state: t.readyState })) })
+        const track = stream.getVideoTracks()[0]
+        const capabilities = track?.getCapabilities?.() as MediaTrackCapabilities & { focusMode?: string[] }
+        const focusPrefs: MediaTrackConstraints[] = []
+        if (capabilities?.focusMode?.includes("continuous")) {
+          focusPrefs.push({ focusMode: "continuous" } as MediaTrackConstraints)
+        } else if (capabilities?.focusMode?.includes("auto")) {
+          focusPrefs.push({ focusMode: "auto" } as MediaTrackConstraints)
+        }
+        if (focusPrefs.length && track?.applyConstraints) {
+          await track.applyConstraints({ advanced: focusPrefs }).catch(() => {})
+        }
+        log("Camera stream active", {
+          tracks: stream.getTracks().map((t) => ({ kind: t.kind, state: t.readyState })),
+          focus: capabilities?.focusMode,
+        })
       } catch {
         setError("Kamerazugriff verweigert oder nicht verfügbar.")
         log("Failed to start camera stream")
@@ -285,7 +362,7 @@ export default function StationPage() {
   }
 
   return (
-    <div className="bg-background text-foreground flex min-h-screen flex-col items-center gap-4 pt-6 sm:p-6">
+    <div className="bg-background text-foreground flex min-h-screen flex-col items-center gap-2 pt-6 sm:p-6">
       <h1 className="font-primary text-3xl">Abholungsstation</h1>
       <p className="text-muted-foreground max-w-md text-center">Scanne Abhol-QR-Codes hier</p>
 

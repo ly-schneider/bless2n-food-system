@@ -1,0 +1,14 @@
+./admin.go
+./auth.go
+./category.go
+./email.go
+./email_templates.go
+./federated_auth.go
+./jwt.go
+./oidc.go
+./order.go
+./payment.go
+./pos.go
+./product.go
+./station.go
+./user.go

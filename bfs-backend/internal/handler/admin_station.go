@@ -15,7 +15,6 @@ import (
 )
 
 type AdminStationHandler struct {
-	stationReqs  repository.StationRequestRepository
 	stations     repository.StationRepository
 	stationProds repository.StationProductRepository
 	products     repository.ProductRepository
@@ -23,8 +22,8 @@ type AdminStationHandler struct {
 	logger       *zap.Logger
 }
 
-func NewAdminStationHandler(reqs repository.StationRequestRepository, stations repository.StationRepository, stationProds repository.StationProductRepository, products repository.ProductRepository, audit repository.AuditRepository, logger *zap.Logger) *AdminStationHandler {
-	return &AdminStationHandler{stationReqs: reqs, stations: stations, stationProds: stationProds, products: products, audit: audit, logger: logger}
+func NewAdminStationHandler(stations repository.StationRepository, stationProds repository.StationProductRepository, products repository.ProductRepository, audit repository.AuditRepository, logger *zap.Logger) *AdminStationHandler {
+	return &AdminStationHandler{stations: stations, stationProds: stationProds, products: products, audit: audit, logger: logger}
 }
 
 // ListRequests godoc
@@ -41,7 +40,7 @@ func (h *AdminStationHandler) ListRequests(w http.ResponseWriter, r *http.Reques
 		st := domain.StationRequestStatus(s)
 		status = &st
 	}
-	items, err := h.stationReqs.List(r.Context(), status)
+	items, err := h.stations.List(r.Context(), status)
 	if err != nil {
 		response.WriteError(w, http.StatusInternalServerError, "failed to list requests")
 		return
@@ -52,12 +51,13 @@ func (h *AdminStationHandler) ListRequests(w http.ResponseWriter, r *http.Reques
 		Model     string `json:"model"`
 		OS        string `json:"os"`
 		Status    string `json:"status"`
+		DeviceKey string `json:"deviceKey"`
 		CreatedAt any    `json:"createdAt"`
 		ExpiresAt any    `json:"expiresAt"`
 	}
 	out := make([]dto, 0, len(items))
 	for _, it := range items {
-		out = append(out, dto{ID: it.ID.Hex(), Name: it.Name, Model: it.Model, OS: it.OS, Status: string(it.Status), CreatedAt: it.CreatedAt, ExpiresAt: it.ExpiresAt})
+		out = append(out, dto{ID: it.ID.Hex(), Name: it.Name, Model: it.Model, OS: it.OS, DeviceKey: it.DeviceKey, Status: string(it.Status), CreatedAt: it.CreatedAt, ExpiresAt: it.ExpiresAt})
 	}
 	response.WriteJSON(w, http.StatusOK, map[string]any{"items": out})
 }
@@ -70,7 +70,12 @@ func (h *AdminStationHandler) ListRequests(w http.ResponseWriter, r *http.Reques
 // @Success 200 {object} map[string]interface{}
 // @Router /v1/admin/stations [get]
 func (h *AdminStationHandler) ListStations(w http.ResponseWriter, r *http.Request) {
-	items, err := h.stations.List(r.Context())
+	var status *domain.StationRequestStatus
+	if s := r.URL.Query().Get("status"); s != "" {
+		st := domain.StationRequestStatus(s)
+		status = &st
+	}
+	items, err := h.stations.List(r.Context(), status)
 	if err != nil {
 		response.WriteError(w, http.StatusInternalServerError, "failed to list stations")
 		return
@@ -78,14 +83,20 @@ func (h *AdminStationHandler) ListStations(w http.ResponseWriter, r *http.Reques
 	type dto struct {
 		ID         string `json:"id"`
 		Name       string `json:"name"`
+		Model      string `json:"model,omitempty"`
+		OS         string `json:"os,omitempty"`
 		DeviceKey  string `json:"deviceKey"`
 		Approved   bool   `json:"approved"`
+		Status     string `json:"status"`
 		ApprovedAt any    `json:"approvedAt,omitempty"`
 		CreatedAt  any    `json:"createdAt"`
 	}
 	out := make([]dto, 0, len(items))
 	for _, it := range items {
-		out = append(out, dto{ID: it.ID.Hex(), Name: it.Name, DeviceKey: it.DeviceKey, Approved: it.Approved, ApprovedAt: it.ApprovedAt, CreatedAt: it.CreatedAt})
+		out = append(out, dto{
+			ID: it.ID.Hex(), Name: it.Name, Model: it.Model, OS: it.OS, DeviceKey: it.DeviceKey,
+			Approved: it.Approved, Status: string(it.Status), ApprovedAt: it.ApprovedAt, CreatedAt: it.CreatedAt,
+		})
 	}
 	response.WriteJSON(w, http.StatusOK, map[string]any{"items": out})
 }
@@ -220,30 +231,55 @@ func (h *AdminStationHandler) Approve(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
 	}
-	req, err := h.stationReqs.FindByID(r.Context(), oid)
-	if err != nil {
+	if _, err := h.stations.FindByID(r.Context(), oid); err != nil {
 		response.WriteError(w, http.StatusNotFound, "not found")
 		return
 	}
-	// mark station approved
-	if err := h.stations.ApproveByDeviceKey(r.Context(), req.DeviceKey); err != nil {
-		response.WriteError(w, http.StatusInternalServerError, "approve station failed")
-		return
-	}
-	// mark request approved
 	var decidedBy *bson.ObjectID
 	if claims, ok := middleware.GetUserFromContext(r.Context()); ok && claims != nil && claims.Subject != "" {
 		if u, err := bson.ObjectIDFromHex(claims.Subject); err == nil {
 			decidedBy = &u
 		}
 	}
-	if err := h.stationReqs.UpdateStatus(r.Context(), oid, domain.StationRequestStatusApproved, decidedBy, nowUTC()); err != nil {
+	if err := h.stations.UpdateStatus(r.Context(), oid, domain.StationRequestStatusApproved, decidedBy, nowUTC()); err != nil {
 		response.WriteError(w, http.StatusInternalServerError, "update failed")
 		return
 	}
 	// audit best-effort
-	_ = h.audit.Insert(r.Context(), &domain.AuditLog{Action: domain.AuditUpdate, EntityType: "station_request", EntityID: id, Before: nil, After: map[string]any{"status": "approved"}})
+	_ = h.audit.Insert(r.Context(), &domain.AuditLog{Action: domain.AuditUpdate, EntityType: "station", EntityID: id, Before: nil, After: map[string]any{"status": "approved"}})
 	response.WriteJSON(w, http.StatusOK, response.Ack{Message: "approved"})
+}
+
+// Revoke godoc
+// @Summary Revoke station access
+// @Tags admin-stations
+// @Security BearerAuth
+// @Param id path string true "Station ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/stations/requests/{id}/revoke [post]
+func (h *AdminStationHandler) Revoke(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	oid, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	if _, err := h.stations.FindByID(r.Context(), oid); err != nil {
+		response.WriteError(w, http.StatusNotFound, "not found")
+		return
+	}
+	var decidedBy *bson.ObjectID
+	if claims, ok := middleware.GetUserFromContext(r.Context()); ok && claims != nil && claims.Subject != "" {
+		if u, err := bson.ObjectIDFromHex(claims.Subject); err == nil {
+			decidedBy = &u
+		}
+	}
+	if err := h.stations.UpdateStatus(r.Context(), oid, domain.StationRequestStatusRevoked, decidedBy, nowUTC()); err != nil {
+		response.WriteError(w, http.StatusInternalServerError, "update failed")
+		return
+	}
+	_ = h.audit.Insert(r.Context(), &domain.AuditLog{Action: domain.AuditUpdate, EntityType: "station", EntityID: id, Before: nil, After: map[string]any{"status": "revoked"}})
+	response.WriteJSON(w, http.StatusOK, response.Ack{Message: "revoked"})
 }
 
 // Reject godoc
@@ -260,7 +296,7 @@ func (h *AdminStationHandler) Reject(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, http.StatusBadRequest, "invalid id")
 		return
 	}
-	if _, err := h.stationReqs.FindByID(r.Context(), oid); err != nil {
+	if _, err := h.stations.FindByID(r.Context(), oid); err != nil {
 		response.WriteError(w, http.StatusNotFound, "not found")
 		return
 	}
@@ -270,11 +306,11 @@ func (h *AdminStationHandler) Reject(w http.ResponseWriter, r *http.Request) {
 			decidedBy = &u
 		}
 	}
-	if err := h.stationReqs.UpdateStatus(r.Context(), oid, domain.StationRequestStatusRejected, decidedBy, nowUTC()); err != nil {
+	if err := h.stations.UpdateStatus(r.Context(), oid, domain.StationRequestStatusRejected, decidedBy, nowUTC()); err != nil {
 		response.WriteError(w, http.StatusInternalServerError, "update failed")
 		return
 	}
-	_ = h.audit.Insert(r.Context(), &domain.AuditLog{Action: domain.AuditUpdate, EntityType: "station_request", EntityID: id, Before: nil, After: map[string]any{"status": "rejected"}})
+	_ = h.audit.Insert(r.Context(), &domain.AuditLog{Action: domain.AuditUpdate, EntityType: "station", EntityID: id, Before: nil, After: map[string]any{"status": "rejected"}})
 	response.WriteJSON(w, http.StatusOK, response.Ack{Message: "rejected"})
 }
 

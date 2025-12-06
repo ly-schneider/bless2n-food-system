@@ -128,6 +128,9 @@ importers:
       '@zxing/browser':
         specifier: ^0.1.5
         version: 0.1.5(@zxing/library@0.21.3)
+      '@zxing/library':
+        specifier: ^0.21.3
+        version: 0.21.3
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3

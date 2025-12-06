@@ -94,7 +94,7 @@ func (h *POSHandler) Me(w http.ResponseWriter, r *http.Request) {
 		response.WriteJSON(w, http.StatusOK, map[string]any{"exists": false, "approved": false})
 		return
 	}
-	response.WriteJSON(w, http.StatusOK, map[string]any{"exists": true, "approved": dev.Approved, "name": dev.Name, "cardCapable": dev.CardCapable})
+	response.WriteJSON(w, http.StatusOK, map[string]any{"exists": true, "approved": dev.Approved, "status": string(dev.Status), "name": dev.Name, "cardCapable": dev.CardCapable})
 }
 
 // CreateOrder godoc

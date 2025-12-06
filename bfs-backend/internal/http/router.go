@@ -46,9 +46,7 @@ func NewRouter(
 	adminInviteRepo repository.AdminInviteRepository,
 	refreshTokenRepo repository.RefreshTokenRepository,
 	stationRepo repository.StationRepository,
-	stationRequestRepo repository.StationRequestRepository,
 	posDeviceRepo repository.PosDeviceRepository,
-	posRequestRepo repository.PosRequestRepository,
 	stationProductRepo repository.StationProductRepository,
 	emailSvc service.EmailService,
 	jwtSvc service.JWTService,
@@ -232,20 +230,22 @@ func NewRouter(
 			admin.Post("/invites/{id}/resend", http.HandlerFunc(ai.Resend))
 
 			// Stations admin
-			ast := handler.NewAdminStationHandler(stationRequestRepo, stationRepo, stationProductRepo, productRepo, auditRepo, nil)
+			ast := handler.NewAdminStationHandler(stationRepo, stationProductRepo, productRepo, auditRepo, nil)
 			admin.Get("/stations/requests", http.HandlerFunc(ast.ListRequests))
 			admin.Get("/stations", http.HandlerFunc(ast.ListStations))
 			admin.Post("/stations/requests/{id}/approve", http.HandlerFunc(ast.Approve))
 			admin.Post("/stations/requests/{id}/reject", http.HandlerFunc(ast.Reject))
+			admin.Post("/stations/requests/{id}/revoke", http.HandlerFunc(ast.Revoke))
 			admin.Get("/stations/{id}/products", http.HandlerFunc(ast.ListStationProducts))
 			admin.Post("/stations/{id}/products", http.HandlerFunc(ast.AssignProducts))
 			admin.Delete("/stations/{id}/products/{productId}", http.HandlerFunc(ast.RemoveProduct))
 
 			// POS admin
-			apos := handler.NewAdminPOSHandler(posRequestRepo, posDeviceRepo)
+			apos := handler.NewAdminPOSHandler(posDeviceRepo)
 			admin.Get("/pos/requests", http.HandlerFunc(apos.ListRequests))
 			admin.Post("/pos/requests/{id}/approve", http.HandlerFunc(apos.Approve))
 			admin.Post("/pos/requests/{id}/reject", http.HandlerFunc(apos.Reject))
+			admin.Post("/pos/requests/{id}/revoke", http.HandlerFunc(apos.Revoke))
 			admin.Get("/pos/devices", http.HandlerFunc(apos.ListDevices))
 			admin.Patch("/pos/devices/{id}/config", http.HandlerFunc(apos.PatchConfig))
 		})
