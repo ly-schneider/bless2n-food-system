@@ -47,7 +47,7 @@ export default function AdminPOSPage() {
     (a, b) =>
       statusOrder(a.status) - statusOrder(b.status) ||
       (new Date(b.approvedAt ?? b.createdAt ?? "").getTime() || 0) -
-        (new Date(a.approvedAt ?? a.createdAt ?? "").getTime() || 0),
+        (new Date(a.approvedAt ?? a.createdAt ?? "").getTime() || 0)
   )
 
   async function act(id: string, action: "approve" | "reject" | "revoke") {
@@ -62,9 +62,7 @@ export default function AdminPOSPage() {
       const nextStatus = action === "approve" ? "approved" : action === "revoke" ? "revoked" : "rejected"
       const approvedAt = action === "approve" ? new Date().toISOString() : undefined
       setDevices((prev) =>
-        prev.map((d) =>
-          d.id === id ? { ...d, status: nextStatus, approved: action === "approve", approvedAt } : d,
-        ),
+        prev.map((d) => (d.id === id ? { ...d, status: nextStatus, approved: action === "approve", approvedAt } : d))
       )
     } catch {
       setError(
@@ -72,7 +70,7 @@ export default function AdminPOSPage() {
           ? "Annahme fehlgeschlagen"
           : action === "revoke"
             ? "Sperrung fehlgeschlagen"
-            : "Ablehnung fehlgeschlagen",
+            : "Ablehnung fehlgeschlagen"
       )
     }
   }
@@ -139,7 +137,13 @@ export default function AdminPOSPage() {
 
 function StatusBadge({ status }: { status: string }) {
   const label =
-    status === "approved" ? "Angenommen" : status === "rejected" ? "Abgelehnt" : status === "revoked" ? "Gesperrt" : "Ausstehend"
+    status === "approved"
+      ? "Angenommen"
+      : status === "rejected"
+        ? "Abgelehnt"
+        : status === "revoked"
+          ? "Gesperrt"
+          : "Ausstehend"
   const tone =
     status === "approved"
       ? "bg-emerald-100 text-emerald-800"
@@ -148,7 +152,9 @@ function StatusBadge({ status }: { status: string }) {
         : status === "revoked"
           ? "bg-slate-200 text-slate-700"
           : "bg-amber-100 text-amber-800"
-  return <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${tone}`}>{label}</span>
+  return (
+    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${tone}`}>{label}</span>
+  )
 }
 
 function statusOrder(status: string) {

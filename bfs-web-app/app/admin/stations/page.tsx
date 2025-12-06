@@ -52,8 +52,7 @@ export default function AdminStationRequestsPage() {
 
   const sortedStations = [...stations].sort(
     (a, b) =>
-      statusOrder(a.status) - statusOrder(b.status) ||
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      statusOrder(a.status) - statusOrder(b.status) || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   )
 
   async function act(id: string, action: "approve" | "reject" | "revoke") {
@@ -66,9 +65,7 @@ export default function AdminStationRequestsPage() {
       const nextStatus = action === "approve" ? "approved" : action === "revoke" ? "revoked" : "rejected"
       const approvedAt = action === "approve" ? new Date().toISOString() : undefined
       setStations((prev) =>
-        prev.map((s) =>
-          s.id === id ? { ...s, status: nextStatus, approved: action === "approve", approvedAt } : s,
-        ),
+        prev.map((s) => (s.id === id ? { ...s, status: nextStatus, approved: action === "approve", approvedAt } : s))
       )
       if (action !== "approve" && editingId === id) {
         setEditingId(null)
@@ -79,7 +76,7 @@ export default function AdminStationRequestsPage() {
           ? "Annahme fehlgeschlagen"
           : action === "revoke"
             ? "Sperrung fehlgeschlagen"
-            : "Ablehnung fehlgeschlagen",
+            : "Ablehnung fehlgeschlagen"
       )
     }
   }
@@ -149,7 +146,9 @@ export default function AdminStationRequestsPage() {
                   <div className="text-muted-foreground truncate text-sm">{maskKey(st.deviceKey)}</div>
                   <div className="text-muted-foreground text-xs">
                     Erstellt: {new Date(st.createdAt).toLocaleString()}
-                    {st.approvedAt && st.status === "approved" && <> • Freigegeben: {new Date(st.approvedAt).toLocaleString()}</>}
+                    {st.approvedAt && st.status === "approved" && (
+                      <> • Freigegeben: {new Date(st.approvedAt).toLocaleString()}</>
+                    )}
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
@@ -245,7 +244,13 @@ export default function AdminStationRequestsPage() {
 
 function StatusBadge({ status }: { status: string }) {
   const label =
-    status === "approved" ? "Angenommen" : status === "rejected" ? "Abgelehnt" : status === "revoked" ? "Gesperrt" : "Ausstehend"
+    status === "approved"
+      ? "Angenommen"
+      : status === "rejected"
+        ? "Abgelehnt"
+        : status === "revoked"
+          ? "Gesperrt"
+          : "Ausstehend"
   const tone =
     status === "approved"
       ? "bg-emerald-100 text-emerald-800"
@@ -254,7 +259,9 @@ function StatusBadge({ status }: { status: string }) {
         : status === "revoked"
           ? "bg-slate-200 text-slate-700"
           : "bg-amber-100 text-amber-800"
-  return <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${tone}`}>{label}</span>
+  return (
+    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${tone}`}>{label}</span>
+  )
 }
 
 function statusOrder(status: string) {

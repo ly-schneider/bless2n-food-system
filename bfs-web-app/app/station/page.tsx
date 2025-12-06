@@ -102,9 +102,7 @@ export default function StationPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return
-    const BD =
-      (window as unknown as { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector ??
-      undefined
+    const BD = (window as unknown as { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector ?? undefined
     const supported = !!BD
     setHasNativeDetector(supported)
     if (!supported) log("Native BarcodeDetector missing; will use ZXing fallback")
