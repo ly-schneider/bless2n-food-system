@@ -112,7 +112,7 @@
     "@storybook/addon-interactions": "^8.6.12",
     "@storybook/addon-links": "^9.0.0",
     "@storybook/blocks": "^8.6.12",
-    "@storybook/nextjs": "^9.0.0",
+    "@storybook/nextjs": "^9.1.16",
     "@storybook/react": "^9.0.0",
     "@storybook/test": "^8.6.12",
     "@storybook/test-runner": "^0.24.2",
