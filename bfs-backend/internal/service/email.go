@@ -250,7 +250,9 @@ func (e *emailService) send(ctx context.Context, to, subject, textBody, htmlBody
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 10_240))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
