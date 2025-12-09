@@ -3,7 +3,8 @@ updates:
   - package-ecosystem: "npm"
     directory: "/bfs-web-app"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "friday"
       time: "02:00"
       timezone: "Europe/Zurich"
     target-branch: "staging"
@@ -22,7 +23,8 @@ updates:
   - package-ecosystem: "npm"
     directory: "/bfs-docs"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "friday"
       time: "02:00"
       timezone: "Europe/Zurich"
     target-branch: "staging"
@@ -41,7 +43,8 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/bfs-backend"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "friday"
       time: "02:00"
       timezone: "Europe/Zurich"
     target-branch: "staging"
@@ -60,7 +63,8 @@ updates:
   - package-ecosystem: "terraform"
     directory: "/bfs-cloud/envs/staging"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "friday"
       time: "02:00"
       timezone: "Europe/Zurich"
     target-branch: "staging"
@@ -76,7 +80,8 @@ updates:
   - package-ecosystem: "terraform"
     directory: "/bfs-cloud/envs/production"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "friday"
       time: "02:00"
       timezone: "Europe/Zurich"
     target-branch: "staging"
@@ -92,7 +97,8 @@ updates:
   - package-ecosystem: "gradle"
     directory: "/bfs-android-app"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+      day: "friday"
       time: "02:00"
       timezone: "Europe/Zurich"
     target-branch: "staging"
