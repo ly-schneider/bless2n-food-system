@@ -42,7 +42,7 @@ Scope:
 
 - Stripe: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
 - Google OAuth: `GOOGLE_CLIENT_SECRET`
-- SMTP: `SMTP_PASSWORD`
+- Plunk: `PLUNK_API_KEY`
 - JWT Keys: `JWT_PRIV_PEM`, `JWT_PUB_PEM`
 - Station QR: `STATION_QR_SECRET`
 
@@ -54,7 +54,7 @@ Schritte:
 4) Prüfen:
    - Stripe Webhook Signatur `/v1/payments/webhook`.
    - Google Code Exchange `/v1/auth/google/code`.
-   - SMTP E‑Mail‑Previews (Dev) oder Zustellung (Prod).
+   - Plunk Zustellung oder Dev‑Preview‑Endpoints.
    - JWKS veröffentlicht neuen Public Key (falls rotiert).
 
 ---

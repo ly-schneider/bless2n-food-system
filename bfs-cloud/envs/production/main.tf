@@ -125,11 +125,9 @@ module "bfs_infrastructure" {
           SECURITY_ENABLE_HSTS = "true"
           SECURITY_ENABLE_CSP  = "true"
 
-          SMTP_HOST       = "mail.infomaniak.com"
-          SMTP_PORT       = "587"
-          SMTP_USERNAME   = "levyn.schneider@rentro.ch"
-          SMTP_FROM       = "BlessThun Food <levyn.schneider@rentro.ch>"
-          SMTP_TLS_POLICY = "starttls"
+          PLUNK_FROM_NAME  = "BlessThun Food"
+          PLUNK_FROM_EMAIL = ""
+          PLUNK_REPLY_TO   = ""
 
           GOOGLE_CLIENT_ID = "728225904671-bsdo738sald74qkbg38etqjqj5jjfh66.apps.googleusercontent.com"
 
@@ -147,7 +145,7 @@ module "bfs_infrastructure" {
             "GOOGLE_CLIENT_SECRET"     = "google-client-secret"
             "STRIPE_SECRET_KEY"        = "stripe-secret-key"
             "STRIPE_WEBHOOK_SECRET"    = "stripe-webhook-secret"
-            "SMTP_PASSWORD"            = "smtp-password"
+            "PLUNK_API_KEY"            = "plunk-api-key"
             "SECURITY_TRUSTED_ORIGINS" = "security-trusted-origins"
             "PUBLIC_BASE_URL"          = "public-base-url"
             "JWT_ISSUER"               = "jwt-issuer"
