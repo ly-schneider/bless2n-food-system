@@ -2,16 +2,20 @@ package service
 
 import (
 	"backend/internal/config"
+	"bytes"
 	"context"
-	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
-	"net"
-	netmail "net/mail"
-	"net/smtp"
+	"net/http"
 	"strings"
 	"time"
+)
+
+const (
+	plunkSendEndpoint = "https://api.useplunk.com/v1/send"
 )
 
 type EmailService interface {
@@ -27,6 +31,7 @@ type emailService struct {
 	cfg      config.Config
 	htmlTmpl *template.Template
 	textTmpl *template.Template
+	client   *http.Client
 }
 
 func NewEmailService(cfg config.Config) EmailService {
@@ -34,6 +39,7 @@ func NewEmailService(cfg config.Config) EmailService {
 		cfg:      cfg,
 		htmlTmpl: template.Must(template.New("login_html").Parse(loginEmailHTML)),
 		textTmpl: template.Must(template.New("login_text").Parse(loginEmailText)),
+		client:   &http.Client{Timeout: 10 * time.Second},
 	}
 }
 
@@ -66,7 +72,10 @@ func (e *emailService) SendLoginEmail(ctx context.Context, to, code, ip, ua stri
 	}
 
 	subject := "Dein Anmeldecode"
-	return e.send(ctx, to, subject, textBody.String(), htmlBody.String())
+	if err := e.send(ctx, to, subject, textBody.String(), htmlBody.String()); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (e *emailService) PreviewLoginEmail(ctx context.Context, to, code, ip, ua string, codeTTL time.Duration) (string, string, string, error) {
@@ -116,7 +125,11 @@ func (e *emailService) SendEmailChangeVerification(ctx context.Context, toNewEma
 	if err := textT.Execute(&textBody, data); err != nil {
 		return err
 	}
-	return e.send(ctx, toNewEmail, "E-Mail Änderung bestätigen", textBody.String(), htmlBody.String())
+	subject := "E-Mail Änderung bestätigen"
+	if err := e.send(ctx, toNewEmail, subject, textBody.String(), htmlBody.String()); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (e *emailService) PreviewEmailChangeVerification(ctx context.Context, toNewEmail, code, ip, ua string, codeTTL time.Duration) (string, string, string, error) {
@@ -161,7 +174,11 @@ func (e *emailService) SendAdminInvite(ctx context.Context, to, token string, ex
 	if err := textT.Execute(&textBody, data); err != nil {
 		return err
 	}
-	return e.send(ctx, to, "Einladung als Admin", textBody.String(), htmlBody.String())
+	subject := "Einladung als Admin"
+	if err := e.send(ctx, to, subject, textBody.String(), htmlBody.String()); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (e *emailService) PreviewAdminInvite(ctx context.Context, token string, ttl time.Duration) (string, string, string, error) {
@@ -183,132 +200,68 @@ func (e *emailService) PreviewAdminInvite(ctx context.Context, token string, ttl
 	return "Einladung als Admin", textBody.String(), htmlBody.String(), nil
 }
 
-func (e *emailService) send(ctx context.Context, to, subject, textBody, htmlBody string) error {
-	// Parse friendly From into header and envelope components
-	fromRaw := e.cfg.Smtp.From
-	var fromHeader string
-	var fromEnvelope string
-	if addr, err := netmail.ParseAddress(fromRaw); err == nil {
-		fromHeader = addr.String()  // "Name <email@domain>"
-		fromEnvelope = addr.Address // "email@domain"
-	} else {
-		// Fallback: treat as bare address in both
-		fromHeader = fromRaw
-		fromEnvelope = fromRaw
-	}
-	host := e.cfg.Smtp.Host
-	port := e.cfg.Smtp.Port
-	user := e.cfg.Smtp.Username
-	pass := e.cfg.Smtp.Password
-	tlsPolicy := strings.ToLower(e.cfg.Smtp.TLSPolicy)
-
-	log.Printf("Sending email to %s via SMTP %s:%s (user=%s, tls=%s)", to, host, port, user, tlsPolicy)
-
-	addr := fmt.Sprintf("%s:%s", host, port)
-	// Build MIME message with multipart/alternative
-	boundary := "bfs-mime-" + fmt.Sprint(time.Now().UnixNano())
-	headers := []string{
-		fmt.Sprintf("From: %s", fromHeader),
-		fmt.Sprintf("To: %s", to),
-		fmt.Sprintf("Subject: %s", subject),
-		"MIME-Version: 1.0",
-		fmt.Sprintf("Content-Type: multipart/alternative; boundary=%q", boundary),
-	}
-	var msg strings.Builder
-	msg.WriteString(strings.Join(headers, "\r\n"))
-	msg.WriteString("\r\n\r\n")
-	// text part
-	msg.WriteString("--" + boundary + "\r\n")
-	msg.WriteString("Content-Type: text/plain; charset=utf-8\r\n\r\n")
-	msg.WriteString(textBody)
-	msg.WriteString("\r\n")
-	// html part
-	msg.WriteString("--" + boundary + "\r\n")
-	msg.WriteString("Content-Type: text/html; charset=utf-8\r\n\r\n")
-	msg.WriteString(htmlBody)
-	msg.WriteString("\r\n")
-	// end
-	msg.WriteString("--" + boundary + "--\r\n")
-
-	auth := smtp.PlainAuth("", user, pass, host)
-
-	// TLS policy
-	switch tlsPolicy {
-	case "tls":
-		// Implicit TLS (port 465)
-		conn, err := tlsDial(addr, host)
-		if err != nil {
-			return err
-		}
-		c, err := smtp.NewClient(conn, host)
-		if err != nil {
-			return err
-		}
-		defer func() { _ = c.Quit() }()
-		if user != "" {
-			if err := c.Auth(auth); err != nil {
-				return err
-			}
-		}
-		if err := c.Mail(fromEnvelope); err != nil {
-			return err
-		}
-		if err := c.Rcpt(to); err != nil {
-			return err
-		}
-		wc, err := c.Data()
-		if err != nil {
-			return err
-		}
-		if _, err := wc.Write([]byte(msg.String())); err != nil {
-			_ = wc.Close()
-			return err
-		}
-		return wc.Close()
-	case "none":
-		// No TLS (dev/Mailpit)
-		log.Printf("Sending email to %s via SMTP (unsecure) %s:%s (user=%s, tls=%s)", to, host, port, user, tlsPolicy)
-		return smtp.SendMail(addr, auth, fromEnvelope, []string{to}, []byte(msg.String()))
-	default:
-		// STARTTLS (default)
-		c, err := smtp.Dial(addr)
-		if err != nil {
-			return err
-		}
-		defer func() { _ = c.Quit() }()
-		// greet and STARTTLS
-		if ok, _ := c.Extension("STARTTLS"); ok {
-			cfg := &tls.Config{ServerName: host, InsecureSkipVerify: false}
-			if err := c.StartTLS(cfg); err != nil {
-				return err
-			}
-		}
-		if user != "" {
-			if err := c.Auth(auth); err != nil {
-				return err
-			}
-		}
-		if err := c.Mail(fromEnvelope); err != nil {
-			return err
-		}
-		if err := c.Rcpt(to); err != nil {
-			return err
-		}
-		wc, err := c.Data()
-		if err != nil {
-			return err
-		}
-		if _, err := wc.Write([]byte(msg.String())); err != nil {
-			_ = wc.Close()
-			return err
-		}
-		return wc.Close()
-	}
+type plunkSendRequest struct {
+	To         string            `json:"to"`
+	Subject    string            `json:"subject"`
+	Body       string            `json:"body"`
+	Subscribed bool              `json:"subscribed"`
+	Name       string            `json:"name,omitempty"`
+	From       string            `json:"from,omitempty"`
+	Reply      string            `json:"reply,omitempty"`
+	Headers    map[string]string `json:"headers,omitempty"`
 }
 
-func tlsDial(addr, serverName string) (*tls.Conn, error) {
-	d := &net.Dialer{Timeout: 10 * time.Second}
-	return tls.DialWithDialer(d, "tcp", addr, &tls.Config{ServerName: serverName})
+func (e *emailService) send(ctx context.Context, to, subject, textBody, htmlBody string) error {
+	fromName := e.cfg.Plunk.FromName
+	fromEmail := e.cfg.Plunk.FromEmail
+	replyTo := e.cfg.Plunk.ReplyTo
+
+	body := strings.TrimSpace(htmlBody)
+	if body == "" {
+		body = textBody
+	}
+
+	payload := plunkSendRequest{
+		To:         to,
+		Subject:    subject,
+		Body:       body,
+		Subscribed: false,
+		Name:       fromName,
+		From:       fromEmail,
+		Reply:      replyTo,
+	}
+	if textBody != "" {
+		payload.Headers = map[string]string{"X-Text-Version": textBody}
+	}
+
+	reqBody, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, plunkSendEndpoint, bytes.NewReader(reqBody))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+e.cfg.Plunk.APIKey)
+
+	resp, err := e.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 10_240))
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		if len(respBody) > 0 {
+			return fmt.Errorf("plunk send failed: status=%d body=%s", resp.StatusCode, strings.TrimSpace(string(respBody)))
+		}
+		return fmt.Errorf("plunk send failed: status=%d", resp.StatusCode)
+	}
+
+	log.Printf("Sent email to %s via Plunk", to)
+	return nil
 }
 
 func friendlyTTL(d time.Duration) string {

@@ -14,7 +14,7 @@ type Config struct {
 	App      AppConfig
 	Mongo    MongoConfig
 	Logger   LoggerConfig
-	Smtp     SmtpConfig
+	Plunk    PlunkConfig
 	Security SecurityConfig
 	Stripe   StripeConfig
 	OAuth    OAuthConfig
@@ -40,13 +40,11 @@ type LoggerConfig struct {
 	Development bool
 }
 
-type SmtpConfig struct {
-	Host      string
-	Port      string
-	Username  string
-	Password  string
-	From      string
-	TLSPolicy string
+type PlunkConfig struct {
+	APIKey    string
+	FromName  string
+	FromEmail string
+	ReplyTo   string
 }
 
 type SecurityConfig struct {
@@ -66,7 +64,7 @@ type OAuthConfig struct {
 
 type GoogleConfig struct {
 	ClientID     string
-	ClientSecret string // optional; recommended for web client exchange
+	ClientSecret string
 }
 
 type StationConfig struct {
@@ -109,13 +107,11 @@ func Load() Config {
 			Level:       getEnv("LOG_LEVEL"),
 			Development: getEnvAsBool("LOG_DEVELOPMENT"),
 		},
-		Smtp: SmtpConfig{
-			Host:      getEnv("SMTP_HOST"),
-			Port:      getEnv("SMTP_PORT"),
-			Username:  getEnv("SMTP_USERNAME"),
-			Password:  getEnv("SMTP_PASSWORD"),
-			From:      getEnv("SMTP_FROM"),
-			TLSPolicy: getEnv("SMTP_TLS_POLICY"),
+		Plunk: PlunkConfig{
+			APIKey:    getEnv("PLUNK_API_KEY"),
+			FromName:  getEnvOptional("PLUNK_FROM_NAME"),
+			FromEmail: getEnvOptional("PLUNK_FROM_EMAIL"),
+			ReplyTo:   getEnvOptional("PLUNK_REPLY_TO"),
 		},
 		Security: SecurityConfig{
 			EnableHSTS:     getEnvAsBool("SECURITY_ENABLE_HSTS"),

@@ -27,7 +27,7 @@ A comprehensive Go-based HTTP backend service for the Bless2n Food System
 ### Technical Features
 - **Dependency Injection**: Uber FX for clean dependency management
 - **Database**: MongoDB with custom repository pattern
-- **Email Service**: SMTP integration with development testing support
+- **Email Service**: Plunk API integration for transactional emails
 - **Configuration Management**: Environment-based configuration
 - **Live Reload**: Air integration for development productivity
 - **Docker Support**: Complete containerization with Docker Compose
@@ -67,7 +67,7 @@ This backend follows **Clean Architecture** principles with clear separation of 
 
 ### Required
 - **Go 1.24.3+**: Latest Go version for optimal performance
-- **Docker & Docker Compose**: For running services (MongoDB, Mailpit, etc.)
+- **Docker & Docker Compose**: For running services (MongoDB, Mongo Express, etc.)
 - **Make**: For running development commands
 
 ### Optional
@@ -91,7 +91,7 @@ mkdir -p secrets/dev
 openssl genpkey -algorithm Ed25519 -out secrets/dev/jwt-priv.pem
 openssl pkey -in secrets/dev/jwt-priv.pem -pubout -out secrets/dev/jwt-pub.pub.pem
 
-# 3. Start supporting services (MongoDB, Mailpit, etc.)
+# 3. Start supporting services (MongoDB, Mongo Express, etc.)
 make docker-up
 
 # 4a. Run backend with live reload
@@ -130,7 +130,6 @@ When services are running:
 
 - **Backend API**: http://localhost:8080
 - **Mongo Express**: http://localhost:8081 (Database UI)
-- **Mailpit**: http://localhost:8025 (Email testing UI)
 - **MongoDB**: localhost:27017 (Direct connection)
 
 ### Payments (Stripe + TWINT via Payment Intents)
