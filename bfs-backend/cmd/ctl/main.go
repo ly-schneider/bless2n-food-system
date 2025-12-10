@@ -5,11 +5,12 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"time"
 
-	"backend/db/seed"
 	"backend/internal/config"
+	"backend/internal/seed"
 
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -51,6 +52,9 @@ func seedMongo(ctx context.Context, cfg config.Config, reset, force bool, logger
 	if !isLocal && !force {
 		return fmt.Errorf("seeding refused: not localhost (use --force to override)")
 	}
+	if appEnv := os.Getenv("APP_ENV"); appEnv != "dev" && !force {
+		return fmt.Errorf("seeding refused: APP_ENV=%s (use --force to override)", appEnv)
+	}
 
 	opts := options.Client().ApplyURI(cfg.Mongo.URI)
 	client, err := mongo.Connect(opts)
@@ -69,15 +73,28 @@ func seedMongo(ctx context.Context, cfg config.Config, reset, force bool, logger
 		return fmt.Errorf("failed to ping MongoDB: %w", err)
 	}
 
-	// Configure seeding with fixed healthy amounts
-	seedConfig := seed.MongoConfig{
-		DatabaseName:       cfg.Mongo.Database,
-		ResetBeforeSeeding: reset,
-		BaselineDir:        "./db/seed",
+	db := client.Database(cfg.Mongo.Database)
+	if reset {
+		logger.Info("Dropping database before seeding", zap.String("database", cfg.Mongo.Database))
+		if err := db.Drop(ctx); err != nil {
+			return fmt.Errorf("failed to drop database: %w", err)
+		}
+		db = client.Database(cfg.Mongo.Database)
 	}
 
-	// Run seeding
-	return seed.SeedMongo(ctx, client, seedConfig, logger, force)
+	seeders := []seed.Seeder{
+		seed.NewIndexSeeder(logger),
+		seed.NewCategorySeeder(logger),
+		seed.NewProductSeeder(logger),
+		seed.NewMenuSlotSeeder(logger),
+		seed.NewMenuSlotItemSeeder(logger),
+		seed.NewJetonSeeder(logger),
+		seed.NewPosSettingsSeeder(logger),
+		seed.NewInventorySeeder(logger, 50),
+		seed.NewUserSeeder(logger),
+	}
+
+	return seed.RunAll(ctx, db, seeders)
 }
 
 func initLogger() *zap.Logger {
