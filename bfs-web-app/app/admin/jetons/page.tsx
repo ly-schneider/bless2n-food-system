@@ -352,7 +352,7 @@ export default function AdminJetonsPage() {
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">{p.name}</TableCell>
                       <TableCell>{p.category?.name ?? "–"}</TableCell>
-                      <TableCell className="uppercase text-xs">{p.isActive ? "Aktiv" : "Inaktiv"}</TableCell>
+                      <TableCell className="text-xs uppercase">{p.isActive ? "Aktiv" : "Inaktiv"}</TableCell>
                       <TableCell>
                         <Select
                           value={(assignDraft[p.id] ?? p.jeton?.id ?? "") || NO_JETON_VALUE}
@@ -426,12 +426,7 @@ export default function AdminJetonsPage() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="hex">Eigene HEX-Farbe (optional)</Label>
-              <Input
-                id="hex"
-                placeholder="#FFAA00"
-                value={formHex}
-                onChange={(e) => setFormHex(e.target.value)}
-              />
+              <Input id="hex" placeholder="#FFAA00" value={formHex} onChange={(e) => setFormHex(e.target.value)} />
               <p className="text-muted-foreground text-xs">Hex überschreibt die Palette, wenn gesetzt.</p>
             </div>
             <div className="grid gap-2">

@@ -84,7 +84,12 @@ export default function AdminPOSPage() {
         body: JSON.stringify({ mode: nextMode }),
       })
       if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string; missing?: number; message?: string; detail?: string }
+        const j = (await res.json().catch(() => ({}))) as {
+          error?: string
+          missing?: number
+          message?: string
+          detail?: string
+        }
         if (j.error === "missing_jetons") {
           const missing = typeof j.missing === "number" ? j.missing : missingJetons
           setMissingJetons(missing)
@@ -137,7 +142,7 @@ export default function AdminPOSPage() {
             Bestimme, ob das POS Belege mit QR-Code druckt oder Jetons zum Ausgeben berechnet.
           </p>
         </CardHeader>
-        <CardContent className="space-y-3 max-w-lg">
+        <CardContent className="max-w-lg space-y-3">
           <div className="grid gap-3 md:grid-cols-2">
             <Button
               variant={mode === "QR_CODE" ? "default" : "outline"}
@@ -158,7 +163,7 @@ export default function AdminPOSPage() {
           </div>
           {modeError && <div className="text-destructive text-sm">{modeError}</div>}
           {missingJetons > 0 && (
-            <div className="text-amber-700 text-sm">
+            <div className="text-sm text-amber-700">
               {missingJetons} aktive Produkte haben keinen Jeton.{" "}
               <Link href="/admin/jetons" className="underline">
                 Jetons verwalten

@@ -78,16 +78,17 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
   const [cardPrintDone, setCardPrintDone] = useState(false)
   // Background print error dialog (used for both cash and card flows)
   const [printErrorDialog, setPrintErrorDialog] = useState<string | null>(null)
-  const [jetonSummary, setJetonSummary] = useState<{ items: JetonTotal[]; orderId?: string; payment?: "cash" | "card" } | null>(null)
+  const [jetonSummary, setJetonSummary] = useState<{
+    items: JetonTotal[]
+    orderId?: string
+    payment?: "cash" | "card"
+  } | null>(null)
   const total = cart.totalCents
   const receivedCents = useMemo(() => Math.round((parseFloat(received || "0") || 0) * 100), [received])
   const changeCents = Math.max(0, receivedCents - total)
   const cartIsEmpty = cart.items.length === 0
   const jetonMode = mode === "JETON"
-  const hasMissingJeton = useMemo(
-    () => cart.items.some((it) => !it.product?.jeton),
-    [cart.items]
-  )
+  const hasMissingJeton = useMemo(() => cart.items.some((it) => !it.product?.jeton), [cart.items])
   const computeJetonTotals = useCallback((): JetonTotal[] => {
     const totals = new Map<string, JetonTotal>()
     for (const it of cart.items) {
@@ -99,7 +100,6 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
     }
     return Array.from(totals.values()).sort((a, b) => a.name.localeCompare(b.name))
   }, [cart.items])
-  const jetonTotals = useMemo(() => computeJetonTotals(), [computeJetonTotals])
 
   useEffect(() => {
     const onLock = () => {
@@ -412,7 +412,18 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
     } finally {
       setBusy(false)
     }
-  }, [busy, cart.items, token, receivedCents, total, canPrint, jetonMode, hasMissingJeton, computeJetonTotals, clearCart])
+  }, [
+    busy,
+    cart.items,
+    token,
+    receivedCents,
+    total,
+    canPrint,
+    jetonMode,
+    hasMissingJeton,
+    computeJetonTotals,
+    clearCart,
+  ])
 
   const startCardPayment = useCallback(() => {
     if (jetonMode && hasMissingJeton) {
@@ -858,7 +869,7 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
             <DialogTitle>Jetons ausgeben</DialogTitle>
           </DialogHeader>
           {jetonSummary && (
-            <div className="space-y-3 mb-8">
+            <div className="mb-8 space-y-3">
               <div className="grid gap-3 sm:grid-cols-2">
                 {jetonSummary.items.map((j) => (
                   <div
@@ -877,7 +888,9 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
             </div>
           )}
           <DialogFooter className="w-full">
-            <Button className="w-full h-12 rounded-xl text-base" onClick={() => setJetonSummary(null)}>Fertig</Button>
+            <Button className="h-12 w-full rounded-xl text-base" onClick={() => setJetonSummary(null)}>
+              Fertig
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

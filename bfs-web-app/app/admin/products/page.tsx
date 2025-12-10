@@ -41,10 +41,7 @@ export default function AdminProductsPage() {
   const [posMode, setPosMode] = useState<PosFulfillmentMode>("QR_CODE")
   const [bulkDraft, setBulkDraft] = useState<Record<string, string>>({})
   const [bulkSaving, setBulkSaving] = useState(false)
-  const missingActiveJetons = useMemo(
-    () => items.filter((p) => p.isActive && !p.jeton).length,
-    [items]
-  )
+  const missingActiveJetons = useMemo(() => items.filter((p) => p.isActive && !p.jeton).length, [items])
 
   const limit = 50
   const offset = page * limit
@@ -337,7 +334,7 @@ export default function AdminProductsPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                    <InlineInventory
+                  <InlineInventory
                     value={p.availableQuantity ?? null}
                     onAdjust={async (d) => {
                       await adjustInventory(p.id, d)
@@ -475,29 +472,29 @@ export default function AdminProductsPage() {
                 <TableHead>Jeton</TableHead>
               </TableRow>
             </TableHeader>
-                <TableBody>
-                  {items.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell className="font-medium">{p.name}</TableCell>
-                      <TableCell>{p.category?.name ?? "–"}</TableCell>
-                      <TableCell className="uppercase text-xs">{p.isActive ? "Aktiv" : "Inaktiv"}</TableCell>
-                      <TableCell>
-                        <Select
-                          value={(bulkDraft[p.id] ?? p.jeton?.id ?? "") || NO_JETON_VALUE}
-                          onValueChange={(jid) =>
-                            setBulkDraft((prev) => ({ ...prev, [p.id]: jid === NO_JETON_VALUE ? "" : jid }))
-                          }
-                        >
-                          <SelectTrigger className="h-9 w-56">
-                            <SelectValue placeholder="Jeton wählen" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value={NO_JETON_VALUE}>Kein Jeton</SelectItem>
-                            {jetons.map((j) => (
-                              <SelectItem key={j.id} value={j.id}>
-                                <span
-                                  aria-hidden
-                                  className="mr-2 inline-block h-3 w-3 rounded-full"
+            <TableBody>
+              {items.map((p) => (
+                <TableRow key={p.id}>
+                  <TableCell className="font-medium">{p.name}</TableCell>
+                  <TableCell>{p.category?.name ?? "–"}</TableCell>
+                  <TableCell className="text-xs uppercase">{p.isActive ? "Aktiv" : "Inaktiv"}</TableCell>
+                  <TableCell>
+                    <Select
+                      value={(bulkDraft[p.id] ?? p.jeton?.id ?? "") || NO_JETON_VALUE}
+                      onValueChange={(jid) =>
+                        setBulkDraft((prev) => ({ ...prev, [p.id]: jid === NO_JETON_VALUE ? "" : jid }))
+                      }
+                    >
+                      <SelectTrigger className="h-9 w-56">
+                        <SelectValue placeholder="Jeton wählen" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_JETON_VALUE}>Kein Jeton</SelectItem>
+                        {jetons.map((j) => (
+                          <SelectItem key={j.id} value={j.id}>
+                            <span
+                              aria-hidden
+                              className="mr-2 inline-block h-3 w-3 rounded-full"
                               style={{ backgroundColor: j.colorHex }}
                             />
                             {j.name}
