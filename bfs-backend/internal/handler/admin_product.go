@@ -5,7 +5,9 @@ import (
 	"backend/internal/middleware"
 	"backend/internal/repository"
 	"backend/internal/response"
+	"backend/internal/service"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
@@ -19,10 +21,11 @@ type AdminProductHandler struct {
 	validator  *validator.Validate
 	slotItems  repository.MenuSlotItemRepository
 	categories repository.CategoryRepository
+	posConfig  service.POSConfigService
 }
 
-func NewAdminProductHandler(prod repository.ProductRepository, inv repository.InventoryLedgerRepository, audit repository.AuditRepository, slotItems repository.MenuSlotItemRepository, cats repository.CategoryRepository) *AdminProductHandler {
-	return &AdminProductHandler{products: prod, inventory: inv, audit: audit, validator: validator.New(), slotItems: slotItems, categories: cats}
+func NewAdminProductHandler(prod repository.ProductRepository, inv repository.InventoryLedgerRepository, audit repository.AuditRepository, slotItems repository.MenuSlotItemRepository, cats repository.CategoryRepository, posConfig service.POSConfigService) *AdminProductHandler {
+	return &AdminProductHandler{products: prod, inventory: inv, audit: audit, validator: validator.New(), slotItems: slotItems, categories: cats, posConfig: posConfig}
 }
 
 type patchPriceBody struct {
@@ -125,12 +128,127 @@ func (h *AdminProductHandler) PatchActive(w http.ResponseWriter, r *http.Request
 		response.WriteError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
+	if body.IsActive && h.posConfig != nil {
+		if settings, err := h.posConfig.GetSettings(r.Context()); err == nil && settings != nil && settings.Mode == domain.PosModeJeton {
+			if before.JetonID == nil || before.JetonID.IsZero() {
+				response.WriteError(w, http.StatusBadRequest, "jeton_required")
+				return
+			}
+		}
+	}
 	if err := h.products.UpdateFields(r.Context(), pid, bson.M{"is_active": body.IsActive}); err != nil {
 		response.WriteError(w, http.StatusInternalServerError, "update failed")
 		return
 	}
 	after, _ := h.products.FindByID(r.Context(), pid)
 	_ = h.audit.Insert(r.Context(), &domain.AuditLog{Action: domain.AuditUpdate, EntityType: "product", EntityID: id, Before: before, After: after, RequestID: getRequestIDPtr(r), ActorUserID: objIDPtr(claims.Subject), ActorRole: strPtr(string(claims.Role))})
+	response.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+type patchJetonBody struct {
+	JetonID *string `json:"jetonId"`
+}
+
+// PatchJeton godoc
+// @Summary Assign jeton to product
+// @Tags admin-products
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "Product ID"
+// @Param payload body patchJetonBody true "Jeton payload"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} response.ProblemDetails
+// @Router /v1/admin/products/{id}/jeton [patch]
+func (h *AdminProductHandler) PatchJeton(w http.ResponseWriter, r *http.Request) {
+	if h.posConfig == nil {
+		response.WriteError(w, http.StatusInternalServerError, "jeton service unavailable")
+		return
+	}
+	id := chiURLParam(r, "id")
+	pid, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	var body patchJetonBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	var jetonOID *bson.ObjectID
+	if body.JetonID != nil && *body.JetonID != "" {
+		if oid, err := bson.ObjectIDFromHex(*body.JetonID); err == nil {
+			jetonOID = &oid
+		} else {
+			response.WriteError(w, http.StatusBadRequest, "invalid jeton id")
+			return
+		}
+	}
+	if err := h.posConfig.SetProductJeton(r.Context(), pid, jetonOID); err != nil {
+		if errors.Is(err, service.ErrJetonRequired) {
+			response.WriteError(w, http.StatusBadRequest, "jeton_required")
+			return
+		}
+		response.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	response.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+type bulkJetonAssignment struct {
+	Assignments []struct {
+		ProductID string  `json:"productId"`
+		JetonID   *string `json:"jetonId"`
+	} `json:"assignments"`
+}
+
+// BulkPatchJetons godoc
+// @Summary Bulk assign jetons to products
+// @Tags admin-products
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param payload body bulkJetonAssignment true "Assignments"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} response.ProblemDetails
+// @Router /v1/admin/products/jetons/bulk [post]
+func (h *AdminProductHandler) BulkPatchJetons(w http.ResponseWriter, r *http.Request) {
+	if h.posConfig == nil {
+		response.WriteError(w, http.StatusInternalServerError, "jeton service unavailable")
+		return
+	}
+	var body bulkJetonAssignment
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	assignments := make([]service.ProductJetonAssignment, 0, len(body.Assignments))
+	for _, it := range body.Assignments {
+		pid, err := bson.ObjectIDFromHex(it.ProductID)
+		if err != nil {
+			response.WriteError(w, http.StatusBadRequest, "invalid product id")
+			return
+		}
+		var jetonOID *bson.ObjectID
+		if it.JetonID != nil && *it.JetonID != "" {
+			if oid, err := bson.ObjectIDFromHex(*it.JetonID); err == nil {
+				jetonOID = &oid
+			} else {
+				response.WriteError(w, http.StatusBadRequest, "invalid jeton id")
+				return
+			}
+		}
+		assignments = append(assignments, service.ProductJetonAssignment{ProductID: pid, JetonID: jetonOID})
+	}
+	if err := h.posConfig.BulkAssignJetons(r.Context(), assignments); err != nil {
+		if errors.Is(err, service.ErrJetonRequired) {
+			response.WriteError(w, http.StatusBadRequest, "jeton_required")
+			return
+		}
+		response.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	response.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 

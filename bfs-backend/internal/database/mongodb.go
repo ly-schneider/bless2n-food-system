@@ -70,4 +70,6 @@ const (
 	OrderItemsCollection        = "order_items"
 	AuditLogsCollection         = "audit_logs"
 	PosDevicesCollection        = "pos_devices"
+	JetonsCollection            = "jetons"
+	PosSettingsCollection       = "pos_settings"
 )

@@ -17,9 +17,12 @@ type ProductRepository interface {
 	GetByCategoryID(ctx context.Context, categoryID bson.ObjectID, limit int, offset int) ([]*domain.Product, error)
 	FindByID(ctx context.Context, id bson.ObjectID) (*domain.Product, error)
 	UpdateFields(ctx context.Context, id bson.ObjectID, set bson.M) error
+	UpdateJeton(ctx context.Context, id bson.ObjectID, jetonID *bson.ObjectID) error
 	Insert(ctx context.Context, p *domain.Product) (bson.ObjectID, error)
 	GetMenus(ctx context.Context, q *string, active *bool, limit, offset int) ([]*domain.Product, int64, error)
 	DeleteByID(ctx context.Context, id bson.ObjectID) error
+	CountActiveWithoutJeton(ctx context.Context) (int64, error)
+	CountByJetonIDs(ctx context.Context, ids []bson.ObjectID) (map[bson.ObjectID]int64, error)
 }
 
 type productRepository struct {
@@ -151,6 +154,18 @@ func (r *productRepository) UpdateFields(ctx context.Context, id bson.ObjectID, 
 	return err
 }
 
+func (r *productRepository) UpdateJeton(ctx context.Context, id bson.ObjectID, jetonID *bson.ObjectID) error {
+	set := bson.M{"updated_at": time.Now().UTC()}
+	update := bson.M{"$set": set}
+	if jetonID != nil {
+		set["jeton_id"] = *jetonID
+	} else {
+		update["$unset"] = bson.M{"jeton_id": ""}
+	}
+	_, err := r.collection.UpdateByID(ctx, id, update)
+	return err
+}
+
 func (r *productRepository) Insert(ctx context.Context, p *domain.Product) (bson.ObjectID, error) {
 	if p.ID.IsZero() {
 		p.ID = bson.NewObjectID()
@@ -208,4 +223,45 @@ func (r *productRepository) GetMenus(ctx context.Context, q *string, active *boo
 func (r *productRepository) DeleteByID(ctx context.Context, id bson.ObjectID) error {
 	_, err := r.collection.DeleteOne(ctx, bson.M{"_id": id})
 	return err
+}
+
+func (r *productRepository) CountActiveWithoutJeton(ctx context.Context) (int64, error) {
+	filter := bson.M{
+		"is_active": true,
+		"$or": []bson.M{
+			{"jeton_id": bson.M{"$exists": false}},
+			{"jeton_id": nil},
+		},
+	}
+	return r.collection.CountDocuments(ctx, filter)
+}
+
+func (r *productRepository) CountByJetonIDs(ctx context.Context, ids []bson.ObjectID) (map[bson.ObjectID]int64, error) {
+	out := make(map[bson.ObjectID]int64)
+	if len(ids) == 0 {
+		return out, nil
+	}
+	pipeline := mongo.Pipeline{
+		{{Key: "$match", Value: bson.M{"jeton_id": bson.M{"$in": ids}}}},
+		{{Key: "$group", Value: bson.M{"_id": "$jeton_id", "count": bson.M{"$sum": 1}}}},
+	}
+	cur, err := r.collection.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = cur.Close(ctx) }()
+	for cur.Next(ctx) {
+		var row struct {
+			ID    bson.ObjectID `bson:"_id"`
+			Count int64         `bson:"count"`
+		}
+		if err := cur.Decode(&row); err != nil {
+			return nil, err
+		}
+		out[row.ID] = row.Count
+	}
+	if err := cur.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
 }

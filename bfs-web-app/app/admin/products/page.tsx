@@ -1,15 +1,17 @@
 "use client"
 import Image from "next/image"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
 
 import { getCSRFToken } from "@/lib/csrf"
 import { readErrorMessage } from "@/lib/http"
+import type { Jeton, PosFulfillmentMode } from "@/types/jeton"
 
 type Product = {
   id: string
@@ -20,8 +22,10 @@ type Product = {
   category?: { id: string; name: string }
   availableQuantity?: number | null
   isLowStock?: boolean
+  jeton?: Jeton
 }
 type Category = { id: string; name: string; isActive: boolean }
+const NO_JETON_VALUE = "__none__"
 
 export default function AdminProductsPage() {
   const fetchAuth = useAuthorizedFetch()
@@ -33,6 +37,14 @@ export default function AdminProductsPage() {
   const [, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cats, setCats] = useState<Category[]>([])
+  const [jetons, setJetons] = useState<Jeton[]>([])
+  const [posMode, setPosMode] = useState<PosFulfillmentMode>("QR_CODE")
+  const [bulkDraft, setBulkDraft] = useState<Record<string, string>>({})
+  const [bulkSaving, setBulkSaving] = useState(false)
+  const missingActiveJetons = useMemo(
+    () => items.filter((p) => p.isActive && !p.jeton).length,
+    [items]
+  )
 
   const limit = 50
   const offset = page * limit
@@ -70,6 +82,34 @@ export default function AdminProductsPage() {
     }
   }, [fetchAuth, page, debouncedQ])
 
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const res = await fetchAuth(`/api/v1/admin/pos/jetons`)
+        if (res.ok) {
+          const j = (await res.json()) as { items?: Jeton[] }
+          setJetons(j.items || [])
+        }
+      } catch {
+        // ignore jeton load errors here
+      }
+    })()
+  }, [fetchAuth])
+
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const res = await fetchAuth(`/api/v1/admin/pos/settings`)
+        if (res.ok) {
+          const j = (await res.json()) as { mode?: PosFulfillmentMode }
+          setPosMode((j.mode as PosFulfillmentMode) || "QR_CODE")
+        }
+      } catch {
+        // ignore
+      }
+    })()
+  }, [fetchAuth])
+
   // Load categories once
   useEffect(() => {
     let cancelled = false
@@ -86,6 +126,14 @@ export default function AdminProductsPage() {
       cancelled = true
     }
   }, [fetchAuth])
+
+  useEffect(() => {
+    const draft: Record<string, string> = {}
+    for (const p of items) {
+      draft[p.id] = p.jeton?.id ?? ""
+    }
+    setBulkDraft(draft)
+  }, [items])
 
   async function updatePrice(id: string, priceCents: number) {
     const csrf = getCSRFToken()
@@ -113,7 +161,11 @@ export default function AdminProductsPage() {
       headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
       body: JSON.stringify({ isActive }),
     })
-    if (!res.ok) throw new Error(await readErrorMessage(res))
+    if (!res.ok) {
+      const msg = await readErrorMessage(res)
+      if (msg === "jeton_required") throw new Error("Bitte zuerst einen Jeton zuweisen.")
+      throw new Error(msg)
+    }
   }
 
   async function deleteHard(id: string) {
@@ -133,6 +185,55 @@ export default function AdminProductsPage() {
       body: JSON.stringify({ delta, reason: "manual_adjust" }),
     })
     if (!res.ok) throw new Error(await readErrorMessage(res))
+  }
+
+  async function updateJeton(id: string, jetonId: string | null) {
+    const csrf = getCSRFToken()
+    const res = await fetchAuth(`/api/v1/admin/products/${encodeURIComponent(id)}/jeton`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
+      body: JSON.stringify({ jetonId }),
+    })
+    if (!res.ok) {
+      const msg = await readErrorMessage(res)
+      if (msg === "jeton_required") throw new Error("Im Jeton-Modus ist ein Jeton Pflicht.")
+      throw new Error(msg)
+    }
+  }
+
+  async function saveBulkJetons() {
+    const changes = Object.entries(bulkDraft).filter(([pid, jetonId]) => {
+      const current = items.find((p) => p.id === pid)
+      const currentId = current?.jeton?.id ?? ""
+      return currentId !== jetonId
+    })
+    if (changes.length === 0) return
+    setBulkSaving(true)
+    setError(null)
+    try {
+      const csrf = getCSRFToken()
+      const res = await fetchAuth(`/api/v1/admin/products/jetons/bulk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
+        body: JSON.stringify({
+          assignments: changes.map(([productId, jetonId]) => ({ productId, jetonId: jetonId || null })),
+        }),
+      })
+      if (!res.ok) throw new Error(await readErrorMessage(res))
+      setItems((prev) =>
+        prev.map((p) => {
+          const nextId = bulkDraft[p.id]
+          if (nextId === undefined) return p
+          const nextJeton = jetons.find((j) => j.id === nextId)
+          return { ...p, jeton: nextJeton }
+        })
+      )
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Bulk-Zuweisung fehlgeschlagen"
+      setError(msg)
+    } finally {
+      setBulkSaving(false)
+    }
   }
 
   return (
@@ -198,9 +299,18 @@ export default function AdminProductsPage() {
                     <Switch
                       checked={p.isActive}
                       onCheckedChange={async (v) => {
-                        await setActive(p.id, v)
-                        p.isActive = v
-                        setItems([...items])
+                        try {
+                          if (v && posMode === "JETON" && !p.jeton) {
+                            setError("Bitte zuerst einen Jeton zuweisen.")
+                            return
+                          }
+                          await setActive(p.id, v)
+                          p.isActive = v
+                          setItems([...items])
+                        } catch (e: unknown) {
+                          const msg = e instanceof Error ? e.message : "Aktualisierung fehlgeschlagen"
+                          setError(msg)
+                        }
                       }}
                     />
                     <span>{p.isActive ? "Aktiv" : "Inaktiv"}</span>
@@ -227,12 +337,54 @@ export default function AdminProductsPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <InlineInventory
+                    <InlineInventory
                     value={p.availableQuantity ?? null}
                     onAdjust={async (d) => {
                       await adjustInventory(p.id, d)
                     }}
                   />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={p.jeton?.id ?? NO_JETON_VALUE}
+                    onValueChange={async (jid) => {
+                      const nextId = jid === NO_JETON_VALUE ? "" : jid
+                      try {
+                        if (nextId === "" && posMode === "JETON" && p.isActive) {
+                          setError("Im Jeton-Modus benötigen aktive Produkte einen Jeton.")
+                          return
+                        }
+                        await updateJeton(p.id, nextId || null)
+                        const selected = nextId ? jetons.find((j) => j.id === nextId) : undefined
+                        p.jeton = selected || undefined
+                        setItems([...items])
+                        setBulkDraft((prev) => ({ ...prev, [p.id]: nextId }))
+                      } catch (e: unknown) {
+                        const msg = e instanceof Error ? e.message : "Zuweisung fehlgeschlagen"
+                        setError(msg)
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-8 w-56">
+                      <SelectValue placeholder="Jeton wählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_JETON_VALUE}>Kein Jeton</SelectItem>
+                      {jetons.map((j) => (
+                        <SelectItem key={j.id} value={j.id}>
+                          <span
+                            aria-hidden
+                            className="mr-2 inline-block h-3 w-3 rounded-full"
+                            style={{ backgroundColor: j.colorHex }}
+                          />
+                          {j.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {posMode === "JETON" && p.isActive && !p.jeton && (
+                    <span className="text-destructive text-xs">Pflicht im Jeton-Modus</span>
+                  )}
                 </div>
                 <div className="flex items-center justify-end gap-2">
                   <Button
@@ -294,6 +446,70 @@ export default function AdminProductsPage() {
           <button onClick={() => setPage((p) => p + 1)} className="rounded border px-2 py-1">
             Weiter
           </button>
+        </div>
+      </div>
+      <div className="mt-6 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Jetons zuweisen</h2>
+            <p className="text-muted-foreground text-sm">
+              Bulk-Zuweisung für schnelle Änderungen. Aktueller Modus: {posMode === "JETON" ? "Jetons" : "QR-Code"}.
+            </p>
+          </div>
+          <Button size="sm" onClick={saveBulkJetons} disabled={bulkSaving || jetons.length === 0}>
+            {bulkSaving ? "Speichern…" : "Bulk speichern"}
+          </Button>
+        </div>
+        {posMode === "JETON" && missingActiveJetons > 0 && (
+          <div className="text-destructive text-sm">
+            {missingActiveJetons} aktive Produkte benötigen noch einen Jeton.
+          </div>
+        )}
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Produkt</TableHead>
+                <TableHead>Kategorie</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Jeton</TableHead>
+              </TableRow>
+            </TableHeader>
+                <TableBody>
+                  {items.map((p) => (
+                    <TableRow key={p.id}>
+                      <TableCell className="font-medium">{p.name}</TableCell>
+                      <TableCell>{p.category?.name ?? "–"}</TableCell>
+                      <TableCell className="uppercase text-xs">{p.isActive ? "Aktiv" : "Inaktiv"}</TableCell>
+                      <TableCell>
+                        <Select
+                          value={(bulkDraft[p.id] ?? p.jeton?.id ?? "") || NO_JETON_VALUE}
+                          onValueChange={(jid) =>
+                            setBulkDraft((prev) => ({ ...prev, [p.id]: jid === NO_JETON_VALUE ? "" : jid }))
+                          }
+                        >
+                          <SelectTrigger className="h-9 w-56">
+                            <SelectValue placeholder="Jeton wählen" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={NO_JETON_VALUE}>Kein Jeton</SelectItem>
+                            {jetons.map((j) => (
+                              <SelectItem key={j.id} value={j.id}>
+                                <span
+                                  aria-hidden
+                                  className="mr-2 inline-block h-3 w-3 rounded-full"
+                              style={{ backgroundColor: j.colorHex }}
+                            />
+                            {j.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       </div>
     </div>

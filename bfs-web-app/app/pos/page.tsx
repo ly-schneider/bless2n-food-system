@@ -11,8 +11,15 @@ import { usePosToken } from "@/components/pos/use-pos-token"
 import { CartProvider } from "@/contexts/cart-context"
 import { listProducts } from "@/lib/api/products"
 import type { ListResponse, ProductDTO } from "@/types"
+import type { PosFulfillmentMode } from "@/types/jeton"
 
-type PosStatus = { exists: boolean; approved: boolean; name?: string; cardCapable?: boolean | null }
+type PosStatus = {
+  exists: boolean
+  approved: boolean
+  name?: string
+  cardCapable?: boolean | null
+  mode?: PosFulfillmentMode
+}
 
 function PosInner() {
   const token = usePosToken()
@@ -72,7 +79,7 @@ function PosInner() {
   if (!status?.approved) {
     return (
       <>
-        <POSHeader />
+        <POSHeader mode={status?.mode} />
         <RequestAccess
           token={token}
           onRefresh={async () => {
@@ -89,7 +96,7 @@ function PosInner() {
 
   return (
     <>
-      <POSHeader />
+      <POSHeader mode={status?.mode} />
       <div className="grid h-[calc(100dvh-4rem)] grid-cols-1 overflow-hidden md:grid-cols-[1fr_450px]">
         <div className="min-h-0 overflow-hidden">
           <ProductGrid
@@ -100,7 +107,7 @@ function PosInner() {
             }}
           />
         </div>
-        <BasketPanel token={token} />
+        <BasketPanel token={token} mode={status?.mode} />
 
         {configProduct && (
           <ProductConfigurationModal

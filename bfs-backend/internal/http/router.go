@@ -48,6 +48,7 @@ func NewRouter(
 	stationRepo repository.StationRepository,
 	posDeviceRepo repository.PosDeviceRepository,
 	stationProductRepo repository.StationProductRepository,
+	posConfig service.POSConfigService,
 	emailSvc service.EmailService,
 	jwtSvc service.JWTService,
 	isDev bool,
@@ -175,12 +176,14 @@ func NewRouter(
 			admin.Get("/ping", adminHandler.Ping)
 
 			// Products admin
-			ap := handler.NewAdminProductHandler(productRepo, inventoryRepo, auditRepo, menuSlotItemRepo, categoryRepo)
+			ap := handler.NewAdminProductHandler(productRepo, inventoryRepo, auditRepo, menuSlotItemRepo, categoryRepo, posConfig)
 			admin.Patch("/products/{id}/price", http.HandlerFunc(ap.PatchPrice))
 			admin.Patch("/products/{id}/active", http.HandlerFunc(ap.PatchActive))
 			admin.Post("/products/{id}/inventory-adjust", http.HandlerFunc(ap.AdjustInventory))
 			admin.Delete("/products/{id}", http.HandlerFunc(ap.DeleteHard))
 			admin.Patch("/products/{id}/category", http.HandlerFunc(ap.PatchCategory))
+			admin.Patch("/products/{id}/jeton", http.HandlerFunc(ap.PatchJeton))
+			admin.Post("/products/jetons/bulk", http.HandlerFunc(ap.BulkPatchJetons))
 			// Orders admin
 			ao := handler.NewAdminOrderHandler(orderRepo, orderItemRepo, productRepo, auditRepo)
 			admin.Get("/orders", http.HandlerFunc(ao.List))
@@ -241,13 +244,19 @@ func NewRouter(
 			admin.Delete("/stations/{id}/products/{productId}", http.HandlerFunc(ast.RemoveProduct))
 
 			// POS admin
-			apos := handler.NewAdminPOSHandler(posDeviceRepo)
+			apos := handler.NewAdminPOSHandler(posDeviceRepo, posConfig, productRepo)
+			admin.Get("/pos/settings", http.HandlerFunc(apos.GetSettings))
+			admin.Patch("/pos/settings", http.HandlerFunc(apos.PatchSettings))
 			admin.Get("/pos/requests", http.HandlerFunc(apos.ListRequests))
 			admin.Post("/pos/requests/{id}/approve", http.HandlerFunc(apos.Approve))
 			admin.Post("/pos/requests/{id}/reject", http.HandlerFunc(apos.Reject))
 			admin.Post("/pos/requests/{id}/revoke", http.HandlerFunc(apos.Revoke))
 			admin.Get("/pos/devices", http.HandlerFunc(apos.ListDevices))
 			admin.Patch("/pos/devices/{id}/config", http.HandlerFunc(apos.PatchConfig))
+			admin.Get("/pos/jetons", http.HandlerFunc(apos.ListJetons))
+			admin.Post("/pos/jetons", http.HandlerFunc(apos.CreateJeton))
+			admin.Patch("/pos/jetons/{id}", http.HandlerFunc(apos.UpdateJeton))
+			admin.Delete("/pos/jetons/{id}", http.HandlerFunc(apos.DeleteJeton))
 		})
 
 		v1.Route("/payments", func(pay chi.Router) {

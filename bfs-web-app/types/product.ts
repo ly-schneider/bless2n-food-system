@@ -1,5 +1,6 @@
 import type { CategoryDTO } from "./category"
 import type { Cents } from "./common"
+import type { Jeton } from "./jeton"
 import type { MenuDTO } from "./menu"
 
 export type ProductType = "simple" | "menu"
@@ -27,6 +28,7 @@ export interface ProductSummaryDTO {
   availableQuantity?: number | null
   isAvailable?: boolean
   isLowStock?: boolean
+  jeton?: Jeton
 }
 
 export interface ProductDTO extends ProductSummaryDTO {
