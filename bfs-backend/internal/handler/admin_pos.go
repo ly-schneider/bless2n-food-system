@@ -5,6 +5,7 @@ import (
 	"backend/internal/middleware"
 	"backend/internal/repository"
 	"backend/internal/response"
+	"backend/internal/service"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -14,11 +15,72 @@ import (
 )
 
 type AdminPOSHandler struct {
-	devices repository.PosDeviceRepository
+	devices  repository.PosDeviceRepository
+	config   service.POSConfigService
+	products repository.ProductRepository
 }
 
-func NewAdminPOSHandler(devices repository.PosDeviceRepository) *AdminPOSHandler {
-	return &AdminPOSHandler{devices: devices}
+func NewAdminPOSHandler(devices repository.PosDeviceRepository, config service.POSConfigService, products repository.ProductRepository) *AdminPOSHandler {
+	return &AdminPOSHandler{devices: devices, config: config, products: products}
+}
+
+// GetSettings godoc
+// @Summary Get POS settings
+// @Tags admin-pos
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/pos/settings [get]
+func (h *AdminPOSHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
+	settings, err := h.config.GetSettings(r.Context())
+	if err != nil {
+		response.WriteError(w, http.StatusInternalServerError, "failed to load settings")
+		return
+	}
+	mode := domain.PosModeQRCode
+	if settings != nil && settings.Mode != "" {
+		mode = settings.Mode
+	}
+	resp := map[string]any{"mode": mode}
+	if h.products != nil {
+		if missing, err := h.products.CountActiveWithoutJeton(r.Context()); err == nil {
+			resp["missingJetons"] = missing
+		}
+	}
+	response.WriteJSON(w, http.StatusOK, resp)
+}
+
+// PatchSettings godoc
+// @Summary Update POS settings
+// @Tags admin-pos
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param payload body map[string]string true "Settings payload"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} response.ProblemDetails
+// @Router /v1/admin/pos/settings [patch]
+func (h *AdminPOSHandler) PatchSettings(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Mode domain.PosFulfillmentMode `json:"mode"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	if body.Mode == "" {
+		response.WriteError(w, http.StatusBadRequest, "mode required")
+		return
+	}
+	if err := h.config.SetMode(r.Context(), body.Mode); err != nil {
+		if e, ok := err.(service.MissingJetonForActiveProductsError); ok {
+			response.WriteJSON(w, http.StatusBadRequest, map[string]any{"error": "missing_jetons", "missing": e.Count})
+			return
+		}
+		response.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	response.WriteJSON(w, http.StatusOK, map[string]any{"mode": body.Mode})
 }
 
 // ListRequests godoc
@@ -223,4 +285,110 @@ func (h *AdminPOSHandler) PatchConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	response.WriteJSON(w, http.StatusOK, response.Ack{Message: "updated"})
+}
+
+// ListJetons godoc
+// @Summary List jetons
+// @Tags admin-pos
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /v1/admin/pos/jetons [get]
+func (h *AdminPOSHandler) ListJetons(w http.ResponseWriter, r *http.Request) {
+	items, err := h.config.ListJetons(r.Context())
+	if err != nil {
+		response.WriteError(w, http.StatusInternalServerError, "failed to list jetons")
+		return
+	}
+	response.WriteJSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
+// CreateJeton godoc
+// @Summary Create jeton
+// @Tags admin-pos
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param payload body map[string]interface{} true "Jeton payload"
+// @Success 201 {object} domain.JetonDTO
+// @Failure 400 {object} response.ProblemDetails
+// @Router /v1/admin/pos/jetons [post]
+func (h *AdminPOSHandler) CreateJeton(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Name         string  `json:"name"`
+		PaletteColor string  `json:"paletteColor"`
+		HexColor     *string `json:"hexColor,omitempty"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	dto, err := h.config.CreateJeton(r.Context(), body.Name, body.PaletteColor, body.HexColor)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	response.WriteJSON(w, http.StatusCreated, dto)
+}
+
+// UpdateJeton godoc
+// @Summary Update jeton
+// @Tags admin-pos
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param id path string true "Jeton ID"
+// @Param payload body map[string]interface{} true "Jeton payload"
+// @Success 200 {object} domain.JetonDTO
+// @Failure 400 {object} response.ProblemDetails
+// @Router /v1/admin/pos/jetons/{id} [patch]
+func (h *AdminPOSHandler) UpdateJeton(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	oid, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	var body struct {
+		Name         string  `json:"name"`
+		PaletteColor string  `json:"paletteColor"`
+		HexColor     *string `json:"hexColor,omitempty"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	dto, err := h.config.UpdateJeton(r.Context(), oid, body.Name, body.PaletteColor, body.HexColor)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	response.WriteJSON(w, http.StatusOK, dto)
+}
+
+// DeleteJeton godoc
+// @Summary Delete jeton
+// @Tags admin-pos
+// @Security BearerAuth
+// @Param id path string true "Jeton ID"
+// @Success 204 "No Content"
+// @Failure 400 {object} response.ProblemDetails
+// @Failure 409 {object} response.ProblemDetails
+// @Router /v1/admin/pos/jetons/{id} [delete]
+func (h *AdminPOSHandler) DeleteJeton(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	oid, err := bson.ObjectIDFromHex(id)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	if err := h.config.DeleteJeton(r.Context(), oid); err != nil {
+		if e, ok := err.(service.JetonInUseError); ok {
+			response.WriteJSON(w, http.StatusConflict, map[string]any{"error": "jeton_in_use", "usage": e.Count})
+			return
+		}
+		response.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	response.WriteNoContent(w)
 }

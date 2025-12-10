@@ -16,11 +16,12 @@ import (
 // POSHandler exposes minimal POS device and checkout endpoints.
 type POSHandler struct {
 	pos       service.POSService
+	config    service.POSConfigService
 	validator *validator.Validate
 }
 
-func NewPOSHandler(pos service.POSService) *POSHandler {
-	return &POSHandler{pos: pos, validator: validator.New()}
+func NewPOSHandler(pos service.POSService, config service.POSConfigService) *POSHandler {
+	return &POSHandler{pos: pos, config: config, validator: validator.New()}
 }
 
 // POSCreateRequestPayload represents a POS access request.
@@ -89,12 +90,29 @@ func (h *POSHandler) Me(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, http.StatusBadRequest, "missing pos token")
 		return
 	}
+	mode := domain.PosModeQRCode
+	if h.config != nil {
+		if settings, err := h.config.GetSettings(r.Context()); err == nil && settings != nil && settings.Mode != "" {
+			mode = settings.Mode
+		}
+	}
 	dev, err := h.pos.GetDeviceByToken(r.Context(), token)
 	if err != nil || dev == nil {
-		response.WriteJSON(w, http.StatusOK, map[string]any{"exists": false, "approved": false})
+		response.WriteJSON(w, http.StatusOK, map[string]any{"exists": false, "approved": false, "mode": mode})
 		return
 	}
-	response.WriteJSON(w, http.StatusOK, map[string]any{"exists": true, "approved": dev.Approved, "status": string(dev.Status), "name": dev.Name, "cardCapable": dev.CardCapable})
+	response.WriteJSON(
+		w,
+		http.StatusOK,
+		map[string]any{
+			"exists":      true,
+			"approved":    dev.Approved,
+			"status":      string(dev.Status),
+			"name":        dev.Name,
+			"cardCapable": dev.CardCapable,
+			"mode":        mode,
+		},
+	)
 }
 
 // CreateOrder godoc

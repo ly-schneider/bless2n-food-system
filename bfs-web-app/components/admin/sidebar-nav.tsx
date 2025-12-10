@@ -1,5 +1,5 @@
 "use client"
-import { CreditCard, Grid2x2, Home, KeyRound, MailPlus, MonitorCheck, ReceiptText, Users } from "lucide-react"
+import { Circle, CreditCard, Grid2x2, Home, KeyRound, MailPlus, MonitorCheck, ReceiptText, Users } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -21,6 +21,7 @@ export function AdminSidebar({ badges }: { badges?: Partial<Record<string, numbe
     { href: "/admin/sessions", label: "Sessions", icon: <KeyRound className="size-5" /> },
     { href: "/admin/stations", label: "Stationen", icon: <MonitorCheck className="size-5" /> },
     { href: "/admin/pos", label: "POS", icon: <CreditCard className="size-5" /> },
+    { href: "/admin/jetons", label: "Jetons", icon: <Circle className="size-5" /> },
   ]
 
   return (

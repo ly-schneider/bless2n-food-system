@@ -81,6 +81,10 @@ async function handle(req: Request, params: Promise<{ path: string[] }>) {
 
   const respHeaders = new Headers(res.headers)
 
+  if (res.status === 204 || res.status === 205 || res.status === 304) {
+    return new NextResponse(null, { status: res.status, headers: respHeaders })
+  }
+
   const buf = Buffer.from(await res.arrayBuffer())
   return new NextResponse(buf, { status: res.status, headers: respHeaders })
 }

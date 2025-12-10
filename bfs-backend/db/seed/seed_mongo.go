@@ -2,13 +2,13 @@ package seed
 
 import (
 	"backend/internal/database"
+	"backend/internal/domain"
 	"context"
 	"fmt"
 	"os"
 	"strconv"
-	"time"
-
 	"strings"
+	"time"
 
 	"github.com/brianvoe/gofakeit/v7"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -109,6 +109,8 @@ func ensureIndexes(ctx context.Context, db *mongo.Database, logger *zap.Logger) 
 		database.StationProductsCollection,
 		database.AuditLogsCollection,
 		database.PosDevicesCollection,
+		database.JetonsCollection,
+		database.PosSettingsCollection,
 	}
 	for _, name := range collections {
 		if err := ensureCollectionExists(ctx, db, name, logger); err != nil {
@@ -303,6 +305,15 @@ func ensureIndexes(ctx context.Context, db *mongo.Database, logger *zap.Logger) 
 		return fmt.Errorf("failed to create %s indexes: %w", database.PosDevicesCollection, err)
 	}
 
+	// Jetons: unique name for clarity
+	jetons := db.Collection(database.JetonsCollection)
+	jetonIdx := []mongo.IndexModel{
+		{Keys: bson.D{{Key: "name", Value: 1}}, Options: options.Index().SetUnique(true)},
+	}
+	if _, err := jetons.Indexes().CreateMany(ctx, jetonIdx); err != nil {
+		return fmt.Errorf("failed to create %s indexes: %w", database.JetonsCollection, err)
+	}
+
 	// Audit logs: entity, actor, created_at
 	audit := db.Collection(database.AuditLogsCollection)
 	auIdx := []mongo.IndexModel{
@@ -356,6 +367,15 @@ func generateBulkData(ctx context.Context, db *mongo.Database, logger *zap.Logge
 	// Generate menu slot items
 	if err := generateMenuSlotItems(ctx, db, logger); err != nil {
 		return fmt.Errorf("failed to generate menu slot items: %w", err)
+	}
+
+	// Seed jetons and assign to products (POS stays in QR_CODE mode by default)
+	if err := seedJetonsAndAssignProducts(ctx, db, logger); err != nil {
+		return fmt.Errorf("failed to seed jetons: %w", err)
+	}
+
+	if err := seedPosSettings(ctx, db, logger); err != nil {
+		return fmt.Errorf("failed to seed POS settings: %w", err)
 	}
 
 	// Seed inventory opening balance: +50 for each simple product
@@ -438,6 +458,183 @@ func seedInventoryOpeningBalance(ctx context.Context, db *mongo.Database, logger
 		return err
 	}
 	logger.Info("Seeded inventory opening balance", zap.Int("entries", len(entries)), zap.Int("qty", qty))
+	return nil
+}
+
+func seedJetonsAndAssignProducts(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {
+	jetons := db.Collection(database.JetonsCollection)
+	categories := db.Collection(database.CategoriesCollection)
+	products := db.Collection(database.ProductsCollection)
+
+	now := time.Now().UTC()
+
+	jetonSeeds := []struct {
+		Name    string
+		Palette string
+	}{
+		{"Burger", "blue"},
+		{"Getränk", "red"},
+		{"Pommes", "yellow"},
+		{"Menu", "green"},
+	}
+
+	var names []string
+	var jetonOps []mongo.WriteModel
+	for _, seed := range jetonSeeds {
+		names = append(names, seed.Name)
+		update := bson.D{
+			{Key: "$setOnInsert", Value: bson.D{
+				{Key: "_id", Value: bson.NewObjectID()},
+				{Key: "created_at", Value: now},
+			}},
+			{Key: "$set", Value: bson.D{
+				{Key: "name", Value: seed.Name},
+				{Key: "palette_color", Value: seed.Palette},
+				{Key: "updated_at", Value: now},
+			}},
+		}
+		jetonOps = append(jetonOps, mongo.NewUpdateOneModel().
+			SetFilter(bson.D{{Key: "name", Value: seed.Name}}).
+			SetUpdate(update).
+			SetUpsert(true))
+	}
+
+	if len(jetonOps) > 0 {
+		if _, err := jetons.BulkWrite(ctx, jetonOps); err != nil {
+			return fmt.Errorf("failed to upsert jetons: %w", err)
+		}
+	}
+
+	// Load jeton IDs by name for assignment
+	cur, err := jetons.Find(ctx, bson.M{"name": bson.M{"$in": names}})
+	if err != nil {
+		return fmt.Errorf("failed to load jetons: %w", err)
+	}
+	defer func() { _ = cur.Close(ctx) }()
+
+	jetonByName := make(map[string]bson.ObjectID)
+	for cur.Next(ctx) {
+		var j struct {
+			ID   bson.ObjectID `bson:"_id"`
+			Name string        `bson:"name"`
+		}
+		if err := cur.Decode(&j); err != nil {
+			return fmt.Errorf("failed to decode jeton: %w", err)
+		}
+		jetonByName[j.Name] = j.ID
+	}
+	if err := cur.Err(); err != nil {
+		return fmt.Errorf("cursor error while loading jetons: %w", err)
+	}
+
+	// Map category IDs to names for deterministic jeton selection
+	catCur, err := categories.Find(ctx, bson.D{})
+	if err != nil {
+		return fmt.Errorf("failed to fetch categories: %w", err)
+	}
+	defer func() { _ = catCur.Close(ctx) }()
+
+	categoryNames := make(map[bson.ObjectID]string)
+	for catCur.Next(ctx) {
+		var c struct {
+			ID   bson.ObjectID `bson:"_id"`
+			Name string        `bson:"name"`
+		}
+		if err := catCur.Decode(&c); err != nil {
+			return fmt.Errorf("failed to decode category: %w", err)
+		}
+		categoryNames[c.ID] = c.Name
+	}
+	if err := catCur.Err(); err != nil {
+		return fmt.Errorf("cursor error while loading categories: %w", err)
+	}
+
+	// Assign jetons to products based on category/type
+	prodCur, err := products.Find(ctx, bson.D{})
+	if err != nil {
+		return fmt.Errorf("failed to fetch products: %w", err)
+	}
+	defer func() { _ = prodCur.Close(ctx) }()
+
+	var productOps []mongo.WriteModel
+	for prodCur.Next(ctx) {
+		var p struct {
+			ID         bson.ObjectID `bson:"_id"`
+			Name       string        `bson:"name"`
+			CategoryID bson.ObjectID `bson:"category_id"`
+			Type       string        `bson:"type"`
+		}
+		if err := prodCur.Decode(&p); err != nil {
+			return fmt.Errorf("failed to decode product: %w", err)
+		}
+
+		jetonName := ""
+		if catName, ok := categoryNames[p.CategoryID]; ok {
+			switch catName {
+			case "Burgers":
+				jetonName = "Burger"
+			case "Beilagen":
+				jetonName = "Pommes"
+			case "Getränke":
+				jetonName = "Getränk"
+			case "Menus":
+				jetonName = "Menu"
+			}
+		}
+
+		if p.Type == "menu" && jetonName == "" {
+			jetonName = "Menu"
+		}
+
+		jetonID, ok := jetonByName[jetonName]
+		if !ok {
+			// Fallback to any available jeton to ensure assignment
+			for _, id := range jetonByName {
+				jetonID = id
+				ok = true
+				break
+			}
+		}
+		if !ok {
+			continue
+		}
+
+		productOps = append(productOps, mongo.NewUpdateOneModel().
+			SetFilter(bson.D{{Key: "_id", Value: p.ID}}).
+			SetUpdate(bson.D{{Key: "$set", Value: bson.D{
+				{Key: "jeton_id", Value: jetonID},
+				{Key: "updated_at", Value: now},
+			}}}))
+	}
+	if err := prodCur.Err(); err != nil {
+		return fmt.Errorf("cursor error while loading products: %w", err)
+	}
+
+	if len(productOps) > 0 {
+		if _, err := products.BulkWrite(ctx, productOps); err != nil {
+			return fmt.Errorf("failed to assign jetons to products: %w", err)
+		}
+	}
+
+	logger.Info("Seeded jetons and assigned to products",
+		zap.Int("jetons", len(jetonByName)),
+		zap.Int("productsUpdated", len(productOps)),
+	)
+
+	return nil
+}
+
+func seedPosSettings(ctx context.Context, db *mongo.Database, logger *zap.Logger) error {
+	coll := db.Collection(database.PosSettingsCollection)
+	now := time.Now().UTC()
+	_, err := coll.UpdateByID(ctx, "default", bson.M{
+		"$setOnInsert": bson.M{"_id": "default"},
+		"$set":         bson.M{"mode": domain.PosModeQRCode, "updated_at": now},
+	}, options.UpdateOne().SetUpsert(true))
+	if err != nil {
+		return fmt.Errorf("failed to upsert POS settings: %w", err)
+	}
+	logger.Info("Seeded POS settings", zap.String("mode", string(domain.PosModeQRCode)))
 	return nil
 }
 
