@@ -132,7 +132,7 @@ func (s JetonSeeder) assignJetonsToProducts(ctx context.Context, db *mongo.Datab
 		case "Burgers":
 			jetonName = "Burger"
 		case "Beilagen":
-			jetonName = "Pommes"
+			jetonName = "Beilage"
 		case "Getränke":
 			jetonName = "Getränk"
 		case "Menus":

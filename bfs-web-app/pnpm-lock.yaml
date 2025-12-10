@@ -152,6 +152,9 @@ importers:
       google:
         specifier: link:@next/third-parties/google
         version: link:@next/third-parties/google
+      html5-qrcode:
+        specifier: ^2.3.8
+        version: 2.3.8
       input-otp:
         specifier: ^1.4.2
         version: 1.4.2(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
@@ -295,7 +298,7 @@ importers:
         specifier: ^8.15.6
         version: 8.15.6
       '@types/qrcode':
-        specifier: ^1.5.5
+        specifier: ^1.5.6
         version: 1.5.6
       '@types/react':
         specifier: ^19.2.7
@@ -5739,6 +5742,9 @@ packages:
         optional: true
       webpack:
         optional: true
+
+  html5-qrcode@2.3.8:
+    resolution: {integrity: sha512-jsr4vafJhwoLVEDW3n1KvPnCCXWaQfRng0/EEYk1vNcQGcG/htAdhJX0be8YyqMoSz7+hZvOZSTAepsabiuhiQ==}
 
   htmlparser2@3.10.1:
     resolution: {integrity: sha512-IgieNijUMbkDovyoKObU1DUhm1iwNYE/fuifEoEHfd1oZKZDaONBSkal7Y01shxsM49R4XaMdGez3WnF9UfiCQ==}
@@ -14887,6 +14893,8 @@ snapshots:
       tapable: 2.3.0
     optionalDependencies:
       webpack: 5.103.0(@swc/core@1.15.3)(esbuild@0.25.12)
+
+  html5-qrcode@2.3.8: {}
 
   htmlparser2@3.10.1:
     dependencies:

@@ -1,10 +1,9 @@
 "use client"
 
-import { BarcodeFormat, BrowserMultiFormatReader } from "@zxing/browser"
-import type { IScannerControls } from "@zxing/browser"
-import { DecodeHintType } from "@zxing/library"
+import type { Html5Qrcode } from "html5-qrcode"
 import Image from "next/image"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import Html5QrcodeScannerPlugin from "@/components/html5-qrcode-scanner-plugin"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -23,8 +22,7 @@ import { randomUrlSafe } from "@/lib/crypto"
 type StationStatus = { exists: boolean; approved: boolean; name?: string }
 
 export default function StationPage() {
-  const log = (...args: unknown[]) => console.log("[Station]", ...args)
-  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const log = useCallback((...args: unknown[]) => console.log("[Station]", ...args), [])
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
   const [deviceId, setDeviceId] = useState<string>("")
   const [status, setStatus] = useState<StationStatus | null>(null)
@@ -49,28 +47,11 @@ export default function StationPage() {
   const [stationName, setStationName] = useState("")
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [requestSubmitted, setRequestSubmitted] = useState(false)
-  // Prefer native BarcodeDetector with ZXing fallback for older browsers
-  const [scanningPaused, setScanningPaused] = useState(false)
-  const pausedRef = useRef(false)
-  interface DetectedBarcode {
-    rawValue?: string
-  }
-  interface BarcodeDetector {
-    detect: (
-      source: HTMLVideoElement | CanvasImageSource | ImageBitmap | ImageData | Blob
-    ) => Promise<DetectedBarcode[]>
-  }
-  type BarcodeDetectorConstructor = new (init?: { formats?: string[] }) => BarcodeDetector
-  const detectorRef = useRef<BarcodeDetector | null>(null)
-  const rafRef = useRef<number | null>(null)
-  const lastCodeRef = useRef<string | null>(null)
-  const lastAtRef = useRef<number>(0)
-  const zxingRef = useRef<BrowserMultiFormatReader | null>(null)
-  const zxingControlsRef = useRef<IScannerControls | null>(null)
-  const [hasNativeDetector, setHasNativeDetector] = useState<boolean | null>(null)
-  useEffect(() => {
-    pausedRef.current = scanningPaused || drawerOpen
-  }, [scanningPaused, drawerOpen])
+  const [cameraPermission, setCameraPermission] = useState<"idle" | "pending" | "granted" | "denied">("idle")
+  const [scannerActive, setScannerActive] = useState(false)
+  const [scannerKey, setScannerKey] = useState(0)
+  const scannerRef = useRef<Html5Qrcode | null>(null)
+  const scanLockedRef = useRef(false)
 
   const stationKey = useMemo(() => {
     if (typeof window === "undefined") return ""
@@ -101,211 +82,178 @@ export default function StationPage() {
   }, [stationKey])
 
   useEffect(() => {
-    if (typeof window === "undefined") return
-    const BD = (window as unknown as { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector ?? undefined
-    const supported = !!BD
-    setHasNativeDetector(supported)
-    if (!supported) log("Native BarcodeDetector missing; will use ZXing fallback")
-  }, [])
-
-  // After approval: request camera permission, enumerate devices, and start scanning
-  useEffect(() => {
-    if (!status?.approved) return
-    ;(async () => {
-      try {
-        // Request permission with default camera to reveal labels
-        log("Requesting camera permission")
-        await navigator.mediaDevices.getUserMedia({ video: true })
-        log("Camera permission granted")
-        const ds = await navigator.mediaDevices.enumerateDevices()
-        const vids = ds.filter((d) => d.kind === "videoinput")
-        setDevices(vids)
-        log(
-          "Cameras",
-          vids.map((v) => ({ id: v.deviceId, label: v.label }))
-        )
-        const preferred = vids[0]?.deviceId || ""
-        setDeviceId((prev) => prev || preferred)
-      } catch (e) {
-        setError("Kamerazugriff verweigert oder nicht verfügbar.")
-        log("Camera permission failed", e)
-      }
-    })()
+    if (!status?.approved) {
+      setCameraPermission("idle")
+      setScannerActive(false)
+      setDevices([])
+      setDeviceId("")
+    }
   }, [status?.approved])
 
-  // Cleanup on unmount: stop camera tracks and cancel RAF
-  useEffect(() => {
-    return () => {
-      try {
-        const v = videoRef.current
-        const tracks = (v?.srcObject as MediaStream | null)?.getTracks() || []
-        tracks.forEach((t) => t.stop())
-      } catch {}
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+  const loadDevices = useCallback(async () => {
+    try {
+      const ds = await navigator.mediaDevices.enumerateDevices()
+      const vids = ds.filter((d) => d.kind === "videoinput")
+      setDevices(vids)
+      log(
+        "Cameras",
+        vids.map((v) => ({ id: v.deviceId, label: v.label }))
+      )
+      const preferred = vids[0]?.deviceId || ""
+      setDeviceId((prev) => prev || preferred)
+      return vids
+    } catch (e) {
+      setError("Kameras konnten nicht geladen werden.")
+      log("enumerateDevices failed", e)
+      return []
     }
+  }, [log])
+
+  useEffect(() => {
+    if (!status?.approved) return
+    let cancelled = false
+    let permissionStatus: PermissionStatus | null = null
+
+    const applyState = (state: PermissionState) => {
+      if (state === "granted") {
+        setCameraPermission("granted")
+      } else if (state === "denied") {
+        setCameraPermission("denied")
+      } else {
+        setCameraPermission("idle")
+      }
+    }
+
+    const handleChange = async () => {
+      if (!permissionStatus) return
+      applyState(permissionStatus.state)
+      if (permissionStatus.state === "granted") {
+        await loadDevices()
+      }
+    }
+
+    const checkPermission = async () => {
+      try {
+        if (!navigator.permissions?.query) return
+        permissionStatus = await navigator.permissions.query({ name: "camera" as PermissionName })
+        if (cancelled || !permissionStatus) return
+        applyState(permissionStatus.state)
+        if (permissionStatus.state === "granted") {
+          await loadDevices()
+        }
+        permissionStatus.addEventListener("change", handleChange)
+      } catch {
+        // ignore; fallback to manual request
+      }
+    }
+
+    checkPermission()
+
+    return () => {
+      cancelled = true
+      permissionStatus?.removeEventListener("change", handleChange)
+    }
+  }, [loadDevices, status?.approved])
+
+  const requestCameraAccess = useCallback(async () => {
+    setError(null)
+    setScannerActive(false)
+    setScannerKey((k) => k + 1)
+    setCameraPermission("pending")
+    try {
+      log("Requesting camera permission")
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+      await loadDevices()
+      setCameraPermission("granted")
+      stream.getTracks().forEach((t) => t.stop())
+      log("Camera permission granted")
+    } catch (e) {
+      setCameraPermission("denied")
+      setError("Kamerazugriff verweigert oder nicht verfügbar.")
+      log("Camera permission failed", e)
+    }
+  }, [loadDevices, log])
+
+  const handleScannerStartError = useCallback((err: unknown) => {
+    setError("Scanner konnte nicht gestartet werden.")
+    setScannerActive(false)
+    console.error("html5-qrcode start failed", err)
   }, [])
 
-  // Native BarcodeDetector scanning loop (camera stays active)
-  useEffect(() => {
-    if (!status?.approved) return
-    const BD =
-      typeof window !== "undefined"
-        ? (window as unknown as { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector
-        : undefined
-    if (!BD || hasNativeDetector !== true) return
-    if (!detectorRef.current) {
-      try {
-        detectorRef.current = new BD({ formats: ["qr_code"] })
-        log("BarcodeDetector initialized")
-      } catch {
-        return
-      }
-    }
-    let cancelled = false
-    const tick = async () => {
-      if (cancelled) return
-      if (!(scanningPaused || drawerOpen) && videoRef.current && detectorRef.current) {
-        try {
-          const codes = await detectorRef.current.detect(videoRef.current)
-          const found = codes?.find((c) => c.rawValue)
-          if (found?.rawValue) {
-            const now = Date.now()
-            const value = String(found.rawValue)
-            const isRepeat = lastCodeRef.current === value && now - lastAtRef.current < 1500
-            if (!isRepeat) {
-              lastCodeRef.current = value
-              lastAtRef.current = now
-              setScanningPaused(true)
-              log("QR detected", value.slice(0, 24) + (value.length > 24 ? "…" : ""))
-              await handleScanned(value)
-            }
-          }
-        } catch {}
-      }
-      rafRef.current = requestAnimationFrame(tick)
-    }
-    log("Detection loop started")
-    rafRef.current = requestAnimationFrame(tick)
-    return () => {
-      cancelled = true
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
-    }
-  }, [status?.approved, scanningPaused, drawerOpen, hasNativeDetector])
+  const handleScannerReady = useCallback(
+    (scanner: Html5Qrcode) => {
+      scannerRef.current = scanner
+      log("html5-qrcode ready")
+    },
+    [log]
+  )
 
-  // ZXing fallback for browsers without BarcodeDetector (e.g., older Safari)
-  useEffect(() => {
-    if (!status?.approved) return
-    if (hasNativeDetector !== false) return
-    const v = videoRef.current
-    if (!v) return
-    if (!zxingRef.current) {
-      const hints = new Map<DecodeHintType, unknown>()
-      hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.QR_CODE])
-      zxingRef.current = new BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 250 })
-      log("ZXing reader initialized")
-    }
-    const reader = zxingRef.current
-    let cancelled = false
-    reader
-      .decodeFromVideoElement(v, async (result, err, controls) => {
-        if (cancelled) return
-        if (!zxingControlsRef.current && controls) zxingControlsRef.current = controls
-        if (result && !(scanningPaused || drawerOpen)) {
-          const value = result.getText()
-          const now = Date.now()
-          const isRepeat = lastCodeRef.current === value && now - lastAtRef.current < 1500
-          if (!isRepeat && value) {
-            lastCodeRef.current = value
-            lastAtRef.current = now
-            setScanningPaused(true)
-            log("QR detected (fallback)", value.slice(0, 24) + (value.length > 24 ? "…" : ""))
-            await handleScanned(value)
-          }
-        } else if (err && (err as Error).name !== "NotFoundException") {
-          log("ZXing error", err)
-        }
-      })
-      .catch(() => log("ZXing decode failed to start"))
-    return () => {
-      cancelled = true
-      zxingControlsRef.current?.stop?.()
-      zxingControlsRef.current = null
-      ;(reader as { reset?: () => void }).reset?.()
-    }
-  }, [status?.approved, hasNativeDetector, deviceId])
+  const handleScannerStop = useCallback(() => {
+    scannerRef.current = null
+    scanLockedRef.current = false
+  }, [])
 
-  // Start/keep camera stream on device change; no need to restart detector
-  useEffect(() => {
-    if (!status?.approved) return
-    ;(async () => {
-      try {
-        log("Starting camera stream", { deviceId: deviceId || "default" })
-        const baseVideo: MediaTrackConstraints = {
-          facingMode: { ideal: "environment" },
-          // focusMode is non-standard but helps iOS Safari auto-focus when supported
-          focusMode: "continuous",
-        } as MediaTrackConstraints
-        const constraints: MediaStreamConstraints = deviceId
-          ? { video: { ...baseVideo, deviceId: { exact: deviceId } } as MediaTrackConstraints }
-          : { video: baseVideo }
-        const v = videoRef.current
-        if (!v) return
-        try {
-          ;(v.srcObject as MediaStream | null)?.getTracks().forEach((t) => t.stop())
-        } catch {}
-        const stream = await navigator.mediaDevices.getUserMedia(constraints)
-        v.srcObject = stream
-        await v.play().catch(() => {})
-        const track = stream.getVideoTracks()[0]
-        const capabilities = track?.getCapabilities?.() as MediaTrackCapabilities & { focusMode?: string[] }
-        const focusPrefs: MediaTrackConstraints[] = []
-        if (capabilities?.focusMode?.includes("continuous")) {
-          focusPrefs.push({ focusMode: "continuous" } as MediaTrackConstraints)
-        } else if (capabilities?.focusMode?.includes("auto")) {
-          focusPrefs.push({ focusMode: "auto" } as MediaTrackConstraints)
-        }
-        if (focusPrefs.length && track?.applyConstraints) {
-          await track.applyConstraints({ advanced: focusPrefs }).catch(() => {})
-        }
-        log("Camera stream active", {
-          tracks: stream.getTracks().map((t) => ({ kind: t.kind, state: t.readyState })),
-          focus: capabilities?.focusMode,
-        })
-      } catch {
-        setError("Kamerazugriff verweigert oder nicht verfügbar.")
-        log("Failed to start camera stream")
-      }
-    })()
-  }, [deviceId, status?.approved])
-
-  async function handleScanned(code: string) {
+  const startScanner = useCallback(() => {
+    if (!deviceId) {
+      setError("Keine Kamera gefunden.")
+      return
+    }
     setError(null)
+    setScannerActive(true)
+    setScannerKey((k) => k + 1)
+    scanLockedRef.current = false
+  }, [deviceId])
+
+  const resumeScanning = useCallback(() => {
+    scanLockedRef.current = false
     try {
-      log("verify-qr start")
-      const verify = await fetch(`/api/v1/stations/verify-qr`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Station-Key": stationKey },
-        body: JSON.stringify({ code }),
-      })
-      type Problem = { detail?: string }
-      if (!verify.ok) {
-        const j = (await verify.json().catch(() => ({}))) as Problem
-        const msg = j.detail || `Fehler ${verify.status}`
-        log("verify-qr failed", msg)
-        throw new Error(msg)
+      scannerRef.current?.resume()
+    } catch {}
+  }, [])
+
+  const handleScanned = useCallback(
+    async (code: string) => {
+      setError(null)
+      try {
+        log("verify-qr start")
+        const verify = await fetch(`/api/v1/stations/verify-qr`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Station-Key": stationKey },
+          body: JSON.stringify({ code }),
+        })
+        type Problem = { detail?: string }
+        if (!verify.ok) {
+          const j = (await verify.json().catch(() => ({}))) as Problem
+          const msg = j.detail || `Fehler ${verify.status}`
+          log("verify-qr failed", msg)
+          throw new Error(msg)
+        }
+        const data = (await verify.json()) as VerifyResult
+        setResult(data)
+        setScanned(code)
+        setDrawerOpen(true)
+        log("verify-qr ok", { orderId: data.orderId, items: data.items?.length })
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "Scan fehlgeschlagen")
+        resumeScanning()
+        log("verify-qr error; resume scanning", e)
       }
-      const data = (await verify.json()) as VerifyResult
-      setResult(data)
-      setScanned(code)
-      setDrawerOpen(true)
-      log("verify-qr ok", { orderId: data.orderId, items: data.items?.length })
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Scan fehlgeschlagen")
-      // Verarbeitung wieder zulassen; Kamera läuft weiter
-      setScanningPaused(false)
-      log("verify-qr error; resume scanning")
-    }
-  }
+    },
+    [resumeScanning, stationKey, log]
+  )
+
+  const handleDecoded = useCallback(
+    async (decodedText: string) => {
+      if (!decodedText) return
+      if (scanLockedRef.current) return
+      scanLockedRef.current = true
+      try {
+        scannerRef.current?.pause(true)
+      } catch {}
+      await handleScanned(decodedText)
+    },
+    [handleScanned]
+  )
 
   async function redeem() {
     if (!result) return
@@ -362,7 +310,7 @@ export default function StationPage() {
   return (
     <div className="bg-background text-foreground flex min-h-screen flex-col items-center gap-2 pt-6 sm:p-6">
       <h1 className="font-primary text-3xl">Abholungsstation</h1>
-      <p className="text-muted-foreground max-w-md text-center">Scanne Abhol-QR-Codes hier</p>
+      <p className="text-muted-foreground mb-4 max-w-md text-center">Scanne Abhol-QR-Codes hier</p>
 
       {status && !status.approved && (
         <div className="place-items-center p-4">
@@ -393,26 +341,79 @@ export default function StationPage() {
       )}
 
       {status?.approved && (
-        <div className="flex w-full max-w-xl flex-col gap-4">
-          {devices.length > 1 && (
-            <div className="flex flex-col gap-2">
-              <label className="text-sm">Kamera</label>
-              <Select value={deviceId} onValueChange={setDeviceId}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Kamera wählen" />
-                </SelectTrigger>
-                <SelectContent>
-                  {devices.map((d) => (
-                    <SelectItem key={d.deviceId} value={d.deviceId}>
-                      {d.label || `Kamera ${d.deviceId.slice(0, 6)}`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <div className="flex w-full flex-col gap-4 sm:max-w-xl">
+          {!scannerActive && (
+            <div className="bg-background rounded-xl border p-5 shadow-sm">
+              <div className="flex flex-col gap-2">
+                <h2 className="text-xl font-semibold">Scanner starten</h2>
+              </div>
+
+              <div className="mt-2 grid gap-3">
+                <div className="flex flex-wrap gap-2">
+                  {cameraPermission !== "granted" && (
+                    <Button onClick={requestCameraAccess} disabled={cameraPermission === "pending"}>
+                      {cameraPermission === "pending" ? "Kamerazugriff wird angefragt..." : "Kamerazugriff erlauben"}
+                    </Button>
+                  )}
+                </div>
+
+                {cameraPermission === "granted" && (
+                  <div className="grid gap-2">
+                    <Label htmlFor="camera">Kamera</Label>
+                    {devices.length > 0 ? (
+                      <>
+                        <Select value={deviceId} onValueChange={setDeviceId}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Kamera wählen" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {devices.map((d) => (
+                              <SelectItem key={d.deviceId} value={d.deviceId}>
+                                {d.label || `Kamera ${d.deviceId.slice(0, 6)}`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="secondary"
+                          onClick={startScanner}
+                          disabled={cameraPermission !== "granted" || !deviceId}
+                        >
+                          Scanner starten
+                        </Button>
+                      </>
+                    ) : (
+                      <p className="text-muted-foreground text-sm">Keine Kamera gefunden.</p>
+                    )}
+                  </div>
+                )}
+
+                {cameraPermission === "denied" && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+                    Zugriff abgelehnt. Bitte erlaube den Kamerazugriff in den Browser-Einstellungen und versuche es
+                    erneut.
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
-          <video ref={videoRef} className="bg-muted w-full rounded-2xl" muted playsInline />
+          {scannerActive && cameraPermission === "granted" && (
+            <div className="w-full">
+              <Html5QrcodeScannerPlugin
+                key={`${deviceId}-${scannerKey}`}
+                cameraId={deviceId || undefined}
+                fps={10}
+                qrbox={250}
+                disableFlip={false}
+                qrCodeSuccessCallback={handleDecoded}
+                onReady={handleScannerReady}
+                onStartError={handleScannerStartError}
+                onStop={handleScannerStop}
+              />
+            </div>
+          )}
+
           {error && (
             <div role="alert" aria-live="assertive" className="text-destructive">
               {error}
@@ -428,9 +429,7 @@ export default function StationPage() {
           if (!open) {
             setResult(null)
             setScanned(null)
-            setScanningPaused(false)
-            pausedRef.current = false
-            lastAtRef.current = 0
+            resumeScanning()
             log("Dialog closed; resume scanning")
           }
         }}
@@ -495,9 +494,7 @@ export default function StationPage() {
                 setDrawerOpen(false)
                 setResult(null)
                 setScanned(null)
-                setScanningPaused(false)
-                pausedRef.current = false
-                lastAtRef.current = 0
+                resumeScanning()
                 log("Dialog closed; resume scanning")
               }}
             >
