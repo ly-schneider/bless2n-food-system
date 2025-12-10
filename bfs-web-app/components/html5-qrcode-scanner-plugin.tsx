@@ -48,13 +48,8 @@ const Html5QrcodeScannerPlugin = (props: Html5QrcodeScannerPluginProps) => {
     styleEl.innerHTML = `
 #${regionId} { position: relative; display: block; width: 100% !important; max-width: 28rem; aspect-ratio: 1 / 1; margin: 0 auto; }
 @media (max-width: 640px) { #${regionId} { max-width: 100vw !important; } }
-#${regionId} > *:not(video):not(style) { display: none !important; }
 #${regionId} video { width: 100% !important; height: 100% !important; object-fit: cover; display: block !important; }
 #${regionId} video:nth-of-type(n+2) { display: none !important; }
-#${regionId} canvas { display: none !important; }
-#${regionId} img { display: none !important; }
-#${regionId} .html5-qrcode-element { width: 100% !important; }
-#${regionId} .qr-shaded-region { display: none !important; }
 `
     document.head.appendChild(styleEl)
     return () => {
