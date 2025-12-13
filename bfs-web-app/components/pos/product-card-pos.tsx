@@ -67,11 +67,6 @@ export function ProductCardPOS({ product, onConfigure }: { product: ProductDTO; 
               <span className="rounded-full bg-red-400 px-3 py-1 text-sm font-medium text-white">Ausverkauft</span>
             </div>
           )}
-          {isAvailable && !isActive && (
-            <div className="absolute inset-0 z-10 grid place-items-center rounded-[11px] bg-black/55">
-              <span className="rounded-full bg-zinc-700 px-3 py-1 text-sm font-medium text-white">Nicht verfügbar</span>
-            </div>
-          )}
           {isLowStock && isAvailable && isActive && (
             <div className="absolute top-1 left-2 z-10">
               <span className="rounded-full bg-amber-600 px-2 py-0.5 text-xs font-medium text-white">

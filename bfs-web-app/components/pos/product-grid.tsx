@@ -22,6 +22,7 @@ export function ProductGrid({
   const cats = useMemo(() => {
     const byId = new Map<string, { id: string; name: string; position: number }>()
     for (const p of products.items) {
+      if (p.isActive === false) continue
       const c = p.category
       if (c?.id) {
         byId.set(c.id, { id: c.id, name: c.name, position: getCatPos(c) })
@@ -33,6 +34,7 @@ export function ProductGrid({
   const countsByCatId = useMemo(() => {
     const counts: Record<string, number> = {}
     for (const it of products.items) {
+      if (it.isActive === false) continue
       const id = it.category?.id
       if (!id) continue
       counts[id] = (counts[id] || 0) + 1
@@ -41,15 +43,16 @@ export function ProductGrid({
   }, [products])
 
   const filtered = useMemo(() => {
+    const activeItems = products.items.filter((it) => it.isActive !== false)
     if (activeCat === "all") {
-      return [...products.items].sort((a, b) => {
+      return [...activeItems].sort((a, b) => {
         const pa = getCatPos(a.category)
         const pb = getCatPos(b.category)
         if (pa !== pb) return pa - pb
         return a.name.localeCompare(b.name)
       })
     }
-    return products.items.filter((it) => it.category?.id === activeCat).sort((a, b) => a.name.localeCompare(b.name))
+    return activeItems.filter((it) => it.category?.id === activeCat).sort((a, b) => a.name.localeCompare(b.name))
   }, [products, activeCat])
 
   return (

@@ -28,6 +28,105 @@ func NewAdminProductHandler(prod repository.ProductRepository, inv repository.In
 	return &AdminProductHandler{products: prod, inventory: inv, audit: audit, validator: validator.New(), slotItems: slotItems, categories: cats, posConfig: posConfig}
 }
 
+type createProductBody struct {
+	Name       string             `json:"name" validate:"required,min=1"`
+	PriceCents int64              `json:"priceCents" validate:"required,gte=0"`
+	CategoryID string             `json:"categoryId" validate:"required"`
+	Type       domain.ProductType `json:"type" validate:"required,oneof=simple menu"`
+	Image      *string            `json:"image,omitempty"`
+	IsActive   *bool              `json:"isActive,omitempty"`
+	JetonID    *string            `json:"jetonId,omitempty"`
+}
+
+// Create godoc
+// @Summary Create product
+// @Tags admin-products
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param payload body createProductBody true "Product payload"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} response.ProblemDetails
+// @Failure 401 {object} response.ProblemDetails
+// @Router /v1/admin/products [post]
+func (h *AdminProductHandler) Create(w http.ResponseWriter, r *http.Request) {
+	claims, ok := middleware.GetUserFromContext(r.Context())
+	if !ok {
+		response.WriteError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	var body createProductBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid payload")
+		return
+	}
+	if err := h.validator.Struct(body); err != nil {
+		response.WriteProblem(w, response.NewValidationProblem(response.ConvertValidationErrors(err.(validator.ValidationErrors)), r.URL.Path))
+		return
+	}
+	if body.Type != domain.ProductTypeSimple {
+		response.WriteError(w, http.StatusBadRequest, "only simple products can be created here")
+		return
+	}
+	catID, err := bson.ObjectIDFromHex(body.CategoryID)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid category")
+		return
+	}
+	if h.categories != nil {
+		c, err := h.categories.GetByID(r.Context(), catID)
+		if err != nil || c == nil {
+			response.WriteError(w, http.StatusBadRequest, "category not found")
+			return
+		}
+	}
+	active := true
+	if body.IsActive != nil {
+		active = *body.IsActive
+	}
+	var jetonOID *bson.ObjectID
+	if body.JetonID != nil && *body.JetonID != "" {
+		if oid, err := bson.ObjectIDFromHex(*body.JetonID); err == nil {
+			jetonOID = &oid
+		} else {
+			response.WriteError(w, http.StatusBadRequest, "invalid jeton id")
+			return
+		}
+	}
+	if active && h.posConfig != nil {
+		if settings, err := h.posConfig.GetSettings(r.Context()); err == nil && settings != nil && settings.Mode == domain.PosModeJeton {
+			if jetonOID == nil {
+				response.WriteError(w, http.StatusBadRequest, "jeton_required")
+				return
+			}
+		}
+	}
+	p := &domain.Product{
+		CategoryID: catID,
+		Type:       domain.ProductTypeSimple,
+		Name:       body.Name,
+		Image:      body.Image,
+		PriceCents: domain.Cents(body.PriceCents),
+		JetonID:    jetonOID,
+		IsActive:   active,
+	}
+	id, err := h.products.Insert(r.Context(), p)
+	if err != nil {
+		response.WriteError(w, http.StatusInternalServerError, "create failed")
+		return
+	}
+	_ = h.audit.Insert(r.Context(), &domain.AuditLog{
+		Action:      domain.AuditCreate,
+		EntityType:  "product",
+		EntityID:    id.Hex(),
+		After:       p,
+		RequestID:   getRequestIDPtr(r),
+		ActorUserID: objIDPtr(claims.Subject),
+		ActorRole:   strPtr(string(claims.Role)),
+	})
+	response.WriteJSON(w, http.StatusCreated, map[string]any{"id": id.Hex()})
+}
+
 type patchPriceBody struct {
 	PriceCents int64 `json:"priceCents" validate:"required,gte=0"`
 }
@@ -186,62 +285,6 @@ func (h *AdminProductHandler) PatchJeton(w http.ResponseWriter, r *http.Request)
 		}
 	}
 	if err := h.posConfig.SetProductJeton(r.Context(), pid, jetonOID); err != nil {
-		if errors.Is(err, service.ErrJetonRequired) {
-			response.WriteError(w, http.StatusBadRequest, "jeton_required")
-			return
-		}
-		response.WriteError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	response.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
-}
-
-type bulkJetonAssignment struct {
-	Assignments []struct {
-		ProductID string  `json:"productId"`
-		JetonID   *string `json:"jetonId"`
-	} `json:"assignments"`
-}
-
-// BulkPatchJetons godoc
-// @Summary Bulk assign jetons to products
-// @Tags admin-products
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param payload body bulkJetonAssignment true "Assignments"
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} response.ProblemDetails
-// @Router /v1/admin/products/jetons/bulk [post]
-func (h *AdminProductHandler) BulkPatchJetons(w http.ResponseWriter, r *http.Request) {
-	if h.posConfig == nil {
-		response.WriteError(w, http.StatusInternalServerError, "jeton service unavailable")
-		return
-	}
-	var body bulkJetonAssignment
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		response.WriteError(w, http.StatusBadRequest, "invalid json")
-		return
-	}
-	assignments := make([]service.ProductJetonAssignment, 0, len(body.Assignments))
-	for _, it := range body.Assignments {
-		pid, err := bson.ObjectIDFromHex(it.ProductID)
-		if err != nil {
-			response.WriteError(w, http.StatusBadRequest, "invalid product id")
-			return
-		}
-		var jetonOID *bson.ObjectID
-		if it.JetonID != nil && *it.JetonID != "" {
-			if oid, err := bson.ObjectIDFromHex(*it.JetonID); err == nil {
-				jetonOID = &oid
-			} else {
-				response.WriteError(w, http.StatusBadRequest, "invalid jeton id")
-				return
-			}
-		}
-		assignments = append(assignments, service.ProductJetonAssignment{ProductID: pid, JetonID: jetonOID})
-	}
-	if err := h.posConfig.BulkAssignJetons(r.Context(), assignments); err != nil {
 		if errors.Is(err, service.ErrJetonRequired) {
 			response.WriteError(w, http.StatusBadRequest, "jeton_required")
 			return

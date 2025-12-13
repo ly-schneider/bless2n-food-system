@@ -10,9 +10,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Switch } from "@/components/ui/switch"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
 
 import { getCSRFToken } from "@/lib/csrf"
+import { readErrorMessage } from "@/lib/http"
 import { Category, ProductDTO } from "@/types"
 
 type DirtyProduct = {
@@ -21,6 +23,7 @@ type DirtyProduct = {
   priceCents: number
   categoryId: string | null
   stock: number | null
+  isActive: boolean
 }
 
 function formatPriceLabel(cents: number): string {
@@ -112,7 +115,7 @@ export default function AdminMenuPage() {
       }
       if (pr.ok) {
         const d = (await pr.json()) as { items: ProductDTO[] }
-        setItems((d.items || []).filter((p) => p.isActive))
+        setItems(d.items || [])
       } else {
         throw new Error(`HTTP ${pr.status}`)
       }
@@ -226,6 +229,7 @@ export default function AdminMenuPage() {
                 priceCents: 0,
                 categoryId: activeCat !== "all" ? activeCat : null,
                 stock: null,
+                isActive: true,
               })
             }
           />
@@ -241,6 +245,7 @@ export default function AdminMenuPage() {
                   priceCents: product.priceCents,
                   categoryId: product.category?.id ?? null,
                   stock: product.availableQuantity ?? null,
+                  isActive: product.isActive,
                 })
               }
             />
@@ -339,7 +344,7 @@ function ProductCard({ product, onEdit }: { product: ProductDTO; onEdit: () => v
           )}
           {isAvailable && !isActive && (
             <div className="absolute inset-0 z-10 grid place-items-center rounded-[11px] bg-black/55">
-              <span className="rounded-full bg-zinc-700 px-3 py-1 text-sm font-medium text-white">Nicht verfügbar</span>
+              <span className="rounded-full bg-zinc-700 px-3 py-1 text-sm font-medium text-white">Nicht aktiv</span>
             </div>
           )}
           {isLowStock && isAvailable && isActive && (
@@ -488,6 +493,16 @@ function EditDialog({
                 />
               </div>
             </div>
+            <div className="flex items-center justify-between gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="is-active">Aktiv</Label>
+              </div>
+              <Switch
+                id="is-active"
+                checked={local.isActive}
+                onCheckedChange={(checked) => setLocal({ ...local, isActive: checked })}
+              />
+            </div>
             <div className="flex items-center justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
                 Abbrechen
@@ -543,6 +558,20 @@ async function saveChanges(fetchAuth: ReturnType<typeof useAuthorizedFetch>, ite
         body: JSON.stringify({ delta, reason: "manual_adjust" }),
       })
       if (!res.ok) throw new Error("Bestand aktualisieren fehlgeschlagen")
+    }
+  }
+
+  // Active flag
+  if (original && original.isActive !== p.isActive) {
+    const res = await fetchAuth(`/api/v1/admin/products/${encodeURIComponent(p.id)}/active`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
+      body: JSON.stringify({ isActive: p.isActive }),
+    })
+    if (!res.ok) {
+      const msg = await readErrorMessage(res)
+      if (msg === "jeton_required") throw new Error("Bitte zuerst einen Jeton zuweisen.")
+      throw new Error(msg || "Status aktualisieren fehlgeschlagen")
     }
   }
 }

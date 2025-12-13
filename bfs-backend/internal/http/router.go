@@ -183,7 +183,7 @@ func NewRouter(
 			admin.Delete("/products/{id}", http.HandlerFunc(ap.DeleteHard))
 			admin.Patch("/products/{id}/category", http.HandlerFunc(ap.PatchCategory))
 			admin.Patch("/products/{id}/jeton", http.HandlerFunc(ap.PatchJeton))
-			admin.Post("/products/jetons/bulk", http.HandlerFunc(ap.BulkPatchJetons))
+			admin.Post("/products", http.HandlerFunc(ap.Create))
 			// Orders admin
 			ao := handler.NewAdminOrderHandler(orderRepo, orderItemRepo, productRepo, auditRepo)
 			admin.Get("/orders", http.HandlerFunc(ao.List))

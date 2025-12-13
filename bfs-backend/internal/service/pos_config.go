@@ -41,12 +41,6 @@ type POSConfigService interface {
 	UpdateJeton(ctx context.Context, id bson.ObjectID, name, paletteColor string, hexColor *string) (*domain.JetonDTO, error)
 	DeleteJeton(ctx context.Context, id bson.ObjectID) error
 	SetProductJeton(ctx context.Context, productID bson.ObjectID, jetonID *bson.ObjectID) error
-	BulkAssignJetons(ctx context.Context, assignments []ProductJetonAssignment) error
-}
-
-type ProductJetonAssignment struct {
-	ProductID bson.ObjectID
-	JetonID   *bson.ObjectID
 }
 
 type posConfigService struct {
@@ -259,56 +253,6 @@ func (s *posConfigService) SetProductJeton(ctx context.Context, productID bson.O
 		return ErrJetonRequired
 	}
 	return s.products.UpdateJeton(ctx, productID, jetonID)
-}
-
-func (s *posConfigService) BulkAssignJetons(ctx context.Context, assignments []ProductJetonAssignment) error {
-	if len(assignments) == 0 {
-		return nil
-	}
-	// Preload settings and products
-	settings, err := s.settings.Get(ctx)
-	if err != nil {
-		return err
-	}
-	productIDs := make([]bson.ObjectID, 0, len(assignments))
-	for _, a := range assignments {
-		productIDs = append(productIDs, a.ProductID)
-	}
-	products, err := s.products.GetByIDs(ctx, productIDs)
-	if err != nil {
-		return err
-	}
-	prodByID := make(map[bson.ObjectID]*domain.Product, len(products))
-	for _, p := range products {
-		prodByID[p.ID] = p
-	}
-	// Validate jetons existence for all referenced ids
-	uniqueJetons := make(map[bson.ObjectID]struct{})
-	for _, a := range assignments {
-		if a.JetonID != nil {
-			uniqueJetons[*a.JetonID] = struct{}{}
-		}
-	}
-	for jid := range uniqueJetons {
-		if j, err := s.jetons.FindByID(ctx, jid); err != nil {
-			return err
-		} else if j == nil {
-			return mongoNotFoundErr("jeton_not_found")
-		}
-	}
-	for _, a := range assignments {
-		p := prodByID[a.ProductID]
-		if p == nil {
-			return mongoNotFoundErr("product_not_found")
-		}
-		if settings != nil && settings.Mode == domain.PosModeJeton && p.IsActive && a.JetonID == nil {
-			return ErrJetonRequired
-		}
-		if err := s.products.UpdateJeton(ctx, a.ProductID, a.JetonID); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func mongoNotFoundErr(msg string) error {
