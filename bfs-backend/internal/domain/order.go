@@ -52,10 +52,16 @@ const (
 
 // PosPayment stores POS tender details attached to an order.
 type PosPayment struct {
-	Method              string  `bson:"method" json:"method"` // "cash" or "card"
+	Method              string  `bson:"method" json:"method"` // "cash", "card", "twint"
 	AmountReceivedCents *Cents  `bson:"amount_received_cents,omitempty" json:"amountReceivedCents,omitempty"`
 	ChangeCents         *Cents  `bson:"change_cents,omitempty" json:"changeCents,omitempty"`
 	Processor           *string `bson:"processor,omitempty" json:"processor,omitempty"` // e.g., "sumup"
 	TransactionID       *string `bson:"transaction_id,omitempty" json:"transactionId,omitempty"`
 	Status              *string `bson:"status,omitempty" json:"status,omitempty"` // succeeded / canceled / failed
 }
+
+const (
+	PosPaymentMethodCash  = "cash"
+	PosPaymentMethodCard  = "card"
+	PosPaymentMethodTwint = "twint"
+)

@@ -33,6 +33,7 @@ type OrderRepository interface {
 	SetOrigin(ctx context.Context, id bson.ObjectID, origin domain.OrderOrigin) error
 	SetPosPaymentCash(ctx context.Context, id bson.ObjectID, received domain.Cents, change domain.Cents) error
 	SetPosPaymentCard(ctx context.Context, id bson.ObjectID, processor string, transactionID *string, status string, markPaid bool) error
+	SetPosPaymentTwint(ctx context.Context, id bson.ObjectID, transactionID *string, status string, markPaid bool) error
 }
 
 type orderRepository struct {
@@ -334,9 +335,13 @@ func (r *orderRepository) SetOrigin(ctx context.Context, id bson.ObjectID, origi
 
 func (r *orderRepository) SetPosPaymentCash(ctx context.Context, id bson.ObjectID, received domain.Cents, change domain.Cents) error {
 	set := bson.M{
-		"status":      domain.OrderStatusPaid,
-		"pos_payment": bson.M{"method": "cash", "amount_received_cents": received, "change_cents": change},
-		"updated_at":  time.Now().UTC(),
+		"status": domain.OrderStatusPaid,
+		"pos_payment": bson.M{
+			"method":                domain.PosPaymentMethodCash,
+			"amount_received_cents": received,
+			"change_cents":          change,
+		},
+		"updated_at": time.Now().UTC(),
 	}
 	res, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": set})
 	if err != nil {
@@ -350,8 +355,35 @@ func (r *orderRepository) SetPosPaymentCash(ctx context.Context, id bson.ObjectI
 
 func (r *orderRepository) SetPosPaymentCard(ctx context.Context, id bson.ObjectID, processor string, transactionID *string, status string, markPaid bool) error {
 	set := bson.M{
-		"pos_payment": bson.M{"method": "card", "processor": processor, "transaction_id": transactionID, "status": status},
-		"updated_at":  time.Now().UTC(),
+		"pos_payment": bson.M{
+			"method":         domain.PosPaymentMethodCard,
+			"processor":      processor,
+			"transaction_id": transactionID,
+			"status":         status,
+		},
+		"updated_at": time.Now().UTC(),
+	}
+	if markPaid {
+		set["status"] = domain.OrderStatusPaid
+	}
+	res, err := r.collection.UpdateByID(ctx, id, bson.M{"$set": set})
+	if err != nil {
+		return err
+	}
+	if res.MatchedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+	return nil
+}
+
+func (r *orderRepository) SetPosPaymentTwint(ctx context.Context, id bson.ObjectID, transactionID *string, status string, markPaid bool) error {
+	set := bson.M{
+		"pos_payment": bson.M{
+			"method":         domain.PosPaymentMethodTwint,
+			"transaction_id": transactionID,
+			"status":         status,
+		},
+		"updated_at": time.Now().UTC(),
 	}
 	if markPaid {
 		set["status"] = domain.OrderStatusPaid

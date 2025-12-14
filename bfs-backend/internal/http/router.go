@@ -132,6 +132,7 @@ func NewRouter(
 			pos.Post("/orders", posHandler.CreateOrder)
 			pos.Post("/orders/{id}/pay-cash", posHandler.PayCash)
 			pos.Post("/orders/{id}/pay-card", posHandler.PayCard)
+			pos.Post("/orders/{id}/pay-twint", posHandler.PayTwint)
 		})
 
 		// Orders: public details by id, and authenticated list
