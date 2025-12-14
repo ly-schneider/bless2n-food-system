@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">BlessThun Food</string>
+    <!-- Override SumUp SDK string to satisfy AAPT positional formatting requirement -->
+    <string name="sumup_bt_reset_air_message">Press and hold the power button down until the display shows %1$s. This can take a moment. Once %2$s pops up, promptly release the power button.</string>
 </resources>
