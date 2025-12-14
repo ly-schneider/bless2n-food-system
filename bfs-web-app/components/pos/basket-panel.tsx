@@ -13,7 +13,9 @@ import { Label } from "@/components/ui/label"
 import { useCart } from "@/contexts/cart-context"
 
 import { formatChf } from "@/lib/utils"
+import type { CartItem } from "@/types/cart"
 import type { PosFulfillmentMode } from "@/types/jeton"
+import type { ProductSummaryDTO } from "@/types/product"
 
 type Tender = "cash" | "card" | null
 type Receipt = {
@@ -58,7 +60,7 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
   const [received, setReceived] = useState<string>("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [editingItem, setEditingItem] = useState<import("@/types/cart").CartItem | null>(null)
+  const [editingItem, setEditingItem] = useState<CartItem | null>(null)
   const [showReceipt, setShowReceipt] = useState(false)
   const [receipt, setReceipt] = useState<Receipt | null>(null)
   const [printing, setPrinting] = useState(false)
@@ -88,10 +90,46 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
   const changeCents = Math.max(0, receivedCents - total)
   const cartIsEmpty = cart.items.length === 0
   const jetonMode = mode === "JETON"
-  const hasMissingJeton = useMemo(() => cart.items.some((it) => !it.product?.jeton), [cart.items])
+  const resolveMenuSelections = useCallback((item: CartItem) => {
+    if (item.product.type !== "menu" || !item.configuration) return []
+    const slots = item.product.menu?.slots || []
+    const selections: ProductSummaryDTO[] = []
+    for (const [slotId, productId] of Object.entries(item.configuration)) {
+      const slot = slots.find((s) => s.id === slotId)
+      const choice = slot?.menuSlotItems?.find((p) => p.id === productId)
+      if (choice) selections.push(choice)
+    }
+    return selections
+  }, [])
+  const hasMissingJeton = useMemo(() => {
+    for (const it of cart.items) {
+      if (it.product.type === "menu") {
+        const selections = resolveMenuSelections(it)
+        const configuredSlots = Object.keys(it.configuration || {})
+        if (configuredSlots.length === 0 || selections.length < configuredSlots.length) return true
+        for (const choice of selections) {
+          if (!choice.jeton) return true
+        }
+      } else if (!it.product?.jeton) {
+        return true
+      }
+    }
+    return false
+  }, [cart.items, resolveMenuSelections])
   const computeJetonTotals = useCallback((): JetonTotal[] => {
     const totals = new Map<string, JetonTotal>()
     for (const it of cart.items) {
+      if (it.product.type === "menu") {
+        const selections = resolveMenuSelections(it)
+        for (const choice of selections) {
+          const jeton = choice.jeton
+          if (!jeton) continue
+          const existing = totals.get(jeton.id)
+          if (existing) existing.count += it.quantity
+          else totals.set(jeton.id, { id: jeton.id, name: jeton.name, color: jeton.colorHex, count: it.quantity })
+        }
+        continue
+      }
       const jeton = it.product.jeton
       if (!jeton) continue
       const existing = totals.get(jeton.id)
@@ -99,7 +137,7 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
       else totals.set(jeton.id, { id: jeton.id, name: jeton.name, color: jeton.colorHex, count: it.quantity })
     }
     return Array.from(totals.values()).sort((a, b) => a.name.localeCompare(b.name))
-  }, [cart.items])
+  }, [cart.items, resolveMenuSelections])
 
   useEffect(() => {
     const onLock = () => {

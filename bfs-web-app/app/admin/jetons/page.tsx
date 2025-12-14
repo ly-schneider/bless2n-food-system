@@ -87,9 +87,10 @@ export default function AdminJetonsPage() {
         if (!res.ok) throw new Error(await readErrorMessage(res))
         const data = (await res.json()) as { items: ProductSummaryDTO[] }
         if (cancelled) return
-        setProducts(data.items || [])
+        const simpleProducts = (data.items || []).filter((p) => p.type === "simple")
+        setProducts(simpleProducts)
         const draft: Record<string, string> = {}
-        for (const p of data.items || []) {
+        for (const p of simpleProducts) {
           draft[p.id] = p.jeton?.id ?? ""
         }
         setAssignDraft(draft)
@@ -297,6 +298,9 @@ export default function AdminJetonsPage() {
             Weise Jetons den Produkten zu oder ändere bestehende Zuweisungen. Änderungen wirken sofort, der POS bleibt
             standardmäßig im QR-Code-Modus.
           </p>
+          <p className="text-muted-foreground text-xs">
+            Menüs verwenden automatisch die Jetons ihrer ausgewählten Einzelprodukte und erscheinen hier nicht.
+          </p>
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div className="flex flex-wrap items-center gap-2">
               <Input
@@ -337,7 +341,7 @@ export default function AdminJetonsPage() {
             <div className="text-muted-foreground text-sm">Keine Produkte gefunden.</div>
           )}
           {filteredProducts.length > 0 && (
-            <div className="rounded-md border">
+            <div className="rounded-xl border">
               <Table>
                 <TableHeader>
                   <TableRow>

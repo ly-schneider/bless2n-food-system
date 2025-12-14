@@ -341,7 +341,7 @@ function ProductCardEditable({
   const parsedPrice = parsePrice(priceInput)
   const trimmedName = name.trim()
   const newStock = currentStockValue + delta
-  const jetonRequired = posMode === "JETON" && isActive && !jetonId
+  const jetonRequired = product.type === "simple" && posMode === "JETON" && isActive && !jetonId
 
   const priceDirty = parsedPrice != null ? parsedPrice !== product.priceCents : priceInput !== initialPrice
   const dirty =
@@ -383,7 +383,7 @@ function ProductCardEditable({
       if (categoryId !== (product.category?.id ?? "")) updates.push(moveCategory(product.id, categoryId))
       if (jetonId !== (product.jeton?.id ?? "")) updates.push(updateJeton(product.id, jetonId || null))
       if (isActive !== product.isActive) {
-        if (posMode === "JETON" && isActive && !jetonId) {
+        if (product.type === "simple" && posMode === "JETON" && isActive && !jetonId) {
           throw new Error("Im Jeton-Modus benötigen aktive Produkte einen Jeton.")
         }
         updates.push(setActive(product.id, isActive))
@@ -696,7 +696,7 @@ function CreateProductCard({
 
   const parsedPrice = parsePrice(priceInput)
   const trimmedName = name.trim()
-  const jetonRequired = posMode === "JETON" && isActive && !jetonId
+  const jetonRequired = type === "simple" && posMode === "JETON" && isActive && !jetonId
   const stockValid = initialStock >= 0
   const valid =
     trimmedName.length > 0 &&

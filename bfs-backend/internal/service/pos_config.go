@@ -250,7 +250,9 @@ func (s *posConfigService) SetProductJeton(ctx context.Context, productID bson.O
 		return err
 	}
 	if settings != nil && settings.Mode == domain.PosModeJeton && p.IsActive && jetonID == nil {
-		return ErrJetonRequired
+		if p.Type == domain.ProductTypeSimple {
+			return ErrJetonRequired
+		}
 	}
 	return s.products.UpdateJeton(ctx, productID, jetonID)
 }

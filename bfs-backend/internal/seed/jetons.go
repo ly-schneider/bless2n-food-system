@@ -128,6 +128,9 @@ func (s JetonSeeder) assignJetonsToProducts(ctx context.Context, db *mongo.Datab
 
 		categoryName := categories[p.CategoryID]
 		jetonName := ""
+		if p.Type == domain.ProductTypeMenu {
+			continue
+		}
 		switch categoryName {
 		case "Burgers":
 			jetonName = "Burger"
@@ -135,11 +138,6 @@ func (s JetonSeeder) assignJetonsToProducts(ctx context.Context, db *mongo.Datab
 			jetonName = "Beilage"
 		case "Getränke":
 			jetonName = "Getränk"
-		case "Menus":
-			jetonName = "Menu"
-		}
-		if p.Type == domain.ProductTypeMenu {
-			jetonName = "Menu"
 		}
 		jetonID, ok := jetonIDs[jetonName]
 		if !ok || jetonName == "" {

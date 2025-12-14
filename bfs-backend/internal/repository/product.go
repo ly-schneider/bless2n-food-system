@@ -228,6 +228,7 @@ func (r *productRepository) DeleteByID(ctx context.Context, id bson.ObjectID) er
 func (r *productRepository) CountActiveWithoutJeton(ctx context.Context) (int64, error) {
 	filter := bson.M{
 		"is_active": true,
+		"type":      domain.ProductTypeSimple,
 		"$or": []bson.M{
 			{"jeton_id": bson.M{"$exists": false}},
 			{"jeton_id": nil},
@@ -242,7 +243,10 @@ func (r *productRepository) CountByJetonIDs(ctx context.Context, ids []bson.Obje
 		return out, nil
 	}
 	pipeline := mongo.Pipeline{
-		{{Key: "$match", Value: bson.M{"jeton_id": bson.M{"$in": ids}}}},
+		{{Key: "$match", Value: bson.M{
+			"jeton_id": bson.M{"$in": ids},
+			"type":     domain.ProductTypeSimple,
+		}}},
 		{{Key: "$group", Value: bson.M{"_id": "$jeton_id", "count": bson.M{"$sum": 1}}}},
 	}
 	cur, err := r.collection.Aggregate(ctx, pipeline)
