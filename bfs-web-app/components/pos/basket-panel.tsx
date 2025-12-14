@@ -1,6 +1,6 @@
 "use client"
 
-import { Banknote, Check, CreditCard, Printer, ShoppingCart, XCircle } from "lucide-react"
+import { Banknote, Check, CreditCard, Printer, QrCode, ShoppingCart, XCircle } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { CartItemDisplay } from "@/components/cart/cart-item-display"
 import { InlineMenuGroup } from "@/components/cart/inline-menu-group"
@@ -17,9 +17,10 @@ import type { CartItem } from "@/types/cart"
 import type { PosFulfillmentMode } from "@/types/jeton"
 import type { ProductSummaryDTO } from "@/types/product"
 
-type Tender = "cash" | "card" | null
+type PosPaymentMethod = "cash" | "card" | "twint"
+type Tender = PosPaymentMethod | null
 type Receipt = {
-  method: "cash" | "card"
+  method: PosPaymentMethod
   totalCents: number
   orderId?: string
   amountReceivedCents?: number
@@ -83,7 +84,7 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
   const [jetonSummary, setJetonSummary] = useState<{
     items: JetonTotal[]
     orderId?: string
-    payment?: "cash" | "card"
+    payment?: PosPaymentMethod
   } | null>(null)
   const total = cart.totalCents
   const receivedCents = useMemo(() => Math.round((parseFloat(received || "0") || 0) * 100), [received])
@@ -138,6 +139,33 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
     }
     return Array.from(totals.values()).sort((a, b) => a.name.localeCompare(b.name))
   }, [cart.items, resolveMenuSelections])
+  const buildPrintItems = useCallback((): NonNullable<Receipt["items"]> => {
+    return cart.items.map((it) => {
+      const cfg: Array<{ slot: string; choice: string }> = []
+      if (it.product.type === "menu" && it.configuration && it.product.menu?.slots) {
+        for (const [slotId, productId] of Object.entries(it.configuration)) {
+          const slot = it.product.menu.slots.find((s) => s.id === slotId)
+          const choice = slot?.menuSlotItems?.find((p) => p.id === productId)
+          if (slot && choice) cfg.push({ slot: slot.name, choice: choice.name })
+        }
+      }
+      return {
+        title: it.product.name,
+        quantity: it.quantity,
+        unitPriceCents: it.totalPriceCents,
+        configuration: cfg.length ? cfg : undefined,
+      }
+    })
+  }, [cart.items])
+  const fetchPickupQr = useCallback(async (orderId: string) => {
+    try {
+      const r = await fetch(`/api/v1/orders/${orderId}/pickup-qr`)
+      const q = (await r.json()) as { code?: string }
+      return q.code || null
+    } catch {
+      return null
+    }
+  }, [])
 
   useEffect(() => {
     const onLock = () => {
@@ -224,30 +252,9 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
             })
 
             // Fetch pickup QR
-            let pickupQr: string | null = null
-            try {
-              const r = await fetch(`/api/v1/orders/${orderId}/pickup-qr`)
-              const q = (await r.json()) as { code?: string }
-              pickupQr = q.code || null
-            } catch {}
-
-            // Build receipt
-            const printItems: NonNullable<Receipt["items"]> = cart.items.map((it) => {
-              const cfg: Array<{ slot: string; choice: string }> = []
-              if (it.product.type === "menu" && it.configuration && it.product.menu?.slots) {
-                for (const [slotId, productId] of Object.entries(it.configuration)) {
-                  const slot = it.product.menu.slots.find((s) => s.id === slotId)
-                  const choice = slot?.menuSlotItems?.find((p) => p.id === productId)
-                  if (slot && choice) cfg.push({ slot: slot.name, choice: choice.name })
-                }
-              }
-              return {
-                title: it.product.name,
-                quantity: it.quantity,
-                unitPriceCents: it.totalPriceCents,
-                configuration: cfg.length ? cfg : undefined,
-              }
-            })
+            const pickupQr = await fetchPickupQr(orderId)
+            const printItems = buildPrintItems()
+            const orderTimestamp = Date.now()
 
             const nextReceipt: Receipt & { orderTimestamp?: number } = {
               method: "card",
@@ -255,7 +262,7 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
               orderId,
               items: printItems,
               pickupQr,
-              orderTimestamp: Date.now(),
+              orderTimestamp,
             }
             const jetons = computeJetonTotals()
             if (jetonMode) {
@@ -299,7 +306,7 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
     }
     window.addEventListener("bfs:sumup:result", onSumup as EventListener)
     return () => window.removeEventListener("bfs:sumup:result", onSumup as EventListener)
-  }, [cart.items, token, total, showCard, cardRef, clearCart, jetonMode, computeJetonTotals])
+  }, [token, total, showCard, cardRef, clearCart, jetonMode, computeJetonTotals, buildPrintItems, fetchPickupQr])
 
   useEffect(() => {
     try {
@@ -389,30 +396,11 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
       const jetons = computeJetonTotals()
 
       // Build print items snapshot before clearing cart
-      const printItems: NonNullable<Receipt["items"]> = cart.items.map((it) => {
-        const cfg: Array<{ slot: string; choice: string }> = []
-        if (it.product.type === "menu" && it.configuration && it.product.menu?.slots) {
-          for (const [slotId, productId] of Object.entries(it.configuration)) {
-            const slot = it.product.menu.slots.find((s) => s.id === slotId)
-            const choice = slot?.menuSlotItems?.find((p) => p.id === productId)
-            if (slot && choice) cfg.push({ slot: slot.name, choice: choice.name })
-          }
-        }
-        return {
-          title: it.product.name,
-          quantity: it.quantity,
-          unitPriceCents: it.totalPriceCents,
-          configuration: cfg.length ? cfg : undefined,
-        }
-      })
+      const printItems = buildPrintItems()
 
       // Fetch official pickup QR before printing (best-effort)
-      let pickupQr: string | null = null
-      try {
-        const qrRes = await fetch(`/api/v1/orders/${orderId}/pickup-qr`)
-        const qrJson = (await qrRes.json()) as { code?: string }
-        pickupQr = qrJson?.code || null
-      } catch {}
+      const pickupQr = await fetchPickupQr(orderId)
+      const orderTimestamp = Date.now()
 
       const receiptPayload: Receipt & { orderTimestamp?: number } = {
         method: "cash",
@@ -422,7 +410,7 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
         changeCents: payJson.changeCents,
         items: printItems,
         pickupQr: pickupQr || undefined,
-        orderTimestamp: Date.now(),
+        orderTimestamp,
       }
 
       if (jetonMode) {
@@ -460,6 +448,91 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
     jetonMode,
     hasMissingJeton,
     computeJetonTotals,
+    clearCart,
+    buildPrintItems,
+    fetchPickupQr,
+  ])
+
+  const startTwintPayment = useCallback(async () => {
+    if (busy) return
+    if (jetonMode && hasMissingJeton) {
+      setError("Im Jeton-Modus benötigt jedes Produkt einen Jeton.")
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      const items = cart.items.map((it) => ({
+        productId: it.product.id,
+        quantity: it.quantity,
+        configuration: it.configuration || undefined,
+      }))
+      const resOrder = await fetch(`/api/v1/pos/orders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Pos-Token": token },
+        body: JSON.stringify({ items }),
+      })
+      type ApiError = { detail?: string }
+      type OrderOk = { orderId: string }
+      const orderJson = (await resOrder.json()) as OrderOk & ApiError
+      if (!resOrder.ok) throw new Error(orderJson.detail || "order failed")
+      const orderId = orderJson.orderId
+
+      const resPay = await fetch(`/api/v1/pos/orders/${orderId}/pay-twint`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Pos-Token": token },
+        body: JSON.stringify({ status: "succeeded" }),
+      })
+      const payJson = (await resPay.json()) as ApiError
+      if (!resPay.ok) throw new Error(payJson.detail || "payment failed")
+
+      const jetons = computeJetonTotals()
+      const printItems = buildPrintItems()
+      const pickupQr = await fetchPickupQr(orderId)
+      const orderTimestamp = Date.now()
+      const receiptPayload: Receipt & { orderTimestamp?: number } = {
+        method: "twint",
+        orderId,
+        totalCents: total,
+        items: printItems,
+        pickupQr: pickupQr || undefined,
+        orderTimestamp,
+      }
+
+      if (jetonMode) {
+        setJetonSummary({ items: jetons, orderId, payment: "twint" })
+      } else {
+        try {
+          if (canPrint) getBridge()?.print?.(JSON.stringify(receiptPayload))
+          else setPrintErrorDialog("Drucken nicht verfügbar")
+        } catch {
+          setPrintErrorDialog("Drucken fehlgeschlagen")
+        }
+      }
+
+      try {
+        clearCart()
+      } catch {}
+      setShowCheckout(false)
+      setTender(null)
+      setReceived("")
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Bezahlen fehlgeschlagen"
+      setError(msg)
+    } finally {
+      setBusy(false)
+    }
+  }, [
+    busy,
+    jetonMode,
+    hasMissingJeton,
+    cart.items,
+    token,
+    computeJetonTotals,
+    buildPrintItems,
+    fetchPickupQr,
+    total,
+    canPrint,
     clearCart,
   ])
 
@@ -506,6 +579,17 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
     setPrinting(false)
     setPrinted(true)
   }, [])
+
+  const tenderTitle =
+    tender === null
+      ? "Bezahlen"
+      : tender === "cash"
+        ? "Barzahlung"
+        : tender === "card"
+          ? "Kartenzahlung"
+          : "TWINT-Zahlung"
+  const paymentMethodLabel = (method: PosPaymentMethod) =>
+    method === "cash" ? "Bar" : method === "card" ? "Karte" : "TWINT"
 
   return (
     <>
@@ -640,17 +724,18 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {tender === null ? "Bezahlen" : tender === "cash" ? "Barzahlung" : "Kartenzahlung"}
-            </DialogTitle>
+            <DialogTitle>{tenderTitle}</DialogTitle>
           </DialogHeader>
 
           {tender === null && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <Button
                 className="flex h-36 flex-col items-center justify-center gap-2 rounded-xl"
                 variant="outline"
-                onClick={() => setTender("cash")}
+                onClick={() => {
+                  setError(null)
+                  setTender("cash")
+                }}
                 aria-label="Bar bezahlen"
               >
                 <Banknote className="size-12" />
@@ -660,6 +745,7 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
                 className="flex h-36 flex-col items-center justify-center gap-2 rounded-xl"
                 variant="outline"
                 onClick={() => {
+                  setError(null)
                   if (canPayWithCard) {
                     startCardPayment()
                   } else {
@@ -670,6 +756,18 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
               >
                 <CreditCard className="size-12" />
                 <span className="text-base font-medium">Karte</span>
+              </Button>
+              <Button
+                className="flex h-36 flex-col items-center justify-center gap-2 rounded-xl"
+                variant="outline"
+                onClick={() => {
+                  setError(null)
+                  setTender("twint")
+                }}
+                aria-label="Mit TWINT bezahlen"
+              >
+                <QrCode className="size-12" />
+                <span className="text-base font-medium">TWINT</span>
               </Button>
             </div>
           )}
@@ -765,6 +863,21 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
               {!hasPosBridge && (
                 <div className="text-muted-foreground text-xs">Kartenzahlung außerhalb der Android-App deaktiviert</div>
               )}
+            </div>
+          )}
+
+          {tender === "twint" && (
+            <div className="mt-2 space-y-3">
+              <div className="flex items-center justify-between">
+                <span>Gesamt</span>
+                <span>{formatChf(total)}</span>
+              </div>
+              <div className="grid gap-2">
+                <Button className="h-12 w-full rounded-xl text-base" disabled={busy} onClick={startTwintPayment}>
+                  TWINT-Zahlung abschliessen
+                </Button>
+                {error && <div className="text-sm text-red-600">{error}</div>}
+              </div>
             </div>
           )}
 
@@ -1012,7 +1125,7 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
                 )}
                 <div className="flex items-center justify-between">
                   <span>Zahlart</span>
-                  <span className="font-medium">{receipt.method === "cash" ? "Bar" : "Karte"}</span>
+                  <span className="font-medium">{paymentMethodLabel(receipt.method)}</span>
                 </div>
               </div>
             )}

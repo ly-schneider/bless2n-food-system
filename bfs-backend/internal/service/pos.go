@@ -19,6 +19,7 @@ type POSService interface {
 	CreateOrder(ctx context.Context, items []CreateCheckoutInputItem, customerEmail *string) (bson.ObjectID, error)
 	PayCash(ctx context.Context, orderID bson.ObjectID, amountReceived domain.Cents) (change domain.Cents, err error)
 	PayCard(ctx context.Context, orderID bson.ObjectID, processor string, transactionID *string, status string) error
+	PayTwint(ctx context.Context, orderID bson.ObjectID, transactionID *string, status string) error
 }
 
 // Reuse CreateCheckoutInput item subtype
@@ -97,4 +98,12 @@ func (s *posService) PayCard(ctx context.Context, orderID bson.ObjectID, process
 	}
 	markPaid := status == "succeeded"
 	return s.orders.SetPosPaymentCard(ctx, orderID, processor, transactionID, status, markPaid)
+}
+
+func (s *posService) PayTwint(ctx context.Context, orderID bson.ObjectID, transactionID *string, status string) error {
+	if orderID.IsZero() {
+		return fmt.Errorf("invalid order id")
+	}
+	markPaid := status == "succeeded"
+	return s.orders.SetPosPaymentTwint(ctx, orderID, transactionID, status, markPaid)
 }

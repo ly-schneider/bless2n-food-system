@@ -50,6 +50,12 @@ type POSPayCardPayload struct {
 	Status        string  `json:"status" validate:"required,oneof=succeeded failed canceled"`
 }
 
+// POSPayTwintPayload is the request body for TWINT payment result.
+type POSPayTwintPayload struct {
+	TransactionID *string `json:"transactionId,omitempty"`
+	Status        string  `json:"status" validate:"required,oneof=succeeded failed canceled"`
+}
+
 // CreateRequest godoc
 // @Summary Request POS device access
 // @Tags pos
@@ -245,6 +251,55 @@ func (h *POSHandler) PayCard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.pos.PayCard(r.Context(), oid, body.Processor, body.TransactionID, body.Status); err != nil {
+		response.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	out := map[string]any{"status": body.Status}
+	if body.Status == "succeeded" {
+		out["orderStatus"] = "paid"
+	}
+	response.WriteJSON(w, http.StatusOK, out)
+}
+
+// PayTwint godoc
+// @Summary Attach POS TWINT payment result
+// @Tags pos
+// @Accept json
+// @Produce json
+// @Param X-Pos-Token header string true "POS token"
+// @Param id path string true "Order ID"
+// @Param payload body POSPayTwintPayload true "Payment payload"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} response.ProblemDetails
+// @Failure 403 {object} response.ProblemDetails
+// @Router /v1/pos/orders/{id}/pay-twint [post]
+func (h *POSHandler) PayTwint(w http.ResponseWriter, r *http.Request) {
+	token := strings.TrimSpace(r.Header.Get("X-Pos-Token"))
+	if token == "" {
+		response.WriteError(w, http.StatusBadRequest, "missing pos token")
+		return
+	}
+	dev, err := h.pos.GetDeviceByToken(r.Context(), token)
+	if err != nil || dev == nil || !dev.Approved {
+		response.WriteError(w, http.StatusForbidden, "pos device not approved")
+		return
+	}
+	var body POSPayTwintPayload
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	if err := h.validator.Struct(body); err != nil {
+		response.WriteProblem(w, response.NewValidationProblem(response.ConvertValidationErrors(err.(validator.ValidationErrors)), r.URL.Path))
+		return
+	}
+	idStr := chi.URLParam(r, "id")
+	oid, err := bson.ObjectIDFromHex(idStr)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	if err := h.pos.PayTwint(r.Context(), oid, body.TransactionID, body.Status); err != nil {
 		response.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
