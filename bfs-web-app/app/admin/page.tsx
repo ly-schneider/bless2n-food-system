@@ -72,11 +72,12 @@ export default function AdminDashboard() {
           items = data.items || []
         }
 
-        const dayKey = (d: Date) => d.toISOString().slice(0, 10) // YYYY-MM-DD
+        // Use local calendar days so today's orders are included even with timezone offsets
+        const dayKey = (d: Date) => d.toLocaleDateString("en-CA") // YYYY-MM-DD in local time
         const byDay = new Map<string, { orders: number; revenue: number }>()
         // number of days between start (inclusive) and end (exclusive)
         const millisPerDay = 24 * 60 * 60 * 1000
-        const totalDays = Math.max(0, Math.round((end.getTime() - start.getTime()) / millisPerDay))
+        const totalDays = Math.max(0, Math.ceil((end.getTime() - start.getTime()) / millisPerDay))
         for (let i = 0; i < totalDays; i++) {
           const d = new Date(start)
           d.setDate(start.getDate() + i)

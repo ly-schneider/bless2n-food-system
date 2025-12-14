@@ -227,7 +227,7 @@ func (h *AdminProductHandler) PatchActive(w http.ResponseWriter, r *http.Request
 		response.WriteError(w, http.StatusBadRequest, "invalid json")
 		return
 	}
-	if body.IsActive && h.posConfig != nil {
+	if body.IsActive && h.posConfig != nil && before.Type == domain.ProductTypeSimple {
 		if settings, err := h.posConfig.GetSettings(r.Context()); err == nil && settings != nil && settings.Mode == domain.PosModeJeton {
 			if before.JetonID == nil || before.JetonID.IsZero() {
 				response.WriteError(w, http.StatusBadRequest, "jeton_required")
