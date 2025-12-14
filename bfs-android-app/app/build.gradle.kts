@@ -195,5 +195,6 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
 
     // Compile-only annotations used by transitive libraries to satisfy R8 analysis
-    compileOnly("com.google.errorprone:error_prone_annotations:2.45.0")
+    // Align with dependency constraints resolved for runtime classpath
+    compileOnly("com.google.errorprone:error_prone_annotations:2.15.0")
 }
