@@ -8,15 +8,14 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type StationRepository interface {
-	UpsertPendingByDeviceKey(ctx context.Context, name, deviceKey string) (*domain.Station, error)
+	UpsertPendingByDeviceKey(ctx context.Context, name, model, os, deviceKey string) (*domain.Station, error)
 	FindByDeviceKey(ctx context.Context, deviceKey string) (*domain.Station, error)
-	ApproveByDeviceKey(ctx context.Context, deviceKey string) error
 	FindByID(ctx context.Context, id bson.ObjectID) (*domain.Station, error)
-	List(ctx context.Context) ([]*domain.Station, error)
+	List(ctx context.Context, status *domain.StationRequestStatus) ([]*domain.Station, error)
+	UpdateStatus(ctx context.Context, id bson.ObjectID, status domain.StationRequestStatus, decidedBy *bson.ObjectID, decidedAt time.Time) error
 }
 
 type stationRepository struct {
@@ -29,27 +28,61 @@ func NewStationRepository(db *database.MongoDB) StationRepository {
 	}
 }
 
-func (r *stationRepository) UpsertPendingByDeviceKey(ctx context.Context, name, deviceKey string) (*domain.Station, error) {
+func (r *stationRepository) UpsertPendingByDeviceKey(ctx context.Context, name, model, os, deviceKey string) (*domain.Station, error) {
 	now := time.Now().UTC()
-	// Ensure a record exists for this deviceKey (approved=false by default)
-	filter := bson.M{"device_key": deviceKey}
-	update := bson.M{"$setOnInsert": bson.M{
-		"_id":        bson.NewObjectID(),
-		"name":       name,
-		"device_key": deviceKey,
-		"approved":   false,
-		"created_at": now,
-	}, "$set": bson.M{"updated_at": now}}
-	opts := optionsFindOneAndUpdateUpsert()
-	var st domain.Station
-	if err := r.collection.FindOneAndUpdate(ctx, filter, update, opts).Decode(&st); err != nil {
-		// If no doc existed, after upsert Decode may fail; fetch it
-		if err == mongo.ErrNoDocuments {
-			return r.FindByDeviceKey(ctx, deviceKey)
-		}
+	// If the station already exists, bump metadata and reset status if it is not approved
+	existing, err := r.FindByDeviceKey(ctx, deviceKey)
+	if err != nil && err != mongo.ErrNoDocuments {
 		return nil, err
 	}
-	return &st, nil
+	if err == nil && existing != nil {
+		status := existing.Status
+		if status == "" {
+			if existing.Approved {
+				status = domain.StationRequestStatusApproved
+			} else {
+				status = domain.StationRequestStatusPending
+			}
+		}
+		if status != domain.StationRequestStatusApproved {
+			status = domain.StationRequestStatusPending
+		}
+		set := bson.M{
+			"name":       name,
+			"model":      model,
+			"os":         os,
+			"status":     status,
+			"approved":   status == domain.StationRequestStatusApproved,
+			"updated_at": now,
+			"expires_at": now.Add(30 * 24 * time.Hour),
+		}
+		update := bson.M{"$set": set}
+		if status != domain.StationRequestStatusApproved {
+			update["$unset"] = bson.M{"approved_at": ""}
+		}
+		if _, err := r.collection.UpdateByID(ctx, existing.ID, update); err != nil {
+			return nil, err
+		}
+		return r.FindByID(ctx, existing.ID)
+	}
+	// Otherwise insert a fresh pending station record
+	expiresAt := now.Add(30 * 24 * time.Hour)
+	st := &domain.Station{
+		ID:        bson.NewObjectID(),
+		Name:      name,
+		Model:     model,
+		OS:        os,
+		DeviceKey: deviceKey,
+		Status:    domain.StationRequestStatusPending,
+		Approved:  false,
+		ExpiresAt: &expiresAt,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	if _, err := r.collection.InsertOne(ctx, st); err != nil {
+		return nil, err
+	}
+	return st, nil
 }
 
 func (r *stationRepository) FindByDeviceKey(ctx context.Context, deviceKey string) (*domain.Station, error) {
@@ -57,13 +90,7 @@ func (r *stationRepository) FindByDeviceKey(ctx context.Context, deviceKey strin
 	if err := r.collection.FindOne(ctx, bson.M{"device_key": deviceKey}).Decode(&st); err != nil {
 		return nil, err
 	}
-	return &st, nil
-}
-
-func (r *stationRepository) ApproveByDeviceKey(ctx context.Context, deviceKey string) error {
-	now := time.Now().UTC()
-	_, err := r.collection.UpdateOne(ctx, bson.M{"device_key": deviceKey}, bson.M{"$set": bson.M{"approved": true, "approved_at": now, "updated_at": now}})
-	return err
+	return normalizeStation(&st), nil
 }
 
 func (r *stationRepository) FindByID(ctx context.Context, id bson.ObjectID) (*domain.Station, error) {
@@ -71,11 +98,22 @@ func (r *stationRepository) FindByID(ctx context.Context, id bson.ObjectID) (*do
 	if err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&st); err != nil {
 		return nil, err
 	}
-	return &st, nil
+	return normalizeStation(&st), nil
 }
 
-func (r *stationRepository) List(ctx context.Context) ([]*domain.Station, error) {
-	cur, err := r.collection.Find(ctx, bson.M{})
+func (r *stationRepository) List(ctx context.Context, status *domain.StationRequestStatus) ([]*domain.Station, error) {
+	filter := bson.M{}
+	if status != nil && *status != "" {
+		clauses := []bson.M{{"status": *status}}
+		if *status == domain.StationRequestStatusApproved {
+			clauses = append(clauses, bson.M{"status": bson.M{"$exists": false}, "approved": true})
+		}
+		if *status == domain.StationRequestStatusPending {
+			clauses = append(clauses, bson.M{"status": bson.M{"$exists": false}, "approved": bson.M{"$ne": true}})
+		}
+		filter["$or"] = clauses
+	}
+	cur, err := r.collection.Find(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +124,7 @@ func (r *stationRepository) List(ctx context.Context) ([]*domain.Station, error)
 		if err := cur.Decode(&st); err != nil {
 			return nil, err
 		}
-		out = append(out, &st)
+		out = append(out, normalizeStation(&st))
 	}
 	if err := cur.Err(); err != nil {
 		return nil, err
@@ -94,7 +132,43 @@ func (r *stationRepository) List(ctx context.Context) ([]*domain.Station, error)
 	return out, nil
 }
 
-// optionsFindOneAndUpdateUpsert returns upsert=true and return after update
-func optionsFindOneAndUpdateUpsert() options.Lister[options.FindOneAndUpdateOptions] {
-    return options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After)
+func (r *stationRepository) UpdateStatus(ctx context.Context, id bson.ObjectID, status domain.StationRequestStatus, decidedBy *bson.ObjectID, decidedAt time.Time) error {
+	set := bson.M{
+		"status":     status,
+		"approved":   status == domain.StationRequestStatusApproved,
+		"updated_at": time.Now().UTC(),
+		"decided_at": decidedAt,
+	}
+	unset := bson.M{}
+	if decidedBy != nil {
+		set["decided_by"] = *decidedBy
+	} else {
+		unset["decided_by"] = ""
+	}
+	if status == domain.StationRequestStatusApproved {
+		set["approved_at"] = decidedAt
+	} else {
+		unset["approved_at"] = ""
+	}
+	update := bson.M{"$set": set}
+	if len(unset) > 0 {
+		update["$unset"] = unset
+	}
+	_, err := r.collection.UpdateByID(ctx, id, update)
+	return err
+}
+
+func normalizeStation(st *domain.Station) *domain.Station {
+	if st == nil {
+		return st
+	}
+	if st.Status == "" {
+		if st.Approved {
+			st.Status = domain.StationRequestStatusApproved
+		} else {
+			st.Status = domain.StationRequestStatusPending
+		}
+	}
+	st.Approved = st.Status == domain.StationRequestStatusApproved
+	return st
 }

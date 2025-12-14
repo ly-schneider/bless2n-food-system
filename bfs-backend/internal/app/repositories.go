@@ -16,7 +16,6 @@ func NewRepositories() fx.Option {
 			repository.NewIdentityLinkRepository,
 			repository.NewAdminInviteRepository,
 			repository.NewStationRepository,
-			repository.NewStationRequestRepository,
 			repository.NewCategoryRepository,
 			repository.NewProductRepository,
 			repository.NewMenuSlotRepository,
@@ -28,7 +27,8 @@ func NewRepositories() fx.Option {
 			repository.NewAuditRepository,
 			repository.NewIdempotencyRepository,
 			repository.NewPosDeviceRepository,
-			repository.NewPosRequestRepository,
+			repository.NewJetonRepository,
+			repository.NewPosSettingsRepository,
 		),
 	)
 }

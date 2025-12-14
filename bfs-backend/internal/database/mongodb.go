@@ -60,7 +60,6 @@ const (
 	RefreshTokensCollection     = "refresh_tokens"
 	IdentityLinksCollection     = "identity_links"
 	StationsCollection          = "stations"
-	StationRequestsCollection   = "station_requests"
 	CategoriesCollection        = "categories"
 	ProductsCollection          = "products"
 	MenuSlotsCollection         = "menu_slots"
@@ -71,5 +70,6 @@ const (
 	OrderItemsCollection        = "order_items"
 	AuditLogsCollection         = "audit_logs"
 	PosDevicesCollection        = "pos_devices"
-	PosRequestsCollection       = "pos_requests"
+	JetonsCollection            = "jetons"
+	PosSettingsCollection       = "pos_settings"
 )

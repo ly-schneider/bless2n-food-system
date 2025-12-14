@@ -25,13 +25,9 @@ endif
 
 # Default to LOCAL for everything (e.g., `make dev`)
 MONGO_URI ?= $(MONGO_URI_LOCAL)
-SMTP_HOST ?= $(SMTP_HOST_LOCAL)
-SMTP_PORT ?= $(SMTP_PORT_LOCAL)
 
 # For compose-related targets with backend, override to DOCKER just for those recipes
 docker-up-backend docker-restart-backend: MONGO_URI := $(MONGO_URI_DOCKER)
-docker-up-backend docker-restart-backend: SMTP_HOST := $(SMTP_HOST_DOCKER)
-docker-up-backend docker-restart-backend: SMTP_PORT := $(SMTP_PORT_DOCKER)
 
 # Default target
 .DEFAULT_GOAL := help

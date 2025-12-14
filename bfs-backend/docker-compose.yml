@@ -1,17 +1,6 @@
 name: bfs-backend
 
 services:
-  mailpit:
-    image: axllent/mailpit:latest
-    restart: unless-stopped
-    ports:
-      - "8025:8025"
-      - "1025:1025"
-    environment:
-      MP_MAX_MESSAGES: 5000
-      MP_SMTP_AUTH_ACCEPT_ANY: "1"
-      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
-
   mongo:
     image: mongo:8
     restart: always
@@ -52,8 +41,6 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
-      mailpit:
-        condition: service_healthy
     restart: unless-stopped
     ports:
       - "${APP_PORT}:8080"
@@ -63,12 +50,10 @@ services:
       MONGO_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
       MONGO_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
 
-      SMTP_HOST: ${SMTP_HOST}
-      SMTP_PORT: ${SMTP_PORT}
-      SMTP_USERNAME: ${SMTP_USERNAME}
-      SMTP_PASSWORD: ${SMTP_PASSWORD}
-      SMTP_FROM: ${SMTP_FROM}
-      SMTP_TLS_POLICY: ${SMTP_TLS_POLICY}
+      PLUNK_API_KEY: ${PLUNK_API_KEY}
+      PLUNK_FROM_EMAIL: ${PLUNK_FROM_EMAIL}
+      PLUNK_FROM_NAME: ${PLUNK_FROM_NAME}
+      PLUNK_REPLY_TO: ${PLUNK_REPLY_TO}
 
       APP_ENV: ${APP_ENV}
       APP_PORT: ${APP_PORT}

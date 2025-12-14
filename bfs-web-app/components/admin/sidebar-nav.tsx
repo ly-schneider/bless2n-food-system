@@ -1,5 +1,16 @@
 "use client"
-import { CreditCard, Grid2x2, Home, KeyRound, MailPlus, MonitorCheck, ReceiptText, Users } from "lucide-react"
+import {
+  Circle,
+  CreditCard,
+  Grid2x2,
+  Hamburger,
+  Home,
+  KeyRound,
+  MailPlus,
+  MonitorCheck,
+  ReceiptText,
+  Users,
+} from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -14,13 +25,15 @@ export function AdminSidebar({ badges }: { badges?: Partial<Record<string, numbe
   const pathname = usePathname()
   const items: NavItem[] = [
     { href: "/admin", label: "Home", icon: <Home className="size-5" /> },
-    { href: "/admin/menu", label: "Menu", icon: <Grid2x2 className="size-5" /> },
+    { href: "/admin/products", label: "Produkte", icon: <Hamburger className="size-5" /> },
+    { href: "/admin/categories", label: "Kategorien", icon: <Grid2x2 className="size-5" /> },
     { href: "/admin/orders", label: "Bestellungen", icon: <ReceiptText className="size-5" />, badge: badges?.orders },
     { href: "/admin/users", label: "Benutzer", icon: <Users className="size-5" /> },
     { href: "/admin/invites", label: "Einladungen", icon: <MailPlus className="size-5" />, badge: badges?.invites },
     { href: "/admin/sessions", label: "Sessions", icon: <KeyRound className="size-5" /> },
     { href: "/admin/stations", label: "Stationen", icon: <MonitorCheck className="size-5" /> },
     { href: "/admin/pos", label: "POS", icon: <CreditCard className="size-5" /> },
+    { href: "/admin/jetons", label: "Jetons", icon: <Circle className="size-5" /> },
   ]
 
   return (

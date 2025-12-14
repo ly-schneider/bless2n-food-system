@@ -5,8 +5,9 @@ import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { PrinterSelector } from "@/components/pos/printer-selector"
 import { Button } from "@/components/ui/button"
+import type { PosFulfillmentMode } from "@/types/jeton"
 
-export function POSHeader() {
+export function POSHeader({ mode }: { mode?: PosFulfillmentMode }) {
   const PIN = process.env.NEXT_PUBLIC_POS_PIN || "0000"
   const LOCK_KEY = "bfs.pos.locked"
   const IDLE_MS = Number(process.env.NEXT_PUBLIC_POS_IDLE_TIMEOUT) || 300000
@@ -22,6 +23,7 @@ export function POSHeader() {
   const [error, setError] = useState<string | null>(null)
   const idleTimerRef = useRef<number | null>(null)
   const [mounted, setMounted] = useState(false)
+  const jetonMode = mode === "JETON"
 
   function lock() {
     setPin("")
@@ -175,7 +177,7 @@ export function POSHeader() {
             <span className="text-sm font-semibold">BlessThun</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <PrinterSelector />
+            {!jetonMode && <PrinterSelector />}
             <Button
               variant="outline"
               size="sm"

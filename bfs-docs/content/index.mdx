@@ -16,7 +16,7 @@ Das Bless2n Food System ist eine produktionsreife Plattform für Food‑Bestellu
 Repository‑Überblick:
 
 - `bfs-web-app`: Next.js App Router mit `/app` und Middleware CSP; Proxy zum Backend via `/api`.
-- `bfs-backend`: Go‑Service mit Handlers, Services, Repositories; Stripe TWINT, Google OAuth, SMTP.
+- `bfs-backend`: Go‑Service mit Handlers, Services, Repositories; Stripe TWINT, Google OAuth, Plunk E‑Mail.
 - `bfs-android-app`: Android WebView + SumUp SDK + Bluetooth‑Druck (ESC/POS + Phomemo Fallback).
 - `bfs-cloud`: Terraform‑Module und Umgebungen (`envs/staging`, `envs/production`).
 - `bfs-http`: HTTP‑Request‑Sammlung für Tests.
@@ -41,7 +41,7 @@ Ablauf auf hoher Ebene:
 - Web App → Backend: API über gleich-origin `/api` Proxy; Auth und Bestellungen.
 - Backend → Stripe: Erzeugt Payment Intents (TWINT); Webhook finalisiert Bestellungen.
 - Backend → MongoDB/Cosmos: Persistiert Benutzer, Bestellungen, Produkte, Inventory, Sessions.
-- Backend → SMTP: Versendet OTP‑Login und E‑Mail‑Änderungsbestätigungen.
+- Backend → Plunk: Versendet OTP‑Login und E‑Mail‑Änderungsbestätigungen.
 - Android POS → Web‑POS: WebView lädt `/pos`, Kommunikation via `window.PosBridge`.
 - Android POS → SumUp SDK: Startet Kartenzahlung; Ergebnis als Event zurück an Web‑POS.
 - Android POS → Drucker: ESC/POS oder Phomemo Rasterdruck für Quittungen.

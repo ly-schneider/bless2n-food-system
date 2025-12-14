@@ -22,17 +22,6 @@ services:
       retries: 20
       start_period: 5s
 
-  mailpit:
-    image: axllent/mailpit:latest
-    restart: unless-stopped
-    ports:
-      - "8025:8025" # UI
-      - "1025:1025" # SMTP
-    environment:
-      MP_MAX_MESSAGES: 5000
-      MP_SMTP_AUTH_ACCEPT_ANY: "1"
-      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
-
   mongo-express:
     image: mongo-express:1.0.2-20-alpine3.19
     restart: unless-stopped
@@ -54,8 +43,6 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
-      mailpit:
-        condition: service_started
     ports:
       - "${APP_PORT:-8080}:8080"
     env_file:

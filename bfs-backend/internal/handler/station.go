@@ -76,7 +76,7 @@ func (h *StationHandler) CreateRequest(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, http.StatusInternalServerError, "failed to submit request")
 		return
 	}
-	response.WriteJSON(w, http.StatusAccepted, map[string]any{"status": "pending", "station": map[string]any{"approved": st.Approved}})
+	response.WriteJSON(w, http.StatusAccepted, map[string]any{"status": string(st.Status), "station": map[string]any{"approved": st.Approved, "status": string(st.Status)}})
 }
 
 // Me godoc
@@ -98,7 +98,7 @@ func (h *StationHandler) Me(w http.ResponseWriter, r *http.Request) {
 		response.WriteJSON(w, http.StatusOK, map[string]any{"exists": false, "approved": false})
 		return
 	}
-	response.WriteJSON(w, http.StatusOK, map[string]any{"exists": true, "approved": st.Approved, "name": st.Name})
+	response.WriteJSON(w, http.StatusOK, map[string]any{"exists": true, "approved": st.Approved, "status": string(st.Status), "name": st.Name})
 }
 
 // VerifyQR godoc

@@ -113,9 +113,7 @@ function MenuProductCard({ product }: { product: ProductDTO }) {
             )}
             {isAvailable && !isActive && (
               <div className="absolute inset-0 z-10 grid place-items-center rounded-[11px] bg-black/55">
-                <span className="rounded-full bg-zinc-700 px-3 py-1 text-sm font-medium text-white">
-                  Nicht verfügbar
-                </span>
+                <span className="rounded-full bg-zinc-700 px-3 py-1 text-sm font-medium text-white">Nicht aktiv</span>
               </div>
             )}
             {isLowStock && isAvailable && isActive && (

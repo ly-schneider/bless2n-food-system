@@ -22,6 +22,7 @@ type productService struct {
 	menuSlotRepo     repository.MenuSlotRepository
 	menuSlotItemRepo repository.MenuSlotItemRepository
 	inventoryRepo    repository.InventoryLedgerRepository
+	jetonRepo        repository.JetonRepository
 }
 
 func NewProductService(
@@ -30,6 +31,7 @@ func NewProductService(
 	menuSlotRepo repository.MenuSlotRepository,
 	menuSlotItemRepo repository.MenuSlotItemRepository,
 	inventoryRepo repository.InventoryLedgerRepository,
+	jetonRepo repository.JetonRepository,
 ) ProductService {
 	return &productService{
 		productRepo:      productRepo,
@@ -37,6 +39,7 @@ func NewProductService(
 		menuSlotRepo:     menuSlotRepo,
 		menuSlotItemRepo: menuSlotItemRepo,
 		inventoryRepo:    inventoryRepo,
+		jetonRepo:        jetonRepo,
 	}
 }
 
@@ -143,6 +146,47 @@ func (s *productService) ListProducts(
 		}
 	}
 
+	jetonIDs := make(map[bson.ObjectID]struct{})
+	for _, p := range products {
+		if p != nil && p.JetonID != nil && !p.JetonID.IsZero() {
+			jetonIDs[*p.JetonID] = struct{}{}
+		}
+	}
+	for _, op := range optionProductsByID {
+		if op != nil && op.JetonID != nil && !op.JetonID.IsZero() {
+			jetonIDs[*op.JetonID] = struct{}{}
+		}
+	}
+	jetonByID := make(map[bson.ObjectID]*domain.Jeton, len(jetonIDs))
+	if len(jetonIDs) > 0 && s.jetonRepo != nil {
+		ids := make([]bson.ObjectID, 0, len(jetonIDs))
+		for id := range jetonIDs {
+			ids = append(ids, id)
+		}
+		jets, err := s.jetonRepo.FindByIDs(ctx, ids)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load jetons: %w", err)
+		}
+		for _, j := range jets {
+			jetonByID[j.ID] = j
+		}
+	}
+	toJetonDTO := func(id *bson.ObjectID) *domain.JetonDTO {
+		if id == nil || id.IsZero() {
+			return nil
+		}
+		if j, ok := jetonByID[*id]; ok && j != nil {
+			return &domain.JetonDTO{
+				ID:           j.ID.Hex(),
+				Name:         j.Name,
+				PaletteColor: j.PaletteColor,
+				HexColor:     j.HexColor,
+				ColorHex:     resolveJetonColorHex(j.PaletteColor, j.HexColor),
+			}
+		}
+		return nil
+	}
+
 	// Compute availability for option products (simple items used in menus)
 	optionSimpleIDs := make([]bson.ObjectID, 0)
 	for _, op := range optionProductsByID {
@@ -213,6 +257,7 @@ func (s *productService) ListProducts(
 			PriceCents: domain.Cents(p.PriceCents),
 			IsActive:   p.IsActive,
 			Category:   toCatDTO(p.CategoryID),
+			Jeton:      toJetonDTO(p.JetonID),
 		}
 		// Attach availability for simple products
 		if p.Type == domain.ProductTypeSimple {
@@ -249,6 +294,7 @@ func (s *productService) ListProducts(
 									PriceCents: domain.Cents(op.PriceCents),
 									IsActive:   op.IsActive,
 									Category:   toCatDTO(op.CategoryID),
+									Jeton:      toJetonDTO(op.JetonID),
 								}
 								// Attach stock for simple option products
 								if op.Type == domain.ProductTypeSimple {

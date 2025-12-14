@@ -51,18 +51,6 @@ erDiagram
     datetime updated_at "NOT NULL; default=now()"
   }
 
-  station_request {
-    string id PK "NOT NULL"
-    string name "NOT NULL"
-    string model "NOT NULL"
-    string os "NOT NULL"
-    string status "NOT NULL; enum: pending|approved|rejected"
-    string decided_by FK "NULL -> user.id"
-    datetime decided_at "NULL"
-    datetime created_at "NOT NULL; default=now()"
-    datetime expires_at "NOT NULL"
-  }
-
   category {
     string id PK "NOT NULL"
     string name "NOT NULL"
@@ -141,7 +129,6 @@ erDiagram
   user     ||--o{ admin_invite    : "invited_by"
   user     ||--o{ otp_token       : "has"
   user     ||--o{ refresh_token   : "has"
-  user     ||--o{ station_request : "decided_by"
   user     ||--o{ order           : "customer"
 
   station  ||--o{ station_product : "can_redeem"

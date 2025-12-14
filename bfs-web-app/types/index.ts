@@ -33,3 +33,6 @@ export type { JWK, JWKS } from "./jwks"
 
 // Cart types
 export type { CartItemConfiguration, CartItem, Cart, CartContextType } from "./cart"
+
+// POS / Jeton types
+export type { Jeton, PosFulfillmentMode, PosSettings } from "./jeton"

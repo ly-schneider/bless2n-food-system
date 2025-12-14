@@ -29,7 +29,6 @@ type StationService interface {
 type stationService struct {
 	cfg          config.Config
 	stations     repository.StationRepository
-	stationReqs  repository.StationRequestRepository
 	stationProds repository.StationProductRepository
 	orders       repository.OrderRepository
 	orderItems   repository.OrderItemRepository
@@ -39,25 +38,22 @@ type stationService struct {
 func NewStationService(
 	cfg config.Config,
 	stations repository.StationRepository,
-	stationReqs repository.StationRequestRepository,
 	stationProds repository.StationProductRepository,
 	orders repository.OrderRepository,
 	orderItems repository.OrderItemRepository,
 	idempotency repository.IdempotencyRepository,
 ) StationService {
-	return &stationService{cfg: cfg, stations: stations, stationReqs: stationReqs, stationProds: stationProds, orders: orders, orderItems: orderItems, idempotency: idempotency}
+	return &stationService{cfg: cfg, stations: stations, stationProds: stationProds, orders: orders, orderItems: orderItems, idempotency: idempotency}
 }
 
 func (s *stationService) RequestVerification(ctx context.Context, name, model, os, deviceKey string) (*domain.Station, error) {
 	if name == "" || deviceKey == "" {
 		return nil, errors.New("invalid_payload")
 	}
-	st, err := s.stations.UpsertPendingByDeviceKey(ctx, name, deviceKey)
+	st, err := s.stations.UpsertPendingByDeviceKey(ctx, name, model, os, deviceKey)
 	if err != nil {
 		return nil, err
 	}
-	// record a pending request (best-effort; may have multiple over time)
-	_ = s.stationReqs.Create(ctx, &domain.StationRequest{Name: name, Model: model, OS: os, DeviceKey: deviceKey, Status: domain.StationRequestStatusPending, ExpiresAt: time.Now().Add(30 * 24 * time.Hour)})
 	return st, nil
 }
 

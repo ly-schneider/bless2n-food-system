@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label"
 import { useCart } from "@/contexts/cart-context"
 
 import { formatChf } from "@/lib/utils"
+import type { PosFulfillmentMode } from "@/types/jeton"
 
 type Tender = "cash" | "card" | null
 type Receipt = {
@@ -37,7 +38,19 @@ type PosBridge = {
 
 const getBridge = () => (globalThis as unknown as { PosBridge?: PosBridge }).PosBridge
 
-export function BasketPanel({ token }: { token: string }) {
+type JetonTotal = { id: string; name: string; color: string; count: number }
+
+function textColorForBg(hex: string) {
+  const h = (hex || "").replace("#", "")
+  if (h.length !== 6) return "#0f172a"
+  const r = parseInt(h.slice(0, 2), 16) / 255
+  const g = parseInt(h.slice(2, 4), 16) / 255
+  const b = parseInt(h.slice(4, 6), 16) / 255
+  const luminance = 0.299 * r + 0.587 * g + 0.114 * b
+  return luminance > 0.55 ? "#0f172a" : "#ffffff"
+}
+
+export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?: PosFulfillmentMode }) {
   const { cart, updateQuantity, removeFromCart, clearCart } = useCart()
   const { suggestion, contiguous, startIndex, endIndex } = useBestMenuSuggestion()
   const [showCheckout, setShowCheckout] = useState(false)
@@ -65,10 +78,28 @@ export function BasketPanel({ token }: { token: string }) {
   const [cardPrintDone, setCardPrintDone] = useState(false)
   // Background print error dialog (used for both cash and card flows)
   const [printErrorDialog, setPrintErrorDialog] = useState<string | null>(null)
+  const [jetonSummary, setJetonSummary] = useState<{
+    items: JetonTotal[]
+    orderId?: string
+    payment?: "cash" | "card"
+  } | null>(null)
   const total = cart.totalCents
   const receivedCents = useMemo(() => Math.round((parseFloat(received || "0") || 0) * 100), [received])
   const changeCents = Math.max(0, receivedCents - total)
   const cartIsEmpty = cart.items.length === 0
+  const jetonMode = mode === "JETON"
+  const hasMissingJeton = useMemo(() => cart.items.some((it) => !it.product?.jeton), [cart.items])
+  const computeJetonTotals = useCallback((): JetonTotal[] => {
+    const totals = new Map<string, JetonTotal>()
+    for (const it of cart.items) {
+      const jeton = it.product.jeton
+      if (!jeton) continue
+      const existing = totals.get(jeton.id)
+      if (existing) existing.count += it.quantity
+      else totals.set(jeton.id, { id: jeton.id, name: jeton.name, color: jeton.colorHex, count: it.quantity })
+    }
+    return Array.from(totals.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }, [cart.items])
 
   useEffect(() => {
     const onLock = () => {
@@ -188,6 +219,17 @@ export function BasketPanel({ token }: { token: string }) {
               pickupQr,
               orderTimestamp: Date.now(),
             }
+            const jetons = computeJetonTotals()
+            if (jetonMode) {
+              setCardProcessing(false)
+              setCardSuccess(true)
+              setShowCard(false)
+              setJetonSummary({ items: jetons, orderId, payment: "card" })
+              try {
+                clearCart()
+              } catch {}
+              return
+            }
             // Show success and start background print
             setCardProcessing(false)
             setCardSuccess(true)
@@ -219,7 +261,7 @@ export function BasketPanel({ token }: { token: string }) {
     }
     window.addEventListener("bfs:sumup:result", onSumup as EventListener)
     return () => window.removeEventListener("bfs:sumup:result", onSumup as EventListener)
-  }, [cart.items, token, total, showCard, cardRef, clearCart])
+  }, [cart.items, token, total, showCard, cardRef, clearCart, jetonMode, computeJetonTotals])
 
   useEffect(() => {
     try {
@@ -275,6 +317,10 @@ export function BasketPanel({ token }: { token: string }) {
 
   const startCashPayment = useCallback(async () => {
     if (busy) return
+    if (jetonMode && hasMissingJeton) {
+      setError("Im Jeton-Modus benötigt jedes Produkt einen Jeton.")
+      return
+    }
     setBusy(true)
     setError(null)
     try {
@@ -302,6 +348,7 @@ export function BasketPanel({ token }: { token: string }) {
       type PayOk = { changeCents?: number }
       const payJson = (await resPay.json()) as PayOk & ApiError
       if (!resPay.ok) throw new Error(payJson.detail || "payment failed")
+      const jetons = computeJetonTotals()
 
       // Build print items snapshot before clearing cart
       const printItems: NonNullable<Receipt["items"]> = cart.items.map((it) => {
@@ -340,12 +387,16 @@ export function BasketPanel({ token }: { token: string }) {
         orderTimestamp: Date.now(),
       }
 
-      // Background print (no UI). If unavailable or fails, show error dialog.
-      try {
-        if (canPrint) getBridge()?.print?.(JSON.stringify(receiptPayload))
-        else setPrintErrorDialog("Drucken nicht verfügbar")
-      } catch {
-        setPrintErrorDialog("Drucken fehlgeschlagen")
+      if (jetonMode) {
+        setJetonSummary({ items: jetons, orderId, payment: "cash" })
+      } else {
+        // Background print (no UI). If unavailable or fails, show error dialog.
+        try {
+          if (canPrint) getBridge()?.print?.(JSON.stringify(receiptPayload))
+          else setPrintErrorDialog("Drucken nicht verfügbar")
+        } catch {
+          setPrintErrorDialog("Drucken fehlgeschlagen")
+        }
       }
 
       // Clear cart and close checkout immediately
@@ -361,9 +412,24 @@ export function BasketPanel({ token }: { token: string }) {
     } finally {
       setBusy(false)
     }
-  }, [busy, cart.items, token, receivedCents, total, canPrint])
+  }, [
+    busy,
+    cart.items,
+    token,
+    receivedCents,
+    total,
+    canPrint,
+    jetonMode,
+    hasMissingJeton,
+    computeJetonTotals,
+    clearCart,
+  ])
 
   const startCardPayment = useCallback(() => {
+    if (jetonMode && hasMissingJeton) {
+      setError("Im Jeton-Modus benötigt jedes Produkt einen Jeton.")
+      return
+    }
     const bridge = getBridge()
     if (bridge && typeof bridge.payWithCard === "function") {
       const ref = `pos_${Date.now()}`
@@ -382,7 +448,7 @@ export function BasketPanel({ token }: { token: string }) {
         bridge.payWithCard(payload)
       }
     }
-  }, [openReceipt, total])
+  }, [total, jetonMode, hasMissingJeton])
 
   const handlePrint = useCallback(() => {
     setPrinting(true)
@@ -492,6 +558,10 @@ export function BasketPanel({ token }: { token: string }) {
               className="h-12 w-full rounded-xl text-sm"
               disabled={cartIsEmpty}
               onClick={() => {
+                if (jetonMode && hasMissingJeton) {
+                  setError("Bitte weise allen Produkten einen Jeton zu.")
+                  return
+                }
                 setTender(null)
                 setReceived("")
                 setShowCheckout(true)
@@ -640,15 +710,20 @@ export function BasketPanel({ token }: { token: string }) {
               <Button className="w-full" onClick={startCardPayment} disabled={!canPayWithCard}>
                 Mit Karte bezahlen
               </Button>
-              {!canPayWithCard && (
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => openReceipt({ method: "card", totalCents: total })}
-                >
-                  Überspringen
-                </Button>
-              )}
+              {!canPayWithCard &&
+                (jetonMode ? (
+                  <div className="text-muted-foreground text-xs">
+                    Kartenzahlung ohne Terminal ist im Jeton-Modus deaktiviert.
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => openReceipt({ method: "card", totalCents: total })}
+                  >
+                    Überspringen
+                  </Button>
+                ))}
               {!hasPosBridge && (
                 <div className="text-muted-foreground text-xs">Kartenzahlung außerhalb der Android-App deaktiviert</div>
               )}
@@ -777,6 +852,44 @@ export function BasketPanel({ token }: { token: string }) {
           <DialogFooter>
             <Button variant="outline" onClick={() => setPrintErrorDialog(null)}>
               OK
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Jeton summary dialog */}
+      <Dialog
+        open={!!jetonSummary}
+        onOpenChange={(v) => {
+          if (!v) setJetonSummary(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Jetons ausgeben</DialogTitle>
+          </DialogHeader>
+          {jetonSummary && (
+            <div className="mb-8 space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {jetonSummary.items.map((j) => (
+                  <div
+                    key={j.id}
+                    className="flex items-center justify-between rounded-xl border px-4 py-3"
+                    style={{ backgroundColor: j.color, color: textColorForBg(j.color) }}
+                  >
+                    <div className="text-base font-semibold">{j.name}</div>
+                    <div className="text-lg font-bold">{j.count}</div>
+                  </div>
+                ))}
+                {jetonSummary.items.length === 0 && (
+                  <div className="text-muted-foreground text-sm">Keine Jetons berechnet.</div>
+                )}
+              </div>
+            </div>
+          )}
+          <DialogFooter className="w-full">
+            <Button className="h-12 w-full rounded-xl text-base" onClick={() => setJetonSummary(null)}>
+              Fertig
             </Button>
           </DialogFooter>
         </DialogContent>

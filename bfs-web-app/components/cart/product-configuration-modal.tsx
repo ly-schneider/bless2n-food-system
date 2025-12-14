@@ -131,28 +131,24 @@ function MenuSlotSelector({ slot, selectedProductId, onSelect }: MenuSlotSelecto
           const isSelected = selectedProductId === item.id
           const isLowStock = item.isLowStock === true
           const qty = typeof item.availableQuantity === "number" ? item.availableQuantity : null
+          if (!isActive) return null
           return (
             <Card
               key={item.id}
               className={`relative transition-all hover:shadow-md ${
                 isSelected ? "ring-primary bg-primary/5 ring-2" : "hover:bg-gray-50"
-              } ${!isActive || !isAvailable ? "pointer-events-none opacity-60 grayscale" : "cursor-pointer"}`}
+              } ${!isAvailable ? "pointer-events-none opacity-60 grayscale" : "cursor-pointer"}`}
               onClick={() => {
-                if (isActive && isAvailable) onSelect(item.id)
+                if (isAvailable) onSelect(item.id)
               }}
-              aria-disabled={!isActive || !isAvailable}
+              aria-disabled={!isAvailable}
             >
-              {!isActive && (
-                <span className="absolute top-2 right-2 z-10 rounded-full bg-zinc-700 px-2 py-0.5 text-xs font-medium text-white">
-                  Nicht verfügbar
-                </span>
-              )}
-              {isActive && !isAvailable && (
+              {!isAvailable && (
                 <span className="absolute top-2 right-2 z-10 rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">
                   Ausverkauft
                 </span>
               )}
-              {isActive && isAvailable && isLowStock && (
+              {isAvailable && isLowStock && (
                 <span className="absolute top-2 right-2 z-10 rounded-full bg-amber-600 px-2 py-0.5 text-xs font-medium text-white">
                   {qty !== null ? `Nur ${qty} übrig` : "Geringer Bestand"}
                 </span>

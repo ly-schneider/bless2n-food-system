@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
@@ -32,7 +31,6 @@ type CreateCheckoutInputItem = struct {
 type posService struct {
 	cfg      config.Config
 	devices  repository.PosDeviceRepository
-	requests repository.PosRequestRepository
 	orders   repository.OrderRepository
 	payments PaymentService
 }
@@ -40,29 +38,18 @@ type posService struct {
 func NewPOSService(
 	cfg config.Config,
 	devices repository.PosDeviceRepository,
-	requests repository.PosRequestRepository,
 	orders repository.OrderRepository,
 	payments PaymentService,
 ) POSService {
-	return &posService{cfg: cfg, devices: devices, requests: requests, orders: orders, payments: payments}
+	return &posService{cfg: cfg, devices: devices, orders: orders, payments: payments}
 }
 
 func (s *posService) RequestAccess(ctx context.Context, name, model, os, token string) error {
 	if name == "" || token == "" {
 		return errors.New("invalid_payload")
 	}
-	// If there is already a pending request for this token, do nothing (idempotent)
-	if _, err := s.requests.FindPendingByToken(ctx, token); err == nil {
-		return nil
-	}
-	return s.requests.Create(ctx, &domain.PosRequest{
-		Name:        name,
-		Model:       model,
-		OS:          os,
-		DeviceToken: token,
-		Status:      domain.PosRequestStatusPending,
-		ExpiresAt:   time.Now().Add(30 * 24 * time.Hour),
-	})
+	_, err := s.devices.UpsertPendingByToken(ctx, name, model, os, token)
+	return err
 }
 
 func (s *posService) GetDeviceByToken(ctx context.Context, token string) (*domain.PosDevice, error) {
