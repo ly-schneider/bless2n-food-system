@@ -176,7 +176,7 @@ dependencies {
     implementation("com.github.DantSu:ESCPOS-ThermalPrinter-Android:3.4.0")
     implementation("com.google.zxing:core:3.5.4")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
-    implementation("androidx.webkit:webkit:1.14.0")
+    implementation("androidx.webkit:webkit:1.15.0")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -196,5 +196,5 @@ dependencies {
 
     // Compile-only annotations used by transitive libraries to satisfy R8 analysis
     // Align with dependency constraints resolved for runtime classpath
-    compileOnly("com.google.errorprone:error_prone_annotations:2.15.0")
+    compileOnly("com.google.errorprone:error_prone_annotations:2.45.0")
 }
