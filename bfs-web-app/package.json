@@ -86,7 +86,7 @@
     "react-day-picker": "^9.13.0",
     "react-dom": "^19.2.3",
     "react-hook-form": "^7.69.0",
-    "react-resizable-panels": "^4.0.16",
+    "react-resizable-panels": "^4.2.0",
     "recharts": "3.6.0",
     "redis": "^5.10.0",
     "sonner": "^2.0.7",
@@ -94,7 +94,7 @@
     "tailwind-merge": "^3.4.0",
     "vaul": "^1.1.2",
     "ws": "^8.16.0",
-    "zod": "^4.2.1"
+    "zod": "^4.3.4"
   },
   "devDependencies": {
     "@babel/core": "^7.27.1",
@@ -115,7 +115,7 @@
     "@storybook/blocks": "^8.6.12",
     "@storybook/nextjs": "^9.0.0",
     "@storybook/react": "^9.0.0",
-    "@storybook/test": "^8.6.12",
+    "@storybook/test": "^8.6.15",
     "@storybook/test-runner": "^0.24.2",
     "@tailwindcss/postcss": "^4.1.18",
     "@testing-library/jest-dom": "^6.1.4",
@@ -127,7 +127,7 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@types/ws": "^8.5.10",
-    "@typescript-eslint/eslint-plugin": "8.50.1",
+    "@typescript-eslint/eslint-plugin": "8.51.0",
     "@vitejs/plugin-react": "^5.1.1",
     "@vitest/ui": "^4.0.16",
     "cross-env": "^10.0.0",
@@ -140,7 +140,7 @@
     "eslint-plugin-tailwindcss": "^3.18.0",
     "fetch-mock": "^12.6.0",
     "gzip-size": "7.0.0",
-    "jsdom": "^27.2.0",
+    "jsdom": "^27.4.0",
     "mkdirp": "^3.0.1",
     "patch-package": "^8.0.0",
     "postcss": "^8.5.3",
@@ -155,7 +155,7 @@
     "tw-animate-css": "^1.3.8",
     "typed-query-selector": "^2.12.0",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.50.1",
+    "typescript-eslint": "^8.51.0",
     "vite-tsconfig-paths": "^6.0.3",
     "vitest": "^4.0.16",
     "webpack": "5.104.1"
