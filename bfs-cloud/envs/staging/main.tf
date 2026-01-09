@@ -17,23 +17,16 @@ module "bfs_infrastructure" {
   tags        = var.tags
 
   config = {
-    rg_name                  = "bfs-staging-rg"
-    vnet_name                = "bfs-staging-vnet"
-    subnet_name              = "container-apps-subnet"
-    vnet_cidr                = "10.1.0.0/16"
-    subnet_cidr              = "10.1.0.0/21"
-    pe_subnet_name           = "private-endpoints-subnet"
-    pe_subnet_cidr           = "10.1.8.0/24"
-    env_name                 = "bfs-staging-env"
-    law_name                 = "bfs-logs-workspace"
-    appi_name                = "bfs-staging-insights"
-    enable_app_insights      = false
-    retention_days           = 30
-    cosmos_name              = "bfs-staging-cosmos"
-    database_throughput      = 400
-    enable_security_features = true
-    enable_private_endpoint  = false
-    key_vault_name           = "bfs-staging-keyvault"
+    rg_name             = "bfs-staging-rg"
+    env_name            = "bfs-staging-env"
+    law_name            = "bfs-logs-workspace"
+    appi_name           = "bfs-staging-insights"
+    enable_app_insights = false
+    retention_days      = 30
+    cosmos_name         = "bfs-staging-cosmos"
+    database_throughput = 400
+    key_vault_name      = "bfs-staging-keyvault"
+
     apps = {
       frontend-staging = {
         port                           = 3000

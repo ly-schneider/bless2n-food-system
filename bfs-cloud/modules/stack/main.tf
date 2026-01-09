@@ -18,13 +18,6 @@ variable "config" {
   description = "Environment-specific configuration"
   type = object({
     rg_name                  = string
-    vnet_name                = string
-    subnet_name              = string
-    vnet_cidr                = string
-    subnet_cidr              = string
-    delegate_aca_subnet      = optional(bool, false)
-    pe_subnet_name           = optional(string, "private-endpoints-subnet")
-    pe_subnet_cidr           = optional(string, "10.1.8.0/24")
     env_name                 = string
     law_name                 = string
     appi_name                = string
@@ -34,7 +27,6 @@ variable "config" {
     database_throughput      = number
     enable_security_features = optional(bool, true)
     key_vault_name           = optional(string)
-    enable_private_endpoint  = optional(bool, false)
     allowed_ip_ranges        = optional(list(string), [])
     apps = map(object({
       port                           = number
@@ -110,20 +102,6 @@ locals {
   frontend_apps = { for k, v in var.config.apps : k => v if can(regex("^frontend", k)) }
 }
 
-module "net" {
-  source                        = "../network"
-  resource_group_name           = module.rg.name
-  location                      = var.location
-  vnet_name                     = var.config.vnet_name
-  vnet_cidr                     = var.config.vnet_cidr
-  subnet_name                   = var.config.subnet_name
-  subnet_cidr                   = var.config.subnet_cidr
-  private_endpoints_subnet_name = try(var.config.pe_subnet_name, "private-endpoints-subnet")
-  private_endpoints_subnet_cidr = try(var.config.pe_subnet_cidr, "10.1.8.0/24")
-  delegate_containerapps_subnet = try(var.config.delegate_aca_subnet, false)
-  tags                          = var.tags
-}
-
 module "obs" {
   source              = "../observability"
   resource_group_name = module.rg.name
@@ -135,13 +113,12 @@ module "obs" {
   tags                = var.tags
 }
 
+# Container Apps Environment - external without VNet injection (cost-optimized)
 module "aca_env" {
   source                     = "../containerapps_env"
   name                       = var.config.env_name
   location                   = var.location
   resource_group_name        = module.rg.name
-  subnet_id                  = module.net.subnet_id
-  logs_destination           = "azure-monitor"
   log_analytics_workspace_id = module.obs.log_analytics_id
   tags                       = var.tags
 }
@@ -155,6 +132,7 @@ module "env_diag" {
   enable_metrics             = true
 }
 
+# Cosmos DB - public network access (no VNet integration)
 module "cosmos" {
   source                     = "../cosmos_mongo"
   name                       = var.config.cosmos_name
@@ -163,11 +141,7 @@ module "cosmos" {
   create_database            = true
   database_name              = "appdb"
   database_throughput        = var.config.database_throughput
-  subnet_id                  = module.net.subnet_id
-  private_endpoint_subnet_id = module.net.private_endpoints_subnet_id
-  vnet_id                    = module.net.vnet_id
   allowed_ip_ranges          = []
-  enable_private_endpoint    = try(var.config.enable_private_endpoint, false)
   log_analytics_workspace_id = module.obs.log_analytics_id
   tags                       = var.tags
 }
@@ -279,8 +253,6 @@ module "security" {
   name_prefix                = var.environment
   location                   = var.location
   resource_group_name        = module.rg.name
-  subnet_id                  = module.net.subnet_id
-  enable_key_vault           = true
   key_vault_name             = var.config.key_vault_name != null ? var.config.key_vault_name : "${var.config.cosmos_name}-kv"
   allowed_ip_ranges          = var.config.allowed_ip_ranges != null ? var.config.allowed_ip_ranges : []
   key_vault_admins           = [data.azurerm_client_config.current.object_id]

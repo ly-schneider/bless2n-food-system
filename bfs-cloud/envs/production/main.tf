@@ -17,24 +17,16 @@ module "bfs_infrastructure" {
   tags        = var.tags
 
   config = {
-    rg_name                  = "bfs-production-rg"
-    vnet_name                = "bfs-production-vnet"
-    subnet_name              = "container-apps-subnet"
-    vnet_cidr                = "10.1.0.0/16"
-    subnet_cidr              = "10.1.0.0/21"
-    delegate_aca_subnet      = false
-    pe_subnet_name           = "private-endpoints-subnet"
-    pe_subnet_cidr           = "10.1.8.0/24"
-    env_name                 = "bfs-production-env"
-    law_name                 = "bfs-logs-workspace"
-    appi_name                = "bfs-production-insights"
-    enable_app_insights      = false
-    retention_days           = 30
-    cosmos_name              = "bfs-production-cosmos"
-    database_throughput      = 400
-    enable_security_features = true
-    enable_private_endpoint  = false
-    key_vault_name           = "bfs-production-keyvault"
+    rg_name             = "bfs-production-rg"
+    env_name            = "bfs-production-env"
+    law_name            = "bfs-logs-workspace"
+    appi_name           = "bfs-production-insights"
+    enable_app_insights = false
+    retention_days      = 30
+    cosmos_name         = "bfs-production-cosmos"
+    database_throughput = 400
+    key_vault_name      = "bfs-production-keyvault"
+
     apps = {
       frontend-production = {
         port                           = 3000

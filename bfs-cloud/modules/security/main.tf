@@ -1,69 +1,3 @@
-resource "azurerm_network_security_group" "aca_nsg" {
-  name                = "${var.name_prefix}-aca-nsg"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-
-  # Allow HTTPS
-  security_rule {
-    name                       = "AllowHTTPS"
-    priority                   = 1001
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "443"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
-
-  # Allow HTTP (for health checks and basic access)
-  security_rule {
-    name                       = "AllowHTTP"
-    priority                   = 1002
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "80"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
-
-  # Allow Container Apps management traffic
-  security_rule {
-    name                       = "AllowContainerAppsInbound"
-    priority                   = 1003
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "*"
-    source_port_range          = "*"
-    destination_port_ranges    = ["5671", "5672"]
-    source_address_prefix      = "AzureCloud"
-    destination_address_prefix = "*"
-  }
-
-  # Allow all outbound traffic for Container Apps
-  security_rule {
-    name                       = "AllowContainerAppsOutbound"
-    priority                   = 1004
-    direction                  = "Outbound"
-    access                     = "Allow"
-    protocol                   = "*"
-    source_port_range          = "*"
-    destination_port_range     = "*"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
-
-
-  tags = var.tags
-}
-
-resource "azurerm_subnet_network_security_group_association" "aca_nsg_association" {
-  subnet_id                 = var.subnet_id
-  network_security_group_id = azurerm_network_security_group.aca_nsg.id
-}
-
 resource "azurerm_key_vault" "basic" {
   count = var.enable_key_vault ? 1 : 0
 
@@ -87,7 +21,6 @@ resource "azurerm_key_vault" "basic" {
 
 data "azurerm_client_config" "current" {}
 
-# Access Policy for Terraform service principal (admin access)
 resource "azurerm_key_vault_access_policy" "terraform_admin" {
   count = var.enable_key_vault ? length(var.key_vault_admins) : 0
 
@@ -125,7 +58,6 @@ resource "azurerm_key_vault_access_policy" "terraform_admin" {
   ]
 }
 
-# Access Policy for Container Apps Managed Identity (read-only access to secrets)
 resource "azurerm_key_vault_access_policy" "container_apps_identity" {
   count = var.enable_key_vault ? 1 : 0
 

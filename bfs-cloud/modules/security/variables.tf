@@ -13,11 +13,6 @@ variable "resource_group_name" {
   type        = string
 }
 
-variable "subnet_id" {
-  description = "Container Apps subnet ID"
-  type        = string
-}
-
 variable "enable_key_vault" {
   description = "Enable basic Key Vault (Standard SKU)"
   type        = bool

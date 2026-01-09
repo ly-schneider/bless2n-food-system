@@ -1,3 +1,4 @@
+# Cosmos DB with MongoDB API - public network access (no VNet integration)
 resource "azurerm_cosmosdb_account" "this" {
   name                = var.name
   location            = var.location
@@ -58,43 +59,6 @@ resource "azurerm_cosmosdb_mongo_database" "db" {
   name                = var.database_name
   resource_group_name = var.resource_group_name
   account_name        = azurerm_cosmosdb_account.this.name
-}
-
-resource "azurerm_private_dns_zone" "cosmos_mongo" {
-  count               = var.enable_private_endpoint ? 1 : 0
-  name                = "privatelink.mongo.cosmos.azure.com"
-  resource_group_name = var.resource_group_name
-  tags                = var.tags
-}
-
-resource "azurerm_private_dns_zone_virtual_network_link" "cosmos_mongo_link" {
-  count                 = var.enable_private_endpoint ? 1 : 0
-  name                  = "${var.name}-mongo-vnet-link"
-  resource_group_name   = var.resource_group_name
-  private_dns_zone_name = azurerm_private_dns_zone.cosmos_mongo[0].name
-  virtual_network_id    = var.vnet_id
-  registration_enabled  = false
-}
-
-resource "azurerm_private_endpoint" "cosmos_mongo" {
-  count               = var.enable_private_endpoint ? 1 : 0
-  name                = "${var.name}-pe"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  subnet_id           = var.private_endpoint_subnet_id
-  tags                = var.tags
-
-  private_service_connection {
-    name                           = "${var.name}-mongo-psc"
-    private_connection_resource_id = azurerm_cosmosdb_account.this.id
-    is_manual_connection           = false
-    subresource_names              = ["MongoDB"]
-  }
-
-  private_dns_zone_group {
-    name                 = "cosmos-mongo-dns-group"
-    private_dns_zone_ids = [azurerm_private_dns_zone.cosmos_mongo[0].id]
-  }
 }
 
 resource "azurerm_monitor_diagnostic_setting" "cosmos_diag" {
