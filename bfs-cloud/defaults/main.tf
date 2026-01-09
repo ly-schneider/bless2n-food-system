@@ -90,15 +90,15 @@ output "tags" {
 
 output "config" {
   value = {
-    rg_name                  = "${local.project}-${var.env}-rg"
-    env_name                 = "${local.project}-${var.env}-env"
-    law_name                 = "${local.project}-logs-workspace"
-    appi_name                = "${local.project}-${var.env}-insights"
-    enable_app_insights      = false
-    retention_days           = 30
-    cosmos_name              = "${local.project}-${var.env}-cosmos"
-    database_throughput      = 400
-    key_vault_name           = "${local.project}-${var.env}-keyvault"
+    rg_name             = "${local.project}-${var.env}-rg"
+    env_name            = "${local.project}-${var.env}-env"
+    law_name            = "${local.project}-logs-workspace"
+    appi_name           = "${local.project}-${var.env}-insights"
+    enable_app_insights = false
+    retention_days      = 30
+    cosmos_name         = "${local.project}-${var.env}-cosmos"
+    database_throughput = 400
+    key_vault_name      = "${local.project}-${var.env}-keyvault"
 
     apps = {
       "frontend-${var.env}" = {
