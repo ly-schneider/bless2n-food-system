@@ -2,13 +2,12 @@
 -- +goose StatementBegin
 
 CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT uuidv7(),
     email VARCHAR(255) NOT NULL,
     first_name VARCHAR(255),
     last_name VARCHAR(255),
     role user_role NOT NULL DEFAULT 'customer',
     is_verified BOOLEAN NOT NULL DEFAULT FALSE,
-    stripe_customer_id VARCHAR(255),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
