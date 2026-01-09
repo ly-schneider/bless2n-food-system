@@ -9,9 +9,11 @@ module "config" {
   ghcr_token      = var.ghcr_token
   app_secrets     = var.app_secrets
 
-  # Production frontend gets more resources
   frontend_cpu    = 0.5
   frontend_memory = "1Gi"
+
+  backend_cpu    = 0.5
+  backend_memory = "1Gi"
 }
 
 module "bfs_infrastructure" {
