@@ -136,7 +136,7 @@
     "eslint-config-prettier": "^10.1.2",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-react-hooks": "^7.0.0",
-    "eslint-plugin-storybook": "^9.0.0",
+    "eslint-plugin-storybook": "^9.1.17",
     "eslint-plugin-tailwindcss": "^3.18.0",
     "fetch-mock": "^12.6.0",
     "gzip-size": "7.0.0",
