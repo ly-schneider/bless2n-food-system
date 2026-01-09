@@ -6,7 +6,9 @@ require (
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/jackc/pgx/v5 v5.7.2
 	github.com/joho/godotenv v1.5.1
+	github.com/pressly/goose/v3 v3.24.1
 	github.com/stripe/stripe-go/v82 v82.5.1
 	github.com/swaggo/http-swagger/v2 v2.0.2
 	github.com/swaggo/swag v1.16.6
@@ -257,5 +259,6 @@ require (
 tool (
 	github.com/air-verse/air
 	github.com/golangci/golangci-lint/v2/cmd/golangci-lint
+	github.com/pressly/goose/v3/cmd/goose
 	github.com/swaggo/swag/cmd/swag
 )

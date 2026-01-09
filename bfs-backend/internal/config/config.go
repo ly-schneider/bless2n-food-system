@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -13,6 +14,7 @@ import (
 type Config struct {
 	App      AppConfig
 	Mongo    MongoConfig
+	Postgres PostgresConfig
 	Logger   LoggerConfig
 	Plunk    PlunkConfig
 	Security SecurityConfig
@@ -33,6 +35,14 @@ type AppConfig struct {
 type MongoConfig struct {
 	URI      string
 	Database string
+}
+
+type PostgresConfig struct {
+	DSN             string
+	MaxConns        int
+	MinConns        int
+	MaxConnLifetime time.Duration
+	MaxConnIdleTime time.Duration
 }
 
 type LoggerConfig struct {
@@ -102,6 +112,13 @@ func Load() Config {
 		Mongo: MongoConfig{
 			URI:      getEnv("MONGO_URI"),
 			Database: getEnv("MONGO_DATABASE"),
+		},
+		Postgres: PostgresConfig{
+			DSN:             getEnvOptional("POSTGRES_DSN"),
+			MaxConns:        getEnvAsInt("POSTGRES_MAX_CONNS", 25),
+			MinConns:        getEnvAsInt("POSTGRES_MIN_CONNS", 5),
+			MaxConnLifetime: getEnvAsDuration("POSTGRES_MAX_CONN_LIFETIME", 1*time.Hour),
+			MaxConnIdleTime: getEnvAsDuration("POSTGRES_MAX_CONN_IDLE_TIME", 30*time.Minute),
 		},
 		Logger: LoggerConfig{
 			Level:       getEnv("LOG_LEVEL"),
@@ -201,6 +218,18 @@ func getEnvAsInt(key string, def int) int {
 	}
 	if i, err := strconv.Atoi(v); err == nil {
 		return i
+	}
+	return def
+}
+
+// getEnvAsDuration returns a duration or default if empty/malformed
+func getEnvAsDuration(key string, def time.Duration) time.Duration {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+	if d, err := time.ParseDuration(v); err == nil {
+		return d
 	}
 	return def
 }
