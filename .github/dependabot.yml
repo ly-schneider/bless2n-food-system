@@ -3,9 +3,8 @@ updates:
   - package-ecosystem: "npm"
     directory: "/bfs-web-app"
     schedule:
-      interval: "weekly"
-      day: "friday"
-      time: "02:00"
+      interval: "cron"
+      cronjob: "0 2 * * fri%2"
       timezone: "Europe/Zurich"
     target-branch: "staging"
     commit-message:
@@ -23,9 +22,8 @@ updates:
   - package-ecosystem: "npm"
     directory: "/bfs-docs"
     schedule:
-      interval: "weekly"
-      day: "friday"
-      time: "02:00"
+      interval: "cron"
+      cronjob: "0 2 * * fri%2"
       timezone: "Europe/Zurich"
     target-branch: "staging"
     commit-message:
@@ -43,9 +41,8 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/bfs-backend"
     schedule:
-      interval: "weekly"
-      day: "friday"
-      time: "02:00"
+      interval: "cron"
+      cronjob: "0 2 * * fri%2"
       timezone: "Europe/Zurich"
     target-branch: "staging"
     commit-message:
@@ -63,9 +60,8 @@ updates:
   - package-ecosystem: "terraform"
     directory: "/bfs-cloud/envs/staging"
     schedule:
-      interval: "weekly"
-      day: "friday"
-      time: "02:00"
+      interval: "cron"
+      cronjob: "0 2 * * fri%2"
       timezone: "Europe/Zurich"
     target-branch: "staging"
     commit-message:
@@ -80,9 +76,8 @@ updates:
   - package-ecosystem: "terraform"
     directory: "/bfs-cloud/envs/production"
     schedule:
-      interval: "weekly"
-      day: "friday"
-      time: "02:00"
+      interval: "cron"
+      cronjob: "0 2 * * fri%2"
       timezone: "Europe/Zurich"
     target-branch: "staging"
     commit-message:
@@ -97,9 +92,8 @@ updates:
   - package-ecosystem: "gradle"
     directory: "/bfs-android-app"
     schedule:
-      interval: "weekly"
-      day: "friday"
-      time: "02:00"
+      interval: "cron"
+      cronjob: "0 2 * * fri%2"
       timezone: "Europe/Zurich"
     target-branch: "staging"
     commit-message:
