@@ -3,16 +3,6 @@ output "resource_group_name" {
   value       = module.bfs_infrastructure.resource_group_name
 }
 
-output "vnet_id" {
-  description = "ID of the virtual network"
-  value       = module.bfs_infrastructure.vnet_id
-}
-
-output "subnet_id" {
-  description = "ID of the container apps subnet"
-  value       = module.bfs_infrastructure.subnet_id
-}
-
 output "container_app_environment_id" {
   description = "ID of the container app environment"
   value       = module.bfs_infrastructure.container_app_environment_id
