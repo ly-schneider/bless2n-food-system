@@ -45,7 +45,8 @@ resource "azurerm_container_app" "this" {
     content {
       external_enabled           = var.external_ingress
       target_port                = var.target_port
-      transport                  = "http"
+      transport                  = "http2"
+      client_certificate_mode    = "accept"
       allow_insecure_connections = var.allow_insecure_connections
 
       traffic_weight {
