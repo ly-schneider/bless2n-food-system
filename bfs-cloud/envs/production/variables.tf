@@ -1,11 +1,4 @@
-variable "location" {
-  type    = string
-  default = "northeurope"
-}
-variable "tags" {
-  type    = map(string)
-  default = { project = "bfs", env = "production" }
-}
+# Deployment-specific variables that can't be centralized
 
 variable "image_tag" {
   description = "Tag to use for images (commit SHA, tag, or branch)"
@@ -13,15 +6,14 @@ variable "image_tag" {
   default     = "production"
 }
 
-# Optional digests published by the image build (prefer over tag when set)
 variable "frontend_digest" {
-  description = "OCI digest for the frontend image (e.g., sha256:...)"
+  description = "OCI digest for the frontend image (e.g., sha256:...). Preferred over tag when set."
   type        = string
   default     = ""
 }
 
 variable "backend_digest" {
-  description = "OCI digest for the backend image (e.g., sha256:...)"
+  description = "OCI digest for the backend image (e.g., sha256:...). Preferred over tag when set."
   type        = string
   default     = ""
 }
