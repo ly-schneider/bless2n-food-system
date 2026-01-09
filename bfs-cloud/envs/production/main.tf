@@ -12,11 +12,6 @@ module "config" {
   # Production frontend gets more resources
   frontend_cpu    = 0.5
   frontend_memory = "1Gi"
-
-  # Production API keys
-  frontend_stripe_publishable_key = "pk_live_51PBsTW2LfBQkI29zWnUaY1HAsP34VeFoYsInuhNNpyHjrZiHhrDZrMGvCIzZuZOXJEzxpOXhQyW8wfi6qiwelHkh00TTmNdU4k"
-  frontend_google_client_id       = "728225904671-bsdo738sald74qkbg38etqjqj5jjfh66.apps.googleusercontent.com"
-  backend_google_client_id        = "728225904671-bsdo738sald74qkbg38etqjqj5jjfh66.apps.googleusercontent.com"
 }
 
 module "bfs_infrastructure" {

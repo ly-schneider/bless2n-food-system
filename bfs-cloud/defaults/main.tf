@@ -65,21 +65,6 @@ variable "backend_memory" {
   default     = "0.5Gi"
 }
 
-variable "frontend_stripe_publishable_key" {
-  description = "Stripe publishable key for the frontend"
-  type        = string
-}
-
-variable "frontend_google_client_id" {
-  description = "Google client ID for the frontend"
-  type        = string
-}
-
-variable "backend_google_client_id" {
-  description = "Google client ID for the backend"
-  type        = string
-}
-
 locals {
   project = "bfs"
 
@@ -141,17 +126,19 @@ output "config" {
           { ghcr-token = var.ghcr_token }
         )
         environment_variables = {
-          NODE_ENV                           = "production"
-          LOG_LEVEL                          = "info"
-          NEXT_PUBLIC_POS_PIN                = "0000"
-          NEXT_PUBLIC_POS_IDLE_TIMEOUT       = "300000"
-          NEXT_PUBLIC_GA_MEASUREMENT_ID      = "G-9W8S03MJEM"
-          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = var.frontend_stripe_publishable_key
-          NEXT_PUBLIC_GOOGLE_CLIENT_ID       = var.frontend_google_client_id
+          NODE_ENV                      = "production"
+          LOG_LEVEL                     = "info"
+          NEXT_PUBLIC_POS_PIN           = "0000"
+          NEXT_PUBLIC_POS_IDLE_TIMEOUT  = "300000"
+          NEXT_PUBLIC_GA_MEASUREMENT_ID = "G-9W8S03MJEM"
         }
         key_vault_secrets = merge(
           lookup(var.app_secrets, "frontend-${var.env}", {}),
-          { "BACKEND_INTERNAL_URL" = "backend-internal-url" }
+          {
+            "BACKEND_INTERNAL_URL"               = "backend-internal-url"
+            "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" = "stripe-publishable-key"
+            "NEXT_PUBLIC_GOOGLE_CLIENT_ID"       = "google-client-id"
+          }
         )
         http_scale_rule = {
           name                = "frontend-http-scale"
@@ -192,7 +179,6 @@ output "config" {
           PLUNK_REPLY_TO             = ""
           MONGO_DATABASE             = "bless2n_food_system"
           STATION_QR_MAX_AGE_SECONDS = "86400"
-          GOOGLE_CLIENT_ID           = var.backend_google_client_id
         }
         key_vault_secrets = merge(
           lookup(var.app_secrets, "backend-${var.env}", {}),
@@ -202,6 +188,7 @@ output "config" {
             "JWT_PUB_PEM"              = "jwt-pub-pem"
             "STATION_QR_SECRET"        = "station-qr-secret"
             "GOOGLE_CLIENT_SECRET"     = "google-client-secret"
+            "GOOGLE_CLIENT_ID"         = "google-client-id"
             "STRIPE_SECRET_KEY"        = "stripe-secret-key"
             "STRIPE_WEBHOOK_SECRET"    = "stripe-webhook-secret"
             "PLUNK_API_KEY"            = "plunk-api-key"
