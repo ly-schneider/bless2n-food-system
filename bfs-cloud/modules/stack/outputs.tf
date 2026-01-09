@@ -3,16 +3,6 @@ output "resource_group_name" {
   value       = module.rg.name
 }
 
-output "vnet_id" {
-  description = "ID of the virtual network"
-  value       = module.net.vnet_id
-}
-
-output "subnet_id" {
-  description = "ID of the container apps subnet"
-  value       = module.net.subnet_id
-}
-
 output "container_app_environment_id" {
   description = "ID of the container app environment"
   value       = module.aca_env.id

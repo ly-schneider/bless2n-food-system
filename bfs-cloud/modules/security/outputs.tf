@@ -1,8 +1,3 @@
-output "nsg_id" {
-  description = "Network Security Group ID"
-  value       = azurerm_network_security_group.aca_nsg.id
-}
-
 output "key_vault_id" {
   description = "Key Vault ID (if enabled)"
   value       = var.enable_key_vault ? azurerm_key_vault.basic[0].id : null
