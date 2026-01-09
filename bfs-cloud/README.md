@@ -169,8 +169,6 @@ Cosmos keys vs AAD note:
 
 Provide secrets and registries via env variables or tfvars at the env root:
 - Use `TF_VAR_registry_*`, `TF_VAR_image_tag` (branch), and optionally `TF_VAR_frontend_digest` / `TF_VAR_backend_digest` (immutable digests) and `TF_VAR_revision_suffix` (commit SHA) in CI.
-- Optionally pass per-app overrides via `TF_VAR_app_secrets` and `TF_VAR_app_registries`.
-  - Example: `TF_VAR_app_secrets='{"frontend-staging":{"API_KEY":"..."}}'`
 These propagate to Azure Container Apps as `secret {}` and `registry {}` blocks.
 
 The previous `common/` + `env-configs/*.tfvars` path has been removed in favor of the simpler env roots.

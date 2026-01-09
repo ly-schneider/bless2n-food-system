@@ -40,10 +40,10 @@ output "backend_fqdns" {
 
 output "key_vault_id" {
   description = "Key Vault ID"
-  value       = var.config.enable_security_features ? module.security[0].key_vault_id : null
+  value       = module.security.key_vault_id
 }
 
 output "key_vault_secret_ids" {
   description = "Map of Key Vault secret names to their versionless IDs"
-  value       = jsonencode(var.config.enable_security_features ? module.security[0].key_vault_secret_ids : {})
+  value       = jsonencode(module.security.key_vault_secret_ids)
 }

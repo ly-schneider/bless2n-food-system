@@ -7,7 +7,6 @@ module "config" {
   backend_digest  = var.backend_digest
   revision_suffix = var.revision_suffix
   ghcr_token      = var.ghcr_token
-  app_secrets     = var.app_secrets
 }
 
 module "bfs_infrastructure" {

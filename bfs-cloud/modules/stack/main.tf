@@ -17,17 +17,16 @@ variable "tags" {
 variable "config" {
   description = "Environment-specific configuration"
   type = object({
-    rg_name                  = string
-    env_name                 = string
-    law_name                 = string
-    appi_name                = string
-    enable_app_insights      = bool
-    retention_days           = number
-    cosmos_name              = string
-    database_throughput      = number
-    enable_security_features = optional(bool, true)
-    key_vault_name           = optional(string)
-    allowed_ip_ranges        = optional(list(string), [])
+    rg_name             = string
+    env_name            = string
+    law_name            = string
+    appi_name           = string
+    enable_app_insights = bool
+    retention_days      = number
+    cosmos_name         = string
+    database_throughput = number
+    key_vault_name      = optional(string)
+    allowed_ip_ranges   = optional(list(string), [])
     apps = map(object({
       port                           = number
       image                          = string
@@ -113,7 +112,6 @@ module "obs" {
   tags                = var.tags
 }
 
-# Container Apps Environment - external without VNet injection (cost-optimized)
 module "aca_env" {
   source                     = "../containerapps_env"
   name                       = var.config.env_name
@@ -132,7 +130,6 @@ module "env_diag" {
   enable_metrics             = true
 }
 
-# Cosmos DB - public network access (no VNet integration)
 module "cosmos" {
   source                     = "../cosmos_mongo"
   name                       = var.config.cosmos_name
@@ -172,15 +169,10 @@ module "apps_backend" {
   secrets                        = each.value.secrets
   key_vault_secrets              = each.value.key_vault_secrets
   revision_suffix                = try(each.value.revision_suffix, null)
-  key_vault_secret_refs = merge(
-    try(each.value.key_vault_secret_refs, {}),
-    var.config.enable_security_features && length(module.security) > 0 ? {
-      for env_var, secret_name in try(each.value.key_vault_secrets, {}) :
-      lower(replace(env_var, "_", "-")) => contains(keys(module.security[0].key_vault_secret_ids), secret_name) ?
-      module.security[0].key_vault_secret_ids[secret_name] :
-      format("%ssecrets/%s", module.security[0].key_vault_uri, secret_name)
-    } : {}
-  )
+  key_vault_secret_refs = {
+    for secret_name in distinct(values(try(each.value.key_vault_secrets, {}))) :
+    secret_name => "${trimsuffix(module.security.key_vault_uri, "/")}/secrets/${secret_name}"
+  }
   registries              = each.value.registries
   http_scale_rule         = each.value.http_scale_rule
   cpu_scale_rule          = each.value.cpu_scale_rule
@@ -219,15 +211,10 @@ module "apps_frontend" {
   secrets           = each.value.secrets
   key_vault_secrets = each.value.key_vault_secrets
   revision_suffix   = try(each.value.revision_suffix, null)
-  key_vault_secret_refs = merge(
-    try(each.value.key_vault_secret_refs, {}),
-    var.config.enable_security_features && length(module.security) > 0 ? {
-      for env_var, secret_name in try(each.value.key_vault_secrets, {}) :
-      lower(replace(env_var, "_", "-")) => contains(keys(module.security[0].key_vault_secret_ids), secret_name) ?
-      module.security[0].key_vault_secret_ids[secret_name] :
-      format("%ssecrets/%s", module.security[0].key_vault_uri, secret_name)
-    } : {}
-  )
+  key_vault_secret_refs = {
+    for secret_name in distinct(values(try(each.value.key_vault_secrets, {}))) :
+    secret_name => "${trimsuffix(module.security.key_vault_uri, "/")}/secrets/${secret_name}"
+  }
   registries              = each.value.registries
   http_scale_rule         = each.value.http_scale_rule
   cpu_scale_rule          = each.value.cpu_scale_rule
@@ -247,8 +234,6 @@ resource "azurerm_user_assigned_identity" "aca_uami" {
 }
 
 module "security" {
-  count = var.config.enable_security_features ? 1 : 0
-
   source                     = "../security"
   name_prefix                = var.environment
   location                   = var.location

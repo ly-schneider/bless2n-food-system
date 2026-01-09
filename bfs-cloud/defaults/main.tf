@@ -35,12 +35,6 @@ variable "ghcr_token" {
   sensitive   = true
 }
 
-variable "app_secrets" {
-  description = "Additional app secrets"
-  type        = map(map(string))
-  default     = {}
-}
-
 variable "frontend_cpu" {
   description = "vCPU for the frontend app"
   type        = number
@@ -105,7 +99,6 @@ output "config" {
     cosmos_name              = "${local.project}-${var.env}-cosmos"
     database_throughput      = 400
     key_vault_name           = "${local.project}-${var.env}-keyvault"
-    enable_security_features = true
 
     apps = {
       "frontend-${var.env}" = {
@@ -121,10 +114,7 @@ output "config" {
         image                          = local.frontend_image
         revision_suffix                = var.revision_suffix
         registries                     = local.registries
-        secrets = merge(
-          lookup(var.app_secrets, "frontend-${var.env}", {}),
-          { ghcr-token = var.ghcr_token }
-        )
+        secrets                        = { ghcr-token = var.ghcr_token }
         environment_variables = {
           NODE_ENV                      = "production"
           LOG_LEVEL                     = "info"
@@ -132,14 +122,11 @@ output "config" {
           NEXT_PUBLIC_POS_IDLE_TIMEOUT  = "300000"
           NEXT_PUBLIC_GA_MEASUREMENT_ID = "G-9W8S03MJEM"
         }
-        key_vault_secrets = merge(
-          lookup(var.app_secrets, "frontend-${var.env}", {}),
-          {
-            "BACKEND_INTERNAL_URL"               = "backend-internal-url"
-            "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" = "stripe-publishable-key"
-            "NEXT_PUBLIC_GOOGLE_CLIENT_ID"       = "google-client-id"
-          }
-        )
+        key_vault_secrets = {
+          "BACKEND_INTERNAL_URL"               = "backend-internal-url"
+          "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" = "stripe-publishable-key"
+          "NEXT_PUBLIC_GOOGLE_CLIENT_ID"       = "google-client-id"
+        }
         http_scale_rule = {
           name                = "frontend-http-scale"
           concurrent_requests = 20
@@ -163,10 +150,7 @@ output "config" {
         image                          = local.backend_image
         revision_suffix                = var.revision_suffix
         registries                     = local.registries
-        secrets = merge(
-          lookup(var.app_secrets, "backend-${var.env}", {}),
-          { ghcr-token = var.ghcr_token }
-        )
+        secrets                        = { ghcr-token = var.ghcr_token }
         environment_variables = {
           APP_ENV                    = var.env
           APP_PORT                   = "8080"
@@ -180,23 +164,20 @@ output "config" {
           MONGO_DATABASE             = "bless2n_food_system"
           STATION_QR_MAX_AGE_SECONDS = "86400"
         }
-        key_vault_secrets = merge(
-          lookup(var.app_secrets, "backend-${var.env}", {}),
-          {
-            "MONGO_URI"                = "mongo-uri"
-            "JWT_PRIV_PEM"             = "jwt-priv-pem"
-            "JWT_PUB_PEM"              = "jwt-pub-pem"
-            "STATION_QR_SECRET"        = "station-qr-secret"
-            "GOOGLE_CLIENT_SECRET"     = "google-client-secret"
-            "GOOGLE_CLIENT_ID"         = "google-client-id"
-            "STRIPE_SECRET_KEY"        = "stripe-secret-key"
-            "STRIPE_WEBHOOK_SECRET"    = "stripe-webhook-secret"
-            "PLUNK_API_KEY"            = "plunk-api-key"
-            "SECURITY_TRUSTED_ORIGINS" = "security-trusted-origins"
-            "PUBLIC_BASE_URL"          = "public-base-url"
-            "JWT_ISSUER"               = "jwt-issuer"
-          }
-        )
+        key_vault_secrets = {
+          "MONGO_URI"                = "mongo-uri"
+          "JWT_PRIV_PEM"             = "jwt-priv-pem"
+          "JWT_PUB_PEM"              = "jwt-pub-pem"
+          "STATION_QR_SECRET"        = "station-qr-secret"
+          "GOOGLE_CLIENT_SECRET"     = "google-client-secret"
+          "GOOGLE_CLIENT_ID"         = "google-client-id"
+          "STRIPE_SECRET_KEY"        = "stripe-secret-key"
+          "STRIPE_WEBHOOK_SECRET"    = "stripe-webhook-secret"
+          "PLUNK_API_KEY"            = "plunk-api-key"
+          "SECURITY_TRUSTED_ORIGINS" = "security-trusted-origins"
+          "PUBLIC_BASE_URL"          = "public-base-url"
+          "JWT_ISSUER"               = "jwt-issuer"
+        }
         http_scale_rule = {
           name                = "backend-http-scale"
           concurrent_requests = 40

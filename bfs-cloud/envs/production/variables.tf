@@ -24,12 +24,6 @@ variable "revision_suffix" {
   default     = null
 }
 
-variable "app_secrets" {
-  description = "Map of app name => map of secret name => value"
-  type        = map(map(string))
-  default     = {}
-}
-
 variable "ghcr_token" {
   description = "GitHub Container Registry personal access token for pulling images"
   type        = string
