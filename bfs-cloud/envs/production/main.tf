@@ -8,6 +8,9 @@ module "config" {
   revision_suffix = var.revision_suffix
   ghcr_token      = var.ghcr_token
 
+  frontend_domain = "food.blessthun.ch"
+  backend_domain  = "api.food.blessthun.ch"
+
   frontend_cpu    = 0.5
   frontend_memory = "1Gi"
 

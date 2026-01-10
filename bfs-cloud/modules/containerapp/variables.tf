@@ -175,6 +175,11 @@ variable "read_only_filesystem" {
   default     = true
 }
 
+variable "custom_domain" {
+  type        = string
+  description = "Custom domain name to bind with a managed certificate."
+}
+
 variable "required_capabilities" {
   type        = list(string)
   description = "Required Linux capabilities"

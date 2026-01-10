@@ -59,6 +59,16 @@ variable "backend_memory" {
   default     = "0.5Gi"
 }
 
+variable "frontend_domain" {
+  description = "Custom domain for the frontend app"
+  type        = string
+}
+
+variable "backend_domain" {
+  description = "Custom domain for the backend app"
+  type        = string
+}
+
 locals {
   project = "bfs"
 
@@ -74,6 +84,9 @@ locals {
     username             = local.registry_user
     password_secret_name = "ghcr-token"
   }]
+
+  frontend_domain = var.frontend_domain
+  backend_domain  = var.backend_domain
 }
 
 output "location" {
@@ -82,9 +95,8 @@ output "location" {
 
 output "tags" {
   value = {
-    project    = local.project
-    managed_by = "terraform"
-    env        = var.env
+    project = local.project
+    env     = var.env
   }
 }
 
@@ -107,6 +119,7 @@ output "config" {
         memory                         = var.frontend_memory
         min_replicas                   = 1
         max_replicas                   = 10
+        custom_domain                  = local.frontend_domain
         health_check_path              = "/health"
         liveness_path                  = "/health"
         liveness_interval_seconds      = 30
@@ -143,6 +156,7 @@ output "config" {
         memory                         = var.backend_memory
         min_replicas                   = 1
         max_replicas                   = 10
+        custom_domain                  = local.backend_domain
         health_check_path              = "/health"
         liveness_path                  = "/ping"
         liveness_interval_seconds      = 60

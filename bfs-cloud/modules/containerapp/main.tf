@@ -186,6 +186,19 @@ resource "azurerm_container_app" "this" {
   }
 }
 
+resource "azurerm_container_app_managed_certificate" "custom_domain" {
+  name                         = "${var.name}-managed-cert"
+  container_app_environment_id = var.environment_id
+  custom_domain_name           = var.custom_domain
+}
+
+resource "azurerm_container_app_custom_domain" "custom_domain" {
+  name                                     = var.custom_domain
+  container_app_id                         = azurerm_container_app.this.id
+  certificate_binding_type                 = "SniEnabled"
+  container_app_environment_certificate_id = azurerm_container_app_managed_certificate.custom_domain.id
+}
+
 module "diag" {
   source                     = "../diagnostic_setting"
   target_resource_id         = azurerm_container_app.this.id

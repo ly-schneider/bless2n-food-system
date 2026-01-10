@@ -34,6 +34,7 @@ variable "config" {
       memory                         = string
       min_replicas                   = number
       max_replicas                   = number
+      custom_domain                  = string
       revision_suffix                = optional(string)
       external_ingress               = optional(bool, true)
       allow_insecure_connections     = optional(bool, false)
@@ -162,6 +163,7 @@ module "apps_backend" {
   liveness_initial_delay_seconds = lookup(each.value, "liveness_initial_delay_seconds", 20)
   external_ingress               = try(each.value.external_ingress, true)
   allow_insecure_connections     = try(each.value.allow_insecure_connections, false)
+  custom_domain                  = each.value.custom_domain
   cpu                            = each.value.cpu
   memory                         = each.value.memory
   min_replicas                   = each.value.min_replicas
@@ -206,6 +208,7 @@ module "apps_frontend" {
   liveness_initial_delay_seconds = lookup(each.value, "liveness_initial_delay_seconds", 20)
   external_ingress               = try(each.value.external_ingress, true)
   allow_insecure_connections     = try(each.value.allow_insecure_connections, false)
+  custom_domain                  = each.value.custom_domain
   cpu                            = each.value.cpu
   memory                         = each.value.memory
   min_replicas                   = each.value.min_replicas
