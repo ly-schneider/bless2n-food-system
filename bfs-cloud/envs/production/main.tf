@@ -8,14 +8,14 @@ module "config" {
   revision_suffix = var.revision_suffix
   ghcr_token      = var.ghcr_token
 
-  frontend_domain = "food.blessthun.ch"
-  backend_domain  = "api.food.blessthun.ch"
-
   frontend_cpu    = 0.5
   frontend_memory = "1Gi"
 
   backend_cpu    = 0.5
   backend_memory = "1Gi"
+
+  frontend_custom_domains = ["food.blessthun.ch"]
+  backend_custom_domains  = ["api.food.blessthun.ch"]
 }
 
 module "bfs_infrastructure" {

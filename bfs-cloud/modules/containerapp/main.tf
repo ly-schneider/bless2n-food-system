@@ -3,6 +3,8 @@ locals {
   _kv_identity_guard   = length(var.key_vault_secret_refs) == 0 || local.kv_secret_identity != null ? true : tomap({})["force_error"]
   max_suffix_length    = max(0, 54 - length(var.name) - 2)
   safe_revision_suffix = var.revision_suffix != null ? substr(replace(var.revision_suffix, "/[^a-z0-9-]/", ""), 0, local.max_suffix_length) : null
+  custom_domains       = var.custom_domains != null ? var.custom_domains : []
+  custom_domain_set    = var.enable_ingress ? toset(local.custom_domains) : toset([])
 }
 
 resource "azurerm_container_app" "this" {
@@ -186,17 +188,12 @@ resource "azurerm_container_app" "this" {
   }
 }
 
-resource "azurerm_container_app_managed_certificate" "custom_domain" {
-  name                         = "${var.name}-managed-cert"
-  container_app_environment_id = var.environment_id
-  custom_domain_name           = var.custom_domain
-}
+resource "azurerm_container_app_custom_domain" "this" {
+  for_each = local.custom_domain_set
 
-resource "azurerm_container_app_custom_domain" "custom_domain" {
-  name                                     = var.custom_domain
-  container_app_id                         = azurerm_container_app.this.id
-  certificate_binding_type                 = "SniEnabled"
-  container_app_environment_certificate_id = azurerm_container_app_managed_certificate.custom_domain.id
+  name                     = each.value
+  container_app_id         = azurerm_container_app.this.id
+  certificate_binding_type = "Disabled"
 }
 
 module "diag" {

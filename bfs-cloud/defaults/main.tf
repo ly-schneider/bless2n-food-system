@@ -59,14 +59,16 @@ variable "backend_memory" {
   default     = "0.5Gi"
 }
 
-variable "frontend_domain" {
-  description = "Custom domain for the frontend app"
-  type        = string
+variable "frontend_custom_domains" {
+  description = "Custom domains for the frontend app"
+  type        = list(string)
+  default     = []
 }
 
-variable "backend_domain" {
-  description = "Custom domain for the backend app"
-  type        = string
+variable "backend_custom_domains" {
+  description = "Custom domains for the backend app"
+  type        = list(string)
+  default     = []
 }
 
 locals {
@@ -84,9 +86,6 @@ locals {
     username             = local.registry_user
     password_secret_name = "ghcr-token"
   }]
-
-  frontend_domain = var.frontend_domain
-  backend_domain  = var.backend_domain
 }
 
 output "location" {
@@ -119,7 +118,6 @@ output "config" {
         memory                         = var.frontend_memory
         min_replicas                   = 1
         max_replicas                   = 10
-        custom_domain                  = local.frontend_domain
         health_check_path              = "/health"
         liveness_path                  = "/health"
         liveness_interval_seconds      = 30
@@ -128,6 +126,7 @@ output "config" {
         revision_suffix                = var.revision_suffix
         registries                     = local.registries
         secrets                        = { ghcr-token = var.ghcr_token }
+        custom_domains                 = var.frontend_custom_domains
         environment_variables = {
           NODE_ENV                      = "production"
           LOG_LEVEL                     = "info"
@@ -156,7 +155,6 @@ output "config" {
         memory                         = var.backend_memory
         min_replicas                   = 1
         max_replicas                   = 10
-        custom_domain                  = local.backend_domain
         health_check_path              = "/health"
         liveness_path                  = "/ping"
         liveness_interval_seconds      = 60
@@ -165,6 +163,7 @@ output "config" {
         revision_suffix                = var.revision_suffix
         registries                     = local.registries
         secrets                        = { ghcr-token = var.ghcr_token }
+        custom_domains                 = var.backend_custom_domains
         environment_variables = {
           APP_ENV                    = var.env
           APP_PORT                   = "8080"

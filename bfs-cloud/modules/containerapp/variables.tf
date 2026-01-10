@@ -18,6 +18,11 @@ variable "allow_insecure_connections" {
   description = "Allow HTTP connections in addition to HTTPS (set to true for plain HTTP access)"
   default     = false
 }
+variable "custom_domains" {
+  type        = list(string)
+  description = "Custom domains to attach to the Container App (no certificates by default)"
+  default     = []
+}
 variable "cpu" {
   type    = number
   default = 0.5
@@ -173,11 +178,6 @@ variable "read_only_filesystem" {
   type        = bool
   description = "Use read-only root filesystem for security"
   default     = true
-}
-
-variable "custom_domain" {
-  type        = string
-  description = "Custom domain name to bind with a managed certificate."
 }
 
 variable "required_capabilities" {
