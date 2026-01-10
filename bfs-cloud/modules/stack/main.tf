@@ -87,6 +87,10 @@ locals {
   environment_variables = var.config.enable_app_insights ? {
     APPINSIGHTS_CONNECTION_STRING = coalesce(module.obs.app_insights_connection_string, "")
   } : {}
+  key_vault_name   = var.config.key_vault_name != null ? var.config.key_vault_name : "${var.config.cosmos_name}-kv"
+  key_vault_uri    = "https://${local.key_vault_name}.vault.azure.net"
+  uami_name        = "${var.environment}-aca-uami"
+  uami_resource_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${var.config.rg_name}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/${local.uami_name}"
 }
 
 module "rg" {
@@ -163,7 +167,7 @@ module "apps_backend" {
   min_replicas                   = each.value.min_replicas
   max_replicas                   = each.value.max_replicas
   enable_system_identity         = false
-  user_assigned_identity_ids     = [azurerm_user_assigned_identity.aca_uami.id]
+  user_assigned_identity_ids     = [local.uami_resource_id]
   log_analytics_workspace_id     = module.obs.log_analytics_id
   environment_variables          = merge(local.environment_variables, each.value.environment_variables)
   secrets                        = each.value.secrets
@@ -171,7 +175,7 @@ module "apps_backend" {
   revision_suffix                = try(each.value.revision_suffix, null)
   key_vault_secret_refs = {
     for secret_name in distinct(values(try(each.value.key_vault_secrets, {}))) :
-    secret_name => "${trimsuffix(module.security.key_vault_uri, "/")}/secrets/${secret_name}"
+    secret_name => "${local.key_vault_uri}/secrets/${secret_name}"
   }
   registries              = each.value.registries
   http_scale_rule         = each.value.http_scale_rule
@@ -180,6 +184,11 @@ module "apps_backend" {
   azure_queue_scale_rules = each.value.azure_queue_scale_rules
   custom_scale_rules      = each.value.custom_scale_rules
   tags                    = merge(var.tags, { app = each.key })
+
+  depends_on = [
+    module.security,
+    azurerm_user_assigned_identity.aca_uami
+  ]
 }
 
 module "apps_frontend" {
@@ -202,7 +211,7 @@ module "apps_frontend" {
   min_replicas                   = each.value.min_replicas
   max_replicas                   = each.value.max_replicas
   enable_system_identity         = false
-  user_assigned_identity_ids     = [azurerm_user_assigned_identity.aca_uami.id]
+  user_assigned_identity_ids     = [local.uami_resource_id]
   log_analytics_workspace_id     = module.obs.log_analytics_id
   environment_variables = merge(
     local.environment_variables,
@@ -213,7 +222,7 @@ module "apps_frontend" {
   revision_suffix   = try(each.value.revision_suffix, null)
   key_vault_secret_refs = {
     for secret_name in distinct(values(try(each.value.key_vault_secrets, {}))) :
-    secret_name => "${trimsuffix(module.security.key_vault_uri, "/")}/secrets/${secret_name}"
+    secret_name => "${local.key_vault_uri}/secrets/${secret_name}"
   }
   registries              = each.value.registries
   http_scale_rule         = each.value.http_scale_rule
@@ -222,6 +231,11 @@ module "apps_frontend" {
   azure_queue_scale_rules = each.value.azure_queue_scale_rules
   custom_scale_rules      = each.value.custom_scale_rules
   tags                    = merge(var.tags, { app = each.key })
+
+  depends_on = [
+    module.security,
+    azurerm_user_assigned_identity.aca_uami
+  ]
 }
 
 data "azurerm_client_config" "current" {}
@@ -238,7 +252,7 @@ module "security" {
   name_prefix                = var.environment
   location                   = var.location
   resource_group_name        = module.rg.name
-  key_vault_name             = var.config.key_vault_name != null ? var.config.key_vault_name : "${var.config.cosmos_name}-kv"
+  key_vault_name             = local.key_vault_name
   allowed_ip_ranges          = var.config.allowed_ip_ranges != null ? var.config.allowed_ip_ranges : []
   key_vault_admins           = [data.azurerm_client_config.current.object_id]
   uami_principal_id          = azurerm_user_assigned_identity.aca_uami.principal_id
