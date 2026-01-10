@@ -193,7 +193,14 @@ resource "azurerm_container_app_custom_domain" "this" {
 
   name                     = each.value
   container_app_id         = azurerm_container_app.this.id
-  certificate_binding_type = "Disabled"
+  certificate_binding_type = "Auto"
+
+  lifecycle {
+    ignore_changes = [
+      certificate_binding_type,
+      certificate_id
+    ]
+  }
 }
 
 module "diag" {
