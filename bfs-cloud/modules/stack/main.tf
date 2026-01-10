@@ -251,15 +251,10 @@ resource "azurerm_user_assigned_identity" "aca_uami" {
 }
 
 module "security" {
-  source                     = "../security"
-  name_prefix                = var.environment
-  location                   = var.location
-  resource_group_name        = module.rg.name
-  key_vault_name             = local.key_vault_name
-  allowed_ip_ranges          = var.config.allowed_ip_ranges != null ? var.config.allowed_ip_ranges : []
-  key_vault_admins           = [data.azurerm_client_config.current.object_id]
-  uami_principal_id          = azurerm_user_assigned_identity.aca_uami.principal_id
-  cosmos_connection_string   = module.cosmos.connection_string
-  log_analytics_workspace_id = module.obs.log_analytics_id
-  tags                       = var.tags
+  source              = "../security"
+  name_prefix         = var.environment
+  location            = var.location
+  resource_group_name = module.rg.name
+  key_vault_name      = local.key_vault_name
+  tags                = var.tags
 }

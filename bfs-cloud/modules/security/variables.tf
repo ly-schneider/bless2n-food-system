@@ -14,42 +14,13 @@ variable "resource_group_name" {
 }
 
 variable "enable_key_vault" {
-  description = "Enable basic Key Vault (Standard SKU)"
+  description = "Enable Key Vault data source lookup"
   type        = bool
   default     = true
 }
 
 variable "key_vault_name" {
   description = "Key Vault name"
-  type        = string
-}
-
-variable "allowed_ip_ranges" {
-  description = "Allowed IP ranges for Key Vault access"
-  type        = list(string)
-  default     = []
-}
-
-variable "key_vault_admins" {
-  description = "Object IDs of Key Vault administrators"
-  type        = list(string)
-  default     = []
-}
-
-variable "uami_principal_id" {
-  description = "User-assigned managed identity principal ID for container apps"
-  type        = string
-}
-
-variable "cosmos_connection_string" {
-  description = "Cosmos DB connection string"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "log_analytics_workspace_id" {
-  description = "Log Analytics workspace ID for basic logging"
   type        = string
 }
 
