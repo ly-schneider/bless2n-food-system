@@ -29,5 +29,25 @@ services:
     volumes:
       - mongo_data:/data/db
 
+  jaeger:
+    image: jaegertracing/jaeger:1.63
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+
+  otel-collector:
+    image: otel/opentelemetry-collector:0.104.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    depends_on:
+      - jaeger
+    volumes:
+      - ${OTELCOL_CONFIG:-./otelcol.dev.yaml}:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+
 volumes:
   mongo_data:

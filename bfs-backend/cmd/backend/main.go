@@ -57,6 +57,9 @@ func main() {
 		app.NewServices(),
 		app.NewHandlers(),
 
-		fx.Invoke(app.StartHTTPServer),
+		fx.Invoke(
+			app.SetupObservability,
+			app.StartHTTPServer,
+		),
 	).Run()
 }

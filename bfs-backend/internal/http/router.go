@@ -6,6 +6,7 @@ import (
 	"backend/internal/domain"
 	"backend/internal/handler"
 	jwtMiddleware "backend/internal/middleware"
+	"backend/internal/observability"
 	"backend/internal/repository"
 	"backend/internal/service"
 
@@ -57,7 +58,10 @@ func NewRouter(
 	// wire chi URLParam to admin handler helpers
 	handler.ChiURLParamFn = chi.URLParam
 
-	// Security middleware (applied first for all requests)
+	// Tracing middleware (root span per request)
+	r.Use(observability.ChiMiddleware(nil))
+
+	// Security middleware (applied early for all requests)
 	r.Use(securityMw.SecurityHeaders)
 	r.Use(securityMw.CacheControlForSensitive)
 	r.Use(securityMw.CORS)
