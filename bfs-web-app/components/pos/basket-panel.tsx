@@ -1,7 +1,7 @@
 "use client"
 
 import { Banknote, Check, CreditCard, Printer, QrCode, ShoppingCart, XCircle } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { CartItemDisplay } from "@/components/cart/cart-item-display"
 import { InlineMenuGroup } from "@/components/cart/inline-menu-group"
 import { ProductConfigurationModal } from "@/components/cart/product-configuration-modal"
@@ -87,6 +87,8 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
     payment?: PosPaymentMethod
   } | null>(null)
   const total = cart.totalCents
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const prevItemCount = useRef(cart.items.length)
   const receivedCents = useMemo(() => Math.round((parseFloat(received || "0") || 0) * 100), [received])
   const changeCents = Math.max(0, receivedCents - total)
   const cartIsEmpty = cart.items.length === 0
@@ -177,6 +179,14 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
     window.addEventListener("pos:lock", onLock)
     return () => window.removeEventListener("pos:lock", onLock)
   }, [])
+
+  // Auto-scroll to bottom when new items are added
+  useEffect(() => {
+    if (cart.items.length > prevItemCount.current && scrollRef.current) {
+      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" })
+    }
+    prevItemCount.current = cart.items.length
+  }, [cart.items.length])
 
   // Listen for native print results from the Android WebView bridge
   useEffect(() => {
@@ -597,7 +607,7 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
         <div className="px-4 py-4">
           <h3 className="text-lg font-semibold">Warenkorb</h3>
         </div>
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+        <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
           {cart.items.length === 0 ? (
             <div className="flex h-full items-start justify-center">
               <div className="flex flex-col items-center justify-center py-8 text-center">
