@@ -48,10 +48,10 @@ func ChiMiddleware(tracer trace.Tracer) func(http.Handler) http.Handler {
 			}
 
 			attrs := []attribute.KeyValue{
-				semconv.HTTPMethodKey.String(r.Method),
-				semconv.HTTPSchemeKey.String(requestScheme(r)),
-				semconv.HTTPStatusCodeKey.Int(statusCode),
-				semconv.URLPathKey.String(r.URL.Path),
+				semconv.HTTPRequestMethodKey.String(r.Method),
+				semconv.URLScheme(requestScheme(r)),
+				semconv.HTTPResponseStatusCode(statusCode),
+				semconv.URLPath(r.URL.Path),
 			}
 			if routePattern != "" {
 				attrs = append(attrs, semconv.HTTPRouteKey.String(routePattern))

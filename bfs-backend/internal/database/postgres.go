@@ -9,6 +9,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 // PostgresDB wraps a pgx connection pool
@@ -63,4 +66,61 @@ func (p *PostgresDB) Close() error {
 		p.Pool.Close()
 	}
 	return nil
+}
+
+// GormDB wraps a GORM database connection.
+type GormDB struct {
+	DB *gorm.DB
+}
+
+// NewGormDB creates a new GORM database connection using the existing DSN.
+func NewGormDB(cfg config.Config) (*GormDB, error) {
+	logLevel := logger.Silent
+	if cfg.Logger.Development {
+		logLevel = logger.Info
+	}
+
+	gormConfig := &gorm.Config{
+		Logger:                 logger.Default.LogMode(logLevel),
+		SkipDefaultTransaction: true,
+		PrepareStmt:            true,
+	}
+
+	db, err := gorm.Open(postgres.Open(cfg.Postgres.DSN), gormConfig)
+	if err != nil {
+		zap.L().Error("failed to connect to PostgreSQL with GORM", zap.Error(err))
+		return nil, fmt.Errorf("failed to connect to PostgreSQL: %w", err)
+	}
+
+	// Get underlying sql.DB to configure pool
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get underlying DB: %w", err)
+	}
+
+	// Configure connection pool
+	sqlDB.SetMaxOpenConns(cfg.Postgres.MaxConns)
+	sqlDB.SetMaxIdleConns(cfg.Postgres.MinConns)
+	sqlDB.SetConnMaxLifetime(cfg.Postgres.MaxConnLifetime)
+	sqlDB.SetConnMaxIdleTime(cfg.Postgres.MaxConnIdleTime)
+
+	// Verify connection
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := sqlDB.PingContext(ctx); err != nil {
+		return nil, fmt.Errorf("failed to ping PostgreSQL: %w", err)
+	}
+
+	zap.L().Info("successfully connected to PostgreSQL with GORM")
+
+	return &GormDB{DB: db}, nil
+}
+
+// Close closes the GORM database connection.
+func (g *GormDB) Close() error {
+	sqlDB, err := g.DB.DB()
+	if err != nil {
+		return err
+	}
+	return sqlDB.Close()
 }

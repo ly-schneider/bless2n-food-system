@@ -11,12 +11,11 @@ cd "$(dirname "$0")"
 echo "Running provisioning scripts..."
 psql "$NEON_OWNER_URL" \
   -f 01_roles.sql \
-  -f 02_lockdown.sql \
-  -f 03_schema.sql \
-  -f 04_grants_existing.sql \
-  -f 05_default_privileges.sql \
-  -f 06_role_settings.sql \
-  -f 07_verify.sql
+  -f 02_schema.sql \
+  -f 03_grants_existing.sql \
+  -f 04_default_privileges.sql \
+  -f 05_role_settings.sql \
+  -f 06_verify.sql
 
 echo "Setting passwords..."
 
