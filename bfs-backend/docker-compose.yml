@@ -1,81 +1,53 @@
 name: bfs-backend
 
 services:
+  flyway:
+    image: flyway/flyway:11-alpine
+    environment:
+      FLYWAY_URL: ${FLYWAY_URL}
+      FLYWAY_USER: ${FLYWAY_USER}
+      FLYWAY_PASSWORD: ${FLYWAY_PASSWORD}
+      FLYWAY_SCHEMAS: app
+      FLYWAY_DEFAULT_SCHEMA: app
+      FLYWAY_CREATE_SCHEMAS: "false"
+      FLYWAY_BASELINE_ON_MIGRATE: "true"
+      FLYWAY_INIT_SQL: "SET ROLE app_owner;"
+    volumes:
+      - ./db/flyway/migrations:/flyway/sql:ro
+    command: migrate
+    profiles:
+      - migrate
+
   mongo:
     image: mongo:8
-    restart: always
+    restart: unless-stopped
     ports:
-      - "${MONGO_PORT:-27017}:27017"
+      - "${MONGO_PORT}:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          'if [ -n "$MONGO_INITDB_ROOT_USERNAME" ]; then mongosh "mongodb://$MONGO_INITDB_ROOT_USERNAME:$MONGO_INITDB_ROOT_PASSWORD@localhost:27017/admin" --quiet --eval "db.adminCommand(''ping'').ok" | grep -q 1; else mongosh "mongodb://localhost:27017/admin" --quiet --eval "db.adminCommand(''ping'').ok" | grep -q 1; fi',
-        ]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-      start_period: 5s
-
-  mongo-express:
-    image: mongo-express:1.0.2-20-alpine3.19
-    restart: always
-    ports:
-      - "8081:8081"
-    environment:
-      ME_CONFIG_MONGODB_URL: "${MONGO_URI_DOCKER}"
-      ME_CONFIG_BASICAUTH_ENABLED: "true"
-      ME_CONFIG_BASICAUTH_USERNAME: ${MONGOEXPRESS_BASIC_USER}
-      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGOEXPRESS_BASIC_PASSWORD}
-    depends_on:
-      - mongo
-
-  backend:
-    profiles: ["backend"]
-    build:
-      context: .
-      dockerfile: Dockerfile
-    depends_on:
-      mongo:
-        condition: service_healthy
-    restart: unless-stopped
-    ports:
-      - "${APP_PORT}:8080"
-    environment:
-      MONGO_URI: ${MONGO_URI}
-      MONGO_DATABASE: ${MONGO_DATABASE}
-      MONGO_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
-      MONGO_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
-
-      PLUNK_API_KEY: ${PLUNK_API_KEY}
-      PLUNK_FROM_EMAIL: ${PLUNK_FROM_EMAIL}
-      PLUNK_FROM_NAME: ${PLUNK_FROM_NAME}
-      PLUNK_REPLY_TO: ${PLUNK_REPLY_TO}
-
-      APP_ENV: ${APP_ENV}
-      APP_PORT: ${APP_PORT}
-      JWT_ISSUER: ${JWT_ISSUER}
-      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
-      JWT_PRIV_PEM: ${JWT_PRIV_PEM}
-      JWT_PUB_PEM: ${JWT_PUB_PEM}
-
-      STATION_QR_SECRET: ${STATION_QR_SECRET}
-      STATION_QR_MAX_AGE_SECONDS: ${STATION_QR_MAX_AGE_SECONDS}
-
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-
-      LOG_LEVEL: ${LOG_LEVEL}
-      LOG_DEVELOPMENT: ${LOG_DEVELOPMENT}
-
-      SECURITY_ENABLE_HSTS: ${SECURITY_ENABLE_HSTS}
-      SECURITY_ENABLE_CSP: ${SECURITY_ENABLE_CSP}
-      SECURITY_TRUSTED_ORIGINS: ${SECURITY_TRUSTED_ORIGINS}
-
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
     volumes:
-      - ./secrets/dev:/app/secrets/dev:ro
+      - mongo_data:/data/db
+
+  jaeger:
+    image: jaegertracing/jaeger:1.63
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+
+  otel-collector:
+    image: otel/opentelemetry-collector:0.104.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    depends_on:
+      - jaeger
+    volumes:
+      - ${OTELCOL_CONFIG:-./otelcol.dev.yaml}:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+
+volumes:
+  mongo_data:

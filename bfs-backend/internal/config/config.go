@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -13,6 +14,8 @@ import (
 type Config struct {
 	App      AppConfig
 	Mongo    MongoConfig
+	Postgres PostgresConfig
+	NeonAuth NeonAuthConfig
 	Logger   LoggerConfig
 	Plunk    PlunkConfig
 	Security SecurityConfig
@@ -24,15 +27,28 @@ type Config struct {
 type AppConfig struct {
 	AppEnv        string
 	AppPort       string
-	JWTIssuer     string
-	JWTPrivPEM    string
-	JWTPubPEM     string
+	JWTIssuer     string // Optional: deprecated, use NeonAuth instead
+	JWTPrivPEM    string // Optional: deprecated, use NeonAuth instead
+	JWTPubPEM     string // Optional: deprecated, use NeonAuth instead
 	PublicBaseURL string
+}
+
+type NeonAuthConfig struct {
+	URL      string // NEON_AUTH_URL - The Neon Auth URL for JWKS discovery
+	Audience string // NEON_AUTH_AUDIENCE - Optional audience claim to validate
 }
 
 type MongoConfig struct {
 	URI      string
 	Database string
+}
+
+type PostgresConfig struct {
+	DSN             string
+	MaxConns        int
+	MinConns        int
+	MaxConnLifetime time.Duration
+	MaxConnIdleTime time.Duration
 }
 
 type LoggerConfig struct {
@@ -94,14 +110,25 @@ func Load() Config {
 		App: AppConfig{
 			AppEnv:        getEnv("APP_ENV"),
 			AppPort:       getEnv("APP_PORT"),
-			JWTIssuer:     getEnv("JWT_ISSUER"),
-			JWTPrivPEM:    getEnv("JWT_PRIV_PEM"),
-			JWTPubPEM:     getEnv("JWT_PUB_PEM"),
+			JWTIssuer:     getEnvOptional("JWT_ISSUER"),     // Optional: deprecated
+			JWTPrivPEM:    getEnvOptional("JWT_PRIV_PEM"),   // Optional: deprecated
+			JWTPubPEM:     getEnvOptional("JWT_PUB_PEM"),    // Optional: deprecated
 			PublicBaseURL: getEnv("PUBLIC_BASE_URL"),
 		},
 		Mongo: MongoConfig{
-			URI:      getEnv("MONGO_URI"),
-			Database: getEnv("MONGO_DATABASE"),
+			URI:      getEnvOptional("MONGO_URI"),      // Optional: deprecated
+			Database: getEnvOptional("MONGO_DATABASE"), // Optional: deprecated
+		},
+		NeonAuth: NeonAuthConfig{
+			URL:      getEnvOptional("NEON_AUTH_URL"),
+			Audience: getEnvOptional("NEON_AUTH_AUDIENCE"),
+		},
+		Postgres: PostgresConfig{
+			DSN:             getEnvOptional("POSTGRES_DSN"),
+			MaxConns:        getEnvAsInt("POSTGRES_MAX_CONNS", 25),
+			MinConns:        getEnvAsInt("POSTGRES_MIN_CONNS", 5),
+			MaxConnLifetime: getEnvAsDuration("POSTGRES_MAX_CONN_LIFETIME", 1*time.Hour),
+			MaxConnIdleTime: getEnvAsDuration("POSTGRES_MAX_CONN_IDLE_TIME", 30*time.Minute),
 		},
 		Logger: LoggerConfig{
 			Level:       getEnv("LOG_LEVEL"),
@@ -124,8 +151,8 @@ func Load() Config {
 		},
 		OAuth: OAuthConfig{
 			Google: GoogleConfig{
-				ClientID:     getEnv("GOOGLE_CLIENT_ID"),
-				ClientSecret: getEnvOptional("GOOGLE_CLIENT_SECRET"),
+				ClientID:     getEnvOptional("GOOGLE_CLIENT_ID"),     // Optional: deprecated
+				ClientSecret: getEnvOptional("GOOGLE_CLIENT_SECRET"), // Optional: deprecated
 			},
 		},
 		Stations: StationConfig{
@@ -201,6 +228,18 @@ func getEnvAsInt(key string, def int) int {
 	}
 	if i, err := strconv.Atoi(v); err == nil {
 		return i
+	}
+	return def
+}
+
+// getEnvAsDuration returns a duration or default if empty/malformed
+func getEnvAsDuration(key string, def time.Duration) time.Duration {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+	if d, err := time.ParseDuration(v); err == nil {
+		return d
 	}
 	return def
 }

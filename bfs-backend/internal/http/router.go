@@ -3,9 +3,12 @@ package http
 import (
 	"net/http"
 
+	"backend/internal/auth"
 	"backend/internal/domain"
 	"backend/internal/handler"
 	jwtMiddleware "backend/internal/middleware"
+	"backend/internal/observability"
+	"backend/internal/postgres"
 	"backend/internal/repository"
 	"backend/internal/service"
 
@@ -33,6 +36,7 @@ func NewRouter(
 	healthHandler *handler.HealthHandler,
 	jwksHandler *handler.JWKSHandler,
 	jwtMw *jwtMiddleware.JWTMiddleware,
+	neonAuthMw *auth.NeonAuthMiddleware,
 	securityMw *jwtMiddleware.SecurityMiddleware,
 	productRepo repository.ProductRepository,
 	inventoryRepo repository.InventoryLedgerRepository,
@@ -48,6 +52,20 @@ func NewRouter(
 	stationRepo repository.StationRepository,
 	posDeviceRepo repository.PosDeviceRepository,
 	stationProductRepo repository.StationProductRepository,
+	// PostgreSQL repositories (for future use)
+	_ postgres.CategoryRepository,
+	_ postgres.ProductRepository,
+	_ postgres.JetonRepository,
+	_ postgres.MenuSlotRepository,
+	_ postgres.MenuSlotOptionRepository,
+	_ postgres.DeviceRepository,
+	_ postgres.DeviceProductRepository,
+	_ postgres.PosSettingsRepository,
+	_ postgres.OrderRepository,
+	_ postgres.OrderPaymentRepository,
+	_ postgres.OrderLineRepository,
+	_ postgres.OrderLineRedemptionRepository,
+	_ postgres.InventoryLedgerRepository,
 	posConfig service.POSConfigService,
 	emailSvc service.EmailService,
 	jwtSvc service.JWTService,
@@ -57,7 +75,10 @@ func NewRouter(
 	// wire chi URLParam to admin handler helpers
 	handler.ChiURLParamFn = chi.URLParam
 
-	// Security middleware (applied first for all requests)
+	// Tracing middleware (root span per request)
+	r.Use(observability.ChiMiddleware(nil))
+
+	// Security middleware (applied early for all requests)
 	r.Use(securityMw.SecurityHeaders)
 	r.Use(securityMw.CacheControlForSensitive)
 	r.Use(securityMw.CORS)
