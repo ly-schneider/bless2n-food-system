@@ -16,16 +16,17 @@ function applyStockToProduct(p: ProductDTO, stockMap: Map<string, number>): Prod
         ...p.menu,
         slots: p.menu.slots.map((slot) => ({
           ...slot,
-          options: slot.options?.map((opt) => {
-            const optStock = stockMap.get(opt.id)
-            if (optStock === undefined) return opt
-            return {
-              ...opt,
-              availableQuantity: optStock,
-              isAvailable: optStock > 0,
-              isLowStock: optStock > 0 && optStock <= 10,
-            }
-          }),
+          options:
+            slot.options?.map((opt) => {
+              const optStock = stockMap.get(opt.id)
+              if (optStock === undefined) return opt
+              return {
+                ...opt,
+                availableQuantity: optStock,
+                isAvailable: optStock > 0,
+                isLowStock: optStock > 0 && optStock <= 10,
+              }
+            }) ?? null,
         })),
       },
     }

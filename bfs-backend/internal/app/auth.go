@@ -7,6 +7,6 @@ import (
 	"go.uber.org/zap"
 )
 
-func NewSessionMiddleware(sessionRepo repository.SessionRepository, logger *zap.Logger) *auth.SessionMiddleware {
-	return auth.NewSessionMiddleware(sessionRepo, logger)
+func NewSessionMiddleware(sessionRepo repository.SessionRepository, bindingRepo repository.DeviceBindingRepository, logger *zap.Logger) *auth.SessionMiddleware {
+	return auth.NewSessionMiddleware(sessionRepo, bindingRepo, logger)
 }

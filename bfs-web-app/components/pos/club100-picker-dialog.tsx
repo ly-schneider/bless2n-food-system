@@ -131,7 +131,7 @@ export function Club100PickerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[80vh] flex-col">
+      <DialogContent className="flex max-h-[80vh] flex-col" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>100 Club Mitglied wählen</DialogTitle>
         </DialogHeader>

@@ -288,8 +288,10 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
             setPrintErrorDialog(detail.error || "Drucken fehlgeschlagen")
           }
         } else {
-          // Background printing path — only surface errors
-          if (!detail.success) setPrintErrorDialog(detail.error || "Drucken fehlgeschlagen")
+          // Background printing path — only surface errors (ignore "no_paired_printer" as it's expected in Jeton mode)
+          if (!detail.success && detail.error !== "no_paired_printer") {
+            setPrintErrorDialog(detail.error || "Drucken fehlgeschlagen")
+          }
         }
       } catch {
         if (showReceipt) {
@@ -821,7 +823,7 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
         </div>
         <div className="border-border flex flex-col gap-3 border-t p-4">
           {club100Discount && (
-            <div className="flex items-center justify-between rounded-lg bg-green-50 px-3 py-2 dark:bg-green-950/30">
+            <div className="flex items-center justify-between rounded-xl bg-green-100 px-3 py-2 dark:bg-green-950/30">
               <div className="flex flex-col">
                 <span className="text-sm font-medium text-green-700 dark:text-green-400">
                   100 Club: {club100Discount.person.firstName} {club100Discount.person.lastName}
@@ -834,7 +836,7 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
                 variant="ghost"
                 size="sm"
                 onClick={clearClub100Discount}
-                className="h-7 px-2 text-xs text-green-700 hover:text-green-900 dark:text-green-400"
+                className="h-7 px-2 text-xs text-red-500 hover:text-green-900 dark:text-green-400"
               >
                 Entfernen
               </Button>

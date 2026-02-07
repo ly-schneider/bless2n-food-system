@@ -36,7 +36,7 @@ type PosDeviceResponse = {
   status: string
   model?: string
   os?: string
-  settings?: { mode?: PosFulfillmentMode }
+  settings?: { posMode?: PosFulfillmentMode }
 }
 
 function PosInner() {
@@ -101,7 +101,7 @@ function PosInner() {
           approved: device.status === "approved",
           name: device.name,
           cardCapable: null,
-          mode: device.settings?.mode,
+          mode: device.settings?.posMode,
         })
       } catch {
         setStatus({ exists: false, approved: false })
@@ -123,16 +123,17 @@ function PosInner() {
             ...p.menu,
             slots: p.menu.slots.map((slot) => ({
               ...slot,
-              options: slot.options?.map((opt) => {
-                const optStock = stockMap.get(opt.id)
-                if (optStock === undefined) return opt
-                return {
-                  ...opt,
-                  availableQuantity: optStock,
-                  isAvailable: optStock > 0,
-                  isLowStock: optStock > 0 && optStock <= 5,
-                }
-              }),
+              options:
+                slot.options?.map((opt) => {
+                  const optStock = stockMap.get(opt.id)
+                  if (optStock === undefined) return opt
+                  return {
+                    ...opt,
+                    availableQuantity: optStock,
+                    isAvailable: optStock > 0,
+                    isLowStock: optStock > 0 && optStock <= 5,
+                  }
+                }) ?? null,
             })),
           },
         }
@@ -227,7 +228,7 @@ function PosInner() {
               approved: device.status === "approved",
               name: device.name,
               cardCapable: null,
-              mode: device.settings?.mode,
+              mode: device.settings?.posMode,
             })
           } catch {}
         }

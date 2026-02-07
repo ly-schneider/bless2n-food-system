@@ -10,7 +10,7 @@ export default function POSLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen">
       {children}
-      <VersionLabel className="fixed bottom-2 left-2" />
+      <VersionLabel className="fixed bottom-4 left-2" />
     </div>
   )
 }

@@ -259,6 +259,17 @@ class WebPosActivity : ComponentActivity() {
             // For MVP: use system print for HTML, ESC/POS for plain receipt
             try {
                 val obj = try { JSONObject(payload) } catch (_: Exception) { JSONObject() }
+
+                // Skip printing silently if explicitly requested (e.g., Jeton mode)
+                val skipPrint = obj.optBoolean("skipPrint", false)
+                if (skipPrint) {
+                    sendEvent(
+                        "bfs:print:result",
+                        JSONObject().put("success", true).put("skipped", true).put("correlationId", correlationId)
+                    )
+                    return
+                }
+
                 val mode = obj.optString("mode", "escpos")
                 if (mode == "system") {
                     val html = obj.optString("content", payload)
@@ -739,7 +750,10 @@ class WebPosActivity : ComponentActivity() {
             true
         } catch (e: Exception) {
             e.printStackTrace()
-            try { Toast.makeText(this, "Drucken fehlgeschlagen: ${e.message}", Toast.LENGTH_SHORT).show() } catch (_: Throwable) {}
+            // Only show toast for unexpected errors, not for "no_paired_printer"
+            if (e.message != "no_paired_printer") {
+                try { Toast.makeText(this, "Drucken fehlgeschlagen: ${e.message}", Toast.LENGTH_SHORT).show() } catch (_: Throwable) {}
+            }
             false
         }
     }

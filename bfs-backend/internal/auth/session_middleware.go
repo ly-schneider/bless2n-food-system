@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"backend/internal/generated/ent/devicebinding"
 	"backend/internal/repository"
 	"context"
 	"errors"
@@ -24,15 +25,18 @@ const (
 
 // SessionMiddleware validates Better Auth session tokens by looking up sessions
 // in Postgres. Supports both cookie-based (browser) and Bearer token (API) auth.
+// Also supports device token detection for combined user/device auth scenarios.
 type SessionMiddleware struct {
 	sessionRepo repository.SessionRepository
+	bindingRepo repository.DeviceBindingRepository
 	logger      *zap.Logger
 	cookieName  string // optional override from config
 }
 
-func NewSessionMiddleware(sessionRepo repository.SessionRepository, logger *zap.Logger) *SessionMiddleware {
+func NewSessionMiddleware(sessionRepo repository.SessionRepository, bindingRepo repository.DeviceBindingRepository, logger *zap.Logger) *SessionMiddleware {
 	return &SessionMiddleware{
 		sessionRepo: sessionRepo,
+		bindingRepo: bindingRepo,
 		logger:      logger,
 	}
 }
@@ -58,9 +62,46 @@ func (m *SessionMiddleware) RequireAuth() func(http.Handler) http.Handler {
 }
 
 // OptionalAuth returns middleware that validates a session if present but doesn't require it.
+// For Bearer tokens, it first checks if the token is a device token (POS/Station) before
+// treating it as a user session.
 func (m *SessionMiddleware) OptionalAuth() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Check if this is a Bearer token that might be a device token
+			if bearerToken, err := ExtractBearerToken(r); err == nil && m.bindingRepo != nil {
+				tokenHash := repository.HashToken(bearerToken)
+				if binding, bindErr := m.bindingRepo.GetByTokenHash(r.Context(), tokenHash); bindErr == nil {
+					// This is a device token - validate the underlying session and set device context
+					session, sessErr := m.sessionRepo.GetByToken(r.Context(), bearerToken)
+					if sessErr != nil {
+						m.handleAuthError(w, ErrInvalidToken)
+						return
+					}
+
+					ctx := r.Context()
+					ctx = WithAuthType(ctx, AuthTypeDevice)
+					if binding.DeviceID != nil {
+						ctx = WithDeviceID(ctx, *binding.DeviceID)
+					} else {
+						ctx = WithDeviceID(ctx, binding.ID)
+					}
+					switch binding.DeviceType {
+					case devicebinding.DeviceTypePOS:
+						ctx = WithDeviceType(ctx, DeviceTypePOS)
+					case devicebinding.DeviceTypeSTATION:
+						ctx = WithDeviceType(ctx, DeviceTypeStation)
+					}
+					ctx = WithUserID(ctx, session.UserID)
+					if session.Role != "" {
+						ctx = WithUserRole(ctx, string(session.Role))
+					}
+
+					next.ServeHTTP(w, r.WithContext(ctx))
+					return
+				}
+			}
+
+			// Not a device token or no binding repo - try regular session auth
 			ctx, err := m.validateAndRefresh(r)
 			if err != nil {
 				if errors.Is(err, ErrMissingToken) {

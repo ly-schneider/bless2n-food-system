@@ -145,8 +145,10 @@ func (h *Handlers) CreateOrder(w http.ResponseWriter, r *http.Request, params ge
 	}
 
 	var userID *string
-	if uid, ok := auth.GetUserID(ctx); ok {
-		userID = &uid
+	if origin != order.OriginPos {
+		if uid, ok := auth.GetUserID(ctx); ok {
+			userID = &uid
+		}
 	}
 
 	prep, err := h.payments.PrepareAndCreateOrder(ctx, input, userID, nil)

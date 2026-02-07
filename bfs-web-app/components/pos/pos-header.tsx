@@ -145,7 +145,7 @@ export function POSHeader({ mode, syncStatus }: POSHeaderProps) {
     >
       {holdProgress > 0 && (
         <div
-          className="bg-muted/50 pointer-events-none absolute rounded-full"
+          className="bg-muted pointer-events-none absolute rounded-full"
           style={{
             width: circleSize,
             height: circleSize,
@@ -157,8 +157,8 @@ export function POSHeader({ mode, syncStatus }: POSHeaderProps) {
       )}
       <div className="pointer-events-none relative z-10 flex flex-col items-center gap-4">
         <div className="mb-2 flex items-center gap-2">
-          <div className="bg-muted flex h-12 w-12 items-center justify-center overflow-hidden rounded-full">
-            <Image src="/assets/images/blessthun.png" alt="BlessThun" width={48} height={48} />
+          <div className="bg-muted flex h-10 w-10 items-center justify-center overflow-hidden rounded-full mr-1">
+            <Image src="/assets/images/blessthun.png" alt="BlessThun" width={40} height={40} />
           </div>
           <span className="text-lg font-semibold">BlessThun</span>
         </div>
@@ -191,9 +191,9 @@ export function POSHeader({ mode, syncStatus }: POSHeaderProps) {
               variant="outline"
               size="sm"
               onClick={() => {
-                try {
-                  window.dispatchEvent(new CustomEvent("admin:refresh"))
-                } catch {}
+                const url = new URL(window.location.href)
+                url.searchParams.set("_r", Date.now().toString())
+                window.location.href = url.toString()
               }}
               aria-label="Aktualisieren"
               className="rounded-[11px] border-0"
