@@ -16,6 +16,8 @@ module "config" {
 
   frontend_custom_domains = ["food.blessthun.ch"]
   backend_custom_domains  = ["api.food.blessthun.ch"]
+  docs_digest             = var.docs_digest
+  docs_custom_domains     = ["docs.food.blessthun.ch"]
 }
 
 module "bfs_infrastructure" {

@@ -10,8 +10,8 @@ export interface MenuSuggestion {
 }
 
 function canMapCartItemToSlot(cartItem: CartItem, slot: MenuSlotDTO): boolean {
-  if (!slot.menuSlotItems) return false
-  return slot.menuSlotItems.some((p) => p.id === cartItem.product.id)
+  if (!slot.options) return false
+  return slot.options.some((p) => p.id === cartItem.product.id)
 }
 
 function buildConfiguration(

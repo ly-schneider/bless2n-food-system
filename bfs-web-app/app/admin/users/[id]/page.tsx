@@ -11,19 +11,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useAuth } from "@/contexts/auth-context"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
-
+import { ALL_ROLES, hasPermission } from "@/lib/auth/rbac"
 import { getCSRFToken } from "@/lib/csrf"
+import type { UserRole } from "@/types"
 
 type UserDetails = {
   id: string
   email: string
-  firstName?: string | null
-  lastName?: string | null
+  name?: string | null
   role: string
-  isVerified?: boolean
+  emailVerified?: boolean
   createdAt?: string
   updatedAt?: string
 }
@@ -32,6 +32,7 @@ export default function AdminUserDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const fetchAuth = useAuthorizedFetch()
+  const { user: currentUser } = useAuth()
   const [user, setUser] = useState<UserDetails | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
@@ -39,11 +40,10 @@ export default function AdminUserDetailPage() {
   const [editOpen, setEditOpen] = useState(false)
 
   // Local editable fields
-  const [email, setEmail] = useState("")
-  const [firstName, setFirstName] = useState("")
-  const [lastName, setLastName] = useState("")
   const [role, setRole] = useState("customer")
-  const [isVerified, setIsVerified] = useState<boolean | undefined>(undefined)
+
+  const canSetRole = hasPermission(currentUser?.role as UserRole, "users:role:set")
+  const isSelf = currentUser?.id === id
 
   useEffect(() => {
     let cancelled = false
@@ -51,16 +51,12 @@ export default function AdminUserDetailPage() {
       setLoading(true)
       setError(null)
       try {
-        const res = await fetchAuth(`/api/v1/admin/users/${encodeURIComponent(id)}`)
+        const res = await fetchAuth(`/api/v1/users/${encodeURIComponent(id)}`)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const data = (await res.json()) as { user: UserDetails }
+        const data = (await res.json()) as UserDetails
         if (!cancelled) {
-          setUser(data.user)
-          setEmail(data.user.email || "")
-          setFirstName(data.user.firstName || "")
-          setLastName(data.user.lastName || "")
-          setRole(data.user.role || "customer")
-          setIsVerified(typeof data.user.isVerified === "boolean" ? data.user.isVerified : undefined)
+          setUser(data)
+          setRole(data.role || "customer")
         }
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : "Fehler beim Laden des Benutzers"
@@ -75,36 +71,27 @@ export default function AdminUserDetailPage() {
     }
   }, [fetchAuth, id])
 
-  const created = user?.createdAt ? new Date(user.createdAt).toLocaleString("de-CH") : "–"
-  const updated = user?.updatedAt ? new Date(user.updatedAt).toLocaleString("de-CH") : "–"
+  const created = user?.createdAt ? new Date(user.createdAt).toLocaleString("de-CH") : "-"
+  const updated = user?.updatedAt ? new Date(user.updatedAt).toLocaleString("de-CH") : "-"
 
-  async function save() {
+  async function saveRole() {
     try {
       setSaving(true)
       setError(null)
       const csrf = getCSRFToken()
-      type UpdateUserPayload = {
-        email: string
-        firstName?: string
-        lastName?: string
-        role: string
-        isVerified?: boolean
-      }
-      const body: UpdateUserPayload = {
-        email,
-        firstName: firstName || undefined,
-        lastName: lastName || undefined,
-        role,
-        isVerified: typeof isVerified === "boolean" ? isVerified : undefined,
-      }
-      const res = await fetchAuth(`/api/v1/admin/users/${encodeURIComponent(id)}`, {
+      const res = await fetchAuth(`/api/v1/users/${encodeURIComponent(id)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ role }),
       })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = (await res.json()) as { user: UserDetails }
-      setUser(data.user)
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { detail?: string }
+        throw new Error(data.detail || `HTTP ${res.status}`)
+      }
+      // Update the local user state with the new role
+      if (user) {
+        setUser({ ...user, role })
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Aktualisierung fehlgeschlagen"
       setError(msg)
@@ -117,7 +104,7 @@ export default function AdminUserDetailPage() {
     if (!confirm("Benutzer wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.")) return
     try {
       const csrf = getCSRFToken()
-      const res = await fetchAuth(`/api/v1/admin/users/${encodeURIComponent(id)}`, {
+      const res = await fetchAuth(`/api/v1/users/${encodeURIComponent(id)}`, {
         method: "DELETE",
         headers: { "X-CSRF": csrf || "" },
       })
@@ -134,16 +121,18 @@ export default function AdminUserDetailPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Benutzer</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setEditOpen(true)} disabled={!user}>
-            Benutzer bearbeiten
-          </Button>
+          {canSetRole && !isSelf && (
+            <Button variant="outline" onClick={() => setEditOpen(true)} disabled={!user}>
+              Rolle ändern
+            </Button>
+          )}
           <Link href="/admin/users">
             <Button variant="outline">Zurück zur Übersicht</Button>
           </Link>
         </div>
       </div>
 
-      {loading && <div className="text-muted-foreground text-sm">Lade Benutzer…</div>}
+      {loading && <div className="text-muted-foreground text-sm">Lade Benutzer...</div>}
       {error && <div className="text-sm text-red-600">{error}</div>}
 
       {user && (
@@ -159,13 +148,16 @@ export default function AdminUserDetailPage() {
               </div>
               <div>
                 <span className="text-muted-foreground">Name:</span>{" "}
-                {(user.firstName || "–") + " " + (user.lastName || "")}
+                {user.name || "-"}
               </div>
               <div>
-                <span className="text-muted-foreground">Rolle:</span> <span className="uppercase">{user.role}</span>
+                <span className="text-muted-foreground">Rolle:</span>{" "}
+                <span className="uppercase">
+                  {ALL_ROLES.find((r) => r.value === user.role)?.label || user.role}
+                </span>
               </div>
               <div>
-                <span className="text-muted-foreground">Verifiziert:</span> {user.isVerified ? "Ja" : "Nein"}
+                <span className="text-muted-foreground">Verifiziert:</span> {user.emailVerified ? "Ja" : "Nein"}
               </div>
               <div>
                 <span className="text-muted-foreground">Erstellt:</span> {created}
@@ -191,62 +183,28 @@ export default function AdminUserDetailPage() {
         </div>
       )}
 
-      {/* Edit dialog */}
+      {/* Role edit dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Benutzer bearbeiten</DialogTitle>
-            <DialogDescription>Aktualisiere die Profildaten dieses Benutzers.</DialogDescription>
+            <DialogTitle>Rolle ändern</DialogTitle>
+            <DialogDescription>Weise diesem Benutzer eine neue Rolle zu.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <label className="text-muted-foreground text-sm">E-Mail</label>
-              <Input value={email} onChange={(e) => setEmail(e.target.value)} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-muted-foreground text-sm">Vorname</label>
-                <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-              </div>
-              <div className="space-y-1">
-                <label className="text-muted-foreground text-sm">Nachname</label>
-                <Input value={lastName} onChange={(e) => setLastName(e.target.value)} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-muted-foreground text-sm">Rolle</label>
-                <Select value={role} onValueChange={setRole}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Rolle" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="customer">Kunde</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-muted-foreground text-sm">Verifiziert</label>
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant={isVerified ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setIsVerified(true)}
-                  >
-                    Ja
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={isVerified === false ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setIsVerified(false)}
-                  >
-                    Nein
-                  </Button>
-                </div>
-              </div>
+              <label className="text-muted-foreground text-sm">Rolle</label>
+              <Select value={role} onValueChange={setRole}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Rolle" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ALL_ROLES.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>
+                      {r.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
@@ -254,20 +212,14 @@ export default function AdminUserDetailPage() {
               <Button
                 variant="outline"
                 onClick={() => {
-                  if (user) {
-                    setEmail(user.email || "")
-                    setFirstName(user.firstName || "")
-                    setLastName(user.lastName || "")
-                    setRole(user.role || "customer")
-                    setIsVerified(user.isVerified)
-                  }
+                  if (user) setRole(user.role || "customer")
                 }}
               >
                 Zurücksetzen
               </Button>
               <Button
                 onClick={async () => {
-                  await save()
+                  await saveRole()
                   setEditOpen(false)
                 }}
                 disabled={saving}
@@ -281,5 +233,3 @@ export default function AdminUserDetailPage() {
     </div>
   )
 }
-
-// CSRF helper now centralized in lib/csrf

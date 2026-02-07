@@ -14,10 +14,11 @@ interface InlineMenuGroupProps {
   suggestion: MenuSuggestion
   items: CartItem[]
   onEditItem: (item: CartItem) => void
+  onDismiss?: () => void
   isPOS?: boolean
 }
 
-export function InlineMenuGroup({ suggestion, items, onEditItem, isPOS = false }: InlineMenuGroupProps) {
+export function InlineMenuGroup({ suggestion, items, onEditItem, onDismiss, isPOS = false }: InlineMenuGroupProps) {
   const { updateQuantity, removeFromCart, addToCart } = useCart()
 
   const sumSimpleCents = useMemo(() => items.reduce((sum, it) => sum + it.product.priceCents, 0), [items])
@@ -90,10 +91,15 @@ export function InlineMenuGroup({ suggestion, items, onEditItem, isPOS = false }
           <span className="font-medium">Menü-Preis</span>
           <span className="font-medium">{formatChf(suggestion.menuProduct.priceCents)}</span>
         </div>
-        <div className="mt-3">
+        <div className="mt-3 flex flex-col gap-2">
           <Button className="w-full" onClick={applyConversion}>
             Jetzt wechseln{!isPOS && " und sparen"}
           </Button>
+          {onDismiss && (
+            <Button variant="outline" className="w-full text-xs" onClick={onDismiss}>
+              Ablehnen
+            </Button>
+          )}
         </div>
       </div>
     </Card>

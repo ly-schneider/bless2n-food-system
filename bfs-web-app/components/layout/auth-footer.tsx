@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { VersionLabel } from "@/components/layout/version-label"
 
 export default function AuthFooter() {
   return (
@@ -22,6 +23,7 @@ export default function AuthFooter() {
             GitHub
           </Link>
         </nav>
+        <VersionLabel className="mt-2 block text-center" />
       </div>
     </footer>
   )

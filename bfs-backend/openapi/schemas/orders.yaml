@@ -1,0 +1,217 @@
+OrderStatus:
+  type: string
+  enum: [pending, paid, cancelled, refunded]
+  description: |
+    Valid transitions:
+    - `pending` -> `paid`, `cancelled`
+    - `paid` -> `cancelled`, `refunded`
+    - `cancelled` -> (terminal)
+    - `refunded` -> (terminal)
+
+OrderOrigin:
+  type: string
+  enum: [shop, pos]
+  description: |
+    - `shop`: Web shop order
+    - `pos`: Point of sale terminal order
+
+OrderItemType:
+  type: string
+  enum: [simple, bundle, component]
+  description: |
+    - `simple`: Standalone product line
+    - `bundle`: Menu product parent line
+    - `component`: Menu slot selection (child of bundle)
+
+Order:
+  type: object
+  required: [id, totalCents, status, origin, createdAt]
+  properties:
+    id:
+      type: string
+      format: uuid
+    customerId:
+      type: string
+      nullable: true
+      description: Better Auth user ID (null for anonymous orders)
+    contactEmail:
+      type: string
+      format: email
+      nullable: true
+    totalCents:
+      type: integer
+      format: int64
+      description: Total in cents (CHF)
+    status:
+      $ref: '#/OrderStatus'
+    origin:
+      $ref: '#/OrderOrigin'
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+    # Payment tracking (admin-only)
+    paymentAttemptId:
+      type: string
+      nullable: true
+      x-admin-only: true
+    payrexxGatewayId:
+      type: integer
+      nullable: true
+      x-admin-only: true
+    payrexxTransactionId:
+      type: integer
+      nullable: true
+      x-admin-only: true
+    # Relations
+    lines:
+      type: array
+      items:
+        $ref: '#/OrderLine'
+    payments:
+      type: array
+      items:
+        $ref: '#/OrderPaymentSummary'
+
+OrderLine:
+  type: object
+  required: [id, orderId, lineType, productId, title, quantity, unitPriceCents]
+  properties:
+    id:
+      type: string
+      format: uuid
+    orderId:
+      type: string
+      format: uuid
+    lineType:
+      $ref: '#/OrderItemType'
+    productId:
+      type: string
+      format: uuid
+    title:
+      type: string
+      maxLength: 20
+      description: Product name snapshot at time of order
+    quantity:
+      type: integer
+      minimum: 1
+    unitPriceCents:
+      type: integer
+      format: int64
+    parentLineId:
+      type: string
+      format: uuid
+      nullable: true
+      description: Parent bundle line (for component lines)
+    menuSlotId:
+      type: string
+      format: uuid
+      nullable: true
+    menuSlotName:
+      type: string
+      maxLength: 20
+      nullable: true
+    productImage:
+      type: string
+      nullable: true
+      description: Product image URL snapshot
+    childLines:
+      type: array
+      items:
+        $ref: '#/OrderLine'
+      description: Component lines (for bundle lines)
+    redemption:
+      $ref: '#/OrderLineRedemption'
+      nullable: true
+
+OrderLineRedemption:
+  type: object
+  required: [id, orderLineId, redeemedAt]
+  properties:
+    id:
+      type: string
+      format: uuid
+    orderLineId:
+      type: string
+      format: uuid
+    redeemedAt:
+      type: string
+      format: date-time
+
+OrderPaymentSummary:
+  type: object
+  description: Inline payment summary on Order
+  properties:
+    id:
+      type: string
+      format: uuid
+    method:
+      type: string
+      enum: [CASH, CARD, TWINT]
+    amountCents:
+      type: integer
+      format: int64
+    paidAt:
+      type: string
+      format: date-time
+
+OrderCreate:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      minItems: 1
+      items:
+        type: object
+        required: [productId, quantity]
+        properties:
+          productId:
+            type: string
+            format: uuid
+          quantity:
+            type: integer
+            minimum: 1
+          menuSelections:
+            type: array
+            description: Required for menu-type products. One selection per slot.
+            items:
+              type: object
+              required: [slotId, productId]
+              properties:
+                slotId:
+                  type: string
+                  format: uuid
+                productId:
+                  type: string
+                  format: uuid
+    contactEmail:
+      type: string
+      format: email
+      description: Customer email for order notifications (optional if authenticated)
+
+OrderStatusUpdate:
+  type: object
+  required: [status]
+  properties:
+    status:
+      $ref: '#/OrderStatus'
+
+OrderList:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Order'
+
+PickupQR:
+  type: object
+  required: [code]
+  properties:
+    code:
+      type: string
+      description: HMAC-signed QR code string

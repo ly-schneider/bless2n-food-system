@@ -1,0 +1,48 @@
+---
+title: Bestellungen
+description: Bestellungen einsehen, Details prüfen und Status verfolgen
+---
+
+# Bestellungen
+
+Unter Bestellungen werden alle Bestellungen im System aufgelistet, unabhängig davon, ob sie über den Shop, POS oder eine Station erstellt wurden.
+
+---
+
+# Bestellliste
+
+Die Tabelle zeigt:
+
+| Spalte | Beschreibung |
+|---|---|
+| ID | Eindeutige Bestell-ID |
+| Status | `pending`, `paid`, `cancelled`, `refunded` |
+| Herkunft | `shop` (Online), `pos` (Point of Sale), `station` |
+| Betrag | Gesamtbetrag in CHF |
+| Kontakt | E-Mail des Kunden (falls vorhanden) |
+| Zahlungsmethode | Payrexx, Bargeld, Karte |
+| Erstellt am | Zeitpunkt der Bestellung |
+
+---
+
+# Bestelldetails
+
+Ein Klick auf eine Bestellung öffnet die Detailansicht:
+
+- Positionen: Alle Artikel mit Bild, Menge und Preis.
+- Zahlungsinformationen: Gateway-ID, Transaktions-ID und Payment-Attempt-ID (bei Payrexx-Zahlungen).
+- Kundenprofil: Link zum Benutzerprofil (falls angemeldet bestellt).
+- Einlösestatus: Welche Positionen bereits an einer Station eingelöst wurden.
+
+---
+
+# Statusverlauf
+
+| Status | Bedeutung |
+|---|---|
+| `pending` | Bestellung erstellt, Zahlung steht aus |
+| `paid` | Zahlung erfolgreich, Bestellung bereit zur Ausgabe |
+| `cancelled` | Bestellung wurde storniert |
+| `refunded` | Betrag wurde zurückerstattet |
+
+Statusänderungen werden über die Admin-API gesteuert.

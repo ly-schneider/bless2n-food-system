@@ -1,0 +1,85 @@
+---
+title: Anhang
+description: Environment Variablen, Key Vault Secrets Map, Azure Ressourcen, Terraform Variablen und Glossar
+---
+
+# Environment Variable Katalog
+
+Backend (Go):
+
+- Core: `APP_ENV`, `APP_PORT`, `PUBLIC_BASE_URL`.
+- Database: `DATABASE_URL` (PostgreSQL-Verbindungsstring).
+- Auth: `BETTER_AUTH_URL` (Next.js App URL für Better Auth Session-Validierung).
+- Payments (Payrexx): `PAYREXX_INSTANCE`, `PAYREXX_API_SECRET`, `PAYREXX_WEBHOOK_SECRET`.
+- E-Mail (Plunk): `PLUNK_API_KEY`, `PLUNK_FROM_NAME`, `PLUNK_FROM_EMAIL`, `PLUNK_REPLY_TO`.
+- Security: `SECURITY_ENABLE_HSTS`, `SECURITY_ENABLE_CSP`, `SECURITY_TRUSTED_ORIGINS` (comma-separated).
+- Logger: `LOG_LEVEL`, `LOG_DEVELOPMENT`.
+
+Web App (Next.js):
+
+- URLs: `NEXT_PUBLIC_API_BASE_URL`, `BACKEND_INTERNAL_URL` (für server-seitige Fetches falls genutzt).
+- Auth: `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`, `DATABASE_URL`.
+- OAuth: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (für Better Auth Google OIDC Provider).
+- POS: `NEXT_PUBLIC_POS_PIN`, `NEXT_PUBLIC_POS_IDLE_TIMEOUT`.
+- Analytics: `NEXT_PUBLIC_GA_MEASUREMENT_ID`.
+
+Android:
+
+- Build-Time: `SUMUP_AFFILIATE_KEY`, `POS_URL` (Varianten), `BFS_UPLOAD_*` (Keystore/Signing für Release).
+
+---
+
+# Key Vault Secrets Map
+
+Typische Namen und Consumer:
+
+- Backend:
+  - `database-url` → `DATABASE_URL`
+  - `better-auth-url` → `BETTER_AUTH_URL`
+  - `payrexx-instance` → `PAYREXX_INSTANCE`
+  - `payrexx-api-secret` → `PAYREXX_API_SECRET`
+  - `payrexx-webhook-secret` → `PAYREXX_WEBHOOK_SECRET`
+  - `plunk-api-key` → `PLUNK_API_KEY`
+  - `security-trusted-origins` → `SECURITY_TRUSTED_ORIGINS`
+  - `public-base-url` → `PUBLIC_BASE_URL`
+- Frontend:
+  - `next-public-api-base-url` → `NEXT_PUBLIC_API_BASE_URL`
+  - `backend-internal-url` → `BACKEND_INTERNAL_URL`
+  - `better-auth-secret` → `BETTER_AUTH_SECRET`
+  - `database-url` → `DATABASE_URL` (für Better Auth Session-Store)
+  - `google-client-id` → `GOOGLE_CLIENT_ID`
+  - `google-client-secret` → `GOOGLE_CLIENT_SECRET`
+
+---
+
+# Azure Resource Inventory (pro Umgebung)
+
+- Resource Group: `bfs-<env>-rg`
+- VNet/Subnets: `bfs-<env>-vnet`, `container-apps-subnet` (+ `private-endpoints-subnet` optional)
+- Container Apps Environment: `bfs-<env>-env`
+- Container Apps: `frontend-<env>`, `backend-<env>`
+- PostgreSQL: `bfs-<env>-db` (z. B. NeonDB oder Azure Database for PostgreSQL)
+- Key Vault: `bfs-<env>-kv`
+- Log Analytics: `bfs-logs-workspace`
+- ACR: `<acr_name>`
+
+---
+
+# Terraform Variablen (Env Roots)
+
+- Image Digests: `frontend_digest`, `backend_digest` (bevorzugt statt Tags)
+- Image Tag: `image_tag` (Branch-Name)
+- `revision_suffix`: eindeutiger Wert je Deploy (z. B. Commit SHA)
+- `acr_name`, `enable_acr`
+- Scale Rules: Pro App HTTP Concurrent, CPU/Memory Schwellen, min/max Replicas
+- Budgets & Alerts: `budget_amount`, `alert_emails`
+
+---
+
+# Glossar
+
+- ACA: Azure Container Apps
+- LAW: Log Analytics Workspace
+- UAMI: User-Assigned Managed Identity
+- PG: PostgreSQL
+- KV: Key Vault

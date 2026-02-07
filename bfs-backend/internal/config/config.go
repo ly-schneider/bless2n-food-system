@@ -12,35 +12,25 @@ import (
 )
 
 type Config struct {
-	App      AppConfig
-	Mongo    MongoConfig
-	Postgres PostgresConfig
-	NeonAuth NeonAuthConfig
-	Logger   LoggerConfig
-	Plunk    PlunkConfig
-	Security SecurityConfig
-	Stripe   StripeConfig
-	OAuth    OAuthConfig
-	Stations StationConfig
+	App         AppConfig
+	Postgres    PostgresConfig
+	Logger      LoggerConfig
+	Security    SecurityConfig
+	Payrexx     PayrexxConfig
+	Plunk       PlunkConfig
+	BlobStorage BlobStorageConfig
+	Elvanto     ElvantoConfig
+}
+
+type ElvantoConfig struct {
+	APIKey  string
+	GroupID string
 }
 
 type AppConfig struct {
 	AppEnv        string
 	AppPort       string
-	JWTIssuer     string // Optional: deprecated, use NeonAuth instead
-	JWTPrivPEM    string // Optional: deprecated, use NeonAuth instead
-	JWTPubPEM     string // Optional: deprecated, use NeonAuth instead
 	PublicBaseURL string
-}
-
-type NeonAuthConfig struct {
-	URL      string // NEON_AUTH_URL - The Neon Auth URL for JWKS discovery
-	Audience string // NEON_AUTH_AUDIENCE - Optional audience claim to validate
-}
-
-type MongoConfig struct {
-	URI      string
-	Database string
 }
 
 type PostgresConfig struct {
@@ -56,6 +46,18 @@ type LoggerConfig struct {
 	Development bool
 }
 
+type SecurityConfig struct {
+	EnableHSTS     bool
+	EnableCSP      bool
+	TrustedOrigins []string
+}
+
+type PayrexxConfig struct {
+	InstanceName  string // PAYREXX_INSTANCE - Payrexx instance name
+	APISecret     string // PAYREXX_API_SECRET - API secret for HMAC signature
+	WebhookSecret string // PAYREXX_WEBHOOK_SECRET - Secret for webhook verification
+}
+
 type PlunkConfig struct {
 	APIKey    string
 	FromName  string
@@ -63,36 +65,18 @@ type PlunkConfig struct {
 	ReplyTo   string
 }
 
-type SecurityConfig struct {
-	EnableHSTS     bool
-	EnableCSP      bool
-	TrustedOrigins []string
-}
-
-type StripeConfig struct {
-	SecretKey     string
-	WebhookSecret string
-}
-
-type OAuthConfig struct {
-	Google GoogleConfig
-}
-
-type GoogleConfig struct {
-	ClientID     string
-	ClientSecret string
-}
-
-type StationConfig struct {
-	QRSecret        string
-	QRMaxAgeSeconds int
+type BlobStorageConfig struct {
+	AccountName  string
+	AccountKey   string
+	Container    string
+	BlobEndpoint string
 }
 
 func Load() Config {
 	// Load .env files by default outside Docker. In Docker, allow opt-in via ALLOW_DOTENV_IN_DOCKER=true
 	allowDotenvInDocker := os.Getenv("ALLOW_DOTENV_IN_DOCKER") == "true"
 	if !isDockerEnvironment() || allowDotenvInDocker {
-		files := []string{".env"}
+		files := []string{".env.local"}
 
 		if appEnv := os.Getenv("APP_ENV"); appEnv != "" && appEnv != "local" {
 			envFile := fmt.Sprintf(".env.%s", appEnv)
@@ -110,54 +94,44 @@ func Load() Config {
 		App: AppConfig{
 			AppEnv:        getEnv("APP_ENV"),
 			AppPort:       getEnv("APP_PORT"),
-			JWTIssuer:     getEnvOptional("JWT_ISSUER"),     // Optional: deprecated
-			JWTPrivPEM:    getEnvOptional("JWT_PRIV_PEM"),   // Optional: deprecated
-			JWTPubPEM:     getEnvOptional("JWT_PUB_PEM"),    // Optional: deprecated
 			PublicBaseURL: getEnv("PUBLIC_BASE_URL"),
 		},
-		Mongo: MongoConfig{
-			URI:      getEnvOptional("MONGO_URI"),      // Optional: deprecated
-			Database: getEnvOptional("MONGO_DATABASE"), // Optional: deprecated
-		},
-		NeonAuth: NeonAuthConfig{
-			URL:      getEnvOptional("NEON_AUTH_URL"),
-			Audience: getEnvOptional("NEON_AUTH_AUDIENCE"),
-		},
 		Postgres: PostgresConfig{
-			DSN:             getEnvOptional("POSTGRES_DSN"),
-			MaxConns:        getEnvAsInt("POSTGRES_MAX_CONNS", 25),
-			MinConns:        getEnvAsInt("POSTGRES_MIN_CONNS", 5),
-			MaxConnLifetime: getEnvAsDuration("POSTGRES_MAX_CONN_LIFETIME", 1*time.Hour),
-			MaxConnIdleTime: getEnvAsDuration("POSTGRES_MAX_CONN_IDLE_TIME", 30*time.Minute),
+			DSN:             getEnvOptional("DATABASE_URL"),
+			MaxConns:        25,
+			MinConns:        5,
+			MaxConnLifetime: 1 * time.Hour,
+			MaxConnIdleTime: 30 * time.Minute,
 		},
 		Logger: LoggerConfig{
 			Level:       getEnv("LOG_LEVEL"),
 			Development: getEnvAsBool("LOG_DEVELOPMENT"),
-		},
-		Plunk: PlunkConfig{
-			APIKey:    getEnv("PLUNK_API_KEY"),
-			FromName:  getEnvOptional("PLUNK_FROM_NAME"),
-			FromEmail: getEnvOptional("PLUNK_FROM_EMAIL"),
-			ReplyTo:   getEnvOptional("PLUNK_REPLY_TO"),
 		},
 		Security: SecurityConfig{
 			EnableHSTS:     getEnvAsBool("SECURITY_ENABLE_HSTS"),
 			EnableCSP:      getEnvAsBool("SECURITY_ENABLE_CSP"),
 			TrustedOrigins: getTrustedOrigins("SECURITY_TRUSTED_ORIGINS"),
 		},
-		Stripe: StripeConfig{
-			SecretKey:     getEnv("STRIPE_SECRET_KEY"),
-			WebhookSecret: getEnv("STRIPE_WEBHOOK_SECRET"),
+		Payrexx: PayrexxConfig{
+			InstanceName:  getEnvOptional("PAYREXX_INSTANCE"),
+			APISecret:     getEnvOptional("PAYREXX_API_SECRET"),
+			WebhookSecret: getEnvOptional("PAYREXX_WEBHOOK_SECRET"),
 		},
-		OAuth: OAuthConfig{
-			Google: GoogleConfig{
-				ClientID:     getEnvOptional("GOOGLE_CLIENT_ID"),     // Optional: deprecated
-				ClientSecret: getEnvOptional("GOOGLE_CLIENT_SECRET"), // Optional: deprecated
-			},
+		Plunk: PlunkConfig{
+			APIKey:    getEnvOptional("PLUNK_API_KEY"),
+			FromName:  getEnvOptional("PLUNK_FROM_NAME"),
+			FromEmail: getEnvOptional("PLUNK_FROM_EMAIL"),
+			ReplyTo:   getEnvOptional("PLUNK_REPLY_TO"),
 		},
-		Stations: StationConfig{
-			QRSecret:        getEnv("STATION_QR_SECRET"),
-			QRMaxAgeSeconds: getEnvAsInt("STATION_QR_MAX_AGE_SECONDS", 600),
+		BlobStorage: BlobStorageConfig{
+			AccountName:  getEnvOptional("AZURE_STORAGE_ACCOUNT_NAME"),
+			AccountKey:   getEnvOptional("AZURE_STORAGE_ACCOUNT_KEY"),
+			Container:    getEnvWithDefault("AZURE_STORAGE_CONTAINER", "product-images"),
+			BlobEndpoint: getEnvOptional("AZURE_STORAGE_BLOB_ENDPOINT"),
+		},
+		Elvanto: ElvantoConfig{
+			APIKey:  getEnvOptional("ELVANTO_API_KEY"),
+			GroupID: getEnvWithDefault("ELVANTO_GROUP_ID", "fc939b75-cda0-4e37-b728-a61e943d66ad"),
 		},
 	}
 
@@ -220,26 +194,11 @@ func getEnvOptional(key string) string {
 	return os.Getenv(key)
 }
 
-// getEnvAsInt returns an int or default if empty/malformed
-func getEnvAsInt(key string, def int) int {
-	v := os.Getenv(key)
-	if v == "" {
-		return def
-	}
-	if i, err := strconv.Atoi(v); err == nil {
-		return i
+// getEnvWithDefault gets an environment variable or returns the default value
+func getEnvWithDefault(key, def string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
 	}
 	return def
 }
 
-// getEnvAsDuration returns a duration or default if empty/malformed
-func getEnvAsDuration(key string, def time.Duration) time.Duration {
-	v := os.Getenv(key)
-	if v == "" {
-		return def
-	}
-	if d, err := time.ParseDuration(v); err == nil {
-		return d
-	}
-	return def
-}

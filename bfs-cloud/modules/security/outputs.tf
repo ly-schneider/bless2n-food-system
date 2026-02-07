@@ -13,7 +13,5 @@ output "key_vault_uri" {
 
 output "key_vault_secret_ids" {
   description = "Map of Key Vault secret names to their versionless IDs (constructed from URI)"
-  value = var.enable_key_vault ? {
-    "mongo-uri" = "${data.azurerm_key_vault.existing[0].vault_uri}secrets/mongo-uri"
-  } : {}
+  value       = var.enable_key_vault ? {} : {}
 }

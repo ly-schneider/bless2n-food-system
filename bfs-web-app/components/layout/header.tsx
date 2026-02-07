@@ -9,9 +9,11 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useAuth } from "@/contexts/auth-context"
 
 export default function Header() {
-  const { accessToken, signOut } = useAuth()
+  const { user, signOut } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
+
+  const isAuthenticated = !!user
   return (
     <header className="my-2 w-full">
       <div
@@ -40,7 +42,7 @@ export default function Header() {
             <DropdownMenuTrigger asChild>
               <Button variant="secondary" size="icon" className="h-12 w-12 rounded-full">
                 <TextAlignEnd className="size-5.5 h-5.5 w-5.5" />
-                <span className="sr-only">Menü öffnen</span>
+                <span className="sr-only">Menu oeffnen</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-48 rounded-2xl">
@@ -52,7 +54,7 @@ export default function Header() {
               </DropdownMenuItem>
 
               <DropdownMenuItem asChild>
-                {accessToken ? (
+                {isAuthenticated ? (
                   <Link href="/profile" className="flex items-center gap-2">
                     <User className="h-4 w-4" />
                     <span>Benutzer</span>
@@ -64,7 +66,7 @@ export default function Header() {
                   </Link>
                 )}
               </DropdownMenuItem>
-              {accessToken && (
+              {isAuthenticated && (
                 <DropdownMenuItem
                   className="flex items-center gap-2"
                   onClick={async () => {

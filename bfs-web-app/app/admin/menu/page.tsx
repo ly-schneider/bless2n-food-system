@@ -1,10 +1,33 @@
 "use client"
-import { Pencil, PencilIcon, Plus, RefreshCw } from "lucide-react"
+
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  ChevronRight,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
+  X,
+} from "lucide-react"
 import Image from "next/image"
-import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useState } from "react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,118 +35,198 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
-
 import { getCSRFToken } from "@/lib/csrf"
 import { readErrorMessage } from "@/lib/http"
-import { Category, ProductDTO } from "@/types"
+import type { Menu, MenuSlot, MenuSlotOption } from "@/types/menu"
+import type { ProductSummaryDTO } from "@/types/product"
 
-type DirtyProduct = {
-  id: string
-  name: string
-  priceCents: number
-  categoryId: string | null
-  stock: number | null
-  isActive: boolean
-}
+// ─── Helpers ──────────────────────────────────────────────────────────
 
 function formatPriceLabel(cents: number): string {
   const francs = Math.floor(cents / 100)
   const rappen = cents % 100
   if (rappen === 0) return `CHF ${francs}.-`
-  const v = (cents / 100).toFixed(2)
-  return `CHF ${v}`
+  return `CHF ${(cents / 100).toFixed(2)}`
 }
 
 function parsePriceInputToCents(input: string): number | null {
   if (!input) return null
   const norm = input.replace(",", ".").trim()
   const val = Number(norm)
-  if (!isFinite(val)) return null
+  if (!isFinite(val) || val < 0) return null
   return Math.round(val * 100)
 }
 
+function csrfHeaders(method: string, json = true): Record<string, string> {
+  const csrf = getCSRFToken()
+  const h: Record<string, string> = { "X-CSRF": csrf || "" }
+  if (json && method !== "DELETE") h["Content-Type"] = "application/json"
+  return h
+}
+
+// ─── API helpers ──────────────────────────────────────────────────────
+
+type FetchFn = ReturnType<typeof useAuthorizedFetch>
+
+async function apiCreateMenu(
+  fetchAuth: FetchFn,
+  body: { categoryId: string; name: string; priceCents: number; image?: string },
+): Promise<Menu> {
+  const res = await fetchAuth(`/api/v1/menus`, {
+    method: "POST",
+    headers: csrfHeaders("POST"),
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await readErrorMessage(res))
+  return (await res.json()) as Menu
+}
+
+async function apiUpdateMenu(
+  fetchAuth: FetchFn,
+  menuId: string,
+  body: Partial<{ name: string; priceCents: number; isActive: boolean; image: string | null }>,
+): Promise<Menu> {
+  const res = await fetchAuth(`/api/v1/menus/${encodeURIComponent(menuId)}`, {
+    method: "PATCH",
+    headers: csrfHeaders("PATCH"),
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await readErrorMessage(res))
+  return (await res.json()) as Menu
+}
+
+async function apiDeleteMenu(fetchAuth: FetchFn, menuId: string): Promise<void> {
+  const res = await fetchAuth(`/api/v1/menus/${encodeURIComponent(menuId)}`, {
+    method: "DELETE",
+    headers: csrfHeaders("DELETE", false),
+  })
+  if (!res.ok) throw new Error(await readErrorMessage(res))
+}
+
+async function apiCreateSlot(fetchAuth: FetchFn, menuId: string, name: string): Promise<MenuSlot> {
+  const res = await fetchAuth(`/api/v1/menus/${encodeURIComponent(menuId)}/slots`, {
+    method: "POST",
+    headers: csrfHeaders("POST"),
+    body: JSON.stringify({ name }),
+  })
+  if (!res.ok) throw new Error(await readErrorMessage(res))
+  return (await res.json()) as MenuSlot
+}
+
+async function apiUpdateSlot(fetchAuth: FetchFn, menuId: string, slotId: string, name: string): Promise<MenuSlot> {
+  const res = await fetchAuth(
+    `/api/v1/menus/${encodeURIComponent(menuId)}/slots/${encodeURIComponent(slotId)}`,
+    {
+      method: "PATCH",
+      headers: csrfHeaders("PATCH"),
+      body: JSON.stringify({ name }),
+    },
+  )
+  if (!res.ok) throw new Error(await readErrorMessage(res))
+  return (await res.json()) as MenuSlot
+}
+
+async function apiDeleteSlot(fetchAuth: FetchFn, menuId: string, slotId: string): Promise<void> {
+  const res = await fetchAuth(
+    `/api/v1/menus/${encodeURIComponent(menuId)}/slots/${encodeURIComponent(slotId)}`,
+    {
+      method: "DELETE",
+      headers: csrfHeaders("DELETE", false),
+    },
+  )
+  if (!res.ok) throw new Error(await readErrorMessage(res))
+}
+
+async function apiReorderSlots(
+  fetchAuth: FetchFn,
+  menuId: string,
+  positions: Record<string, number>,
+): Promise<void> {
+  const res = await fetchAuth(
+    `/api/v1/menus/${encodeURIComponent(menuId)}/slots/reorder`,
+    {
+      method: "PATCH",
+      headers: csrfHeaders("PATCH"),
+      body: JSON.stringify({ positions }),
+    },
+  )
+  if (!res.ok) throw new Error(await readErrorMessage(res))
+}
+
+async function apiAddOption(
+  fetchAuth: FetchFn,
+  menuId: string,
+  slotId: string,
+  productId: string,
+): Promise<MenuSlotOption> {
+  const res = await fetchAuth(
+    `/api/v1/menus/${encodeURIComponent(menuId)}/slots/${encodeURIComponent(slotId)}/options`,
+    {
+      method: "POST",
+      headers: csrfHeaders("POST"),
+      body: JSON.stringify({ productId }),
+    },
+  )
+  if (!res.ok) throw new Error(await readErrorMessage(res))
+  return (await res.json()) as MenuSlotOption
+}
+
+async function apiRemoveOption(
+  fetchAuth: FetchFn,
+  menuId: string,
+  slotId: string,
+  optionProductId: string,
+): Promise<void> {
+  const res = await fetchAuth(
+    `/api/v1/menus/${encodeURIComponent(menuId)}/slots/${encodeURIComponent(slotId)}/options/${encodeURIComponent(optionProductId)}`,
+    {
+      method: "DELETE",
+      headers: csrfHeaders("DELETE", false),
+    },
+  )
+  if (!res.ok) throw new Error(await readErrorMessage(res))
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────
+
 export default function AdminMenuPage() {
   const fetchAuth = useAuthorizedFetch()
-  const [cats, setCats] = useState<Category[]>([])
-  const [items, setItems] = useState<ProductDTO[]>([])
-  const [loading, setLoading] = useState(true)
+  const [menus, setMenus] = useState<Menu[]>([])
+  const [cats, setCats] = useState<{ id: string; name: string }[]>([])
+  const [products, setProducts] = useState<ProductSummaryDTO[]>([])
+  const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // activeCat: "all" for all items or category.id for a specific category
-  const [activeCat, setActiveCat] = useState<string>("all")
-  const [edit, setEdit] = useState<DirtyProduct | null>(null)
-  const [saving, setSaving] = useState(false)
-  const router = useRouter()
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editMenu, setEditMenu] = useState<Menu | null>(null)
 
-  const totalCount = items.length
-
-  // Count items by category id for dynamic chips
-  const countsByCatId = useMemo(() => {
-    const counts: Record<string, number> = {}
-    for (const it of items) {
-      const id = it.category?.id
-      if (!id) continue
-      counts[id] = (counts[id] || 0) + 1
-    }
-    return counts
-  }, [items])
-
-  // Helper to normalize category position (undefined -> large number)
-  const getCatPos = useCallback((c?: { position?: number | null } | null) => {
-    const p = c?.position
-    return typeof p === "number" && isFinite(p) ? p : 1_000_000
-  }, [])
-
-  // Categories sorted by position then name
-  const sortedCats = useMemo(() => {
-    return [...cats].sort((a, b) => {
-      const pa = getCatPos(a)
-      const pb = getCatPos(b)
-      if (pa !== pb) return pa - pb
-      return a.name.localeCompare(b.name)
-    })
-  }, [cats, getCatPos])
-
-  const filtered = useMemo(() => {
-    if (activeCat === "all") {
-      return [...items].sort((a, b) => {
-        const pa = getCatPos(a.category)
-        const pb = getCatPos(b.category)
-        if (pa !== pb) return pa - pb
-        return a.name.localeCompare(b.name)
-      })
-    }
-    return items.filter((it) => it.category?.id === activeCat).sort((a, b) => a.name.localeCompare(b.name))
-  }, [items, activeCat, getCatPos])
+  const sorted = useMemo(() => {
+    return [...menus].sort((a, b) => a.name.localeCompare(b.name))
+  }, [menus])
 
   const refetch = useCallback(async () => {
-    setLoading(true)
     setError(null)
     try {
-      const [pr, cr] = await Promise.all([
-        fetchAuth(`/api/v1/products?limit=200`),
-        fetchAuth(`/api/v1/admin/categories`),
+      const [mr, cr, pr] = await Promise.all([
+        fetchAuth(`/api/v1/menus`),
+        fetchAuth(`/api/v1/categories`),
+        fetchAuth(`/api/v1/products?type=simple`),
       ])
+      if (!mr.ok) throw new Error(`Menus: HTTP ${mr.status}`)
+      const menuData = (await mr.json()) as { items: Menu[] }
+      setMenus(menuData.items || [])
+
       if (cr.ok) {
-        const d = (await cr.json()) as { items: Category[] }
-        const sorted = (d.items || []).sort((a, b) => {
-          const pa = getCatPos(a)
-          const pb = getCatPos(b)
-          if (pa !== pb) return pa - pb
-          return a.name.localeCompare(b.name)
-        })
-        setCats(sorted)
+        const catData = (await cr.json()) as { items: { id: string; name: string }[] }
+        setCats(catData.items || [])
       }
       if (pr.ok) {
-        const d = (await pr.json()) as { items: ProductDTO[] }
-        setItems(d.items || [])
-      } else {
-        throw new Error(`HTTP ${pr.status}`)
+        const prodData = (await pr.json()) as { items: ProductSummaryDTO[] }
+        setProducts(prodData.items || [])
       }
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Fehler beim Laden"
-      setError(msg)
+      setError(e instanceof Error ? e.message : "Fehler beim Laden")
     } finally {
-      setLoading(false)
+      setLoaded(true)
     }
   }, [fetchAuth])
 
@@ -131,82 +234,38 @@ export default function AdminMenuPage() {
     refetch()
   }, [refetch])
 
-  // Initialize category filter via query param; allow "all" or a category id
-  useEffect(() => {
-    const sp = new URLSearchParams(window.location.search)
-    const cat = sp.get("cat")
-    if (!cat) return
-    if (cat === "all") setActiveCat("all")
-    else setActiveCat(cat)
-  }, [])
-  useEffect(() => {
-    const url = new URL(window.location.href)
-    url.searchParams.set("cat", activeCat)
-    window.history.replaceState({}, "", url.toString())
-  }, [activeCat])
-
-  // Listen to global refresh dispatched by header
   useEffect(() => {
     const onR = () => refetch()
     window.addEventListener("admin:refresh", onR)
     return () => window.removeEventListener("admin:refresh", onR)
   }, [refetch])
 
+  const handleDelete = useCallback(
+    async (menuId: string) => {
+      try {
+        await apiDeleteMenu(fetchAuth, menuId)
+        await refetch()
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "Löschen fehlgeschlagen")
+      }
+    },
+    [fetchAuth, refetch],
+  )
+
   return (
     <div className="space-y-5">
-      <h1 className="mb-2 text-xl font-semibold">Menu</h1>
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          className={`border-border hover:bg-card hover:text-foreground group flex h-10 items-center justify-between gap-2 rounded-[10px] border px-1.5 text-sm ${
-            activeCat === "all" ? "bg-card" : "text-muted-foreground bg-transparent"
-          }`}
-          onClick={() => setActiveCat("all")}
-          aria-pressed={activeCat === "all"}
-        >
-          Alles
-          <span
-            className={`text-foreground group-hover:text-foreground flex h-7 min-w-7 items-center justify-center rounded-[6px] px-1 text-sm transition-all duration-300 group-hover:bg-[#FFBBBB] ${
-              activeCat === "all" ? "text-foreground bg-[#FFBBBB]" : "text-muted-foreground bg-[#D9D9D9]"
-            }`}
-            aria-label={`${totalCount} Produkte`}
-          >
-            {totalCount}
-          </span>
-        </Button>
-        {sortedCats.map((c) => (
-          <Button
-            key={c.id}
-            className={`border-border hover:bg-card hover:text-foreground group flex h-10 items-center justify-between gap-2 rounded-[10px] border px-1.5 text-sm ${
-              activeCat === c.id ? "bg-card" : "text-muted-foreground bg-transparent"
-            }`}
-            onClick={() => setActiveCat(c.id)}
-            aria-pressed={activeCat === c.id}
-          >
-            {c.name}{" "}
-            <span
-              className={`text-foreground group-hover:text-foreground flex h-7 min-w-7 items-center justify-center rounded-[6px] px-1 text-sm transition-all duration-300 group-hover:bg-[#FFBBBB] ${
-                activeCat === c.id ? "text-foreground bg-[#FFBBBB]" : "text-muted-foreground bg-[#D9D9D9]"
-              }`}
-            >
-              {countsByCatId[c.id] ?? 0}
-            </span>
-          </Button>
-        ))}
-        <Button
-          className="border-border text-foreground hover:bg-card flex h-10 items-center justify-between gap-2 rounded-[10px] border bg-transparent px-1.5 text-sm"
-          onClick={() => router.push("/admin/categories")}
-        >
-          Bearbeiten
-          <span className="bg-foreground flex h-7 min-w-7 items-center justify-center rounded-[6px] px-1 text-sm text-white">
-            <Pencil className="size-3.5" />
-          </span>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Menus</h1>
+        <Button size="sm" className="gap-1.5" onClick={() => setCreateOpen(true)}>
+          <Plus className="size-4" />
+          Neues Menu
         </Button>
       </div>
 
       {/* Grid */}
-      {loading ? (
-        <div className="grid grid-cols-1 gap-5 sm:gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-5">
-          {Array.from({ length: 8 }).map((_, i) => (
+      {!loaded ? (
+        <div className="grid grid-cols-1 gap-5 sm:gap-3 md:grid-cols-2 xl:grid-cols-3 xl:gap-5">
+          {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="rounded-xl border">
               <div className="p-3">
                 <Skeleton className="aspect-[4/3] w-full rounded-lg" />
@@ -218,289 +277,700 @@ export default function AdminMenuPage() {
             </Card>
           ))}
         </div>
+      ) : sorted.length === 0 ? (
+        <div className="text-muted-foreground py-12 text-center text-sm">
+          Keine Menus gefunden. Erstelle dein erstes Menu.
+        </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-5">
-          {/* Placeholder card for creating new product */}
-          <CreateProductCard
-            onCreate={() =>
-              setEdit({
-                id: "new",
-                name: "",
-                priceCents: 0,
-                categoryId: activeCat !== "all" ? activeCat : null,
-                stock: null,
-                isActive: true,
-              })
-            }
-          />
-
-          {filtered.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onEdit={() =>
-                setEdit({
-                  id: product.id,
-                  name: product.name,
-                  priceCents: product.priceCents,
-                  categoryId: product.category?.id ?? null,
-                  stock: product.availableQuantity ?? null,
-                  isActive: product.isActive,
-                })
+        <div className="grid grid-cols-1 gap-5 sm:gap-3 md:grid-cols-2 xl:grid-cols-3 xl:gap-5">
+          {sorted.map((menu) => (
+            <MenuCard
+              key={menu.id}
+              menu={menu}
+              products={products}
+              fetchAuth={fetchAuth}
+              onEdit={() => setEditMenu(menu)}
+              onDelete={() => handleDelete(menu.id)}
+              onRefetch={refetch}
+              onError={setError}
+              onUpdateSlots={(newSlots) =>
+                setMenus((prev) => prev.map((m) => (m.id === menu.id ? { ...m, slots: newSlots } : m)))
               }
             />
           ))}
         </div>
       )}
 
-      {/* Edit/Create dialog */}
-      <EditDialog
+      {error && <div className="text-destructive text-sm">{error}</div>}
+
+      <CreateMenuDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
         cats={cats}
-        product={edit}
-        onClose={() => setEdit(null)}
-        onSaved={async (updated) => {
-          setSaving(true)
-          try {
-            await saveChanges(fetchAuth, items, updated)
-            await refetch()
-          } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : "Speichern fehlgeschlagen")
-          } finally {
-            setSaving(false)
-            setEdit(null)
-          }
-        }}
-        saving={saving}
+        fetchAuth={fetchAuth}
+        onCreated={refetch}
+        onError={setError}
       />
 
-      {error && <div className="text-destructive text-sm">{error}</div>}
+      <EditMenuDialog
+        menu={editMenu}
+        onClose={() => setEditMenu(null)}
+        fetchAuth={fetchAuth}
+        onSaved={refetch}
+        onError={setError}
+      />
     </div>
   )
 }
 
-function CreateProductCard({ onCreate }: { onCreate: () => void }) {
-  return (
-    <Card
-      role="button"
-      aria-label="Neues Produkt erstellen"
-      className="cursor-pointer gap-0 overflow-hidden rounded-[11px] p-0 transition-shadow hover:shadow-lg"
-      onClick={onCreate}
-    >
-      <CardHeader className="p-2">
-        <div className="relative aspect-video rounded-[11px] rounded-t-lg bg-[#f2f2f2]">
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-500">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-dashed border-zinc-400">
-              <Plus className="size-5" />
-            </div>
-            <span className="mt-2 text-sm font-medium">Neues Produkt</span>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="px-2 pt-0 pb-4">
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col">
-            <h3 className="font-family-secondary text-lg text-zinc-500">Produktname</h3>
-            <p className="font-family-secondary text-base text-zinc-400">CHF 0.-</p>
-          </div>
-          <div className="flex items-center">
-            <Button size="icon" className="rounded-[10px]" aria-hidden>
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
+// ─── MenuCard ─────────────────────────────────────────────────────────
 
-function ProductCard({ product, onEdit }: { product: ProductDTO; onEdit: () => void }) {
-  // Config modal not used within admin card view
-  const isAvailable = product.isAvailable !== false // default true
-  const isLowStock = product.isLowStock === true
-  const availableQty = product.availableQuantity ?? null
-  const isActive = product.isActive !== false
-  // composition details not displayed in this view
+function MenuCard({
+  menu,
+  products,
+  fetchAuth,
+  onEdit,
+  onDelete,
+  onRefetch,
+  onError,
+  onUpdateSlots,
+}: {
+  menu: Menu
+  products: ProductSummaryDTO[]
+  fetchAuth: FetchFn
+  onEdit: () => void
+  onDelete: () => void
+  onRefetch: () => Promise<void>
+  onError: (msg: string) => void
+  onUpdateSlots: (slots: MenuSlot[]) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const slots = useMemo(() => [...(menu.slots || [])].sort((a, b) => a.sequence - b.sequence), [menu.slots])
 
   return (
-    <Card className="gap-0 overflow-hidden rounded-[11px] p-0 transition-shadow hover:shadow-lg">
+    <Card className="gap-0 overflow-hidden rounded-[11px] p-0">
       <CardHeader className="p-2">
-        <div className="relative aspect-video rounded-[11px] rounded-t-lg bg-[#cec9c6]">
-          {product.image ? (
+        <div className="relative aspect-video rounded-[11px] bg-[#cec9c6]">
+          {menu.image ? (
             <Image
-              src={product.image}
-              alt={"Produktbild von " + product.name}
+              src={menu.image}
+              alt={"Menubild von " + menu.name}
               fill
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
               quality={90}
               className="h-full w-full rounded-[11px] object-cover"
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-zinc-500">Kein Bild</div>
           )}
-          {!isAvailable && (
-            <div className="absolute inset-0 z-10 grid place-items-center rounded-[11px] bg-black/55">
-              <span className="rounded-full bg-red-400 px-3 py-1 text-sm font-medium text-white">Ausverkauft</span>
-            </div>
-          )}
-          {isAvailable && !isActive && (
+          {!menu.isActive && (
             <div className="absolute inset-0 z-10 grid place-items-center rounded-[11px] bg-black/55">
               <span className="rounded-full bg-zinc-700 px-3 py-1 text-sm font-medium text-white">Nicht aktiv</span>
-            </div>
-          )}
-          {isLowStock && isAvailable && isActive && (
-            <div className="absolute top-1 left-2 z-10">
-              <span className="rounded-full bg-amber-600 px-2 py-0.5 text-xs font-medium text-white">
-                {availableQty !== null ? `Nur ${availableQty} übrig` : "Geringer Bestand"}
-              </span>
             </div>
           )}
         </div>
       </CardHeader>
 
-      <CardContent className="px-2 pt-0 pb-4">
+      <CardContent className="space-y-3 px-3 pt-0 pb-3">
+        {/* Title row */}
         <div className="flex items-center justify-between">
-          <div className="flex flex-col">
-            <h3 className="font-family-secondary text-lg">{product.name}</h3>
-            <p className="font-family-secondary text-base">{formatPriceLabel(product.priceCents)}</p>
+          <div>
+            <h3 className="font-family-secondary text-lg font-medium">{menu.name}</h3>
+            <p className="font-family-secondary text-muted-foreground text-sm">{formatPriceLabel(menu.priceCents)}</p>
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center gap-1">
             <Button
               size="icon"
+              variant="ghost"
               onClick={onEdit}
-              aria-label={`Produkt ${product.name} bearbeiten`}
-              className="bg-foreground hover:bg-foreground/90 rounded-[10px] text-white"
+              aria-label={`Menu ${menu.name} bearbeiten`}
+              className="size-9"
             >
-              <PencilIcon className="h-4 w-4" />
+              <Pencil className="size-4" />
             </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label={`Menu ${menu.name} löschen`}
+                  className="text-destructive hover:text-destructive size-9"
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Menu löschen?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    &laquo;{menu.name}&raquo; wird dauerhaft gelöscht inkl. aller Slots und Optionen.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction onClick={onDelete}>Löschen</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
+
+        {/* Collapsible slots section */}
+        <Collapsible open={open} onOpenChange={setOpen}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="text-muted-foreground -ml-2 gap-1.5 text-xs">
+              {open ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+              {slots.length} {slots.length === 1 ? "Slot" : "Slots"}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <SlotsSection
+              menuId={menu.id}
+              slots={slots}
+              products={products}
+              fetchAuth={fetchAuth}
+              onRefetch={onRefetch}
+              onError={onError}
+              onUpdateSlots={onUpdateSlots}
+            />
+          </CollapsibleContent>
+        </Collapsible>
       </CardContent>
     </Card>
   )
 }
 
-function EditDialog({
-  cats,
-  product,
-  onClose,
-  onSaved,
-  saving,
+// ─── SlotsSection ─────────────────────────────────────────────────────
+
+function SlotsSection({
+  menuId,
+  slots,
+  products,
+  fetchAuth,
+  onRefetch,
+  onError,
+  onUpdateSlots,
 }: {
-  cats: Category[]
-  product: DirtyProduct | null
-  onClose: () => void
-  onSaved: (p: DirtyProduct) => void
-  saving: boolean
+  menuId: string
+  slots: MenuSlot[]
+  products: ProductSummaryDTO[]
+  fetchAuth: FetchFn
+  onRefetch: () => Promise<void>
+  onError: (msg: string) => void
+  onUpdateSlots: (slots: MenuSlot[]) => void
 }) {
-  const [local, setLocal] = useState<DirtyProduct | null>(null)
+  const [newSlotName, setNewSlotName] = useState("")
+  const [busy, setBusy] = useState(false)
+
+  const handleAddSlot = async () => {
+    const name = newSlotName.trim()
+    if (!name || busy) return
+    setBusy(true)
+    try {
+      await apiCreateSlot(fetchAuth, menuId, name)
+      setNewSlotName("")
+      await onRefetch()
+    } catch (e: unknown) {
+      onError(e instanceof Error ? e.message : "Slot erstellen fehlgeschlagen")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const [reordering, setReordering] = useState(false)
+
+  const handleMoveSlot = async (slotId: string, direction: "up" | "down") => {
+    if (reordering) return
+    const idx = slots.findIndex((s) => s.id === slotId)
+    if (idx < 0) return
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1
+    if (swapIdx < 0 || swapIdx >= slots.length) return
+
+    // Swap and normalize sequences to 0, 1, 2, ...
+    const reordered = [...slots]
+    ;[reordered[idx], reordered[swapIdx]] = [reordered[swapIdx]!, reordered[idx]!]
+    const normalizedSlots = reordered.map((s, i) => ({ ...s, sequence: i }))
+
+    // Optimistic UI update
+    onUpdateSlots(normalizedSlots)
+
+    const positions: Record<string, number> = {}
+    for (const s of normalizedSlots) positions[s.id] = s.sequence
+
+    setReordering(true)
+    try {
+      await apiReorderSlots(fetchAuth, menuId, positions)
+    } catch (e: unknown) {
+      await onRefetch()
+      onError(e instanceof Error ? e.message : "Reihenfolge ändern fehlgeschlagen")
+    } finally {
+      setReordering(false)
+    }
+  }
+
+  const handleDeleteSlot = async (slotId: string) => {
+    try {
+      await apiDeleteSlot(fetchAuth, menuId, slotId)
+      await onRefetch()
+    } catch (e: unknown) {
+      onError(e instanceof Error ? e.message : "Slot löschen fehlgeschlagen")
+    }
+  }
+
+  return (
+    <div className="mt-2 space-y-3">
+      {slots.map((slot, idx) => (
+        <SlotRow
+          key={slot.id}
+          menuId={menuId}
+          slot={slot}
+          products={products}
+          fetchAuth={fetchAuth}
+          onRefetch={onRefetch}
+          onError={onError}
+          isFirst={idx === 0}
+          isLast={idx === slots.length - 1}
+          onMoveUp={() => handleMoveSlot(slot.id, "up")}
+          onMoveDown={() => handleMoveSlot(slot.id, "down")}
+          onDelete={() => handleDeleteSlot(slot.id)}
+        />
+      ))}
+
+      {/* New slot input */}
+      <div className="flex items-center gap-2">
+        <Input
+          value={newSlotName}
+          onChange={(e) => setNewSlotName(e.target.value)}
+          placeholder="Neuer Slot"
+          maxLength={20}
+          className="h-8 flex-1"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault()
+              handleAddSlot()
+            }
+          }}
+        />
+        <Button size="sm" variant="outline" className="h-8 gap-1" disabled={!newSlotName.trim() || busy} onClick={handleAddSlot}>
+          <Plus className="size-3.5" />
+          Slot
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+// ─── SlotRow ──────────────────────────────────────────────────────────
+
+function SlotRow({
+  menuId,
+  slot,
+  products,
+  fetchAuth,
+  onRefetch,
+  onError,
+  isFirst,
+  isLast,
+  onMoveUp,
+  onMoveDown,
+  onDelete,
+}: {
+  menuId: string
+  slot: MenuSlot
+  products: ProductSummaryDTO[]
+  fetchAuth: FetchFn
+  onRefetch: () => Promise<void>
+  onError: (msg: string) => void
+  isFirst: boolean
+  isLast: boolean
+  onMoveUp: () => void
+  onMoveDown: () => void
+  onDelete: () => void
+}) {
+  const [renaming, setRenaming] = useState(false)
+  const [nameInput, setNameInput] = useState(slot.name)
+
+  const handleRename = async () => {
+    const name = nameInput.trim()
+    if (!name || name === slot.name) {
+      setRenaming(false)
+      setNameInput(slot.name)
+      return
+    }
+    try {
+      await apiUpdateSlot(fetchAuth, menuId, slot.id, name)
+      setRenaming(false)
+      await onRefetch()
+    } catch (e: unknown) {
+      onError(e instanceof Error ? e.message : "Umbenennen fehlgeschlagen")
+    }
+  }
+
+  const assignedIds = useMemo(() => new Set((slot.options || []).map((o) => o.optionProductId)), [slot.options])
+  const availableProducts = useMemo(
+    () => products.filter((p) => !assignedIds.has(p.id)),
+    [products, assignedIds],
+  )
+
+  const handleAddOption = async (productId: string) => {
+    try {
+      await apiAddOption(fetchAuth, menuId, slot.id, productId)
+      await onRefetch()
+    } catch (e: unknown) {
+      onError(e instanceof Error ? e.message : "Option hinzufügen fehlgeschlagen")
+    }
+  }
+
+  const handleRemoveOption = async (optionProductId: string) => {
+    try {
+      await apiRemoveOption(fetchAuth, menuId, slot.id, optionProductId)
+      await onRefetch()
+    } catch (e: unknown) {
+      onError(e instanceof Error ? e.message : "Option entfernen fehlgeschlagen")
+    }
+  }
+
+  return (
+    <div className="border-border rounded-lg border p-2">
+      {/* Slot header */}
+      <div className="flex items-center gap-1">
+        {renaming ? (
+          <Input
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            maxLength={20}
+            className="h-7 flex-1 text-sm"
+            autoFocus
+            onBlur={handleRename}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
+                handleRename()
+              }
+              if (e.key === "Escape") {
+                setRenaming(false)
+                setNameInput(slot.name)
+              }
+            }}
+          />
+        ) : (
+          <button
+            className="hover:bg-accent flex items-center gap-1 rounded px-1.5 py-0.5 text-sm font-medium"
+            onClick={() => {
+              setNameInput(slot.name)
+              setRenaming(true)
+            }}
+          >
+            {slot.name}
+            <Pencil className="text-muted-foreground size-3" />
+          </button>
+        )}
+        <div className="ml-auto flex items-center gap-0.5">
+          <Button size="icon" variant="ghost" className="size-7" disabled={isFirst} onClick={onMoveUp}>
+            <ArrowUp className="size-3.5" />
+          </Button>
+          <Button size="icon" variant="ghost" className="size-7" disabled={isLast} onClick={onMoveDown}>
+            <ArrowDown className="size-3.5" />
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="icon" variant="ghost" className="text-destructive hover:text-destructive size-7">
+                <Trash2 className="size-3.5" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Slot löschen?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Slot &laquo;{slot.name}&raquo; und alle zugehörigen Optionen werden gelöscht.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                <AlertDialogAction onClick={onDelete}>Löschen</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </div>
+
+      {/* Option badges */}
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {(slot.options || []).map((opt) => (
+          <Badge key={opt.optionProductId} variant="secondary" className="gap-1 pr-1">
+            {opt.optionProduct?.name ?? opt.optionProductId.slice(0, 8)}
+            <button
+              className="hover:bg-destructive/20 rounded p-0.5"
+              onClick={() => handleRemoveOption(opt.optionProductId)}
+              aria-label={`Option ${opt.optionProduct?.name ?? ""} entfernen`}
+            >
+              <X className="size-3" />
+            </button>
+          </Badge>
+        ))}
+      </div>
+
+      {/* Add option picker */}
+      {availableProducts.length > 0 && (
+        <div className="mt-2">
+          <Select value="" onValueChange={handleAddOption}>
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Produkt hinzufügen…" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableProducts.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── CreateMenuDialog ─────────────────────────────────────────────────
+
+function CreateMenuDialog({
+  open,
+  onClose,
+  cats,
+  fetchAuth,
+  onCreated,
+  onError,
+}: {
+  open: boolean
+  onClose: () => void
+  cats: { id: string; name: string }[]
+  fetchAuth: FetchFn
+  onCreated: () => Promise<void>
+  onError: (msg: string) => void
+}) {
+  const [name, setName] = useState("")
+  const [categoryId, setCategoryId] = useState<string>("")
+  const [priceInput, setPriceInput] = useState("")
+  const [image, setImage] = useState("")
+  const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    setLocal(product)
-    setErrors({})
-  }, [product])
+    if (open) {
+      setName("")
+      setCategoryId("")
+      setPriceInput("")
+      setImage("")
+      setErrors({})
+    }
+  }, [open])
 
-  const open = !!product
-  const dirty = useMemo(() => {
-    return JSON.stringify(product) !== JSON.stringify(local)
-  }, [product, local])
-
-  function validate(p: DirtyProduct | null): boolean {
-    if (!p) return false
+  function validate(): boolean {
     const errs: Record<string, string> = {}
-    if (!p.name.trim()) errs.name = "Name erforderlich"
-    if (p.priceCents <= 0) errs.price = "Preis ungültig"
+    if (!name.trim()) errs.name = "Name erforderlich"
+    if (!categoryId) errs.category = "Kategorie erforderlich"
+    const cents = parsePriceInputToCents(priceInput)
+    if (cents === null || cents < 0) errs.price = "Preis ungültig"
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
 
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!validate()) return
+    setSaving(true)
+    try {
+      const cents = parsePriceInputToCents(priceInput) ?? 0
+      await apiCreateMenu(fetchAuth, {
+        categoryId,
+        name: name.trim(),
+        priceCents: cents,
+        ...(image.trim() ? { image: image.trim() } : {}),
+      })
+      onClose()
+      await onCreated()
+    } catch (e: unknown) {
+      onError(e instanceof Error ? e.message : "Erstellen fehlgeschlagen")
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        if (!o) onClose()
-      }}
-    >
-      <DialogContent className="max-w-[560px] rounded-xl" aria-labelledby="edit-title">
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>
+      <DialogContent className="max-w-[520px] rounded-xl">
         <DialogHeader>
-          <DialogTitle id="edit-title" className="text-sm tracking-wider">
-            {product?.id === "new" ? "ERSTELLEN" : "BEARBEITEN"}
-          </DialogTitle>
+          <DialogTitle className="text-sm tracking-wider">NEUES MENU</DialogTitle>
         </DialogHeader>
-        {local && (
-          <form
-            className="space-y-4"
-            onSubmit={(e) => {
-              e.preventDefault()
-              if (validate(local)) onSaved(local)
-            }}
-          >
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <div className="space-y-2">
+            <Label htmlFor="create-name">Name</Label>
+            <Input
+              id="create-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={20}
+              aria-invalid={!!errors.name}
+            />
+            {errors.name && <p className="text-destructive text-xs">{errors.name}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label>Kategorie</Label>
+            <Select value={categoryId} onValueChange={setCategoryId}>
+              <SelectTrigger aria-invalid={!!errors.category}>
+                <SelectValue placeholder="Kategorie wählen" />
+              </SelectTrigger>
+              <SelectContent>
+                {cats.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.category && <p className="text-destructive text-xs">{errors.category}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="create-price">Preis (CHF)</Label>
+            <Input
+              id="create-price"
+              inputMode="decimal"
+              value={priceInput}
+              onChange={(e) => setPriceInput(e.target.value)}
+              placeholder="z.B. 12.50"
+              aria-invalid={!!errors.price}
+            />
+            {errors.price && <p className="text-destructive text-xs">{errors.price}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="create-image">Bild URL (optional)</Label>
+            <Input
+              id="create-image"
+              value={image}
+              onChange={(e) => setImage(e.target.value)}
+              placeholder="https://..."
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
+              Abbrechen
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving && <RefreshCw className="size-4 animate-spin" />}
+              Erstellen
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ─── EditMenuDialog ───────────────────────────────────────────────────
+
+function EditMenuDialog({
+  menu,
+  onClose,
+  fetchAuth,
+  onSaved,
+  onError,
+}: {
+  menu: Menu | null
+  onClose: () => void
+  fetchAuth: FetchFn
+  onSaved: () => Promise<void>
+  onError: (msg: string) => void
+}) {
+  const [name, setName] = useState("")
+  const [priceInput, setPriceInput] = useState("")
+  const [image, setImage] = useState("")
+  const [isActive, setIsActive] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (menu) {
+      setName(menu.name)
+      setPriceInput((menu.priceCents / 100).toString())
+      setImage(menu.image || "")
+      setIsActive(menu.isActive)
+    }
+  }, [menu])
+
+  const dirty = useMemo(() => {
+    if (!menu) return false
+    const cents = parsePriceInputToCents(priceInput)
+    return (
+      name.trim() !== menu.name ||
+      (cents !== null && cents !== menu.priceCents) ||
+      (image.trim() || null) !== (menu.image || null) ||
+      isActive !== menu.isActive
+    )
+  }, [menu, name, priceInput, image, isActive])
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!menu || !dirty) return
+    setSaving(true)
+    try {
+      const patch: Record<string, unknown> = {}
+      if (name.trim() !== menu.name) patch.name = name.trim()
+      const cents = parsePriceInputToCents(priceInput)
+      if (cents !== null && cents !== menu.priceCents) patch.priceCents = cents
+      const imgVal = image.trim() || null
+      if (imgVal !== (menu.image || null)) patch.image = imgVal
+      if (isActive !== menu.isActive) patch.isActive = isActive
+
+      await apiUpdateMenu(fetchAuth, menu.id, patch as Parameters<typeof apiUpdateMenu>[2])
+      onClose()
+      await onSaved()
+    } catch (e: unknown) {
+      onError(e instanceof Error ? e.message : "Speichern fehlgeschlagen")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Dialog open={!!menu} onOpenChange={(o) => { if (!o) onClose() }}>
+      <DialogContent className="max-w-[520px] rounded-xl">
+        <DialogHeader>
+          <DialogTitle className="text-sm tracking-wider">BEARBEITEN</DialogTitle>
+        </DialogHeader>
+        {menu && (
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="edit-name">Name</Label>
               <Input
-                id="name"
-                value={local.name}
-                onChange={(e) => setLocal({ ...local, name: e.target.value })}
-                aria-invalid={!!errors.name}
+                id="edit-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={20}
               />
-              {errors.name && <p className="text-destructive text-xs">{errors.name}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="price">Preis</Label>
-              <div className="relative">
-                <Input
-                  id="price"
-                  inputMode="decimal"
-                  defaultValue={(local.priceCents / 100).toString()}
-                  onBlur={(e) => {
-                    const cents = parsePriceInputToCents(e.target.value)
-                    if (cents != null) setLocal({ ...local, priceCents: cents })
-                  }}
-                  aria-invalid={!!errors.price}
-                />
-                <span className="text-muted-foreground absolute top-1/2 right-3 -translate-y-1/2 text-xs">
-                  {local.priceCents % 100 === 0 ? ".- CHF" : "CHF"}
-                </span>
-              </div>
-              {errors.price && <p className="text-destructive text-xs">{errors.price}</p>}
+              <Label htmlFor="edit-price">Preis (CHF)</Label>
+              <Input
+                id="edit-price"
+                inputMode="decimal"
+                value={priceInput}
+                onChange={(e) => setPriceInput(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
-              <Label>Kategorie</Label>
-              <Select
-                value={local.categoryId ?? undefined}
-                onValueChange={(v) => setLocal({ ...local, categoryId: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Kategorie wählen" />
-                </SelectTrigger>
-                <SelectContent>
-                  {cats.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="stock">Bestand</Label>
-              <div className="flex items-center gap-3">
-                <Input
-                  id="stock"
-                  type="number"
-                  value={local.stock ?? 0}
-                  onChange={(e) => setLocal({ ...local, stock: Number(e.target.value) })}
-                />
-              </div>
+              <Label htmlFor="edit-image">Bild URL</Label>
+              <Input
+                id="edit-image"
+                value={image}
+                onChange={(e) => setImage(e.target.value)}
+                placeholder="https://..."
+              />
             </div>
             <div className="flex items-center justify-between gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="is-active">Aktiv</Label>
-              </div>
+              <Label htmlFor="edit-active">Aktiv</Label>
               <Switch
-                id="is-active"
-                checked={local.isActive}
-                onCheckedChange={(checked) => setLocal({ ...local, isActive: checked })}
+                id="edit-active"
+                checked={isActive}
+                onCheckedChange={setIsActive}
               />
             </div>
             <div className="flex items-center justify-end gap-2 pt-2">
@@ -508,9 +978,8 @@ function EditDialog({
                 Abbrechen
               </Button>
               <Button type="submit" disabled={!dirty || saving}>
-                {" "}
-                {saving && <RefreshCw className="size-4 animate-spin" />}{" "}
-                {product?.id === "new" ? "Erstellen" : "Speichern"}
+                {saving && <RefreshCw className="size-4 animate-spin" />}
+                Speichern
               </Button>
             </div>
           </form>
@@ -519,61 +988,3 @@ function EditDialog({
     </Dialog>
   )
 }
-
-async function saveChanges(fetchAuth: ReturnType<typeof useAuthorizedFetch>, items: ProductDTO[], p: DirtyProduct) {
-  const csrf = getCSRFToken()
-  const original = items.find((it) => it.id === p.id)
-
-  // Create not implemented yet (depends on backend). Placeholder.
-  if (p.id === "new") return
-
-  // Price
-  if (original && original.priceCents !== p.priceCents) {
-    const res = await fetchAuth(`/api/v1/admin/products/${encodeURIComponent(p.id)}/price`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
-      body: JSON.stringify({ priceCents: p.priceCents }),
-    })
-    if (!res.ok) throw new Error("Preis aktualisieren fehlgeschlagen")
-  }
-
-  // Category
-  if (original && (original.category?.id ?? null) !== (p.categoryId ?? null)) {
-    const res = await fetchAuth(`/api/v1/admin/products/${encodeURIComponent(p.id)}/category`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
-      body: JSON.stringify({ categoryId: p.categoryId }),
-    })
-    if (!res.ok) throw new Error("Kategorie aktualisieren fehlgeschlagen")
-  }
-
-  // Inventory (adjust delta)
-  const currentStock = original?.availableQuantity ?? null
-  if (currentStock != null && p.stock != null && currentStock !== p.stock) {
-    const delta = p.stock - currentStock
-    if (delta !== 0) {
-      const res = await fetchAuth(`/api/v1/admin/products/${encodeURIComponent(p.id)}/inventory-adjust`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
-        body: JSON.stringify({ delta, reason: "manual_adjust" }),
-      })
-      if (!res.ok) throw new Error("Bestand aktualisieren fehlgeschlagen")
-    }
-  }
-
-  // Active flag
-  if (original && original.isActive !== p.isActive) {
-    const res = await fetchAuth(`/api/v1/admin/products/${encodeURIComponent(p.id)}/active`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
-      body: JSON.stringify({ isActive: p.isActive }),
-    })
-    if (!res.ok) {
-      const msg = await readErrorMessage(res)
-      if (msg === "jeton_required") throw new Error("Bitte zuerst einen Jeton zuweisen.")
-      throw new Error(msg || "Status aktualisieren fehlgeschlagen")
-    }
-  }
-}
-
-// CSRF helper now centralized in lib/csrf

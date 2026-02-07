@@ -1,0 +1,9 @@
+{
+  "title": "Infrastruktur",
+  "pages": [
+    "azure-ressourcen",
+    "kostenmanagement",
+    "sicherheit",
+    "runbooks"
+  ]
+}

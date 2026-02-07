@@ -7,7 +7,7 @@ variable "env" {
 }
 
 variable "image_tag" {
-  description = "Docker image tag"
+  description = "Semantic version tag for Docker images"
   type        = string
 }
 
@@ -71,6 +71,18 @@ variable "backend_custom_domains" {
   default     = []
 }
 
+variable "docs_digest" {
+  description = "Docs image digest (optional, preferred over tag)"
+  type        = string
+  default     = ""
+}
+
+variable "docs_custom_domains" {
+  description = "Custom domains for the docs app"
+  type        = list(string)
+  default     = []
+}
+
 locals {
   project = "bfs"
 
@@ -80,6 +92,7 @@ locals {
 
   frontend_image = var.frontend_digest != "" ? "${local.registry_host}/${local.registry_prefix}/frontend@${var.frontend_digest}" : "${local.registry_host}/${local.registry_prefix}/frontend:${var.image_tag}"
   backend_image  = var.backend_digest != "" ? "${local.registry_host}/${local.registry_prefix}/backend@${var.backend_digest}" : "${local.registry_host}/${local.registry_prefix}/backend:${var.image_tag}"
+  docs_image     = var.docs_digest != "" ? "${local.registry_host}/${local.registry_prefix}/docs@${var.docs_digest}" : "${local.registry_host}/${local.registry_prefix}/docs:${var.image_tag}"
 
   registries = [{
     server               = local.registry_host
@@ -107,8 +120,6 @@ output "config" {
     appi_name           = "${local.project}-${var.env}-insights"
     enable_app_insights = false
     retention_days      = 30
-    cosmos_name         = "${local.project}-${var.env}-cosmos"
-    database_throughput = 400
     key_vault_name      = "${local.project}-${var.env}-keyvault"
 
     apps = {
@@ -135,9 +146,14 @@ output "config" {
           NEXT_PUBLIC_GA_MEASUREMENT_ID = "G-9W8S03MJEM"
         }
         key_vault_secrets = {
-          "BACKEND_INTERNAL_URL"               = "backend-internal-url"
-          "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY" = "stripe-publishable-key"
-          "NEXT_PUBLIC_GOOGLE_CLIENT_ID"       = "google-client-id"
+          "BACKEND_INTERNAL_URL"     = "backend-internal-url"
+          "NEXT_PUBLIC_API_BASE_URL" = "next-public-api-base-url"
+          "NEXT_PUBLIC_APP_URL"      = "next-public-app-url"
+          "BETTER_AUTH_SECRET"       = "better-auth-secret"
+          "BETTER_AUTH_URL"          = "better-auth-url"
+          "DATABASE_URL"             = "database-url"
+          "GOOGLE_CLIENT_ID"         = "google-client-id"
+          "GOOGLE_CLIENT_SECRET"     = "google-client-secret"
         }
         http_scale_rule = {
           name                = "frontend-http-scale"
@@ -146,6 +162,31 @@ output "config" {
         cpu_scale_rule = {
           name           = "frontend-cpu-scale"
           cpu_percentage = 75
+        }
+      }
+
+      "docs-${var.env}" = {
+        port                           = 3000
+        cpu                            = 0.25
+        memory                         = "0.5Gi"
+        min_replicas                   = 0
+        max_replicas                   = 3
+        health_check_path              = "/api/health"
+        liveness_path                  = "/api/health"
+        liveness_interval_seconds      = 30
+        liveness_initial_delay_seconds = 20
+        image                          = local.docs_image
+        revision_suffix                = var.revision_suffix
+        registries                     = local.registries
+        secrets                        = { ghcr-token = var.ghcr_token }
+        custom_domains                 = var.docs_custom_domains
+        environment_variables = {
+          NODE_ENV = "production"
+        }
+        key_vault_secrets = {}
+        http_scale_rule = {
+          name                = "docs-http-scale"
+          concurrent_requests = 10
         }
       }
 
@@ -165,31 +206,28 @@ output "config" {
         secrets                        = { ghcr-token = var.ghcr_token }
         custom_domains                 = var.backend_custom_domains
         environment_variables = {
-          APP_ENV                    = var.env
-          APP_PORT                   = "8080"
-          LOG_LEVEL                  = "info"
-          LOG_DEVELOPMENT            = "false"
-          SECURITY_ENABLE_HSTS       = "true"
-          SECURITY_ENABLE_CSP        = "true"
-          PLUNK_FROM_NAME            = "BlessThun Food"
-          PLUNK_FROM_EMAIL           = ""
-          PLUNK_REPLY_TO             = ""
-          MONGO_DATABASE             = "bless2n_food_system"
-          STATION_QR_MAX_AGE_SECONDS = "86400"
+          APP_ENV                 = var.env
+          APP_PORT                = "8080"
+          LOG_LEVEL               = "info"
+          LOG_DEVELOPMENT         = "false"
+          SECURITY_ENABLE_HSTS    = "true"
+          SECURITY_ENABLE_CSP     = "true"
+          PLUNK_FROM_NAME         = "BlessThun Food"
+          PLUNK_FROM_EMAIL        = ""
+          PLUNK_REPLY_TO          = ""
+          AZURE_STORAGE_CONTAINER = "product-images"
         }
         key_vault_secrets = {
-          "MONGO_URI"                = "mongo-uri"
-          "JWT_PRIV_PEM"             = "jwt-priv-pem"
-          "JWT_PUB_PEM"              = "jwt-pub-pem"
-          "STATION_QR_SECRET"        = "station-qr-secret"
-          "GOOGLE_CLIENT_SECRET"     = "google-client-secret"
-          "GOOGLE_CLIENT_ID"         = "google-client-id"
-          "STRIPE_SECRET_KEY"        = "stripe-secret-key"
-          "STRIPE_WEBHOOK_SECRET"    = "stripe-webhook-secret"
-          "PLUNK_API_KEY"            = "plunk-api-key"
-          "SECURITY_TRUSTED_ORIGINS" = "security-trusted-origins"
-          "PUBLIC_BASE_URL"          = "public-base-url"
-          "JWT_ISSUER"               = "jwt-issuer"
+          "DATABASE_URL"               = "database-url"
+          "BETTER_AUTH_URL"            = "better-auth-url"
+          "PUBLIC_BASE_URL"            = "public-base-url"
+          "SECURITY_TRUSTED_ORIGINS"   = "security-trusted-origins"
+          "PAYREXX_INSTANCE"           = "payrexx-instance"
+          "PAYREXX_API_SECRET"         = "payrexx-api-secret"
+          "PAYREXX_WEBHOOK_SECRET"     = "payrexx-webhook-secret"
+          "PLUNK_API_KEY"              = "plunk-api-key"
+          "AZURE_STORAGE_ACCOUNT_NAME" = "azure-storage-account-name"
+          "AZURE_STORAGE_ACCOUNT_KEY"  = "azure-storage-account-key"
         }
         http_scale_rule = {
           name                = "backend-http-scale"

@@ -1,3 +1,5 @@
+SET search_path TO app, public;
+
 CREATE TYPE user_role AS ENUM ('admin', 'customer');
 
 CREATE TYPE order_status AS ENUM ('pending', 'paid', 'cancelled', 'refunded');

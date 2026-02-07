@@ -1,34 +1,31 @@
 package app
 
 import (
-	"backend/internal/config"
+	"backend/internal/inventory"
+	"backend/internal/repository"
 	"backend/internal/service"
 
 	"go.uber.org/fx"
-	"go.uber.org/zap"
 )
 
 func NewServices() fx.Option {
 	return fx.Options(
 		fx.Provide(
-			service.NewEmailService,
-			NewJWTService,
-			service.NewAuthService,
-			service.NewFederatedAuthService,
-			service.NewAdminService,
-			service.NewUserService,
-			service.NewStationService,
-			service.NewCategoryService,
-			service.NewProductService,
-			service.NewOrderService,
 			service.NewPaymentService,
+			service.NewSettingsService,
+			service.NewProductService,
+			service.NewCategoryService,
+			service.NewOrderService,
+			service.NewStationService,
 			service.NewPOSService,
-			service.NewPOSConfigService,
+			repository.NewIdempotencyRepository,
+			service.NewEmailService,
+			service.NewAdminInviteService,
+			service.NewUserService,
+			service.NewDeviceService,
+			inventory.NewHub,
+			service.NewElvantoService,
+			service.NewClub100Service,
 		),
 	)
-}
-
-func NewJWTService(cfg config.Config, logger *zap.Logger) service.JWTService {
-	logger.Info("Using PEM-based JWT service from env")
-	return service.NewJWTService(cfg.App.JWTPrivPEM, cfg.App.JWTPubPEM, cfg.App.JWTIssuer)
 }

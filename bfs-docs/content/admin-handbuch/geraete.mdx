@@ -1,0 +1,60 @@
+---
+title: Geräte
+description: POS- und Stations-Geräte koppeln und verwalten
+---
+
+# Geräteverwaltung
+
+Geräte sind physische Terminals (POS-Kassen oder Ausgabestationen), die über einen Pairing-Code mit dem System verbunden werden.
+
+---
+
+# Gerätetypen
+
+| Typ | Beschreibung |
+|---|---|
+| POS | Point-of-Sale-Gerät für Verkäufe vor Ort |
+| Station | Ausgabestation für die Essensausgabe |
+
+---
+
+# Gerät koppeln
+
+<Steps>
+### Code anfordern
+
+Auf dem Gerät selbst (POS- oder Station-Oberfläche) wird ein 6-stelliger Pairing-Code generiert. Dieser wird im Format XXX XXX angezeigt.
+
+### Code im Admin eingeben
+
+Im Admin-Dashboard unter Geräte, Stationen oder POS den Code in das Eingabefeld eingeben und bestätigen.
+
+### Kopplung abgeschlossen
+
+Das Gerät erkennt die Bestätigung automatisch und verbindet sich mit dem System.
+</Steps>
+
+<Callout type="info">
+Der Pairing-Code ist zeitlich begrenzt gültig. Falls er abläuft, kann auf dem Gerät ein neuer Code generiert werden.
+</Callout>
+
+---
+
+# Geräteliste
+
+Die Übersicht zeigt alle gekoppelten Geräte mit:
+
+- Name: Vom Gerät vergebener Name.
+- Typ: POS oder Station.
+- Zuletzt gesehen: Letzter Kontakt des Geräts mit dem System.
+- Erstellt am: Zeitpunkt der Kopplung.
+
+---
+
+# Gerät widerrufen
+
+Über den „Widerrufen"-Button wird die Kopplung aufgehoben. Das Gerät verliert den Zugang und muss erneut gekoppelt werden.
+
+<Callout type="warn">
+Nach dem Widerrufen muss das Gerät neu gekoppelt werden, um wieder Zugang zu erhalten.
+</Callout>

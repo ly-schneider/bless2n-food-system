@@ -20,6 +20,7 @@ jobs:
     outputs:
       web: ${{ steps.filter.outputs.web }}
       backend: ${{ steps.filter.outputs.backend }}
+      docs: ${{ steps.filter.outputs.docs }}
       terraform: ${{ steps.filter.outputs.terraform }}
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -34,10 +35,15 @@ jobs:
               - 'bfs-web-app/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
+              - 'VERSION'
             backend:
               - 'bfs-backend/**'
               - 'go.mod'
               - 'go.sum'
+              - 'VERSION'
+            docs:
+              - 'bfs-docs/**'
+              - 'VERSION'
             terraform:
               - 'bfs-cloud/**'
               - '*.tf'
@@ -153,6 +159,36 @@ jobs:
         working-directory: bfs-web-app
         run: pnpm test -- --shard=${{ matrix.shard }}/1
 
+  docs-quality:
+    name: Docs Quality Checks
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.docs == 'true'
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 9
+
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: bfs-docs/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: bfs-docs
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        working-directory: bfs-docs
+        run: pnpm run lint
+
+      - name: Build
+        working-directory: bfs-docs
+        run: pnpm run build
+
   backend-lint:
     name: Backend Lint
     runs-on: ubuntu-latest
@@ -235,6 +271,7 @@ jobs:
       - detect-changes
       - web-quality
       - web-test
+      - docs-quality
       - backend-lint
       - backend-test
       - terraform-quality
@@ -244,6 +281,7 @@ jobs:
         run: |
           if [[ "${{ needs.web-quality.result }}" == "failure" ]] || \
              [[ "${{ needs.web-test.result }}" == "failure" ]] || \
+             [[ "${{ needs.docs-quality.result }}" == "failure" ]] || \
              [[ "${{ needs.backend-lint.result }}" == "failure" ]] || \
              [[ "${{ needs.backend-test.result }}" == "failure" ]] || \
              [[ "${{ needs.terraform-quality.result }}" == "failure" ]]; then
@@ -268,6 +306,7 @@ jobs:
         (
           needs.detect-changes.outputs.web == 'true' ||
           needs.detect-changes.outputs.backend == 'true' ||
+          needs.detect-changes.outputs.docs == 'true' ||
           needs.detect-changes.outputs.terraform == 'true'
         )
       }}
@@ -276,6 +315,15 @@ jobs:
       actions: write
       pull-requests: read
     steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          sparse-checkout: VERSION
+          sparse-checkout-cone-mode: false
+
+      - name: Read version
+        id: version
+        run: echo "version=$(cat VERSION | tr -d '[:space:]')" >> "$GITHUB_OUTPUT"
+
       - name: Check commit message for skip flag
         id: check-skip
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
@@ -348,6 +396,7 @@ jobs:
               ref: env,
               inputs: {
                 target_env: env,
-                image_tag: context.sha,
+                version: '${{ steps.version.outputs.version }}',
+                commit_sha: context.sha,
               },
             });

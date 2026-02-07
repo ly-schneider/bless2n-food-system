@@ -19,17 +19,12 @@ output "app_insights_connection_string" {
   sensitive   = true
 }
 
-output "cosmos_connection_string" {
-  description = "Cosmos DB connection string"
-  value       = module.cosmos.connection_string
-  sensitive   = true
-}
-
 output "app_urls" {
   description = "URLs of the deployed applications (latest revision FQDNs)"
   value = jsonencode(merge(
     { for k, m in module.apps_backend : k => m.url },
-    { for k, m in module.apps_frontend : k => m.url }
+    { for k, m in module.apps_frontend : k => m.url },
+    { for k, m in module.apps_docs : k => m.url }
   ))
 }
 
@@ -46,4 +41,9 @@ output "key_vault_id" {
 output "key_vault_secret_ids" {
   description = "Map of Key Vault secret names to their versionless IDs"
   value       = jsonencode(module.security.key_vault_secret_ids)
+}
+
+output "blob_storage_endpoint" {
+  description = "Primary blob storage endpoint"
+  value       = module.blob_storage.blob_endpoint
 }

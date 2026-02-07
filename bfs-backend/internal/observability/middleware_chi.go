@@ -91,6 +91,16 @@ func (r *responseRecorder) Write(b []byte) (int, error) {
 	return r.ResponseWriter.Write(b)
 }
 
+func (r *responseRecorder) Flush() {
+	if f, ok := r.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+func (r *responseRecorder) Unwrap() http.ResponseWriter {
+	return r.ResponseWriter
+}
+
 func routePatternFromContext(ctx context.Context) string {
 	if rc := chi.RouteContext(ctx); rc != nil {
 		return rc.RoutePattern()

@@ -1,5 +1,5 @@
 const PUBLIC_API_BASE = "/api"
-const INTERNAL_API_BASE = process.env.BACKEND_INTERNAL_URL || process.env.INTERNAL_API_BASE_URL
+const INTERNAL_API_BASE = process.env.BACKEND_INTERNAL_URL
 
 function resolveApiBase(): string {
   if (typeof window === "undefined") {

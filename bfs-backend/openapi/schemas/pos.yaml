@@ -1,0 +1,39 @@
+PosFulfillmentMode:
+  type: string
+  enum: [QR_CODE, JETON]
+  description: |
+    - `QR_CODE`: Station-based pickup using signed QR codes
+    - `JETON`: Color-coded fulfillment using jeton tags
+
+POSDevice:
+  type: object
+  required: [id, name, status]
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+      maxLength: 20
+    model:
+      type: string
+      nullable: true
+    os:
+      type: string
+      nullable: true
+    status:
+      $ref: 'devices.yaml#/DeviceStatus'
+    createdAt:
+      type: string
+      format: date-time
+    settings:
+      $ref: 'settings.yaml#/Settings'
+
+POSDeviceList:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/POSDevice'

@@ -10,6 +10,8 @@ module "config" {
 
   frontend_custom_domains = ["staging.food.blessthun.ch"]
   backend_custom_domains  = ["api.staging.food.blessthun.ch"]
+  docs_digest             = var.docs_digest
+  docs_custom_domains     = ["docs.staging.food.blessthun.ch"]
 }
 
 module "bfs_infrastructure" {

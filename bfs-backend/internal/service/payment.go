@@ -1,153 +1,107 @@
 package service
 
 import (
-	"backend/internal/config"
-	"backend/internal/domain"
-	"backend/internal/repository"
 	"context"
 	"fmt"
+	"time"
 
-	stripe "github.com/stripe/stripe-go/v82"
-	"github.com/stripe/stripe-go/v82/checkout/session"
-	"github.com/stripe/stripe-go/v82/customer"
-	"github.com/stripe/stripe-go/v82/paymentintent"
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"backend/internal/config"
+	"backend/internal/generated/ent"
+	"backend/internal/generated/ent/inventoryledger"
+	"backend/internal/generated/ent/order"
+	"backend/internal/generated/ent/orderline"
+	"backend/internal/generated/ent/product"
+	"backend/internal/inventory"
+	"backend/internal/payrexx"
+	"backend/internal/repository"
+
+	"github.com/google/uuid"
 )
 
-type CheckoutItem struct {
-	Name        string
-	AmountCents int64
-	Currency    string
-	Quantity    int64
-}
-
-type CreateCheckoutSessionParams struct {
-	Items         []CheckoutItem
-	SuccessURL    string
-	CancelURL     string
-	ClientRefID   *string
-	CustomerEmail *string
-	// If provided, Stripe Checkout will use this customer and not show email input
-	CustomerID *string
-	// Optional metadata to attach to the underlying PaymentIntent
-	PaymentIntentMetadata map[string]string
-}
-
 type PaymentService interface {
-	CreateTWINTCheckoutSession(ctx context.Context, p CreateCheckoutSessionParams) (*stripe.CheckoutSession, error)
+	// IsPayrexxEnabled returns true if Payrexx is configured (both instance and API secret set).
+	IsPayrexxEnabled() bool
+	// PrepareAndCreateOrder validates items and creates a pending order with inventory reservation.
 	PrepareAndCreateOrder(ctx context.Context, in CreateCheckoutInput, userID *string, attemptID *string) (*CheckoutPreparation, error)
-	CreateStripeCheckoutForOrder(ctx context.Context, prep *CheckoutPreparation, successURL, cancelURL string) (*stripe.CheckoutSession, error)
-	// PaymentIntents flow
-	CreatePaymentIntentForOrder(ctx context.Context, prep *CheckoutPreparation, receiptEmail *string) (*stripe.PaymentIntent, error)
-	UpdatePaymentIntentReceiptEmail(ctx context.Context, paymentIntentID string, email *string) (*stripe.PaymentIntent, error)
-	GetPaymentIntent(ctx context.Context, paymentIntentID string) (*stripe.PaymentIntent, error)
-	MarkOrderPaid(ctx context.Context, clientReferenceID string, contactEmail *string) error
-	PersistPaymentSuccessByOrderID(ctx context.Context, orderIDHex string, paymentIntentID string, chargeID *string, customerID *string, receiptEmail *string) error
-	FindPendingOrderByAttemptID(ctx context.Context, attemptID string) (*domain.Order, error)
-	SetOrderAttemptID(ctx context.Context, orderID bson.ObjectID, attemptID string) error
-	CreatePaymentIntentForExistingPendingOrder(ctx context.Context, ord *domain.Order, userID *string, receiptEmail *string) (*stripe.PaymentIntent, error)
-	CleanupOtherPendingOrdersByAttemptID(ctx context.Context, attemptID string, keepOrderID bson.ObjectID) (int64, error)
-	CleanupPendingOrderByID(ctx context.Context, clientReferenceID string) error
-	CleanupPendingOrderBySessionID(ctx context.Context, sessionID string) error
+	// CreatePayrexxGateway creates a Payrexx payment gateway for the prepared order.
+	CreatePayrexxGateway(ctx context.Context, prep *CheckoutPreparation, successURL, failedURL, cancelURL string) (*payrexx.Gateway, error)
+	// MarkOrderPaidByPayrexx marks an order as paid based on Payrexx webhook data.
+	MarkOrderPaidByPayrexx(ctx context.Context, orderID uuid.UUID, gatewayID, transactionID int, contactEmail *string) error
+	// MarkOrderPaidDev marks an order as paid in dev mode (no Payrexx gateway/transaction IDs).
+	MarkOrderPaidDev(ctx context.Context, orderID uuid.UUID) error
+	// FindPendingOrderByAttemptID finds a pending order by payment attempt ID.
+	FindPendingOrderByAttemptID(ctx context.Context, attemptID string) (*ent.Order, error)
+	// SetOrderAttemptID sets the payment attempt ID on an order.
+	SetOrderAttemptID(ctx context.Context, orderID uuid.UUID, attemptID string) error
+	// CleanupPendingOrderByID deletes a pending order and releases inventory.
+	CleanupPendingOrderByID(ctx context.Context, orderID uuid.UUID) error
+	// CleanupOtherPendingOrdersByAttemptID deletes other pending orders with the same attempt ID.
+	CleanupOtherPendingOrdersByAttemptID(ctx context.Context, attemptID string, keepOrderID uuid.UUID) (int64, error)
+	// GetPayrexxGateway retrieves a Payrexx gateway by ID.
+	GetPayrexxGateway(ctx context.Context, gatewayID int) (*payrexx.Gateway, error)
+}
+
+type CreateCheckoutInput struct {
+	Items []CheckoutItemInput `json:"items"`
+	// CustomerEmail is optional; if user is logged in, their email is used.
+	CustomerEmail *string `json:"customerEmail,omitempty"`
+	// Origin is the order origin (shop or pos). Defaults to shop if empty.
+	Origin order.Origin `json:"-"`
+}
+
+type CheckoutItemInput struct {
+	ProductID string `json:"productId"`
+	Quantity  int    `json:"quantity"`
+	// Configuration maps slotID -> selected productID for menu items.
+	Configuration map[string]string `json:"configuration,omitempty"`
+}
+
+type CheckoutPreparation struct {
+	OrderID       uuid.UUID
+	TotalCents    int64
+	LineItems     []payrexx.InvoiceItem
+	CustomerEmail *string
+	UserID        *string
 }
 
 type paymentService struct {
-	cfg              config.Config
-	orderRepo        repository.OrderRepository
-	orderItemRepo    repository.OrderItemRepository
-	productRepo      repository.ProductRepository
-	menuSlotRepo     repository.MenuSlotRepository
-	menuSlotItemRepo repository.MenuSlotItemRepository
-	userRepo         repository.UserRepository
-	inventoryRepo    repository.InventoryLedgerRepository
+	cfg           config.Config
+	payrexxClient *payrexx.Client
+	orderRepo     repository.OrderRepository
+	orderLineRepo repository.OrderLineRepository
+	productRepo   *repository.ProductRepository
+	menuSlotRepo  repository.MenuSlotRepository
+	inventoryRepo repository.InventoryLedgerRepository
+	inventoryHub  *inventory.Hub
 }
 
-func NewPaymentService(cfg config.Config, orderRepo repository.OrderRepository, orderItemRepo repository.OrderItemRepository, productRepo repository.ProductRepository, menuSlotRepo repository.MenuSlotRepository, menuSlotItemRepo repository.MenuSlotItemRepository, userRepo repository.UserRepository, inventoryRepo repository.InventoryLedgerRepository) PaymentService {
-	// Set global Stripe key for SDK
-	stripe.Key = cfg.Stripe.SecretKey
-	return &paymentService{cfg: cfg, orderRepo: orderRepo, orderItemRepo: orderItemRepo, productRepo: productRepo, menuSlotRepo: menuSlotRepo, menuSlotItemRepo: menuSlotItemRepo, userRepo: userRepo, inventoryRepo: inventoryRepo}
+func NewPaymentService(
+	cfg config.Config,
+	orderRepo repository.OrderRepository,
+	orderLineRepo repository.OrderLineRepository,
+	productRepo *repository.ProductRepository,
+	menuSlotRepo repository.MenuSlotRepository,
+	inventoryRepo repository.InventoryLedgerRepository,
+	inventoryHub *inventory.Hub,
+) PaymentService {
+	var client *payrexx.Client
+	if cfg.Payrexx.InstanceName != "" && cfg.Payrexx.APISecret != "" {
+		client = payrexx.NewClient(cfg.Payrexx.InstanceName, cfg.Payrexx.APISecret)
+	}
+	return &paymentService{
+		cfg:           cfg,
+		payrexxClient: client,
+		orderRepo:     orderRepo,
+		orderLineRepo: orderLineRepo,
+		productRepo:   productRepo,
+		menuSlotRepo:  menuSlotRepo,
+		inventoryRepo: inventoryRepo,
+		inventoryHub:  inventoryHub,
+	}
 }
 
-func (s *paymentService) CreateTWINTCheckoutSession(ctx context.Context, p CreateCheckoutSessionParams) (*stripe.CheckoutSession, error) {
-	if len(p.Items) == 0 {
-		return nil, fmt.Errorf("no items provided")
-	}
-
-	lineItems := make([]*stripe.CheckoutSessionLineItemParams, 0, len(p.Items))
-	for _, it := range p.Items {
-		if it.Currency == "" {
-			it.Currency = "chf"
-		}
-		if it.AmountCents <= 0 || it.Quantity <= 0 {
-			return nil, fmt.Errorf("invalid amount or quantity for item %q", it.Name)
-		}
-		// TWINT limit: 5000 CHF per transaction
-		if it.Currency == "chf" && it.AmountCents*it.Quantity > 500000 { // 5000 CHF in cents
-			return nil, fmt.Errorf("item %q exceeds TWINT maximum amount", it.Name)
-		}
-		lineItems = append(lineItems, &stripe.CheckoutSessionLineItemParams{
-			PriceData: &stripe.CheckoutSessionLineItemPriceDataParams{
-				Currency: stripe.String(it.Currency),
-				ProductData: &stripe.CheckoutSessionLineItemPriceDataProductDataParams{
-					Name: stripe.String(it.Name),
-				},
-				UnitAmount: stripe.Int64(it.AmountCents),
-			},
-			Quantity: stripe.Int64(it.Quantity),
-		})
-	}
-
-	params := &stripe.CheckoutSessionParams{
-		Mode:       stripe.String(string(stripe.CheckoutSessionModePayment)),
-		SuccessURL: stripe.String(p.SuccessURL),
-		CancelURL:  stripe.String(p.CancelURL),
-		PaymentMethodTypes: []*string{
-			stripe.String("twint"),
-		},
-		LineItems: lineItems,
-	}
-	// Attach PaymentIntent metadata so we can correlate payment_intent events
-	if len(p.PaymentIntentMetadata) > 0 {
-		params.PaymentIntentData = &stripe.CheckoutSessionPaymentIntentDataParams{}
-		// populate metadata map
-		for k, v := range p.PaymentIntentMetadata {
-			params.PaymentIntentData.AddMetadata(k, v)
-		}
-	}
-	if p.ClientRefID != nil && *p.ClientRefID != "" {
-		params.ClientReferenceID = stripe.String(*p.ClientRefID)
-	}
-	// Prefer explicit Customer over email to suppress email field in Checkout
-	if p.CustomerID != nil && *p.CustomerID != "" {
-		params.Customer = stripe.String(*p.CustomerID)
-	} else if p.CustomerEmail != nil {
-		params.CustomerEmail = stripe.String(*p.CustomerEmail)
-	}
-
-	// Create the Checkout Session
-	return session.New(params)
-}
-
-// ----- Checkout orchestration -----
-
-// CreateCheckoutInput is the structured payload from frontend
-type CreateCheckoutInput struct {
-	Items []struct {
-		ProductID string `json:"productId"`
-		Quantity  int64  `json:"quantity"`
-		// Optional configuration map: slotId -> selected productId
-		Configuration map[string]string `json:"configuration,omitempty"`
-	} `json:"items"`
-	CustomerEmail *string `json:"customerEmail,omitempty"`
-}
-
-// CheckoutPreparation bundles computed order and pricing for Stripe
-type CheckoutPreparation struct {
-	OrderID       bson.ObjectID
-	LineItems     []CheckoutItem
-	CustomerEmail *string
-	// If the order is associated to a logged-in user, store their ID for potential Stripe Customer usage
-	UserID *bson.ObjectID
+func (s *paymentService) IsPayrexxEnabled() bool {
+	return s.payrexxClient != nil
 }
 
 func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateCheckoutInput, userID *string, attemptID *string) (*CheckoutPreparation, error) {
@@ -155,379 +109,382 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 		return nil, fmt.Errorf("no items")
 	}
 
-	// Resolve user
-	var customerOID *bson.ObjectID
-	if userID != nil && *userID != "" {
-		if oid, err := bson.ObjectIDFromHex(*userID); err == nil {
-			customerOID = &oid
-		}
-	}
-	// If logged in and no email provided, fetch and set customer email to skip email collection (prefill)
-	if customerOID != nil && in.CustomerEmail == nil {
-		if u, err := s.userRepo.FindByID(ctx, *customerOID); err == nil {
-			in.CustomerEmail = &u.Email
-		}
-	}
-
-	// Build CreateOrderDTO for validation and totals
-	dto := &domain.CreateOrderDTO{ContactEmail: in.CustomerEmail}
-	// Track all referenced product IDs (parents + configured children)
-	childIDs := make([]bson.ObjectID, 0)
+	// Collect all product IDs
+	productIDSet := make(map[uuid.UUID]struct{})
 	for _, it := range in.Items {
-		pid, err := bson.ObjectIDFromHex(it.ProductID)
+		pid, err := uuid.Parse(it.ProductID)
 		if err != nil {
 			return nil, fmt.Errorf("invalid productId: %s", it.ProductID)
 		}
-		dto.OrderItems = append(dto.OrderItems, domain.CreateOrderItemDTO{ProductID: pid, Quantity: int(it.Quantity)})
-		for _, child := range it.Configuration {
-			if child == "" {
+		productIDSet[pid] = struct{}{}
+		// Also collect configured child products
+		for _, childID := range it.Configuration {
+			if childID == "" {
 				continue
 			}
-			cid, err := bson.ObjectIDFromHex(child)
+			cid, err := uuid.Parse(childID)
 			if err != nil {
-				return nil, fmt.Errorf("invalid configuration productId: %s", child)
+				return nil, fmt.Errorf("invalid configuration productId: %s", childID)
 			}
-			childIDs = append(childIDs, cid)
+			productIDSet[cid] = struct{}{}
 		}
 	}
 
-	// Validate and compute totals
-	ids := make([]bson.ObjectID, 0, len(dto.OrderItems))
-	seen := map[bson.ObjectID]struct{}{}
-	for _, it := range dto.OrderItems {
-		if _, ok := seen[it.ProductID]; !ok {
-			ids = append(ids, it.ProductID)
-			seen[it.ProductID] = struct{}{}
-		}
+	ids := make([]uuid.UUID, 0, len(productIDSet))
+	for id := range productIDSet {
+		ids = append(ids, id)
 	}
-	// Include child configured products in the load set
-	ids = append(ids, childIDs...)
+
 	products, err := s.productRepo.GetByIDs(ctx, ids)
 	if err != nil {
 		return nil, fmt.Errorf("load products: %w", err)
 	}
-	pm := map[bson.ObjectID]*domain.Product{}
+	productMap := make(map[uuid.UUID]*ent.Product, len(products))
 	for _, p := range products {
-		pm[p.ID] = p
+		productMap[p.ID] = p
 	}
 
-	var total domain.Cents
-	// Preload menu slots/items for menu-type products
-	menuProdIDs := make([]bson.ObjectID, 0)
-	for _, it := range dto.OrderItems {
-		if p := pm[it.ProductID]; p != nil && p.Type == domain.ProductTypeMenu {
-			menuProdIDs = append(menuProdIDs, p.ID)
+	// Preload menu slots for menu products
+	menuProductIDs := make([]uuid.UUID, 0)
+	for _, it := range in.Items {
+		pid, _ := uuid.Parse(it.ProductID)
+		if p, ok := productMap[pid]; ok && p.Type == product.TypeMenu {
+			menuProductIDs = append(menuProductIDs, pid)
 		}
 	}
-	slotsByProduct := map[bson.ObjectID][]*domain.MenuSlot{}
-	slotByID := map[bson.ObjectID]*domain.MenuSlot{}
-	allowedBySlot := map[bson.ObjectID]map[bson.ObjectID]struct{}{}
-	if len(menuProdIDs) > 0 {
-		slots, err := s.menuSlotRepo.FindByProductIDs(ctx, menuProdIDs)
+
+	slotByID := make(map[uuid.UUID]*ent.MenuSlot)
+	allowedBySlot := make(map[uuid.UUID]map[uuid.UUID]struct{})
+	for _, menuProdID := range menuProductIDs {
+		slots, err := s.menuSlotRepo.GetByMenuProductID(ctx, menuProdID)
 		if err != nil {
 			return nil, fmt.Errorf("load menu slots: %w", err)
 		}
-		slotIDs := make([]bson.ObjectID, 0, len(slots))
-		for _, sl := range slots {
-			slotsByProduct[sl.ProductID] = append(slotsByProduct[sl.ProductID], sl)
-			slotByID[sl.ID] = sl
-			slotIDs = append(slotIDs, sl.ID)
-		}
-		if len(slotIDs) > 0 {
-			mitems, err := s.menuSlotItemRepo.FindByMenuSlotIDs(ctx, slotIDs)
-			if err != nil {
-				return nil, fmt.Errorf("load menu slot items: %w", err)
+		for _, slot := range slots {
+			slotByID[slot.ID] = slot
+			allowed := make(map[uuid.UUID]struct{})
+			for _, opt := range slot.Edges.Options {
+				allowed[opt.OptionProductID] = struct{}{}
 			}
-			for _, mi := range mitems {
-				set := allowedBySlot[mi.MenuSlotID]
-				if set == nil {
-					set = map[bson.ObjectID]struct{}{}
-				}
-				set[mi.ProductID] = struct{}{}
-				allowedBySlot[mi.MenuSlotID] = set
-			}
+			allowedBySlot[slot.ID] = allowed
 		}
 	}
 
-	for idx, it := range in.Items {
-		// Lookup parent product
-		parentDTO := dto.OrderItems[idx]
-		p := pm[parentDTO.ProductID]
-		if p == nil {
-			return nil, fmt.Errorf("unknown product: %s", parentDTO.ProductID.Hex())
+	// Calculate total and validate
+	var totalCents int64
+	for _, it := range in.Items {
+		pid, _ := uuid.Parse(it.ProductID)
+		p, ok := productMap[pid]
+		if !ok {
+			return nil, fmt.Errorf("unknown product: %s", it.ProductID)
 		}
-		// pricing
-		total += p.PriceCents * domain.Cents(it.Quantity)
-		if p.PriceCents*domain.Cents(it.Quantity) > 500000 { // 5000 CHF
+		totalCents += p.PriceCents * int64(it.Quantity)
+
+		// TWINT limit: 5000 CHF per transaction
+		if p.PriceCents*int64(it.Quantity) > 500000 {
 			return nil, fmt.Errorf("item exceeds TWINT max: %s", p.Name)
 		}
 	}
-	if total > 500000 {
+	if totalCents > 500000 {
 		return nil, fmt.Errorf("order exceeds TWINT max (5000 CHF)")
 	}
 
-	// Create order
-	ord := &domain.Order{
-		CustomerID:   customerOID,
-		ContactEmail: in.CustomerEmail,
-		TotalCents:   total,
-		Status:       domain.OrderStatusPending,
+	// Validate inventory availability
+	requiredQuantities := make(map[uuid.UUID]int)
+	for _, it := range in.Items {
+		pid, _ := uuid.Parse(it.ProductID)
+		p := productMap[pid]
+		if p.Type == product.TypeSimple {
+			requiredQuantities[pid] += it.Quantity
+		}
+		for _, childIDStr := range it.Configuration {
+			if childIDStr == "" {
+				continue
+			}
+			childID, _ := uuid.Parse(childIDStr)
+			requiredQuantities[childID] += it.Quantity
+		}
 	}
-	if attemptID != nil && *attemptID != "" {
-		aid := *attemptID
-		ord.PaymentAttemptID = &aid
+
+	if len(requiredQuantities) > 0 {
+		productIDsToCheck := make([]uuid.UUID, 0, len(requiredQuantities))
+		for pid := range requiredQuantities {
+			productIDsToCheck = append(productIDsToCheck, pid)
+		}
+		currentStock, err := s.inventoryRepo.GetCurrentStockBatch(ctx, productIDsToCheck)
+		if err != nil {
+			return nil, fmt.Errorf("check inventory: %w", err)
+		}
+		for pid, required := range requiredQuantities {
+			available := currentStock[pid]
+			if available < required {
+				pName := "unknown"
+				if p, ok := productMap[pid]; ok {
+					pName = p.Name
+				}
+				return nil, fmt.Errorf("insufficient inventory for %s: requested %d, available %d", pName, required, available)
+			}
+		}
 	}
-	id, err := s.orderRepo.Create(ctx, ord)
+
+	origin := in.Origin
+	if origin == "" {
+		origin = order.OriginShop
+	}
+
+	// Create the order
+	ord, err := s.orderRepo.Create(ctx, totalCents, order.StatusPending, origin, userID, in.CustomerEmail, attemptID, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create order: %w", err)
 	}
 
-	// Build and insert order items
-	oitems := make([]*domain.OrderItem, 0, len(dto.OrderItems))
-	for idx, it := range in.Items {
-		p := pm[dto.OrderItems[idx].ProductID]
-		// Create the parent order item first
-		parentOrderItem := &domain.OrderItem{
-			ID:                bson.NewObjectID(),
-			OrderID:           id,
-			ProductID:         p.ID,
-			Title:             p.Name,
-			Quantity:          int(it.Quantity),
-			PricePerUnitCents: p.PriceCents,
-			IsRedeemed:        false,
+	// Build order lines
+	var orderLines []repository.OrderLineCreateParams
+	var inventoryEntries []repository.InventoryLedgerCreateParams
+
+	for _, it := range in.Items {
+		pid, _ := uuid.Parse(it.ProductID)
+		p := productMap[pid]
+
+		// Determine parent line type
+		lt := orderline.LineTypeSimple
+		if p.Type == product.TypeMenu {
+			lt = orderline.LineTypeBundle
 		}
-		oitems = append(oitems, parentOrderItem)
-		// Add configuration children if menu product
-		if p.Type == domain.ProductTypeMenu && len(it.Configuration) > 0 {
-			// Ensure slot belongs to this product and child allowed
+
+		parentLineID := uuid.Must(uuid.NewV7())
+		parentLine := repository.OrderLineCreateParams{
+			ID:             &parentLineID,
+			OrderID:        ord.ID,
+			LineType:       lt,
+			ProductID:      p.ID,
+			Title:          p.Name,
+			Quantity:       it.Quantity,
+			UnitPriceCents: p.PriceCents,
+		}
+		orderLines = append(orderLines, parentLine)
+
+		// Reserve inventory for simple products
+		if p.Type == product.TypeSimple && it.Quantity > 0 {
+			inventoryEntries = append(inventoryEntries, repository.InventoryLedgerCreateParams{
+				ProductID: p.ID,
+				Delta:     -it.Quantity,
+				Reason:    inventoryledger.ReasonSale,
+				OrderID:   &ord.ID,
+			})
+		}
+
+		// Process menu configurations
+		if p.Type == product.TypeMenu && len(it.Configuration) > 0 {
 			for slotIDStr, childProdIDStr := range it.Configuration {
 				if childProdIDStr == "" {
 					continue
 				}
-				slotOID, err := bson.ObjectIDFromHex(slotIDStr)
+				slotID, err := uuid.Parse(slotIDStr)
 				if err != nil {
 					return nil, fmt.Errorf("invalid menu slot id: %s", slotIDStr)
 				}
-				sl := slotByID[slotOID]
-				if sl == nil || sl.ProductID != p.ID {
+				slot, ok := slotByID[slotID]
+				if !ok || slot.MenuProductID != p.ID {
 					return nil, fmt.Errorf("slot does not belong to product: %s", slotIDStr)
 				}
-				childOID, err := bson.ObjectIDFromHex(childProdIDStr)
+				childProdID, err := uuid.Parse(childProdIDStr)
 				if err != nil {
 					return nil, fmt.Errorf("invalid configured product id: %s", childProdIDStr)
 				}
 				// Validate allowed
-				if set := allowedBySlot[slotOID]; set != nil {
-					if _, ok := set[childOID]; !ok {
+				if allowed := allowedBySlot[slotID]; allowed != nil {
+					if _, ok := allowed[childProdID]; !ok {
 						return nil, fmt.Errorf("product not allowed in slot")
 					}
 				}
-				childP := pm[childOID]
-				title := "Configured Item"
-				if childP != nil {
-					title = childP.Name
+
+				childProd := productMap[childProdID]
+				slotName := slot.Name
+				childLine := repository.OrderLineCreateParams{
+					OrderID:        ord.ID,
+					LineType:       orderline.LineTypeComponent,
+					ProductID:      childProdID,
+					Title:          childProd.Name,
+					Quantity:       it.Quantity,
+					UnitPriceCents: 0,
+					ParentLineID:   &parentLineID,
+					MenuSlotID:     &slotID,
+					MenuSlotName:   &slotName,
 				}
-				// Parent ID must be the parent order item (not the previously appended child)
-				parentID := parentOrderItem.ID
-				oitems = append(oitems, &domain.OrderItem{
-					ID:                bson.NewObjectID(),
-					OrderID:           id,
-					ProductID:         childOID,
-					Title:             title,
-					Quantity:          int(it.Quantity),
-					PricePerUnitCents: 0,
-					ParentItemID:      &parentID,
-					MenuSlotID:        &slotOID,
-					MenuSlotName:      &sl.Name,
-					IsRedeemed:        false,
+				orderLines = append(orderLines, childLine)
+
+				// Reserve inventory for component
+				if it.Quantity > 0 {
+					inventoryEntries = append(inventoryEntries, repository.InventoryLedgerCreateParams{
+						ProductID: childProdID,
+						Delta:     -it.Quantity,
+						Reason:    inventoryledger.ReasonSale,
+						OrderID:   &ord.ID,
+					})
+				}
+			}
+		}
+	}
+
+	// Insert order lines
+	if _, err := s.orderLineRepo.CreateBatch(ctx, orderLines); err != nil {
+		return nil, fmt.Errorf("insert order lines: %w", err)
+	}
+
+	// Reserve inventory
+	if len(inventoryEntries) > 0 {
+		if _, err := s.inventoryRepo.CreateMany(ctx, inventoryEntries); err != nil {
+			return nil, fmt.Errorf("reserve inventory: %w", err)
+		}
+		s.publishInventoryUpdates(ctx, inventoryEntries)
+	}
+
+	// Prepare Payrexx line items from the params (we have all the data we need)
+	lineItems := make([]payrexx.InvoiceItem, 0)
+	for _, line := range orderLines {
+		if line.ParentLineID == nil && line.UnitPriceCents > 0 && line.Quantity > 0 {
+			lineItems = append(lineItems, payrexx.InvoiceItem{
+				Name:     line.Title,
+				Quantity: line.Quantity,
+				Amount:   int(line.UnitPriceCents),
+			})
+		}
+	}
+
+	return &CheckoutPreparation{
+		OrderID:       ord.ID,
+		TotalCents:    totalCents,
+		LineItems:     lineItems,
+		CustomerEmail: in.CustomerEmail,
+		UserID:        userID,
+	}, nil
+}
+
+func (s *paymentService) CreatePayrexxGateway(ctx context.Context, prep *CheckoutPreparation, successURL, failedURL, cancelURL string) (*payrexx.Gateway, error) {
+	if s.payrexxClient == nil {
+		return nil, fmt.Errorf("payrexx client not configured")
+	}
+
+	gateway, err := s.payrexxClient.CreateGateway(payrexx.CreateGatewayParams{
+		Amount:             int(prep.TotalCents),
+		Currency:           "CHF",
+		ReferenceID:        prep.OrderID.String(),
+		SuccessRedirectURL: successURL,
+		FailedRedirectURL:  failedURL,
+		CancelRedirectURL:  cancelURL,
+		PaymentMeans:       []string{"twint"},
+		InvoiceItems:       prep.LineItems,
+		CustomerEmail:      safeStr(prep.CustomerEmail),
+		Purpose:            "BlessThun Food Order",
+		ValidityMinutes:    15,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("create payrexx gateway: %w", err)
+	}
+
+	// Update order with gateway ID - get current order first to preserve all fields
+	ord, err := s.orderRepo.GetByID(ctx, prep.OrderID)
+	if err != nil {
+		return nil, err
+	}
+	gwID := gateway.ID
+	if _, err := s.orderRepo.Update(ctx, ord.ID, ord.TotalCents, ord.Status, ord.Origin, ord.CustomerID, ord.ContactEmail, ord.PaymentAttemptID, &gwID, ord.PayrexxTransactionID); err != nil {
+		return nil, fmt.Errorf("update order with gateway: %w", err)
+	}
+
+	return gateway, nil
+}
+
+func (s *paymentService) MarkOrderPaidByPayrexx(ctx context.Context, orderID uuid.UUID, gatewayID, transactionID int, contactEmail *string) error {
+	ord, err := s.orderRepo.GetByID(ctx, orderID)
+	if err != nil {
+		return fmt.Errorf("order not found: %w", err)
+	}
+
+	// Merge contact email: use provided one if non-empty, otherwise keep existing
+	ce := ord.ContactEmail
+	if contactEmail != nil && *contactEmail != "" {
+		ce = contactEmail
+	}
+
+	_, err = s.orderRepo.Update(ctx, ord.ID, ord.TotalCents, order.StatusPaid, ord.Origin, ord.CustomerID, ce, ord.PaymentAttemptID, &gatewayID, &transactionID)
+	return err
+}
+
+func (s *paymentService) MarkOrderPaidDev(ctx context.Context, orderID uuid.UUID) error {
+	ord, err := s.orderRepo.GetByID(ctx, orderID)
+	if err != nil {
+		return fmt.Errorf("order not found: %w", err)
+	}
+
+	if ord.Status != order.StatusPending {
+		return fmt.Errorf("order is not pending")
+	}
+
+	return s.orderRepo.UpdateStatus(ctx, orderID, order.StatusPaid)
+}
+
+func (s *paymentService) FindPendingOrderByAttemptID(ctx context.Context, attemptID string) (*ent.Order, error) {
+	if attemptID == "" {
+		return nil, fmt.Errorf("missing attempt id")
+	}
+	return s.orderRepo.FindPendingByAttemptID(ctx, attemptID)
+}
+
+func (s *paymentService) SetOrderAttemptID(ctx context.Context, orderID uuid.UUID, attemptID string) error {
+	return s.orderRepo.SetPaymentAttemptID(ctx, orderID, attemptID)
+}
+
+func (s *paymentService) CleanupPendingOrderByID(ctx context.Context, orderID uuid.UUID) error {
+	ord, err := s.orderRepo.GetByID(ctx, orderID)
+	if err != nil {
+		return err
+	}
+	if ord.Status != order.StatusPending {
+		return nil // Only cleanup pending orders
+	}
+
+	// Load order lines to release inventory
+	lines, err := s.orderLineRepo.GetByOrderID(ctx, orderID)
+	if err != nil {
+		return err
+	}
+
+	// Release inventory
+	var releaseEntries []repository.InventoryLedgerCreateParams
+	for _, line := range lines {
+		if line.Quantity > 0 {
+			// Only release for simple products or components (not menu bundles themselves)
+			if line.LineType == orderline.LineTypeSimple || line.LineType == orderline.LineTypeComponent {
+				releaseEntries = append(releaseEntries, repository.InventoryLedgerCreateParams{
+					ProductID: line.ProductID,
+					Delta:     line.Quantity, // Positive to add back
+					Reason:    inventoryledger.ReasonCorrection,
+					OrderID:   &orderID,
 				})
 			}
 		}
 	}
-	if err := s.orderItemRepo.InsertMany(ctx, oitems); err != nil {
-		return nil, fmt.Errorf("insert order items: %w", err)
+	if len(releaseEntries) > 0 {
+		_, _ = s.inventoryRepo.CreateMany(ctx, releaseEntries)
+		s.publishInventoryUpdates(ctx, releaseEntries)
 	}
 
-	// Consume inventory immediately on pending order creation
-	// For parent simple products: consume; for menu parents: skip; for children: always consume
-	// Build consumption entries from created items
-	entries := make([]*domain.InventoryLedger, 0)
-	for _, oi := range oitems {
-		if oi.ProductID.IsZero() {
-			continue
-		}
-		consume := false
-		if oi.ParentItemID == nil {
-			// parent item: check product type
-			if p := pm[oi.ProductID]; p != nil && p.Type == domain.ProductTypeSimple {
-				consume = true
-			}
-		} else {
-			// child item (menu component) always consumes
-			consume = true
-		}
-		if consume && oi.Quantity > 0 {
-			entries = append(entries, &domain.InventoryLedger{
-				ProductID: oi.ProductID,
-				Delta:     -oi.Quantity,
-				Reason:    domain.InventoryReasonSale,
-			})
-		}
-	}
-	// Best-effort append; if this fails, return error to avoid placing order without reservation
-	if err := s.inventoryRepo.AppendMany(ctx, entries); err != nil {
-		return nil, fmt.Errorf("reserve inventory: %w", err)
-	}
-
-	// Prepare Stripe line items (only priced parent items)
-	lis := make([]CheckoutItem, 0)
-	for _, oi := range oitems {
-		if oi.ParentItemID == nil && oi.PricePerUnitCents > 0 && oi.Quantity > 0 {
-			lis = append(lis, CheckoutItem{
-				Name:        oi.Title,
-				AmountCents: int64(oi.PricePerUnitCents),
-				Currency:    "chf",
-				Quantity:    int64(oi.Quantity),
-			})
-		}
-	}
-
-	return &CheckoutPreparation{OrderID: id, LineItems: lis, CustomerEmail: in.CustomerEmail, UserID: customerOID}, nil
+	// Delete order (cascade deletes order lines)
+	_, err = s.orderRepo.DeleteIfPending(ctx, orderID)
+	return err
 }
 
-func (s *paymentService) CreateStripeCheckoutForOrder(ctx context.Context, prep *CheckoutPreparation, successURL, cancelURL string) (*stripe.CheckoutSession, error) {
-	idHex := prep.OrderID.Hex()
-	var customerID *string
-	var customerEmail = prep.CustomerEmail
-	// If order has an associated user, prefer using a Stripe Customer to hide email input on Checkout
-	if prep.UserID != nil {
-		if u, err := s.userRepo.FindByID(ctx, *prep.UserID); err == nil && u != nil {
-			if u.StripeCustomerID != nil && *u.StripeCustomerID != "" {
-				customerID = u.StripeCustomerID
-			} else {
-				// Create a Stripe Customer for this user (best effort). If it fails, fall back to email.
-				c, cerr := customer.New(&stripe.CustomerParams{Email: stripe.String(u.Email)})
-				if cerr == nil && c != nil {
-					// persist the mapping (best effort)
-					_ = s.userRepo.UpdateStripeCustomerID(ctx, u.ID, c.ID)
-					customerID = &c.ID
-				} else {
-					// Fallback to using email
-					ce := u.Email
-					customerEmail = &ce
-				}
-			}
-		}
-	}
-
-	sess, err := s.CreateTWINTCheckoutSession(ctx, CreateCheckoutSessionParams{
-		Items:                 prep.LineItems,
-		SuccessURL:            successURL,
-		CancelURL:             cancelURL,
-		ClientRefID:           &idHex,
-		CustomerEmail:         customerEmail,
-		CustomerID:            customerID,
-		PaymentIntentMetadata: map[string]string{"order_id": idHex},
-	})
-	if err != nil {
-		return nil, err
-	}
-	_ = s.orderRepo.SetStripeSession(ctx, prep.OrderID, sess.ID)
-	return sess, nil
+func (s *paymentService) CleanupOtherPendingOrdersByAttemptID(ctx context.Context, attemptID string, keepOrderID uuid.UUID) (int64, error) {
+	return s.orderRepo.DeletePendingByAttemptIDExcept(ctx, attemptID, keepOrderID)
 }
 
-// ---- Payment Intents (Payment Element) ----
-
-// CreatePaymentIntentForOrder creates a CHF PaymentIntent constrained to TWINT for the given prepared order.
-// Optionally attaches a receipt_email and links to a Stripe Customer when the user is logged in.
-func (s *paymentService) CreatePaymentIntentForOrder(ctx context.Context, prep *CheckoutPreparation, receiptEmail *string) (*stripe.PaymentIntent, error) {
-	idHex := prep.OrderID.Hex()
-
-	// Determine Stripe Customer to attach if user exists
-	var customerID *string
-	fallbackEmail := receiptEmail
-	if prep.UserID != nil {
-		if u, err := s.userRepo.FindByID(ctx, *prep.UserID); err == nil && u != nil {
-			if u.StripeCustomerID != nil && *u.StripeCustomerID != "" {
-				customerID = u.StripeCustomerID
-			} else {
-				// Create Stripe Customer best-effort with account email
-				c, cerr := customer.New(&stripe.CustomerParams{Email: stripe.String(u.Email)})
-				if cerr == nil && c != nil {
-					_ = s.userRepo.UpdateStripeCustomerID(ctx, u.ID, c.ID)
-					customerID = &c.ID
-				} else {
-					// default receipt to account email if none explicitly provided
-					if fallbackEmail == nil || *fallbackEmail == "" {
-						e := u.Email
-						fallbackEmail = &e
-					}
-				}
-			}
-		}
+func (s *paymentService) GetPayrexxGateway(ctx context.Context, gatewayID int) (*payrexx.Gateway, error) {
+	if s.payrexxClient == nil {
+		return nil, fmt.Errorf("payrexx client not configured")
 	}
-
-	// Compute total amount from prepared line items
-	var total int64
-	for _, li := range prep.LineItems {
-		total += li.AmountCents * li.Quantity
-	}
-	if total <= 0 {
-		return nil, fmt.Errorf("invalid order total")
-	}
-
-	params := &stripe.PaymentIntentParams{
-		Amount:             stripe.Int64(total), // rappen
-		Currency:           stripe.String(string(stripe.CurrencyCHF)),
-		PaymentMethodTypes: stripe.StringSlice([]string{"twint"}),
-	}
-	// Attach metadata for correlation
-	params.AddMetadata("order_id", idHex)
-	if prep.UserID != nil {
-		params.AddMetadata("user_id", prep.UserID.Hex())
-	}
-	if customerID != nil {
-		params.Customer = stripe.String(*customerID)
-	}
-	// If we have an explicit or fallback email, attach as receipt_email
-	if fallbackEmail != nil && *fallbackEmail != "" {
-		params.ReceiptEmail = stripe.String(*fallbackEmail)
-	}
-	// Idempotency on order id to avoid duplicate PIs on retry
-	params.SetIdempotencyKey("create_pi:" + idHex)
-	pi, err := paymentintent.New(params)
-	if err != nil {
-		return nil, err
-	}
-	// Best effort: persist references on order
-	_ = s.orderRepo.SetStripePaymentIntent(ctx, prep.OrderID, pi.ID, customerID, params.ReceiptEmail)
-	return pi, nil
-}
-
-// UpdatePaymentIntentReceiptEmail sets or clears receipt_email on an existing PI.
-func (s *paymentService) UpdatePaymentIntentReceiptEmail(ctx context.Context, paymentIntentID string, email *string) (*stripe.PaymentIntent, error) {
-	if paymentIntentID == "" {
-		return nil, fmt.Errorf("missing paymentIntentId")
-	}
-	params := &stripe.PaymentIntentParams{}
-	if email != nil {
-		// Setting empty string is treated as clearing by Stripe API
-		params.ReceiptEmail = stripe.String(*email)
-	} else {
-		// Explicitly clear by setting to empty string
-		empty := ""
-		params.ReceiptEmail = &empty
-	}
-	params.SetIdempotencyKey("attach_email:" + paymentIntentID + ":" + safeStr(email))
-	return paymentintent.Update(paymentIntentID, params)
-}
-
-// GetPaymentIntent fetches a PI by id
-func (s *paymentService) GetPaymentIntent(ctx context.Context, paymentIntentID string) (*stripe.PaymentIntent, error) {
-	if paymentIntentID == "" {
-		return nil, fmt.Errorf("missing id")
-	}
-	return paymentintent.Get(paymentIntentID, nil)
+	return s.payrexxClient.GetGateway(gatewayID)
 }
 
 func safeStr(p *string) string {
@@ -537,221 +494,29 @@ func safeStr(p *string) string {
 	return *p
 }
 
-func (s *paymentService) MarkOrderPaid(ctx context.Context, clientReferenceID string, contactEmail *string) error {
-	if clientReferenceID == "" {
-		return fmt.Errorf("missing client_reference_id")
+func (s *paymentService) publishInventoryUpdates(ctx context.Context, entries []repository.InventoryLedgerCreateParams) {
+	if s.inventoryHub == nil {
+		return
 	}
-	oid, err := bson.ObjectIDFromHex(clientReferenceID)
+	productIDs := make([]uuid.UUID, 0, len(entries))
+	deltaByProduct := make(map[uuid.UUID]int)
+	for _, entry := range entries {
+		if _, seen := deltaByProduct[entry.ProductID]; !seen {
+			productIDs = append(productIDs, entry.ProductID)
+		}
+		deltaByProduct[entry.ProductID] += entry.Delta
+	}
+	stocks, err := s.inventoryRepo.GetCurrentStockBatch(ctx, productIDs)
 	if err != nil {
-		return fmt.Errorf("invalid order id in client_reference_id")
+		return
 	}
-	return s.orderRepo.UpdateStatusAndContact(ctx, oid, domain.OrderStatusPaid, contactEmail)
-}
-
-func (s *paymentService) PersistPaymentSuccessByOrderID(ctx context.Context, orderIDHex string, paymentIntentID string, chargeID *string, customerID *string, receiptEmail *string) error {
-	if orderIDHex == "" {
-		return fmt.Errorf("missing order id")
+	now := time.Now()
+	for _, productID := range productIDs {
+		s.inventoryHub.Publish(inventory.Update{
+			ProductID: productID,
+			NewStock:  stocks[productID],
+			Delta:     deltaByProduct[productID],
+			Timestamp: now,
+		})
 	}
-	oid, err := bson.ObjectIDFromHex(orderIDHex)
-	if err != nil {
-		return fmt.Errorf("invalid order id: %w", err)
-	}
-	return s.orderRepo.SetStripePaymentSuccess(ctx, oid, paymentIntentID, chargeID, customerID, receiptEmail)
-}
-
-func (s *paymentService) FindPendingOrderByAttemptID(ctx context.Context, attemptID string) (*domain.Order, error) {
-	if attemptID == "" {
-		return nil, fmt.Errorf("missing attempt id")
-	}
-	return s.orderRepo.FindPendingByAttemptID(ctx, attemptID)
-}
-
-func (s *paymentService) SetOrderAttemptID(ctx context.Context, orderID bson.ObjectID, attemptID string) error {
-	if orderID.IsZero() || attemptID == "" {
-		return nil
-	}
-	return s.orderRepo.SetPaymentAttemptID(ctx, orderID, attemptID)
-}
-
-// CreatePaymentIntentForExistingPendingOrder creates a PI for an already created pending order.
-func (s *paymentService) CreatePaymentIntentForExistingPendingOrder(ctx context.Context, ord *domain.Order, userID *string, receiptEmail *string) (*stripe.PaymentIntent, error) {
-	if ord == nil {
-		return nil, fmt.Errorf("nil order")
-	}
-	idHex := ord.ID.Hex()
-	// Determine Stripe Customer
-	var customerID *string
-	fallbackEmail := receiptEmail
-	if userID != nil && *userID != "" {
-		if oid, err := bson.ObjectIDFromHex(*userID); err == nil {
-			if u, err := s.userRepo.FindByID(ctx, oid); err == nil && u != nil {
-				if u.StripeCustomerID != nil && *u.StripeCustomerID != "" {
-					customerID = u.StripeCustomerID
-				} else {
-					c, cerr := customer.New(&stripe.CustomerParams{Email: stripe.String(u.Email)})
-					if cerr == nil && c != nil {
-						_ = s.userRepo.UpdateStripeCustomerID(ctx, u.ID, c.ID)
-						customerID = &c.ID
-					} else {
-						if fallbackEmail == nil || *fallbackEmail == "" {
-							e := u.Email
-							fallbackEmail = &e
-						}
-					}
-				}
-			}
-		}
-	}
-	// Create PI from order total
-	params := &stripe.PaymentIntentParams{
-		Amount:             stripe.Int64(int64(ord.TotalCents)),
-		Currency:           stripe.String(string(stripe.CurrencyCHF)),
-		PaymentMethodTypes: stripe.StringSlice([]string{"twint"}),
-	}
-	params.AddMetadata("order_id", idHex)
-	if userID != nil && *userID != "" {
-		params.AddMetadata("user_id", *userID)
-	}
-	if customerID != nil {
-		params.Customer = stripe.String(*customerID)
-	}
-	if fallbackEmail != nil && *fallbackEmail != "" {
-		params.ReceiptEmail = stripe.String(*fallbackEmail)
-	}
-	params.SetIdempotencyKey("create_pi_existing:" + idHex)
-	pi, err := paymentintent.New(params)
-	if err != nil {
-		return nil, err
-	}
-	_ = s.orderRepo.SetStripePaymentIntent(ctx, ord.ID, pi.ID, customerID, params.ReceiptEmail)
-	return pi, nil
-}
-
-func (s *paymentService) CleanupOtherPendingOrdersByAttemptID(ctx context.Context, attemptID string, keepOrderID bson.ObjectID) (int64, error) {
-	if attemptID == "" || keepOrderID.IsZero() {
-		return 0, nil
-	}
-	// Find duplicates to cascade-delete their items first to avoid orphans
-	ids, err := s.orderRepo.FindPendingIDsByAttemptIDExcept(ctx, attemptID, keepOrderID)
-	if err != nil {
-		return 0, err
-	}
-	for _, id := range ids {
-		_ = s.orderItemRepo.DeleteByOrderID(ctx, id)
-	}
-	return s.orderRepo.DeletePendingByAttemptIDExcept(ctx, attemptID, keepOrderID)
-}
-
-// CleanupPendingOrderByID deletes a pending order and its items by order ID (hex string).
-func (s *paymentService) CleanupPendingOrderByID(ctx context.Context, clientReferenceID string) error {
-	if clientReferenceID == "" {
-		return fmt.Errorf("missing order id")
-	}
-	oid, err := bson.ObjectIDFromHex(clientReferenceID)
-	if err != nil {
-		return fmt.Errorf("invalid order id: %w", err)
-	}
-	// Check order status; only act on pending
-	ord, err := s.orderRepo.FindByID(ctx, oid)
-	if err != nil {
-		return err
-	}
-	if ord.Status != domain.OrderStatusPending {
-		return nil
-	}
-	// Load items to release inventory
-	items, _ := s.orderItemRepo.FindByOrderID(ctx, oid)
-	if len(items) > 0 {
-		// Load product types to discriminate menu vs simple
-		pidSet := map[bson.ObjectID]struct{}{}
-		for _, it := range items {
-			if !it.ProductID.IsZero() {
-				pidSet[it.ProductID] = struct{}{}
-			}
-		}
-		pids := make([]bson.ObjectID, 0, len(pidSet))
-		for id := range pidSet {
-			pids = append(pids, id)
-		}
-		pmap := map[bson.ObjectID]*domain.Product{}
-		if len(pids) > 0 {
-			if prods, err := s.productRepo.GetByIDs(ctx, pids); err == nil {
-				for _, p := range prods {
-					pmap[p.ID] = p
-				}
-			}
-		}
-		rel := make([]*domain.InventoryLedger, 0)
-		for _, it := range items {
-			if it.ProductID.IsZero() || it.Quantity <= 0 {
-				continue
-			}
-			if it.ParentItemID == nil {
-				// parent: release only if simple (consumed earlier)
-				if p := pmap[it.ProductID]; p != nil && p.Type == domain.ProductTypeSimple {
-					rel = append(rel, &domain.InventoryLedger{ProductID: it.ProductID, Delta: it.Quantity, Reason: domain.InventoryReasonCorrection})
-				}
-			} else {
-				// child always release
-				rel = append(rel, &domain.InventoryLedger{ProductID: it.ProductID, Delta: it.Quantity, Reason: domain.InventoryReasonCorrection})
-			}
-		}
-		_ = s.inventoryRepo.AppendMany(ctx, rel)
-	}
-	// delete items first, then order
-	_ = s.orderItemRepo.DeleteByOrderID(ctx, oid)
-	_, _ = s.orderRepo.DeleteIfPending(ctx, oid)
-	return nil
-}
-
-// CleanupPendingOrderBySessionID deletes a pending order matched by stripe_session_id.
-func (s *paymentService) CleanupPendingOrderBySessionID(ctx context.Context, sessionID string) error {
-	if sessionID == "" {
-		return fmt.Errorf("missing session id")
-	}
-	o, err := s.orderRepo.FindPendingByStripeSessionID(ctx, sessionID)
-	if err != nil {
-		return nil
-	} // nothing to do if not found
-	// release inventory best-effort
-	items, _ := s.orderItemRepo.FindByOrderID(ctx, o.ID)
-	if len(items) > 0 {
-		// load product types
-		pidSet := map[bson.ObjectID]struct{}{}
-		for _, it := range items {
-			if !it.ProductID.IsZero() {
-				pidSet[it.ProductID] = struct{}{}
-			}
-		}
-		pids := make([]bson.ObjectID, 0, len(pidSet))
-		for id := range pidSet {
-			pids = append(pids, id)
-		}
-		pmap := map[bson.ObjectID]*domain.Product{}
-		if len(pids) > 0 {
-			if prods, err := s.productRepo.GetByIDs(ctx, pids); err == nil {
-				for _, p := range prods {
-					pmap[p.ID] = p
-				}
-			}
-		}
-		rel := make([]*domain.InventoryLedger, 0)
-		for _, it := range items {
-			if it.ProductID.IsZero() || it.Quantity <= 0 {
-				continue
-			}
-			if it.ParentItemID == nil {
-				if p := pmap[it.ProductID]; p != nil && p.Type == domain.ProductTypeSimple {
-					rel = append(rel, &domain.InventoryLedger{ProductID: it.ProductID, Delta: it.Quantity, Reason: domain.InventoryReasonCorrection})
-				}
-			} else {
-				rel = append(rel, &domain.InventoryLedger{ProductID: it.ProductID, Delta: it.Quantity, Reason: domain.InventoryReasonCorrection})
-			}
-		}
-		_ = s.inventoryRepo.AppendMany(ctx, rel)
-	}
-	// delete items first, then order
-	_ = s.orderItemRepo.DeleteByOrderID(ctx, o.ID)
-	_, _ = s.orderRepo.DeleteIfPending(ctx, o.ID)
-	return nil
 }

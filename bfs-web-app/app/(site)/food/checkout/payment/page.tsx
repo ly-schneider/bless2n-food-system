@@ -10,7 +10,9 @@ import { useCart } from "@/contexts/cart-context"
 export default function PaymentPage() {
   const { cart } = useCart()
   const router = useRouter()
-  const { accessToken } = useAuth()
+  const { user } = useAuth()
+
+  const isAuthenticated = !!user
 
   useEffect(() => {
     if (cart.items.length === 0) router.replace("/food/checkout")
@@ -22,9 +24,9 @@ export default function PaymentPage() {
         <h2 className="mb-4 text-2xl">Mit TWINT bezahlen</h2>
         <AuthNudgeBanner />
         <CheckoutClient />
-        {!accessToken && (
+        {!isAuthenticated && (
           <p className="text-muted-foreground text-xs">
-            Wir erheben nur die minimal nötigen Daten, um deine Bestellung vorzubereiten und zu übergeben. Zahlungsdaten
+            Wir erheben nur die minimal nötigen Daten, um deine Bestellung vorzubereiten und zu ubergeben. Zahlungsdaten
             werden von unseren Zahlungspartnern verarbeitet.
           </p>
         )}

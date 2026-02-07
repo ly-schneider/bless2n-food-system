@@ -2,24 +2,25 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"net/url"
 	"time"
 
 	"backend/internal/config"
+	"backend/internal/generated/ent"
 
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
 	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
-// PostgresDB wraps a pgx connection pool
 type PostgresDB struct {
 	Pool *pgxpool.Pool
 }
 
-// NewPostgresDB creates a new PostgreSQL connection pool
 func NewPostgresDB(cfg config.Config) (*PostgresDB, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -60,7 +61,6 @@ func NewPostgresDB(cfg config.Config) (*PostgresDB, error) {
 	}, nil
 }
 
-// Close closes the PostgreSQL connection pool
 func (p *PostgresDB) Close() error {
 	if p.Pool != nil {
 		p.Pool.Close()
@@ -68,59 +68,52 @@ func (p *PostgresDB) Close() error {
 	return nil
 }
 
-// GormDB wraps a GORM database connection.
-type GormDB struct {
-	DB *gorm.DB
-}
+// NewEntClient creates an Ent client connected to PostgreSQL.
+// It sets search_path=app so Ent schemas map to the app.* tables.
+// Returns both the Ent client and the underlying *sql.DB (for health checks, etc.).
+func NewEntClient(cfg config.Config) (*ent.Client, *sql.DB, error) {
+	dsn := ensureSearchPath(cfg.Postgres.DSN, "app")
 
-// NewGormDB creates a new GORM database connection using the existing DSN.
-func NewGormDB(cfg config.Config) (*GormDB, error) {
-	logLevel := logger.Silent
-	if cfg.Logger.Development {
-		logLevel = logger.Info
-	}
-
-	gormConfig := &gorm.Config{
-		Logger:                 logger.Default.LogMode(logLevel),
-		SkipDefaultTransaction: true,
-		PrepareStmt:            true,
-	}
-
-	db, err := gorm.Open(postgres.Open(cfg.Postgres.DSN), gormConfig)
+	db, err := sql.Open("pgx", dsn)
 	if err != nil {
-		zap.L().Error("failed to connect to PostgreSQL with GORM", zap.Error(err))
-		return nil, fmt.Errorf("failed to connect to PostgreSQL: %w", err)
-	}
-
-	// Get underlying sql.DB to configure pool
-	sqlDB, err := db.DB()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get underlying DB: %w", err)
+		zap.L().Error("failed to open database for Ent", zap.Error(err))
+		return nil, nil, fmt.Errorf("failed to open database for Ent: %w", err)
 	}
 
 	// Configure connection pool
-	sqlDB.SetMaxOpenConns(cfg.Postgres.MaxConns)
-	sqlDB.SetMaxIdleConns(cfg.Postgres.MinConns)
-	sqlDB.SetConnMaxLifetime(cfg.Postgres.MaxConnLifetime)
-	sqlDB.SetConnMaxIdleTime(cfg.Postgres.MaxConnIdleTime)
+	db.SetMaxOpenConns(cfg.Postgres.MaxConns)
+	db.SetMaxIdleConns(cfg.Postgres.MinConns)
+	db.SetConnMaxLifetime(cfg.Postgres.MaxConnLifetime)
+	db.SetConnMaxIdleTime(cfg.Postgres.MaxConnIdleTime)
 
 	// Verify connection
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err := sqlDB.PingContext(ctx); err != nil {
-		return nil, fmt.Errorf("failed to ping PostgreSQL: %w", err)
+	if err := db.PingContext(ctx); err != nil {
+		db.Close()
+		return nil, nil, fmt.Errorf("failed to ping PostgreSQL for Ent: %w", err)
 	}
 
-	zap.L().Info("successfully connected to PostgreSQL with GORM")
+	drv := entsql.OpenDB(dialect.Postgres, db)
+	client := ent.NewClient(ent.Driver(drv))
 
-	return &GormDB{DB: db}, nil
+	zap.L().Info("successfully connected to PostgreSQL with Ent")
+
+	return client, db, nil
 }
 
-// Close closes the GORM database connection.
-func (g *GormDB) Close() error {
-	sqlDB, err := g.DB.DB()
+// ensureSearchPath appends search_path to the DSN if not already present.
+func ensureSearchPath(dsn, schema string) string {
+	u, err := url.Parse(dsn)
 	if err != nil {
-		return err
+		// If DSN is not a URL (e.g., key=value format), append directly
+		return dsn + " search_path=" + schema
 	}
-	return sqlDB.Close()
+
+	q := u.Query()
+	if q.Get("search_path") == "" {
+		q.Set("search_path", schema)
+		u.RawQuery = q.Encode()
+	}
+	return u.String()
 }

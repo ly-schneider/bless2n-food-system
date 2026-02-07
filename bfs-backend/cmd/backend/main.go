@@ -45,32 +45,21 @@ func main() {
 			app.NewConfig,
 			app.ProvideAppConfig,
 			app.NewLogger,
-			// MongoDB (deprecated)
-			app.NewDB,
-			app.ProvideDatabase,
-			// PostgreSQL/GORM
-			app.NewGormDB,
-			app.ProvideGormDB,
-			// Neon Auth
-			app.NewJWKSClient,
-			app.NewNeonAuthMiddleware,
-			// Router
+			app.NewEntClient,
+			app.NewSessionMiddleware,
 			app.NewRouter,
+			app.NewBlobStore,
 		),
 		fx.WithLogger(func(lc fx.Lifecycle, l *zap.Logger) fxevent.Logger {
 			return &fxevent.ZapLogger{Logger: l}
 		}),
 
-		// MongoDB repositories (deprecated)
 		app.NewRepositories(),
-		// PostgreSQL repositories
-		app.NewPostgresRepositories(),
 		app.NewServices(),
 		app.NewHandlers(),
 
 		fx.Invoke(
 			app.SetupObservability,
-			app.StartJWKSClient,
 			app.StartHTTPServer,
 		),
 	).Run()

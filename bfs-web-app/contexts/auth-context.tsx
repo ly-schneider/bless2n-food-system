@@ -1,139 +1,118 @@
 "use client"
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
-import type { User } from "@/types"
 
-type AuthState = {
+import React, { createContext, useCallback, useContext, useMemo } from "react"
+import { authClient, signOut as authSignOut } from "@/lib/auth/client"
+import { clearOrders } from "@/lib/orders-storage"
+import type { User, UserRole } from "@/types"
+
+type AuthContextType = {
   accessToken: string | null
   user: User | null
-  expiresAt: number | null
-}
-
-type AuthContextType = AuthState & {
-  setAuth: (t: string, expiresIn: number, user?: User) => void
-  clearAuth: () => void
-  refresh: () => Promise<boolean>
+  isLoading: boolean
   signOut: () => Promise<void>
   getToken: () => string | null
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-function getCookie(name: string) {
-  if (typeof document === "undefined") return null
-  const m = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/([.$?*|{}()\[\]\\/+^])/g, "\\$1") + "=([^;]*)"))
-  return m && m[1] ? decodeURIComponent(m[1]!) : null
-}
+/** Valid user roles for the system */
+const VALID_ROLES: UserRole[] = ["customer", "admin"]
 
-const SESSION_KEY = "bfs.auth.session"
-type StoredSession = { token: string; expiresAt: number; user?: User }
-function readSession(): StoredSession | null {
-  if (typeof window === "undefined") return null
-  try {
-    const raw = sessionStorage.getItem(SESSION_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as StoredSession
-    if (!parsed || !parsed.token || !parsed.expiresAt) return null
-    return parsed
-  } catch {
-    return null
+/**
+ * Maps Better Auth session user to our User type.
+ * Better Auth provides: id, email, name, image, emailVerified, role, etc.
+ */
+function mapBetterAuthUserToUser(
+  betterAuthUser: Record<string, unknown> | null | undefined
+): User | null {
+  if (!betterAuthUser) return null
+
+  const id = String(betterAuthUser.id || "")
+  const email = String(betterAuthUser.email || "")
+
+  if (!id || !email) return null
+
+  // Parse name into firstName/lastName if available
+  const name = typeof betterAuthUser.name === "string" ? betterAuthUser.name : ""
+  const nameParts = name.split(" ")
+  const firstName = nameParts[0] || undefined
+  const lastName = nameParts.slice(1).join(" ") || undefined
+
+  // emailVerified can be boolean or Date depending on Better Auth config
+  const emailVerified = betterAuthUser.emailVerified
+  const isVerified = emailVerified === true || emailVerified instanceof Date
+
+  // createdAt/updatedAt can be Date objects or strings
+  const createdAt =
+    betterAuthUser.createdAt instanceof Date
+      ? betterAuthUser.createdAt.toISOString()
+      : typeof betterAuthUser.createdAt === "string"
+        ? betterAuthUser.createdAt
+        : new Date().toISOString()
+
+  const updatedAt =
+    betterAuthUser.updatedAt instanceof Date
+      ? betterAuthUser.updatedAt.toISOString()
+      : typeof betterAuthUser.updatedAt === "string"
+        ? betterAuthUser.updatedAt
+        : new Date().toISOString()
+
+  // Parse role, defaulting to "customer" if not a valid role
+  const rawRole = typeof betterAuthUser.role === "string" ? betterAuthUser.role : ""
+  const role: UserRole = VALID_ROLES.includes(rawRole as UserRole)
+    ? (rawRole as UserRole)
+    : "customer"
+
+  return {
+    id,
+    email,
+    firstName,
+    lastName,
+    role,
+    isVerified,
+    isDisabled: betterAuthUser.banned === true,
+    disabledReason: typeof betterAuthUser.banReason === "string" ? betterAuthUser.banReason : null,
+    isClub100: betterAuthUser.isClub100 === true,
+    createdAt,
+    updatedAt,
   }
-}
-function writeSession(s: StoredSession) {
-  if (typeof window === "undefined") return
-  try {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(s))
-  } catch {}
-}
-function clearSession() {
-  if (typeof window === "undefined") return
-  try {
-    sessionStorage.removeItem(SESSION_KEY)
-  } catch {}
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [accessToken, setAccessToken] = useState<string | null>(null)
-  const [user, setUser] = useState<User | null>(null)
-  const [expiresAt, setExpiresAt] = useState<number | null>(null)
-  const [refreshTimer, setRefreshTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
+  const { data: session, isPending, error } = authClient.useSession()
 
-  const setAuth = useCallback((t: string, expiresIn: number, u?: User) => {
-    const exp = Date.now() + expiresIn * 1000
-    setAccessToken(t)
-    setExpiresAt(exp)
-    if (u) setUser(u)
-    // Persist to sessionStorage for hard reloads
-    writeSession({ token: t, expiresAt: exp, user: u })
-  }, [])
-
-  const clearAuth = useCallback(() => {
-    setAccessToken(null)
-    setExpiresAt(null)
-    setUser(null)
-    if (refreshTimer) clearTimeout(refreshTimer)
-    setRefreshTimer(null)
-    clearSession()
-  }, [])
-
-  const refresh = useCallback(async () => {
-    try {
-      const res = await fetch("/api/auth/refresh", { method: "POST" })
-      if (!res.ok) {
-        clearAuth()
-        return false
-      }
-      const data = (await res.json()) as { access_token: string; expires_in: number; user?: User }
-      setAuth(data.access_token, data.expires_in, data.user)
-      return true
-    } catch {
-      clearAuth()
-      return false
-    }
-  }, [setAuth, clearAuth])
+  // Better Auth manages tokens internally via cookies
+  // The session token is available for API calls that need explicit auth
+  const accessToken = session?.session?.token || null
+  const user = mapBetterAuthUserToUser(session?.user || null)
 
   const signOut = useCallback(async () => {
-    const csrf = getCookie("__Host-csrf") || getCookie("csrf")
-    try {
-      await fetch("/api/auth/logout", { method: "POST", headers: csrf ? { "X-CSRF": csrf } : {} })
-    } catch {}
-    clearAuth()
-  }, [clearAuth])
-
-  // On mount, try to populate from sessionStorage; fallback to refresh using cookies
-  useEffect(() => {
-    const s = readSession()
-    const now = Date.now()
-    if (s && s.token && s.expiresAt && s.expiresAt - now > 5_000) {
-      setAccessToken(s.token)
-      setExpiresAt(s.expiresAt)
-      if (s.user) setUser(s.user)
-      return
-    }
-    void refresh()
+    clearOrders()
+    await authSignOut()
   }, [])
 
-  // Schedule token refresh ~60s before expiry
-  useEffect(() => {
-    if (!expiresAt) return
-    const now = Date.now()
-    const msUntil = Math.max(0, expiresAt - now - 60_000)
-    if (refreshTimer) clearTimeout(refreshTimer)
-    const t = setTimeout(() => {
-      void refresh()
-    }, msUntil)
-    setRefreshTimer(t)
-    return () => clearTimeout(t)
-  }, [expiresAt, refresh])
+  // getToken provides current token for useAuthorizedFetch compatibility
+  const getToken = useCallback(() => {
+    return accessToken
+  }, [accessToken])
 
   const value = useMemo(
-    () => ({ accessToken, user, expiresAt, setAuth, clearAuth, refresh, signOut }),
-    [accessToken, user, expiresAt, setAuth, clearAuth, refresh, signOut]
+    () => ({
+      accessToken,
+      user,
+      isLoading: isPending,
+      signOut,
+      getToken,
+    }),
+    [accessToken, user, isPending, signOut, getToken]
   )
-  // expose a snapshot getter that always reads latest state
-  const getToken = () => accessToken
-  const valueWithGetter = useMemo(() => ({ ...value, getToken }), [value])
 
-  return <AuthContext.Provider value={valueWithGetter}>{children}</AuthContext.Provider>
+  // Log error in development for debugging
+  if (error && process.env.NODE_ENV === "development") {
+    console.error("[AuthProvider] Session error:", error)
+  }
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

@@ -1,0 +1,57 @@
+---
+title: Stationen
+description: Ausgabestationen einrichten, Produkte zuweisen und verwalten
+---
+
+# Stationsverwaltung
+
+Stationen sind Ausgabepunkte, an denen bestellte Gerichte abgeholt werden. Jede Station wird über ein physisches Gerät betrieben, das per [Pairing-Code](/admin-handbuch/geraete) gekoppelt wird.
+
+---
+
+# Station koppeln
+
+Die Kopplung erfolgt wie bei allen Geräten:
+
+1. Auf dem Stations-Gerät wird ein 6-stelliger Pairing-Code angezeigt.
+2. Im Admin unter Stationen den Code eingeben und bestätigen.
+
+Neue Geräte erscheinen mit dem Status Pending und müssen vom Admin genehmigt werden.
+
+---
+
+# Stationsstatus
+
+| Status | Bedeutung |
+|---|---|
+| `pending` | Gerät wartet auf Genehmigung |
+| `approved` | Gerät ist aktiv und einsatzbereit |
+| `revoked` | Zugang wurde widerrufen |
+
+---
+
+# Produkte zuweisen
+
+Jeder Station können Produkte zugewiesen werden. Nur zugewiesene Produkte werden auf dem Stations-Display angezeigt.
+
+- Produkt hinzufügen: Aus der Dropdown-Liste ein Produkt wählen und zuweisen.
+- Produkt entfernen: Badge des Produkts entfernen.
+
+So lässt sich steuern, welche Station welche Gerichte ausgibt (z. B. Station 1: Hauptgerichte, Station 2: Getränke).
+
+---
+
+# Stationsdetails
+
+Für jede Station werden angezeigt:
+
+- Gerätename und Gerätemodell.
+- Betriebssystem des Geräts.
+- Erstellt am und Genehmigt am (Zeitstempel).
+- Maskierter Geräteschlüssel (zur Identifikation).
+
+---
+
+# Station widerrufen
+
+Über den „Widerrufen"-Button wird der Zugang entzogen. Das Gerät muss danach erneut gekoppelt und genehmigt werden.

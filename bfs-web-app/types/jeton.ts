@@ -3,9 +3,7 @@ export type PosFulfillmentMode = "QR_CODE" | "JETON"
 export interface Jeton {
   id: string
   name: string
-  paletteColor: string
-  hexColor?: string | null
-  colorHex: string
+  color: string
   usageCount?: number | null
 }
 

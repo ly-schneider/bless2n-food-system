@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useCart } from "@/contexts/cart-context"
+import { VersionLabel } from "@/components/layout/version-label"
 
 export default function Footer() {
   const pathname = usePathname()
@@ -41,6 +42,7 @@ export default function Footer() {
             GitHub
           </Link>
         </nav>
+        <VersionLabel className="mt-2 block text-center" />
       </div>
     </footer>
   )

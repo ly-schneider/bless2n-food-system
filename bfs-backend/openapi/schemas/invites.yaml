@@ -1,0 +1,89 @@
+InviteStatus:
+  type: string
+  enum: [pending, accepted, expired, revoked]
+
+Invite:
+  type: object
+  description: Full invite (admin view)
+  required: [id, inviteeEmail, status, expiresAt, invitedByUserId, createdAt]
+  properties:
+    id:
+      type: string
+      format: uuid
+    inviteeEmail:
+      type: string
+      format: email
+    status:
+      $ref: '#/InviteStatus'
+    expiresAt:
+      type: string
+      format: date-time
+    invitedByUserId:
+      type: string
+      description: Better Auth user ID of the inviter
+    inviter:
+      $ref: 'users.yaml#/UserSummary'
+    usedAt:
+      type: string
+      format: date-time
+      nullable: true
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+InvitePublic:
+  type: object
+  description: Public invite view (no sensitive fields)
+  required: [id, inviteeEmail, status, expiresAt]
+  properties:
+    id:
+      type: string
+      format: uuid
+    inviteeEmail:
+      type: string
+      format: email
+    status:
+      $ref: '#/InviteStatus'
+    expiresAt:
+      type: string
+      format: date-time
+
+InviteCreate:
+  type: object
+  required: [email]
+  properties:
+    email:
+      type: string
+      format: email
+
+InviteTokenRequest:
+  type: object
+  required: [token]
+  properties:
+    token:
+      type: string
+      description: Base64url-encoded invite token from email link
+
+InviteAccept:
+  type: object
+  required: [token, firstName]
+  properties:
+    token:
+      type: string
+      description: Base64url-encoded invite token
+    firstName:
+      type: string
+    lastName:
+      type: string
+
+InviteList:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Invite'

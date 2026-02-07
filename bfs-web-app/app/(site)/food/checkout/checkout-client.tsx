@@ -60,7 +60,7 @@ export default function CheckoutClient() {
     }
   }
 
-  const { suggestion, contiguous, startIndex, endIndex } = useBestMenuSuggestion()
+  const { suggestion, contiguous, startIndex, endIndex, dismissSuggestion } = useBestMenuSuggestion()
 
   return (
     <div className="flex flex-1 flex-col">
@@ -103,6 +103,7 @@ export default function CheckoutClient() {
                       suggestion={suggestion}
                       items={grouped}
                       onEditItem={(it) => setEditingItem(it)}
+                      onDismiss={dismissSuggestion}
                     />
                   )
                   for (let i = endIndex + 1; i < cart.items.length; i++) {

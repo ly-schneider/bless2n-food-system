@@ -10,19 +10,16 @@ import (
 	"go.uber.org/zap"
 )
 
-// Response is a generic envelope for successful API responses
 type Response[T any] struct {
 	Data    T      `json:"data"`
 	Message string `json:"message,omitempty"`
 }
 
-// Ack is a minimal acknowledgment payload for actions like POST/DELETE
-// where returning the full resource is not desired.
 type Ack struct {
 	Message string `json:"message"`
 }
 
-// ProblemDetails represents RFC 9457 Problem Details for HTTP APIs
+// RFC 9457 Problem Details for HTTP APIs.
 type ProblemDetails struct {
 	Type     string            `json:"type"`
 	Title    string            `json:"title"`
@@ -32,14 +29,12 @@ type ProblemDetails struct {
 	Errors   []ValidationError `json:"errors,omitempty"`
 }
 
-// ValidationError represents field-level validation errors with JSON Pointer references
 type ValidationError struct {
 	Field   string `json:"field"`   // JSON Pointer (RFC 6901) to the failing field
 	Message string `json:"message"` // Human-readable error message
 	Value   any    `json:"value,omitempty"`
 }
 
-// WriteJSON writes a JSON response with the specified status code
 func WriteJSON(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -48,7 +43,6 @@ func WriteJSON(w http.ResponseWriter, status int, data any) {
 	}
 }
 
-// WriteSuccess writes a successful response using the Response envelope
 func WriteSuccess[T any](w http.ResponseWriter, status int, data T, message ...string) {
 	response := Response[T]{Data: data}
 	if len(message) > 0 {
@@ -57,12 +51,10 @@ func WriteSuccess[T any](w http.ResponseWriter, status int, data T, message ...s
 	WriteJSON(w, status, response)
 }
 
-// WriteNoContent writes a 204 No Content response with no body per RFC 9110
 func WriteNoContent(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// WriteProblem writes an RFC 9457 Problem Details response
 func WriteProblem(w http.ResponseWriter, problem ProblemDetails) {
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(problem.Status)
@@ -83,7 +75,6 @@ func WriteError(w http.ResponseWriter, status int, message string) {
 	WriteProblem(w, problem)
 }
 
-// NewProblem creates a new ProblemDetails with defaults
 func NewProblem(status int, title, detail string) ProblemDetails {
 	return ProblemDetails{
 		Type:   "about:blank", // Default type per RFC 9457
@@ -93,7 +84,6 @@ func NewProblem(status int, title, detail string) ProblemDetails {
 	}
 }
 
-// NewValidationProblem creates a ProblemDetails for validation errors
 func NewValidationProblem(validationErrors []ValidationError, instance string) ProblemDetails {
 	return ProblemDetails{
 		Type:     "about:blank",
@@ -105,7 +95,6 @@ func NewValidationProblem(validationErrors []ValidationError, instance string) P
 	}
 }
 
-// ConvertValidationErrors converts go-playground validator errors to our format
 func ConvertValidationErrors(validationErrors validator.ValidationErrors) []ValidationError {
 	var errors []ValidationError
 

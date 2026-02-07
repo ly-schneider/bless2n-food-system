@@ -1,40 +1,31 @@
 "use client"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
-import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
+import { useEffect } from "react"
+import { useAuth } from "@/contexts/auth-context"
+import { canAccessAdmin } from "@/lib/auth/rbac"
+import type { UserRole } from "@/types"
 
 export function AdminGuard({ children }: { children: React.ReactNode }) {
-  const fetchAuth = useAuthorizedFetch()
+  const { user, isLoading } = useAuth()
   const router = useRouter()
-  const [ok, setOk] = useState<boolean | null>(null)
+
+  const hasAccess = user ? canAccessAdmin(user.role as UserRole) : false
 
   useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      try {
-        const res = await fetchAuth(`/api/v1/users/me`, { method: "GET" })
-        if (!res.ok) throw new Error("Unauthorized")
-        const data = (await res.json()) as { user?: { role?: string } }
-        if (!cancelled) setOk(data?.user?.role === "admin")
-      } catch {
-        if (!cancelled) setOk(false)
-      }
-    })()
-    return () => {
-      cancelled = true
+    if (!isLoading && !hasAccess) {
+      router.replace("/")
     }
-  }, [fetchAuth])
+  }, [isLoading, hasAccess, router])
 
-  useEffect(() => {
-    if (ok === false) router.replace("/")
-  }, [ok, router])
-
-  if (ok === null)
+  if (isLoading) {
     return (
       <div className="items-center justify-center text-center text-sm font-semibold text-gray-600">
-        Überprüfe den Zugriff...
+        Zugriff wird geprüft...
       </div>
     )
-  if (!ok) return null
+  }
+
+  if (!hasAccess) return null
+
   return <>{children}</>
 }

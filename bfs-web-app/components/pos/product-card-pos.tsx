@@ -16,12 +16,15 @@ function formatPriceLabel(cents: number): string {
 }
 
 export function ProductCardPOS({ product, onConfigure }: { product: ProductDTO; onConfigure: () => void }) {
-  const { addToCart } = useCart()
-  const isAvailable = product.isAvailable !== false
-  const isLowStock = product.isLowStock === true
-  const availableQty = product.availableQuantity ?? null
+  const { addToCart, getTotalProductQuantity } = useCart()
+  const isMenu = product.type === "menu"
+  const isAvailable = isMenu || product.isAvailable !== false
+  const isLowStock = !isMenu && product.isLowStock === true
+  const availableQty = isMenu ? null : (product.availableQuantity ?? null)
   const isActive = product.isActive !== false
-  const disabled = !isAvailable || !isActive
+  const cartQuantity = getTotalProductQuantity(product.id)
+  const atMaxInventory = !isMenu && availableQty !== null && cartQuantity >= availableQty
+  const disabled = !isAvailable || !isActive || atMaxInventory
 
   const handleAdd = () => {
     if (disabled) return
@@ -58,6 +61,7 @@ export function ProductCardPOS({ product, onConfigure }: { product: ProductDTO; 
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               quality={90}
               className="h-full w-full rounded-[11px] object-cover"
+              unoptimized={product.image.includes("localhost") || product.image.includes("127.0.0.1")}
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-zinc-500">Kein Bild</div>

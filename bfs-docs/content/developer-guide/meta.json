@@ -2,6 +2,7 @@
   "title": "Entwicklerhandbuch",
   "pages": [
     "index",
+    "backend",
     "web-app",
     "android-pos",
     "cloud-infra",
@@ -9,4 +10,3 @@
     "debugging"
   ]
 }
-

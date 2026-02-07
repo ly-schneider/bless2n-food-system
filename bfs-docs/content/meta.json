@@ -2,16 +2,15 @@
   "title": "Dokumentation",
   "pages": [
     "index",
-    "user-guides",
-    "admin-operations",
-    "cost-management",
-    "runbooks",
-    "security-access",
-    "developer-guide",
-    "api-reference",
-    "data-privacy",
-    "appendix",
-    "einleitung"
+    "schnellstart",
+    "benutzerhandbuch",
+    "admin-handbuch",
+    "zahlungen",
+    "bereitstellung",
+    "entwicklerhandbuch",
+    "infrastruktur",
+    "api-referenz",
+    "daten-datenschutz",
+    "anhang"
   ]
 }
-

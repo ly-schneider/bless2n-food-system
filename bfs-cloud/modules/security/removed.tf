@@ -30,14 +30,6 @@ removed {
 }
 
 removed {
-  from = azurerm_key_vault_secret.cosmos_connection_string
-
-  lifecycle {
-    destroy = false
-  }
-}
-
-removed {
   from = azurerm_monitor_diagnostic_setting.basic_security_logs
 
   lifecycle {

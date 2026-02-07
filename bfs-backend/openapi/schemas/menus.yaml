@@ -1,0 +1,199 @@
+Menu:
+  type: object
+  description: |
+    A menu is a product with `type: menu`. It contains ordered slots,
+    each of which offers option products the customer picks from.
+  required: [id, categoryId, name, priceCents, isActive]
+  properties:
+    id:
+      type: string
+      format: uuid
+    categoryId:
+      type: string
+      format: uuid
+    name:
+      type: string
+      maxLength: 20
+    image:
+      type: string
+      nullable: true
+    priceCents:
+      type: integer
+      format: int64
+    isActive:
+      type: boolean
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+    slots:
+      type: array
+      items:
+        $ref: '#/MenuSlot'
+
+MenuCreate:
+  type: object
+  required: [categoryId, name]
+  properties:
+    categoryId:
+      type: string
+      format: uuid
+    name:
+      type: string
+      maxLength: 20
+    priceCents:
+      type: integer
+      format: int64
+      minimum: 0
+      default: 0
+    image:
+      type: string
+
+MenuUpdate:
+  type: object
+  properties:
+    name:
+      type: string
+      maxLength: 20
+    priceCents:
+      type: integer
+      format: int64
+      minimum: 0
+    isActive:
+      type: boolean
+    image:
+      type: string
+      nullable: true
+
+MenuList:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Menu'
+
+MenuSlot:
+  type: object
+  required: [id, menuProductId, name, sequence]
+  properties:
+    id:
+      type: string
+      format: uuid
+    menuProductId:
+      type: string
+      format: uuid
+    name:
+      type: string
+      maxLength: 20
+    sequence:
+      type: integer
+      description: Display order (lower = first)
+    options:
+      type: array
+      items:
+        $ref: '#/MenuSlotOption'
+
+MenuSlotSummary:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    sequence:
+      type: integer
+    options:
+      type: array
+      items:
+        type: object
+        properties:
+          productId:
+            type: string
+            format: uuid
+          name:
+            type: string
+          priceCents:
+            type: integer
+            format: int64
+          image:
+            type: string
+            nullable: true
+          jeton:
+            $ref: 'jetons.yaml#/JetonSummary'
+            nullable: true
+
+MenuSlotCreate:
+  type: object
+  required: [name]
+  properties:
+    name:
+      type: string
+      maxLength: 20
+
+MenuSlotUpdate:
+  type: object
+  properties:
+    name:
+      type: string
+      maxLength: 20
+
+MenuSlotReorder:
+  type: object
+  required: [positions]
+  properties:
+    positions:
+      type: object
+      additionalProperties:
+        type: integer
+        minimum: 0
+      description: |
+        Map of slot UUID to desired sequence number.
+        Example: `{ "slot-uuid-1": 0, "slot-uuid-2": 1 }`
+
+MenuSlotList:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/MenuSlot'
+
+MenuSlotOption:
+  type: object
+  required: [menuSlotId, optionProductId]
+  properties:
+    menuSlotId:
+      type: string
+      format: uuid
+    optionProductId:
+      type: string
+      format: uuid
+    optionProduct:
+      type: object
+      description: Embedded product summary (when included)
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        priceCents:
+          type: integer
+          format: int64
+        image:
+          type: string
+          nullable: true
+
+MenuSlotOptionCreate:
+  type: object
+  required: [productId]
+  properties:
+    productId:
+      type: string
+      format: uuid

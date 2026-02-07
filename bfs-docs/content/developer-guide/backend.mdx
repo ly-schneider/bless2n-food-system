@@ -1,0 +1,87 @@
+---
+title: Backend (Go)
+description: Architektur, Schichten, Auth, Payments und Datenmodell des Go-Backends
+---
+
+# Architektur & Schichten
+
+- Router: `chi` mit Middleware für Security Headers, CORS, Logging, CSRF für Admin-Writes.
+- Layer: Handlers -> Services -> Postgres Repositories -> Models.
+- Config: `internal/config/config.go` liest Env; unterstützt `.env` ausserhalb von Docker.
+- Auth: Better Auth Sessions werden vom Backend direkt gegen PostgreSQL validiert (Session-Token aus Cookie oder Bearer-Header).
+
+---
+
+# Auth & Security
+
+- E-Mail OTP und Google OIDC via Better Auth (in der Web App). Backend prüft Session-Tokens. Trusted Origins steuern CORS; HSTS konfigurierbar.
+- RBAC: Rollen-basierte Berechtigungen (admin, customer) mit Permission-Mapping. POS/Station-Zugriff läuft über Device Authentication.
+
+Rollen und Berechtigungen:
+
+- Customer: `orders:create`, `orders:read:own`.
+- Admin: Vollzugriff (30+ Permissions für Products, Categories, Menus, Orders, Users, Devices, Stations, POS, Invites).
+- POS-Geräte: `pos:access`, `pos:orders:create`, `pos:payments`.
+- Station-Geräte: `station:access`, `station:verify`, `station:redeem`.
+
+Session-Middleware:
+
+- Cookie-basiert (Browser): `better-auth.session_token` (Dev) / `__Secure-better-auth.session_token` (Prod).
+- Bearer-Token (API): `Authorization: Bearer <token>`.
+- Sliding Window: Refresh nach 24h Inaktivität, Ablauf nach 90 Tagen.
+
+Device-Middleware:
+
+- SHA-256-Hash-Lookup in `device_binding`-Tabelle.
+- Validiert die zugrundeliegende Better Auth Session.
+- Background-Update von `last_seen` (Fire-and-forget).
+
+---
+
+# Payments (Payrexx)
+
+Endpoints (siehe [Payments API-Docs](https://food.blessthun.ch/api/docs#tag/payments)):
+
+- [POST /v1/orders/:orderId/payment](https://food.blessthun.ch/api/docs#tag/payments/POST/orders/%7BorderId%7D/payment): Payrexx Gateway erstellen, liefert Redirect-URL.
+- [GET /v1/payments/:paymentId](https://food.blessthun.ch/api/docs#tag/payments/GET/payments/%7BpaymentId%7D): Gateway-Status.
+- [POST /v1/payments/webhooks/payrexx](https://food.blessthun.ch/api/docs#tag/payments/POST/payments/webhooks/payrexx): Payrexx Webhook-Empfänger.
+
+Integration:
+
+- HMAC-MD5 Signatur über sortierte Query-Parameter für alle API-Requests.
+- Gateway: Betrag in Cents, CHF, Redirect-URLs, Zahlungsmethoden (TWINT u. a.), 15 Minuten Gültigkeit.
+- Webhook: Form-urlencoded Payload, HMAC-Signaturverifizierung, Transaktionsstatus-Auswertung.
+
+Gateway-Status: `waiting`, `confirmed`, `cancelled`, `declined`, `error`, `expired`.
+
+---
+
+# Datenmodell
+
+PostgreSQL-Tabellen:
+
+- `users`, `sessions`: Better Auth Benutzer und Sessions.
+- `products`, `categories`: Produkte mit Typ (simple/menu), Preis, Aktiv-Status.
+- `menu_slots`, `menu_slot_options`: Menü-Slots und deren Produktoptionen.
+- `orders`, `order_lines`, `order_payments`, `order_line_redemptions`: Bestellungen und Zahlungen.
+- `inventory_ledger`: Append-only Bestandshistorie.
+- `devices`, `device_bindings`: Geräte und Kopplungen.
+- `admin_invites`: Admin-Einladungen.
+- `jetons`: Farbige Tokens für POS.
+- `idempotency_keys`: Idempotente Request-Verarbeitung.
+
+Migrationen: Flyway-SQL unter `db/flyway/migrations/`.
+
+---
+
+# E-Mail
+
+- Plunk HTTP API mit `PLUNK_API_KEY` und From/Reply-Config.
+- Dev-Preview-Endpoints für Staging-Builds.
+
+---
+
+# Testing & Tooling
+
+- Air für Live-Reload; Make-Targets für Docker-Services/Logs.
+- Tests unter `test/` (Integration-Tests benötigen PostgreSQL).

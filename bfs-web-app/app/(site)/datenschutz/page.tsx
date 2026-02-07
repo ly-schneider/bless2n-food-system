@@ -50,7 +50,7 @@ export default function DatenschutzPage() {
           </p>
           <ul>
             <li>
-              <strong>Zahlungen:</strong> z. B. Stripe/TWINT; sie verarbeiten Zahlungen sicher und teilen nur notwendige
+              <strong>Zahlungen:</strong> z. B. Payrexx/TWINT; sie verarbeiten Zahlungen sicher und teilen nur notwendige
               Infos (z. B. Erfolg/Fehlschlag, Transaktions-ID).
             </li>
             <li>

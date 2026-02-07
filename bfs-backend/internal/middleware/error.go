@@ -16,7 +16,6 @@ const (
 	ErrorContextKey contextKey = "error_context"
 )
 
-// ErrorContext provides context for error handling
 type ErrorContext struct {
 	RequestID string
 	UserID    string
@@ -24,30 +23,25 @@ type ErrorContext struct {
 	Method    string
 }
 
-// WithErrorContext adds error context to the request context
 func WithErrorContext(ctx context.Context, errorCtx ErrorContext) context.Context {
 	return context.WithValue(ctx, ErrorContextKey, errorCtx)
 }
 
-// GetErrorContext retrieves error context from the request context
 func GetErrorContext(ctx context.Context) (ErrorContext, bool) {
 	errorCtx, ok := ctx.Value(ErrorContextKey).(ErrorContext)
 	return errorCtx, ok
 }
 
-// ErrorMiddleware provides centralized error handling with RFC 9457 compliance
 type ErrorMiddleware struct {
 	logger *zap.Logger
 }
 
-// NewErrorMiddleware creates a new error handling middleware
 func NewErrorMiddleware(logger *zap.Logger) *ErrorMiddleware {
 	return &ErrorMiddleware{
 		logger: logger,
 	}
 }
 
-// Handle wraps handlers to provide automatic error handling
 func (e *ErrorMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
@@ -77,7 +71,6 @@ func (e *ErrorMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// HandleError converts various error types to RFC 9457 Problem Details
 func (e *ErrorMiddleware) HandleError(w http.ResponseWriter, r *http.Request, err error) {
 	if err == nil {
 		return
@@ -142,7 +135,6 @@ func (e *ErrorMiddleware) HandleError(w http.ResponseWriter, r *http.Request, er
 	response.WriteProblem(w, problem)
 }
 
-// handleValidationError converts validation errors to Problem Details
 func (e *ErrorMiddleware) handleValidationError(err error, r *http.Request) response.ProblemDetails {
 	var validationErrors validator.ValidationErrors
 	if errors.As(err, &validationErrors) {
@@ -203,7 +195,6 @@ func indexOf(s, substr string) int {
 	return -1
 }
 
-// Custom error types for better error handling
 type AppError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -214,7 +205,6 @@ func (e AppError) Error() string {
 	return e.Message
 }
 
-// Predefined error constructors
 func NewNotFoundError(message string) error {
 	return AppError{
 		Code:    http.StatusNotFound,

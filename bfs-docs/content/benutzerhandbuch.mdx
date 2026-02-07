@@ -1,0 +1,75 @@
+---
+title: Benutzerhandbuch
+description: Anleitungen für Kund:innen und POS-Personal
+---
+
+# Online bestellen
+
+<Steps>
+### Anmelden (optional)
+
+Auf der Startseite anmelden, per E-Mail-Code (OTP) oder Google. Bestellungen sind auch ohne Konto möglich.
+
+### Produkte wählen
+
+Produkte und Menus im Shop durchstöbern. Bei Menus werden pro Slot die verfügbaren Optionen angezeigt. Artikel in den Warenkorb legen.
+
+### Checkout
+
+Im Warenkorb „Zur Kasse" wählen. Das System erstellt ein Payrexx-Gateway und leitet zur Zahlungsseite weiter.
+
+### Bezahlen
+
+Zahlungsmethode wählen (z. B. TWINT). Bei TWINT den QR-Code mit der App scannen und bestätigen.
+
+### Bestätigung
+
+Nach erfolgreicher Zahlung wird die Bestätigungsseite angezeigt. Die Bestellung kann unter „Meine Bestellungen" eingesehen werden.
+</Steps>
+
+<Callout type="info">
+Währung: CHF. Zahlungsmethoden werden von Payrexx bereitgestellt (TWINT, Kreditkarte u. a.).
+</Callout>
+
+---
+
+# POS-Verkauf im Laden
+
+Voraussetzungen:
+
+- Android POS App installiert und bei SumUp angemeldet.
+- Drucker per Bluetooth gekoppelt.
+- Web-POS erreichbar (`/pos`).
+
+Ablauf:
+
+<Steps>
+### App öffnen
+
+Die Android POS App lädt die POS-Oberfläche in einer WebView.
+
+### Warenkorb befüllen
+
+Artikel über die POS-Oberfläche auswählen.
+
+### Zahlung annehmen
+
+- Bargeld: Bestellung erstellen, Barzahlung erfassen, Beleg drucken.
+- Karte (SumUp): Die App startet den SumUp-Kartenleser. Nach erfolgreicher Zahlung wird die Bestellung erstellt.
+- TWINT: Payrexx-Gateway wird erstellt, Zahlung erfolgt per QR-Code.
+
+### Beleg drucken
+
+Der Beleg wird automatisch auf dem gekoppelten Drucker ausgegeben.
+</Steps>
+
+---
+
+# Fehlerbehebung
+
+| Problem | Lösung |
+|---|---|
+| Zahlung fehlgeschlagen | Netzwerk prüfen, erneut versuchen. Bestellstatus unter Bestellungen prüfen. |
+| Bestellung nicht gefunden | Bestätigungslink nutzen oder unter `/orders/{id}` nachschauen. |
+| OTP-Code kommt nicht an | Spam-Ordner prüfen, E-Mail-Adresse überprüfen. |
+| POS-Probleme | `POS_URL`, SumUp-Login und Bluetooth-Berechtigungen prüfen. |

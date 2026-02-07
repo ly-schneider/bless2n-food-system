@@ -1,0 +1,166 @@
+openapi: 3.0.3
+info:
+  title: BlessThun Food System API
+  description: |
+    RESTful API for the food system supporting all endpoints.
+
+    ## Authentication
+    - **Customer/Admin**: Session-based authentication via Better Auth
+    - **Devices**: Device binding token authentication (Station, POS)
+
+    ## Permission Model
+    Field-level response shaping based on caller permissions.
+    Admin-only fields (marked `x-admin-only`) are omitted for non-privileged callers.
+  version: 1.0.0
+
+servers:
+  - url: /v1
+    description: API v1
+
+tags:
+  - name: Auth
+    description: Authentication (OTP email delivery)
+  - name: Products
+    description: Product catalog (simple and menu types)
+  - name: Categories
+    description: Product categories
+  - name: Menus
+    description: Menu product configuration with slots and options
+  - name: Orders
+    description: Order management (shop and POS origins)
+  - name: Payments
+    description: Payment processing (Payrexx gateway, cash, card, TWINT)
+  - name: Users
+    description: User management (admin)
+  - name: Invites
+    description: Admin user invitation system
+  - name: Stations
+    description: Pickup station management and QR redemption
+  - name: POS
+    description: Point of sale terminal operations
+  - name: Devices
+    description: Device registration, pairing, and binding management
+  - name: Jetons
+    description: Jeton (color tag) management for POS fulfillment
+  - name: Events
+    description: Event/month aggregation for admin dashboard
+  - name: Club100
+    description: 100 Club member management and redemption tracking
+  - name: Settings
+    description: Application settings (POS mode, Club100 configuration)
+
+paths:
+  /auth/otp-email:
+    $ref: 'paths/auth.yaml#/otp-email'
+
+  /products:
+    $ref: 'paths/products.yaml#/collection'
+  /products/{productId}:
+    $ref: 'paths/products.yaml#/item'
+  /products/{productId}/image:
+    $ref: 'paths/products.yaml#/image'
+  /products/{productId}/inventory:
+    $ref: 'paths/products.yaml#/inventory'
+  /products/{productId}/inventory/history:
+    $ref: 'paths/products.yaml#/inventory-history'
+
+  /categories:
+    $ref: 'paths/categories.yaml#/collection'
+  /categories/{categoryId}:
+    $ref: 'paths/categories.yaml#/item'
+
+  /menus:
+    $ref: 'paths/menus.yaml#/collection'
+  /menus/{menuId}:
+    $ref: 'paths/menus.yaml#/item'
+  /menus/{menuId}/slots:
+    $ref: 'paths/menus.yaml#/slots'
+  /menus/{menuId}/slots/reorder:
+    $ref: 'paths/menus.yaml#/slots-reorder'
+  /menus/{menuId}/slots/{slotId}:
+    $ref: 'paths/menus.yaml#/slot-item'
+  /menus/{menuId}/slots/{slotId}/options:
+    $ref: 'paths/menus.yaml#/options'
+  /menus/{menuId}/slots/{slotId}/options/{optionProductId}:
+    $ref: 'paths/menus.yaml#/option-item'
+
+  /orders:
+    $ref: 'paths/orders.yaml#/collection'
+  /orders/{orderId}:
+    $ref: 'paths/orders.yaml#/item'
+
+  /orders/{orderId}/payment:
+    $ref: 'paths/payments.yaml#/order-payment'
+  /payments/{paymentId}:
+    $ref: 'paths/payments.yaml#/item'
+  /payments/webhooks/payrexx:
+    $ref: 'paths/payments.yaml#/payrexx-webhook'
+
+  /users:
+    $ref: 'paths/users.yaml#/collection'
+  /users/{userId}:
+    $ref: 'paths/users.yaml#/item'
+
+  /invites:
+    $ref: 'paths/invites.yaml#/collection'
+  /invites/{inviteId}:
+    $ref: 'paths/invites.yaml#/item'
+  /invites/verify:
+    $ref: 'paths/invites.yaml#/verify'
+  /invites/accept:
+    $ref: 'paths/invites.yaml#/accept'
+
+  /stations:
+    $ref: 'paths/stations.yaml#/collection'
+  /stations/me:
+    $ref: 'paths/stations.yaml#/me'
+  /stations/redeem:
+    $ref: 'paths/stations.yaml#/redeem'
+  /stations/{stationId}:
+    $ref: 'paths/stations.yaml#/item'
+  /stations/{stationId}/products:
+    $ref: 'paths/stations.yaml#/products'
+  /stations/{stationId}/products/{productId}:
+    $ref: 'paths/stations.yaml#/product-item'
+
+  /pos/me:
+    $ref: 'paths/pos.yaml#/me'
+  /pos/devices:
+    $ref: 'paths/pos.yaml#/devices'
+
+  /settings:
+    $ref: 'paths/settings.yaml#/collection'
+
+  /devices:
+    $ref: 'paths/devices.yaml#/collection'
+  /devices/{deviceId}:
+    $ref: 'paths/devices.yaml#/item'
+  /devices/pairings:
+    $ref: 'paths/devices.yaml#/pairings'
+  /devices/pairings/{code}:
+    $ref: 'paths/devices.yaml#/pairing-item'
+
+  /jetons:
+    $ref: 'paths/jetons.yaml#/collection'
+  /jetons/{jetonId}:
+    $ref: 'paths/jetons.yaml#/item'
+
+  /events:
+    $ref: 'paths/events.yaml#/collection'
+
+  /club100/people:
+    $ref: 'paths/club100.yaml#/collection'
+  /club100/remaining/{elvantoPersonId}:
+    $ref: 'paths/club100.yaml#/remaining'
+
+components:
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: better-auth.session_token
+      description: Better Auth session cookie (also accepted as Bearer token)
+    deviceAuth:
+      type: http
+      scheme: bearer
+      description: Device binding token (POS or Station)

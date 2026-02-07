@@ -1,0 +1,75 @@
+---
+title: Anmeldung
+description: Login per E-Mail-Code oder Google, Admin-Zugang und Sessions
+---
+
+# Anmeldung am System
+
+Es gibt zwei Wege, sich anzumelden: per E-Mail-Code (OTP) oder per Google-Konto.
+
+---
+
+# E-Mail-Code (OTP)
+
+<Steps>
+### E-Mail eingeben
+
+Auf der Login-Seite die E-Mail-Adresse eingeben und absenden.
+
+### Code prüfen
+
+Ein 6-stelliger Code wird per E-Mail zugesendet. Der Code ist 5 Minuten gültig.
+
+### Code eingeben
+
+Den Code auf der Verifizierungsseite eingeben. Nach erfolgreicher Eingabe wird die Session erstellt.
+</Steps>
+
+<Callout type="info">
+Falls kein Code ankommt: Spam-Ordner prüfen und sicherstellen, dass die E-Mail-Adresse korrekt eingegeben wurde.
+</Callout>
+
+---
+
+# Google-Login
+
+Alternativ kann auf der Login-Seite der Button „Mit Google anmelden" genutzt werden. Nach Auswahl des Google-Kontos wird die Session automatisch erstellt.
+
+---
+
+# Admin-Zugang erhalten
+
+Um auf das Admin-Dashboard zugreifen zu können, muss ein bestehender Admin eine [Einladung](/admin-handbuch/einladungen) an die E-Mail-Adresse senden.
+
+<Steps>
+### Einladung erhalten
+
+Eine E-Mail mit einem Einladungslink wird zugestellt.
+
+### Link öffnen
+
+Der Link führt zur Akzeptierungsseite. Falls noch kein Konto besteht, wird eines erstellt.
+
+### Dashboard öffnen
+
+Nach Annahme der Einladung ist der Zugang unter `/admin` freigeschaltet.
+</Steps>
+
+---
+
+# Sessions
+
+- Sessions sind 90 Tage gültig.
+- Bei Aktivität wird die Session automatisch verlängert (täglicher Refresh).
+- Nach Ablauf muss eine erneute Anmeldung erfolgen.
+
+---
+
+# Fehlerbehebung
+
+| Problem | Lösung |
+|---|---|
+| Code kommt nicht an | Spam-Ordner prüfen, E-Mail-Adresse überprüfen |
+| Code abgelaufen | Neuen Code anfordern (5 Minuten Gültigkeit) |
+| Google-Login funktioniert nicht | Browser-Popups erlauben, Drittanbieter-Cookies aktivieren |
+| Kein Zugriff auf Admin | Admin muss Einladung senden (siehe [Einladungen](/admin-handbuch/einladungen)) |

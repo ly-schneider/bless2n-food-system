@@ -1,39 +1,22 @@
 package app
 
 import (
+	"backend/internal/api"
+	"backend/internal/auth"
 	"backend/internal/config"
-	"backend/internal/handler"
 	"backend/internal/middleware"
 
-	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/fx"
-	"go.uber.org/zap"
 )
 
 func NewHandlers() fx.Option {
 	return fx.Options(
 		fx.Provide(
-			handler.NewAuthHandler,
-			handler.NewDevHandler,
-			handler.NewAdminHandler,
-			handler.NewUserHandler,
-			handler.NewOrderHandler,
-			handler.NewStationHandler,
-			handler.NewPOSHandler,
-			handler.NewCategoryHandler,
-			handler.NewProductHandler,
-			handler.NewPaymentHandler,
-			handler.NewRedemptionHandler,
-			NewHealthHandler,
-			handler.NewJWKSHandler,
-			middleware.NewJWTMiddleware,
 			NewSecurityMiddleware,
+			auth.NewDeviceAuthMiddleware,
+			api.NewHandlers,
 		),
 	)
-}
-
-func NewHealthHandler(logger *zap.Logger, db *mongo.Database) *handler.HealthHandler {
-	return handler.NewHealthHandler(logger, db, nil)
 }
 
 func NewSecurityMiddleware(cfg config.Config) *middleware.SecurityMiddleware {

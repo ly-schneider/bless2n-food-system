@@ -7,7 +7,7 @@ This guide covers the prerequisites and setup steps for deploying the BFS infras
 ### 1. Azure Subscription Requirements
 
 Your Azure subscription must support:
-- ✅ Standard resources (VNet, Storage, Cosmos DB, etc.)
+- Standard resources (VNet, Storage, etc.)
 - ❌ Cost Management API (requires EA, Web Direct, or MCA offer types)
   - **Note:** Azure Sponsorship subscriptions (MS-AZR-0036P) do not support budget APIs
 
@@ -24,7 +24,6 @@ az provider show --namespace Microsoft.App --query "registrationState"
 
 # Register other required providers
 az provider register --namespace Microsoft.Network
-az provider register --namespace Microsoft.DocumentDB
 az provider register --namespace Microsoft.KeyVault
 az provider register --namespace Microsoft.OperationalInsights
 az provider register --namespace Microsoft.Insights
@@ -74,24 +73,7 @@ az provider register --namespace Microsoft.App
 az provider show --namespace Microsoft.App --query "registrationState"
 ```
 
-### Issue 2: Cosmos DB Already Exists
-
-**Error:**
-```
-Error: CosmosDB Account bfs-staging-cosmos already exists, please import the resource
-```
-
-**Solution:**
-The `staging/main.tf` file already includes an import block. On first run, Terraform will import the existing Cosmos DB instead of trying to create it.
-
-If you need to manually import:
-```bash
-cd envs/staging
-terraform import 'module.bfs_infrastructure.module.cosmos.azurerm_cosmosdb_account.this' \
-  '/subscriptions/<sub-id>/resourceGroups/bfs-staging-rg/providers/Microsoft.DocumentDB/databaseAccounts/bfs-staging-cosmos'
-```
-
-### Issue 3: Budget API Not Supported
+### Issue 2: Budget API Not Supported
 
 **Error:**
 ```
@@ -142,7 +124,6 @@ terraform apply
   - Container Apps subnet (10.1.0.0/21)
   - Private Endpoints subnet (10.1.8.0/24)
 - **Network Security Group**: Allow HTTP/HTTPS and Container Apps traffic
-- **Cosmos DB**: MongoDB API database (`bfs-{env}-cosmos`)
 - **Key Vault**: Secrets storage with Access Policies (`bfs-{env}-kv`)
 - **Container Apps Environment**: `bfs-{env}-env`
 - **Container Apps**:
@@ -198,7 +179,7 @@ az provider show --namespace Microsoft.App
 terraform state list
 
 # Show details of specific resource
-terraform state show 'module.bfs_infrastructure.module.cosmos.azurerm_cosmosdb_account.this'
+terraform state show 'module.bfs_infrastructure.module.aca_env.azurerm_container_app_environment.this'
 ```
 
 ### Force Resource Recreation
@@ -212,11 +193,10 @@ terraform taint 'module.bfs_infrastructure.module.aca_env.azurerm_container_app_
 
 **Monthly costs (approximate):**
 
-- Cosmos DB (400 RU/s): ~$24/month
 - Container Apps (with scale-to-zero): ~$5-15/month
 - Log Analytics: ~$3/month
 - Key Vault: ~$1/month
 - Networking: Free tier
-- **Total**: ~$33-43/month per environment
+- **Total**: ~$9-19/month per environment
 
 **Note:** Actual costs vary based on usage. Container Apps scale to zero when idle, significantly reducing costs.

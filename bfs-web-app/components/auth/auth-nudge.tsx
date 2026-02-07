@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { Button } from "../ui/button"
 
 export function AuthNudgeBanner() {
-  const { accessToken } = useAuth()
+  const { user } = useAuth()
   const [dismissed, setDismissed] = useState(false)
   const router = useRouter()
 
@@ -15,7 +15,8 @@ export function AuthNudgeBanner() {
     }
   }, [])
 
-  if (accessToken || dismissed) return null
+  // Show nudge if user is not authenticated
+  if (user || dismissed) return null
 
   return (
     <div className="mb-3 rounded-lg border bg-white p-3 shadow-sm">

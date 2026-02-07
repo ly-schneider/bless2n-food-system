@@ -1,0 +1,51 @@
+---
+title: Inventar
+description: Bestandshistorie pro Produkt einsehen und nachvollziehen
+---
+
+# Inventar-Ledger
+
+Das Inventar-Ledger ist eine append-only Historie aller Bestandsänderungen. Jeder Eintrag dokumentiert, wann, warum und von wem eine Änderung vorgenommen wurde.
+
+---
+
+# Produkt auswählen
+
+Oben auf der Seite befindet sich ein Dropdown zur Produktauswahl. Nach der Auswahl werden alle Ledger-Einträge für das gewählte Produkt angezeigt.
+
+---
+
+# Ledger-Einträge
+
+Jeder Eintrag enthält:
+
+| Feld | Beschreibung |
+|---|---|
+| Datum | Zeitpunkt der Änderung |
+| Delta | Bestandsänderung (z. B. +10, -1) |
+| Grund | Art der Änderung (siehe unten) |
+| Bestellung | Link zur verknüpften Bestellung (falls vorhanden) |
+| Erstellt von | Link zum Benutzer, der die Änderung ausgelöst hat |
+
+Positive Deltas werden grün, negative rot dargestellt.
+
+---
+
+# Änderungsgründe
+
+| Grund | Beschreibung |
+|---|---|
+| `opening_balance` | Anfangsbestand |
+| `sale` | Verkauf (automatisch bei Bestellung) |
+| `refund` | Rückerstattung (Bestand wird zurückgebucht) |
+| `cancellation` | Stornierung (Bestand wird zurückgebucht) |
+| `manual_adjust` | Manuelle Anpassung durch einen Admin |
+| `correction` | Korrektur eines früheren Eintrags |
+
+---
+
+# Bestand anpassen
+
+Die Bestandsanpassung erfolgt nicht im Inventar direkt, sondern über die [Produktkarten](/admin-handbuch/produkte) (+ / - Buttons oder Direkteingabe).
+
+Die Einträge werden seitenweise geladen (50 pro Seite). Über den „Mehr laden"-Button können ältere Einträge nachgeladen werden.

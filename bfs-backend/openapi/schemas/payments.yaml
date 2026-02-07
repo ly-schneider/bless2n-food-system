@@ -1,0 +1,97 @@
+PaymentMethod:
+  type: string
+  enum: [cash, card, twint, gratis_guest, gratis_vip, gratis_staff, gratis_100club]
+  description: |
+    Payment methods (lowercase in API, stored uppercase in DB):
+    - `cash`: Cash payment (POS only)
+    - `card`: Card via SumUp (POS) or Payrexx (web)
+    - `twint`: TWINT via POS or Payrexx gateway
+    - `gratis_guest`: Free order for guests (POS only)
+    - `gratis_vip`: Free order for VIP (POS only)
+    - `gratis_staff`: Free order for staff/volunteers (POS only)
+    - `gratis_100club`: Free order for 100 Club member (POS only)
+
+PaymentChannel:
+  type: string
+  enum: [pos, web]
+  description: |
+    - `pos`: Payment handled at point of sale
+    - `web`: Payment via Payrexx gateway
+
+PaymentStatus:
+  type: string
+  enum:
+    - pending
+    - processing
+    - completed
+    - failed
+    - cancelled
+    - refunded
+
+PaymentCreate:
+  type: object
+  required: [method]
+  properties:
+    method:
+      $ref: '#/PaymentMethod'
+    channel:
+      $ref: '#/PaymentChannel'
+      description: Inferred from auth context if not provided
+    returnUrl:
+      type: string
+      format: uri
+      description: Required for web payments. Redirect destination after Payrexx.
+    externalRef:
+      type: string
+      description: |
+        External transaction reference.
+        Required for POS card payments (SumUp transaction ID).
+    club100:
+      $ref: '../schemas/club100.yaml#/Club100PaymentInfo'
+      description: Required for gratis_100club payments. Contains Elvanto person info and quantity.
+Payment:
+  type: object
+  required: [id, orderId, method, status, amountCents]
+  properties:
+    id:
+      type: string
+      format: uuid
+    orderId:
+      type: string
+      format: uuid
+    method:
+      $ref: '#/PaymentMethod'
+    channel:
+      $ref: '#/PaymentChannel'
+    status:
+      $ref: '#/PaymentStatus'
+    amountCents:
+      type: integer
+      format: int64
+      description: Order total in cents (CHF)
+    deviceId:
+      type: string
+      format: uuid
+      description: POS device that processed the payment
+      x-admin-only: true
+    gatewayId:
+      type: string
+      description: Payrexx gateway ID (web payments)
+    externalRef:
+      type: string
+      description: SumUp transaction ID (POS card)
+    redirectUrl:
+      type: string
+      format: uri
+      description: Payrexx payment page URL (when status=pending, web payments)
+    createdAt:
+      type: string
+      format: date-time
+    completedAt:
+      type: string
+      format: date-time
+    failedAt:
+      type: string
+      format: date-time
+    failureReason:
+      type: string

@@ -2,7 +2,8 @@
 
 import type { Html5Qrcode } from "html5-qrcode"
 import Image from "next/image"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { PairingCodeDisplay } from "@/components/device/pairing-code-display"
 import Html5QrcodeScannerPlugin from "@/components/html5-qrcode-scanner-plugin"
 import { Button } from "@/components/ui/button"
 import {
@@ -12,12 +13,10 @@ import {
   DialogHeader as ModalHeader,
   DialogTitle as ModalTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-import { getClientInfo } from "@/lib/client-info"
-import { randomUrlSafe } from "@/lib/crypto"
+import { getDeviceToken } from "@/lib/device-auth"
 
 type StationStatus = { exists: boolean; approved: boolean; name?: string }
 
@@ -43,34 +42,35 @@ export default function StationPage() {
   type VerifyResult = { orderId: string; items: PublicOrderItem[] }
   const [result, setResult] = useState<VerifyResult | null>(null)
   const [scanned, setScanned] = useState<string | null>(null)
-  // Redemption response is not shown; keep UI minimal
-  const [stationName, setStationName] = useState("")
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [requestSubmitted, setRequestSubmitted] = useState(false)
   const [cameraPermission, setCameraPermission] = useState<"idle" | "pending" | "granted" | "denied">("idle")
   const [scannerActive, setScannerActive] = useState(false)
   const [scannerKey, setScannerKey] = useState(0)
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const scanLockedRef = useRef(false)
 
-  const stationKey = useMemo(() => {
-    if (typeof window === "undefined") return ""
-    let k = localStorage.getItem("bfs.stationKey")
-    if (!k) {
-      k = `st_${randomUrlSafe(24)}`
-      localStorage.setItem("bfs.stationKey", k)
-    }
-    log("stationKey", k)
-    return k
-  }, [])
-  // No offline mode or service worker – simplify flow
+  // sessionToken = the authenticated Bearer token from device-auth
+  const [sessionToken] = useState<string | null>(() => getDeviceToken())
+
+  const bearerToken = sessionToken || ""
 
   useEffect(() => {
-    // fetch station status
+    if (!sessionToken) {
+      setStatus({ exists: false, approved: false })
+      log("no session token; showing enrollment")
+      return
+    }
     ;(async () => {
       try {
         log("GET /v1/stations/me")
-        const res = await fetch(`/api/v1/stations/me`, { headers: { "X-Station-Key": stationKey } })
+        const res = await fetch(`/api/v1/stations/me`, {
+          headers: { Authorization: `Bearer ${sessionToken}` },
+        })
+        if (res.status === 401 || res.status === 403) {
+          setStatus({ exists: false, approved: false })
+          log("status auth failed; showing enrollment")
+          return
+        }
         const json = await res.json()
         setStatus(json as StationStatus)
         log("status", json)
@@ -79,7 +79,7 @@ export default function StationPage() {
         log("status fetch failed")
       }
     })()
-  }, [stationKey])
+  }, [sessionToken])
 
   useEffect(() => {
     if (!status?.approved) {
@@ -211,35 +211,41 @@ export default function StationPage() {
     } catch {}
   }, [])
 
+  // Remove old enrollment / polling logic — replaced by PairingCodeDisplay
+
   const handleScanned = useCallback(
     async (code: string) => {
       setError(null)
       try {
-        log("verify-qr start")
-        const verify = await fetch(`/api/v1/stations/verify-qr`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Station-Key": stationKey },
-          body: JSON.stringify({ code }),
+        // Client-side: extract orderId from scanned QR (raw orderId string)
+        const orderId = code.trim()
+        if (!orderId) throw new Error("Ungültiger QR-Code")
+        log("order lookup start", { orderId })
+
+        // Fetch order details to display items
+        const orderRes = await fetch(`/api/v1/orders/${encodeURIComponent(orderId)}`, {
+          headers: { Authorization: `Bearer ${bearerToken}` },
         })
         type Problem = { detail?: string }
-        if (!verify.ok) {
-          const j = (await verify.json().catch(() => ({}))) as Problem
-          const msg = j.detail || `Fehler ${verify.status}`
-          log("verify-qr failed", msg)
+        if (!orderRes.ok) {
+          const j = (await orderRes.json().catch(() => ({}))) as Problem
+          const msg = j.detail || `Fehler ${orderRes.status}`
+          log("order lookup failed", msg)
           throw new Error(msg)
         }
-        const data = (await verify.json()) as VerifyResult
+        const orderData = (await orderRes.json()) as { order: { id: string; items: PublicOrderItem[] } }
+        const data: VerifyResult = { orderId: orderData.order.id, items: orderData.order.items }
         setResult(data)
-        setScanned(code)
+        setScanned(orderId)
         setDrawerOpen(true)
-        log("verify-qr ok", { orderId: data.orderId, items: data.items?.length })
+        log("order lookup ok", { orderId: data.orderId, items: data.items?.length })
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "Scan fehlgeschlagen")
         resumeScanning()
-        log("verify-qr error; resume scanning", e)
+        log("order lookup error; resume scanning", e)
       }
     },
-    [resumeScanning, stationKey, log]
+    [resumeScanning, bearerToken, log]
   )
 
   const handleDecoded = useCallback(
@@ -265,8 +271,8 @@ export default function StationPage() {
       const idem = `idem_${Date.now()}_${Math.random().toString(36).slice(2)}`
       const res = await fetch(`/api/v1/stations/redeem`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Station-Key": stationKey, "Idempotency-Key": idem },
-        body: JSON.stringify({ code: scanned }),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${bearerToken}`, "Idempotency-Key": idem },
+        body: JSON.stringify({ orderId: scanned }),
       })
       const json = (await res.json().catch(() => ({}))) as { detail?: string; message?: string }
       if (!res.ok) {
@@ -282,63 +288,12 @@ export default function StationPage() {
     }
   }
 
-  async function requestVerification() {
-    const fallbackLabel = devices[0]?.label || ""
-    const info = await getClientInfo()
-    const os = info.os || "web"
-    const name = (stationName || fallbackLabel || "Station").slice(0, 80)
-    if (!name) return
-    try {
-      log("request verification", { name, os, model: info.model })
-      await fetch(`/api/v1/stations/requests`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, model: info.model, os, deviceKey: stationKey }),
-      })
-      setRequestSubmitted(true)
-      // refresh status
-      const r = await fetch(`/api/v1/stations/me`, { headers: { "X-Station-Key": stationKey } })
-      const js = await r.json()
-      setStatus(js as StationStatus)
-      log("status after request", js)
-    } catch {
-      setError("Anfrage fehlgeschlagen")
-      log("request verification failed")
-    }
-  }
-
   return (
     <div className="bg-background text-foreground flex min-h-screen flex-col items-center gap-2 pt-6 sm:p-6">
       <h1 className="font-primary text-3xl">Abholungsstation</h1>
       <p className="text-muted-foreground mb-4 max-w-md text-center">Scanne Abhol-QR-Codes hier</p>
 
-      {status && !status.approved && (
-        <div className="place-items-center p-4">
-          <div className="bg-background w-full max-w-md rounded-xl border p-5 shadow-sm">
-            <h1 className="mb-2 text-2xl font-semibold">Gerät registrieren</h1>
-            <p className="text-muted-foreground mb-4 text-sm">
-              Dieses Gerät muss vor dem Verkauf von einem Admin freigegeben werden.
-            </p>
-            <div className="grid gap-3">
-              <div className="grid gap-1">
-                <Label htmlFor="name">Gerätename</Label>
-                <Input
-                  id="name"
-                  value={stationName}
-                  onChange={(e) => setStationName(e.target.value)}
-                  placeholder="z. B. Grill 1"
-                />
-              </div>
-              <Button onClick={requestVerification}>Zugang anfordern</Button>
-              {requestSubmitted && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-2 text-sm text-amber-700">
-                  Anfrage gesendet. Ein Admin muss dieses Gerät freigeben.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {status && !status.approved && <PairingCodeDisplay deviceType="STATION" />}
 
       {status?.approved && (
         <div className="flex w-full flex-col gap-4 sm:max-w-xl">

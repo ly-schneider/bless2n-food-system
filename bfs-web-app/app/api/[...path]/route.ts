@@ -3,12 +3,16 @@ import { NextResponse } from "next/server"
 import { resolveCookieNames } from "@/lib/server/cookies"
 
 function backendBase(): string {
-  return process.env.BACKEND_INTERNAL_URL || process.env.INTERNAL_API_BASE_URL || "http://backend:8080"
+  return process.env.BACKEND_INTERNAL_URL || "http://backend:8080"
 }
 
 async function handle(req: Request, params: Promise<{ path: string[] }>) {
   const { path } = await params
   const target = new URL(path.join("/"), backendBase())
+
+  // Forward query parameters from the original request
+  const reqUrl = new URL(req.url)
+  target.search = reqUrl.search
 
   const method = req.method
   const inHeaders = new Headers(req.headers)
@@ -16,15 +20,13 @@ async function handle(req: Request, params: Promise<{ path: string[] }>) {
 
   const auth = inHeaders.get("authorization")
   if (auth) outHeaders.set("authorization", auth)
+
   const contentType = inHeaders.get("content-type")
   if (contentType) outHeaders.set("content-type", contentType)
+
   const cookieIn = inHeaders.get("cookie")
   if (cookieIn) outHeaders.set("cookie", cookieIn)
-  // Forward custom headers needed by backend endpoints
-  const xPosToken = inHeaders.get("x-pos-token") || inHeaders.get("X-Pos-Token")
-  if (xPosToken) outHeaders.set("X-Pos-Token", xPosToken)
-  const xStationKey = inHeaders.get("x-station-key") || inHeaders.get("X-Station-Key")
-  if (xStationKey) outHeaders.set("X-Station-Key", xStationKey)
+
   const idempotencyKey = inHeaders.get("idempotency-key") || inHeaders.get("Idempotency-Key")
   if (idempotencyKey) outHeaders.set("Idempotency-Key", idempotencyKey)
 
@@ -36,21 +38,25 @@ async function handle(req: Request, params: Promise<{ path: string[] }>) {
 
   const pathName = target.pathname
   const csrfExempt =
-    // Auth flows that establish or rotate cookies should not require CSRF
-    pathName === "/v1/auth/otp/request" ||
-    pathName === "/v1/auth/otp/verify" ||
-    pathName === "/v1/auth/google/code" ||
-    pathName === "/v1/auth/refresh" ||
     // Public or device-gated endpoints
     pathName.startsWith("/v1/pos/") ||
     pathName.startsWith("/v1/stations/") ||
+    pathName.startsWith("/v1/devices/") ||
     pathName.startsWith("/v1/health") ||
-    pathName.startsWith("/v1/public/")
+    pathName.startsWith("/v1/public/") ||
+    pathName.startsWith("/v1/invites/") ||
+    pathName.startsWith("/v1/payments/webhooks/")
 
-  if (isMutating && !csrfExempt) {
+  const hasBearerAuth = !!inHeaders.get("authorization")?.startsWith("Bearer ")
+
+  if (isMutating && !csrfExempt && !hasBearerAuth) {
     if (!headerToken || !cookieToken || headerToken !== cookieToken) {
       return NextResponse.json({ error: true, message: "Invalid CSRF token" }, { status: 403 })
     }
+  }
+  // Always forward the CSRF header when present so the backend's own
+  // CSRF middleware can validate it (e.g. admin-gated device pairing).
+  if (headerToken) {
     outHeaders.set("X-CSRF", headerToken)
   }
 
@@ -62,27 +68,18 @@ async function handle(req: Request, params: Promise<{ path: string[] }>) {
     }
   }
 
-  const start = Date.now()
-  let res: Response
-  try {
-    res = await fetch(target.toString(), { method, headers: outHeaders, body, redirect: "manual" })
-  } finally {
-    const dur = Date.now() - start
-    try {
-      const ua = inHeaders.get("user-agent") || "-"
-      const fwd = inHeaders.get("x-forwarded-for") || "-"
-      console.log(
-        `[api-proxy] ${method} ${target.pathname} -> ${target.origin} dur=${dur}ms ip=${
-          fwd.split(",")[0]?.trim() || "-"
-        } ua=${ua.substring(0, 80)}`
-      )
-    } catch {}
-  }
+  const res = await fetch(target.toString(), { method, headers: outHeaders, body, redirect: "manual" })
 
   const respHeaders = new Headers(res.headers)
 
   if (res.status === 204 || res.status === 205 || res.status === 304) {
     return new NextResponse(null, { status: res.status, headers: respHeaders })
+  }
+
+  // Stream SSE responses instead of buffering
+  const respContentType = res.headers.get("content-type") || ""
+  if (respContentType.includes("text/event-stream") && res.body) {
+    return new NextResponse(res.body, { status: res.status, headers: respHeaders })
   }
 
   const buf = Buffer.from(await res.arrayBuffer())
