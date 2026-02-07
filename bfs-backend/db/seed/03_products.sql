@@ -8,11 +8,10 @@ INSERT INTO app.product (id, category_id, type, name, image, price_cents, jeton_
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO app.product (id, category_id, type, name, image, price_cents, jeton_id, is_active) VALUES
-  ('01970000-0000-7000-0002-000000000010', '01970000-0000-7000-0000-000000000001', 'simple', 'Smash Burger', '/assets/images/products/bless2n-takeaway-smash-burger-16x9.png', 950, '01970000-0000-7000-0001-000000000001', true),
-  ('01970000-0000-7000-0002-000000000011', '01970000-0000-7000-0000-000000000001', 'simple', 'Veggie Burger', '/assets/images/products/bless2n-takeaway-veggie-burger-16x9.png', 1050, '01970000-0000-7000-0001-000000000003', true)
+  ('01970000-0000-7000-0002-000000000010', '01970000-0000-7000-0000-000000000002', 'simple', 'Smash Burger', '/assets/images/products/bless2n-takeaway-smash-burger-16x9.png', 950, '01970000-0000-7000-0001-000000000001', true),
+  ('01970000-0000-7000-0002-000000000011', '01970000-0000-7000-0000-000000000002', 'simple', 'Veggie Burger', '/assets/images/products/bless2n-takeaway-veggie-burger-16x9.png', 1050, '01970000-0000-7000-0001-000000000001', true)
 ON CONFLICT (id) DO NOTHING;
 
--- Beilage (1 item)
 INSERT INTO app.product (id, category_id, type, name, image, price_cents, jeton_id, is_active) VALUES
   ('01970000-0000-7000-0002-000000000020', '01970000-0000-7000-0000-000000000003', 'simple', 'Pommes', '/assets/images/products/bless2n-takeaway-pommes-16x9.png', 450, '01970000-0000-7000-0001-000000000004', true)
 ON CONFLICT (id) DO NOTHING;

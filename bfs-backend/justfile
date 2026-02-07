@@ -122,7 +122,7 @@ migrate cmd='migrate':
 [confirm("⚠️  This will DROP ALL OBJECTS. Continue?")]
 [group('db')]
 migrate-clean:
-    just migrate clean
+    just migrate "-cleanDisabled=false clean"
 
 # Seed dev data
 [group('db')]

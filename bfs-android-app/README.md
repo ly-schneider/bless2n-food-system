@@ -18,8 +18,10 @@ keytool -importkeystore -srckeystore bfs-android-upload.jks -destkeystore bfs-an
 base64 -i bfs-android-upload.jks | pbcopy
 ```
 
-# ADB Forwarding Port 3000
+# ADB Reverse Forwarding Ports
 
 ```bash
-adb forward tcp:3000 tcp:3000
+adb reverse tcp:3000 tcp:3000
+adb reverse tcp:8080 tcp:8080
+adb reverse tcp:10000 tcp:10000
 ```

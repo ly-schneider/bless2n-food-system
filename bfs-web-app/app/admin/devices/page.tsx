@@ -1,4 +1,5 @@
 "use client"
+import Link from "next/link"
 import { useEffect, useState } from "react"
 import { PairDeviceCard } from "@/components/admin/pair-device-card"
 import {
@@ -19,21 +20,24 @@ import { hasPermission } from "@/lib/auth/rbac"
 import { getCSRFToken } from "@/lib/csrf"
 import type { UserRole } from "@/types"
 
-type DeviceBinding = {
+type Device = {
   id: string
-  device_type: string
   name: string
-  created_at: string
-  last_seen_at: string
-  created_by_user_id: string
-  revoked_at?: string | null
-  station_id?: string | null
+  model?: string | null
+  os?: string | null
+  deviceKey?: string | null
+  type: "POS" | "STATION"
+  status: "pending" | "approved" | "rejected" | "revoked"
+  decidedBy?: string | null
+  decidedAt?: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 export default function AdminDevicesPage() {
   const fetchAuth = useAuthorizedFetch()
   const { user: currentUser } = useAuth()
-  const [items, setItems] = useState<DeviceBinding[]>([])
+  const [items, setItems] = useState<Device[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [revoking, setRevoking] = useState<string | null>(null)
@@ -47,8 +51,14 @@ export default function AdminDevicesPage() {
     try {
       const res = await fetchAuth(`/api/v1/devices`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = (await res.json()) as { items?: DeviceBinding[] } | DeviceBinding[]
-      setItems(Array.isArray(data) ? data : data.items || [])
+      const data = (await res.json()) as { items?: Device[] } | Device[]
+      const devices = Array.isArray(data) ? data : data.items || []
+      devices.sort((a, b) => {
+        const aTime = a.decidedAt ? new Date(a.decidedAt).getTime() : 0
+        const bTime = b.decidedAt ? new Date(b.decidedAt).getTime() : 0
+        return bTime - aTime
+      })
+      setItems(devices)
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Geräte konnten nicht geladen werden"
       setError(msg)
@@ -93,6 +103,21 @@ export default function AdminDevicesPage() {
     }
   }
 
+  function formatStatus(status: string) {
+    switch (status) {
+      case "pending":
+        return "Ausstehend"
+      case "approved":
+        return "Genehmigt"
+      case "rejected":
+        return "Abgelehnt"
+      case "revoked":
+        return "Gesperrt"
+      default:
+        return status
+    }
+  }
+
   return (
     <div className="min-w-0 space-y-4">
       <div className="flex items-center justify-between">
@@ -118,31 +143,46 @@ export default function AdminDevicesPage() {
               <TableHeader className="bg-card sticky top-0">
                 <TableRow>
                   <TableHead className="whitespace-nowrap">Name</TableHead>
+                  <TableHead className="whitespace-nowrap">Modell</TableHead>
+                  <TableHead className="whitespace-nowrap">OS</TableHead>
+                  <TableHead className="whitespace-nowrap">Device Key</TableHead>
                   <TableHead className="whitespace-nowrap">Typ</TableHead>
-                  <TableHead className="whitespace-nowrap">Zuletzt gesehen</TableHead>
-                  <TableHead className="whitespace-nowrap">Erstellt</TableHead>
-                  <TableHead className="whitespace-nowrap">Erstellt von</TableHead>
+                  <TableHead className="whitespace-nowrap">Status</TableHead>
+                  <TableHead className="whitespace-nowrap">Entschieden von</TableHead>
+                  <TableHead className="whitespace-nowrap">Entschieden am</TableHead>
                   {canRevoke && <TableHead className="text-right whitespace-nowrap">Aktionen</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {!loading && items.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={canRevoke ? 6 : 5} className="text-muted-foreground text-center">
+                    <TableCell colSpan={canRevoke ? 9 : 8} className="text-muted-foreground text-center">
                       Keine aktiven Geräte.
                     </TableCell>
                   </TableRow>
                 )}
                 {items.map((d) => {
-                  const lastSeen = d.last_seen_at ? new Date(d.last_seen_at).toLocaleString("de-CH") : "-"
-                  const created = d.created_at ? new Date(d.created_at).toLocaleString("de-CH") : "-"
+                  const decidedAt = d.decidedAt ? new Date(d.decidedAt).toLocaleString("de-CH") : "-"
+                  const decidedByLink = d.decidedBy ? (
+                    <Link
+                      href={`/admin/users/${encodeURIComponent(d.decidedBy)}`}
+                      className="text-xs underline underline-offset-2"
+                    >
+                      {d.decidedBy}
+                    </Link>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )
                   return (
                     <TableRow key={d.id} className="even:bg-card odd:bg-muted/40">
                       <TableCell>{d.name || "-"}</TableCell>
-                      <TableCell>{formatDeviceType(d.device_type)}</TableCell>
-                      <TableCell className="whitespace-nowrap">{lastSeen}</TableCell>
-                      <TableCell className="whitespace-nowrap">{created}</TableCell>
-                      <TableCell className="text-xs">{d.created_by_user_id}</TableCell>
+                      <TableCell>{d.model || "-"}</TableCell>
+                      <TableCell>{d.os || "-"}</TableCell>
+                      <TableCell className="text-xs">{d.deviceKey || "-"}</TableCell>
+                      <TableCell>{formatDeviceType(d.type)}</TableCell>
+                      <TableCell>{formatStatus(d.status)}</TableCell>
+                      <TableCell>{decidedByLink}</TableCell>
+                      <TableCell className="whitespace-nowrap">{decidedAt}</TableCell>
                       {canRevoke && (
                         <TableCell className="text-right">
                           <Button
