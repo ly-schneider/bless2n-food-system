@@ -18,7 +18,6 @@ val computedVersionName = "$maj.$min.$pat"
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
 
@@ -50,12 +49,13 @@ android {
         }
         buildConfigField("String", "SUMUP_AFFILIATE_KEY", "\"$sumupAffiliateKey\"")
 
-        buildConfigField("String", "POS_URL", "\"http://127.0.0.1:3000/pos\"")
+        buildConfigField("String", "POS_URL", "\"http://localhost:3000/pos\"")
         buildConfigField("boolean", "DEV_BUILD", "true")
     }
 
     buildFeatures {
         buildConfig = true
+        resValues = true
     }
 
     // Configure release signing via environment variables (set by CI)
@@ -119,7 +119,7 @@ android {
 
             val posUrl = (project.findProperty("posUrl") as String?)
                 ?: System.getenv("POS_URL")
-                ?: "http://127.0.0.1:3000/pos"
+                ?: "http://localhost:3000/pos"
             buildConfigField("String", "POS_URL", "\"$posUrl\"")
             buildConfigField("boolean", "DEV_BUILD", "true")
 
@@ -137,7 +137,7 @@ android {
 
             val posUrl = (project.findProperty("posUrl") as String?)
                 ?: System.getenv("POS_URL")
-                ?: "http://127.0.0.1:3000/pos"
+                ?: "http://localhost:3000/pos"
             buildConfigField("String", "POS_URL", "\"$posUrl\"")
             buildConfigField("boolean", "DEV_BUILD", "false")
 
