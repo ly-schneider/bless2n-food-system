@@ -68,9 +68,7 @@ export default function AdminStationRequestsPage() {
         const j = (await res.json().catch(() => ({}))) as { detail?: string; message?: string }
         throw new Error(j.detail || j.message || `Error ${res.status}`)
       }
-      setStations((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, status: "revoked", approved: false } : s))
-      )
+      setStations((prev) => prev.map((s) => (s.id === id ? { ...s, status: "revoked", approved: false } : s)))
       if (editingId === id) {
         setEditingId(null)
       }

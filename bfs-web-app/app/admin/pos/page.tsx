@@ -60,9 +60,7 @@ export default function AdminPOSPage() {
         const j = (await res.json().catch(() => ({}))) as { detail?: string; message?: string }
         throw new Error(j.detail || j.message || `Error ${res.status}`)
       }
-      setDevices((prev) =>
-        prev.map((d) => (d.id === id ? { ...d, status: "revoked", approved: false } : d))
-      )
+      setDevices((prev) => prev.map((d) => (d.id === id ? { ...d, status: "revoked", approved: false } : d)))
     } catch {
       setError("Sperrung fehlgeschlagen")
     }

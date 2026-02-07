@@ -405,7 +405,12 @@ function ProductCardEditable({
     deltaDirty
 
   const valid =
-    trimmedName.length > 0 && parsedPrice != null && parsedPrice >= 0 && deltaValid && newStock >= 0 && (!jetonRequired || !!jetonId)
+    trimmedName.length > 0 &&
+    parsedPrice != null &&
+    parsedPrice >= 0 &&
+    deltaValid &&
+    newStock >= 0 &&
+    (!jetonRequired || !!jetonId)
 
   function onPriceBlur() {
     // Normalize to two decimals if valid
@@ -452,8 +457,7 @@ function ProductCardEditable({
           : undefined,
         jeton: jetonId ? jetons.find((j) => j.id === jetonId) : undefined,
         isActive,
-        stock:
-          typeof product.stock === "number" ? product.stock + parsedDelta : product.stock,
+        stock: typeof product.stock === "number" ? product.stock + parsedDelta : product.stock,
       }
       setDeltaInput("")
       setStatus("saved")
@@ -488,7 +492,7 @@ function ProductCardEditable({
               disabled={status === "saving"}
             />
             {!isActive && (
-              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 aspect-video grid place-items-center rounded-[11px] bg-black/55">
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 grid aspect-video place-items-center rounded-[11px] bg-black/55">
                 <span className="rounded-full bg-zinc-700 px-3 py-1 text-sm font-medium text-white">Nicht aktiv</span>
               </div>
             )}
@@ -622,7 +626,7 @@ function ProductCardEditable({
                       setStatus("idle")
                       setFieldError(null)
                     }}
-                    className="w-full text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    className="w-full [appearance:textfield] text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     aria-label="Bestand ändern"
                   />
                   <Button
@@ -641,7 +645,9 @@ function ProductCardEditable({
                   </Button>
                 </div>
                 {!deltaValid && <p className="text-destructive text-xs">Bitte eine gültige Zahl eingeben.</p>}
-                {deltaValid && newStock < 0 && <p className="text-destructive text-xs">Bestand darf nicht negativ sein.</p>}
+                {deltaValid && newStock < 0 && (
+                  <p className="text-destructive text-xs">Bestand darf nicht negativ sein.</p>
+                )}
               </div>
             </div>
           )}
@@ -849,129 +855,128 @@ function CreateProductCard({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Neues Produkt anlegen</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <Label htmlFor="new-name">Produktname</Label>
-              <Input
-                id="new-name"
-                value={name}
-                placeholder="Produktname"
-                onChange={(e) => setName(e.target.value)}
-                autoFocus
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="new-price">Preis (CHF)</Label>
-              <Input
-                id="new-price"
-                inputMode="decimal"
-                value={priceInput}
-                onChange={(e) => setPriceInput(e.target.value)}
-                aria-invalid={submitted && (parsedPrice == null || parsedPrice < 0)}
-              />
-              {submitted && (parsedPrice == null || parsedPrice < 0) && (
-                <p className="text-destructive text-xs">Preis muss 0 oder höher sein.</p>
-              )}
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="new-category">Kategorie</Label>
-              <Select value={categoryId || undefined} onValueChange={setCategoryId}>
-                <SelectTrigger id="new-category">
-                  <SelectValue placeholder="Kategorie wählen" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="new-type">Typ</Label>
-              <Select value={type} onValueChange={(v) => setType(v as "simple" | "menu")}>
-                <SelectTrigger id="new-type">
-                  <SelectValue placeholder="Typ wählen" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="menu">Menu</SelectItem>
-                  <SelectItem value="simple">Einfaches Produkt</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="new-image">Bild URL (optional)</Label>
-              <Input id="new-image" value={image} onChange={(e) => setImage(e.target.value)} placeholder="https://…" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="new-jeton">Jeton</Label>
-              <Select
-                value={jetonId || NO_JETON_VALUE}
-                onValueChange={(v) => setJetonId(v === NO_JETON_VALUE ? "" : v)}
-              >
-                <SelectTrigger id="new-jeton">
-                  <SelectValue placeholder="Jeton wählen" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_JETON_VALUE}>Kein Jeton</SelectItem>
-                  {jetons.map((j) => (
-                    <SelectItem key={j.id} value={j.id}>
-                      <span
-                        aria-hidden
-                        className="mr-2 inline-block h-3 w-3 rounded-full align-middle"
-                        style={{ backgroundColor: j.color }}
-                      />
-                      {j.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {submitted && jetonRequired && <p className="text-destructive text-xs">Jeton ist Pflicht im Jeton-Modus.</p>}
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="new-active" className="text-sm font-medium">
-                  Aktiv
-                </Label>
-                <Switch id="new-active" checked={isActive} onCheckedChange={setIsActive} aria-label="Aktiv" />
-              </div>
-              <div className="space-y-1 text-right">
-                <Label htmlFor="new-stock" className="text-sm">
-                  Start-Lager
-                </Label>
-                <Input
-                  id="new-stock"
-                  type="number"
-                  value={initialStock}
-                  onChange={(e) => setInitialStock(parseInt(e.target.value || "0", 10))}
-                  className="w-28"
-                />
-              </div>
-            </div>
-            {submitted && !stockValid && <p className="text-destructive text-xs">Bestand darf nicht negativ sein.</p>}
-            {error && <p className="text-destructive text-sm">{error}</p>}
+        <DialogHeader>
+          <DialogTitle>Neues Produkt anlegen</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label htmlFor="new-name">Produktname</Label>
+            <Input
+              id="new-name"
+              value={name}
+              placeholder="Produktname"
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+            />
           </div>
-          <DialogFooter className="mt-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                onOpenChange(false)
-                reset()
-              }}
-              disabled={saving}
-            >
-              Abbrechen
-            </Button>
-            <Button onClick={handleCreate} disabled={saving || !valid}>
-              {saving ? "Speichern…" : "Erstellen"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <div className="space-y-1">
+            <Label htmlFor="new-price">Preis (CHF)</Label>
+            <Input
+              id="new-price"
+              inputMode="decimal"
+              value={priceInput}
+              onChange={(e) => setPriceInput(e.target.value)}
+              aria-invalid={submitted && (parsedPrice == null || parsedPrice < 0)}
+            />
+            {submitted && (parsedPrice == null || parsedPrice < 0) && (
+              <p className="text-destructive text-xs">Preis muss 0 oder höher sein.</p>
+            )}
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="new-category">Kategorie</Label>
+            <Select value={categoryId || undefined} onValueChange={setCategoryId}>
+              <SelectTrigger id="new-category">
+                <SelectValue placeholder="Kategorie wählen" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="new-type">Typ</Label>
+            <Select value={type} onValueChange={(v) => setType(v as "simple" | "menu")}>
+              <SelectTrigger id="new-type">
+                <SelectValue placeholder="Typ wählen" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="menu">Menu</SelectItem>
+                <SelectItem value="simple">Einfaches Produkt</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="new-image">Bild URL (optional)</Label>
+            <Input id="new-image" value={image} onChange={(e) => setImage(e.target.value)} placeholder="https://…" />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="new-jeton">Jeton</Label>
+            <Select value={jetonId || NO_JETON_VALUE} onValueChange={(v) => setJetonId(v === NO_JETON_VALUE ? "" : v)}>
+              <SelectTrigger id="new-jeton">
+                <SelectValue placeholder="Jeton wählen" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_JETON_VALUE}>Kein Jeton</SelectItem>
+                {jetons.map((j) => (
+                  <SelectItem key={j.id} value={j.id}>
+                    <span
+                      aria-hidden
+                      className="mr-2 inline-block h-3 w-3 rounded-full align-middle"
+                      style={{ backgroundColor: j.color }}
+                    />
+                    {j.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {submitted && jetonRequired && (
+              <p className="text-destructive text-xs">Jeton ist Pflicht im Jeton-Modus.</p>
+            )}
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="new-active" className="text-sm font-medium">
+                Aktiv
+              </Label>
+              <Switch id="new-active" checked={isActive} onCheckedChange={setIsActive} aria-label="Aktiv" />
+            </div>
+            <div className="space-y-1 text-right">
+              <Label htmlFor="new-stock" className="text-sm">
+                Start-Lager
+              </Label>
+              <Input
+                id="new-stock"
+                type="number"
+                value={initialStock}
+                onChange={(e) => setInitialStock(parseInt(e.target.value || "0", 10))}
+                className="w-28"
+              />
+            </div>
+          </div>
+          {submitted && !stockValid && <p className="text-destructive text-xs">Bestand darf nicht negativ sein.</p>}
+          {error && <p className="text-destructive text-sm">{error}</p>}
+        </div>
+        <DialogFooter className="mt-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              onOpenChange(false)
+              reset()
+            }}
+            disabled={saving}
+          >
+            Abbrechen
+          </Button>
+          <Button onClick={handleCreate} disabled={saving || !valid}>
+            {saving ? "Speichern…" : "Erstellen"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 

@@ -98,7 +98,9 @@ export default function AcceptInviteClient() {
           <h1 className="mt-4 mb-2 text-center text-2xl font-semibold">Einladung angenommen</h1>
           <div className="mt-12 space-y-4 text-center">
             <p>Deine Admin-Einladung wurde erfolgreich angenommen.</p>
-            <p className="text-muted-foreground text-sm">Melde dich jetzt an, um auf das Admin-Dashboard zuzugreifen.</p>
+            <p className="text-muted-foreground text-sm">
+              Melde dich jetzt an, um auf das Admin-Dashboard zuzugreifen.
+            </p>
             <Button className="rounded-pill h-10" onClick={() => router.push("/login?next=/admin")}>
               Zur Anmeldung
             </Button>

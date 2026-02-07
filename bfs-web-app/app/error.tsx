@@ -11,19 +11,17 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
   }, [error])
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+    <div className="bg-background flex min-h-screen flex-col items-center justify-center px-4">
       <div className="mx-auto max-w-md text-center">
         <div className="mb-6 flex justify-center">
-          <div className="flex size-20 items-center justify-center rounded-full bg-destructive/10">
-            <AlertTriangle className="size-10 text-destructive" />
+          <div className="bg-destructive/10 flex size-20 items-center justify-center rounded-full">
+            <AlertTriangle className="text-destructive size-10" />
           </div>
         </div>
 
         <h1 className="font-primary mb-4 text-2xl sm:text-3xl">Etwas ist schiefgelaufen</h1>
 
-        <p className="mb-8 text-muted-foreground">
-          Ein unerwarteter Fehler ist aufgetreten.
-        </p>
+        <p className="text-muted-foreground mb-8">Ein unerwarteter Fehler ist aufgetreten.</p>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Button onClick={reset} className="h-10 rounded-xl px-6!">
@@ -40,11 +38,11 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
         </div>
 
         {error.digest && (
-          <div className="mt-8 rounded-lg border border-border bg-card p-4">
-            <p className="text-xs text-muted-foreground">
-              Fehler-ID: <code className="rounded bg-muted px-1.5 py-0.5 font-mono">{error.digest}</code>
+          <div className="border-border bg-card mt-8 rounded-lg border p-4">
+            <p className="text-muted-foreground text-xs">
+              Fehler-ID: <code className="bg-muted rounded px-1.5 py-0.5 font-mono">{error.digest}</code>
             </p>
-            <p className="mt-2 text-xs text-muted-foreground">
+            <p className="text-muted-foreground mt-2 text-xs">
               Bitte gib diese ID an, wenn du uns kontaktierst — sie hilft uns, das Problem schneller zu finden.
             </p>
           </div>

@@ -30,12 +30,14 @@ function normalizeProduct(raw: any): ProductDTO {
   const menuSlots = raw.menuSlots
   if (menuSlots && Array.isArray(menuSlots) && menuSlots.length > 0) {
     product.menu = {
-      slots: menuSlots.map((slot: any) => ({  // eslint-disable-line @typescript-eslint/no-explicit-any
+      slots: menuSlots.map((slot: any) => ({
+        // eslint-disable-line @typescript-eslint/no-explicit-any
         id: slot.id,
         name: slot.name,
         sequence: slot.sequence ?? 0,
         options: Array.isArray(slot.options)
-          ? slot.options.map((opt: any) => ({  // eslint-disable-line @typescript-eslint/no-explicit-any
+          ? slot.options.map((opt: any) => ({
+              // eslint-disable-line @typescript-eslint/no-explicit-any
               id: opt.productId ?? opt.id,
               name: opt.name ?? "",
               priceCents: opt.priceCents ?? 0,

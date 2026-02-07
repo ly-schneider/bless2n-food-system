@@ -1,26 +1,16 @@
 import { betterAuth } from "better-auth"
 import { emailOTP, admin } from "better-auth/plugins"
 import { Pool } from "pg"
-import {
-  ac,
-  customerRole,
-  adminRole,
-} from "./auth/permissions"
+import { ac, customerRole, adminRole } from "./auth/permissions"
 
 // OTP types supported by the backend
 type OTPType = "sign-in" | "email-verification" | "forget-password"
 
 // Notify Go backend to look up the OTP from the database and send the email
-async function sendOTPEmailViaBackend(
-  email: string,
-  type: OTPType
-): Promise<void> {
-  const backendUrl =
-    process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL
+async function sendOTPEmailViaBackend(email: string, type: OTPType): Promise<void> {
+  const backendUrl = process.env.BACKEND_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL
   if (!backendUrl) {
-    throw new Error(
-      "BACKEND_INTERNAL_URL or NEXT_PUBLIC_API_BASE_URL is required"
-    )
+    throw new Error("BACKEND_INTERNAL_URL or NEXT_PUBLIC_API_BASE_URL is required")
   }
 
   const response = await fetch(`${backendUrl}/v1/auth/otp-email`, {
@@ -33,9 +23,7 @@ async function sendOTPEmailViaBackend(
 
   if (!response.ok) {
     const errorBody = await response.text()
-    throw new Error(
-      `Failed to send OTP email: status=${response.status} body=${errorBody}`
-    )
+    throw new Error(`Failed to send OTP email: status=${response.status} body=${errorBody}`)
   }
 }
 
@@ -112,14 +100,7 @@ export const auth = betterAuth({
     emailOTP({
       otpLength: 6,
       expiresIn: 300, // 5 minutes
-      sendVerificationOTP: async ({
-        email,
-        type,
-      }: {
-        email: string
-        otp: string
-        type: string
-      }) => {
+      sendVerificationOTP: async ({ email, type }: { email: string; otp: string; type: string }) => {
         // OTP is not sent over the network — the backend reads it
         // directly from the verification table by email (identifier)
         await sendOTPEmailViaBackend(email, type as OTPType)

@@ -175,7 +175,7 @@ export default function AdminOrderDetailPage() {
     const childrenByRoot: Record<string, OrderItem[]> = {}
     const roots: OrderItem[] = []
     for (const it of orderItems) {
-      const parentId = it.parentLineId ?? (it as Record<string, unknown>).parentItemId as string | null | undefined
+      const parentId = it.parentLineId ?? ((it as Record<string, unknown>).parentItemId as string | null | undefined)
       const hasParent = typeof parentId === "string" && !!parentId
       if (!hasParent) {
         roots.push(it)
@@ -185,7 +185,7 @@ export default function AdminOrderDetailPage() {
       while (rootId) {
         const node = byId[rootId]
         if (!node) break
-        const p = node.parentLineId ?? (node as Record<string, unknown>).parentItemId as string | null | undefined
+        const p = node.parentLineId ?? ((node as Record<string, unknown>).parentItemId as string | null | undefined)
         if (typeof p === "string" && p.length > 0) rootId = p
         else break
       }
@@ -351,7 +351,10 @@ export default function AdminOrderDetailPage() {
                         {children.map((c) => (
                           <div key={c.id} className="flex items-center justify-between gap-2 pl-6 text-sm">
                             <div className="flex min-w-0 items-center gap-2">
-                              <span className="truncate">{c.menuSlotName ? `${c.menuSlotName}: ` : ""}{c.title}</span>
+                              <span className="truncate">
+                                {c.menuSlotName ? `${c.menuSlotName}: ` : ""}
+                                {c.title}
+                              </span>
                               <RedemptionBadge redemption={c.redemption} />
                             </div>
                             <span className="text-muted-foreground shrink-0 text-xs">x{c.quantity}</span>
@@ -387,10 +390,7 @@ export default function AdminOrderDetailPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={statusUpdating}>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={statusUpdating}
-              onClick={() => void handleStatusChange(confirmDialog.status)}
-            >
+            <AlertDialogAction disabled={statusUpdating} onClick={() => void handleStatusChange(confirmDialog.status)}>
               {statusUpdating ? "Wird geändert…" : "Bestätigen"}
             </AlertDialogAction>
           </AlertDialogFooter>

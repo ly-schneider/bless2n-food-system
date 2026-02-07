@@ -1,4 +1,11 @@
-import type { GratisInfo, OrderSyncStatus, PosPaymentMethod, QueuedOrder, QueuedOrderItem, ReceiptItem } from "@/types/order-queue"
+import type {
+  GratisInfo,
+  OrderSyncStatus,
+  PosPaymentMethod,
+  QueuedOrder,
+  QueuedOrderItem,
+  ReceiptItem,
+} from "@/types/order-queue"
 import { generateLocalId } from "./idempotency"
 
 const STORAGE_KEY = "bfs-pos-order-queue"

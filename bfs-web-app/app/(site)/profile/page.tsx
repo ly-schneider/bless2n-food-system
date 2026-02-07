@@ -99,15 +99,13 @@ export default function ProfilePage() {
             E-Mail-Adresse
           </label>
           <Input
-            className="w-full rounded-[11px] border bg-muted px-3 py-2"
+            className="bg-muted w-full rounded-[11px] border px-3 py-2"
             type="email"
             value={user.email}
             disabled
             id="email"
           />
-          <p className="mt-1 text-xs text-muted-foreground">
-            E-Mail-Adresse kann nicht geändert werden
-          </p>
+          <p className="text-muted-foreground mt-1 text-xs">E-Mail-Adresse kann nicht geändert werden</p>
         </div>
 
         <div>

@@ -51,9 +51,7 @@ interface DeviceTokenPayload {
  * Parse device token claims without validation.
  * Note: This does NOT validate the token signature - use for display purposes only.
  */
-export function parseDeviceTokenClaims(
-  token: string
-): { sub: string; device_type: DeviceType; iat: number } | null {
+export function parseDeviceTokenClaims(token: string): { sub: string; device_type: DeviceType; iat: number } | null {
   try {
     const parts = token.split(".")
     if (parts.length !== 3) return null

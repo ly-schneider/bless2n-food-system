@@ -136,7 +136,7 @@ export function POSHeader({ mode, syncStatus }: POSHeaderProps) {
 
   const overlay = locked ? (
     <div
-      className="bg-background fixed inset-0 z-[10000] flex min-h-dvh w-dvw cursor-pointer select-none items-center justify-center overflow-hidden"
+      className="bg-background fixed inset-0 z-[10000] flex min-h-dvh w-dvw cursor-pointer items-center justify-center overflow-hidden select-none"
       onPointerDown={startHold}
       onPointerUp={cancelHold}
       onPointerLeave={cancelHold}
@@ -145,7 +145,7 @@ export function POSHeader({ mode, syncStatus }: POSHeaderProps) {
     >
       {holdProgress > 0 && (
         <div
-          className="pointer-events-none absolute rounded-full bg-muted/50"
+          className="bg-muted/50 pointer-events-none absolute rounded-full"
           style={{
             width: circleSize,
             height: circleSize,
@@ -156,7 +156,7 @@ export function POSHeader({ mode, syncStatus }: POSHeaderProps) {
         />
       )}
       <div className="pointer-events-none relative z-10 flex flex-col items-center gap-4">
-        <div className="flex items-center gap-2 mb-2">
+        <div className="mb-2 flex items-center gap-2">
           <div className="bg-muted flex h-12 w-12 items-center justify-center overflow-hidden rounded-full">
             <Image src="/assets/images/blessthun.png" alt="BlessThun" width={48} height={48} />
           </div>

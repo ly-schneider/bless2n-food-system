@@ -22,10 +22,7 @@ export function useBestMenuSuggestion(products?: ProductDTO[]): BestMenuSuggesti
   const [dismissedMenuId, setDismissedMenuId] = useState<string | null>(null)
   const [dismissedCartKey, setDismissedCartKey] = useState<string | null>(null)
 
-  const cartKey = useMemo(
-    () => cart.items.map((i) => `${i.product.id}:${i.quantity}`).join(","),
-    [cart.items]
-  )
+  const cartKey = useMemo(() => cart.items.map((i) => `${i.product.id}:${i.quantity}`).join(","), [cart.items])
 
   useEffect(() => {
     if (dismissedMenuId && cartKey !== dismissedCartKey) {

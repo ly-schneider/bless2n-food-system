@@ -271,7 +271,11 @@ export default function StationPage() {
       const idem = `idem_${Date.now()}_${Math.random().toString(36).slice(2)}`
       const res = await fetch(`/api/v1/stations/redeem`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${bearerToken}`, "Idempotency-Key": idem },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${bearerToken}`,
+          "Idempotency-Key": idem,
+        },
         body: JSON.stringify({ orderId: scanned }),
       })
       const json = (await res.json().catch(() => ({}))) as { detail?: string; message?: string }

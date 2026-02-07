@@ -22,9 +22,7 @@ const VALID_ROLES: UserRole[] = ["customer", "admin"]
  * Maps Better Auth session user to our User type.
  * Better Auth provides: id, email, name, image, emailVerified, role, etc.
  */
-function mapBetterAuthUserToUser(
-  betterAuthUser: Record<string, unknown> | null | undefined
-): User | null {
+function mapBetterAuthUserToUser(betterAuthUser: Record<string, unknown> | null | undefined): User | null {
   if (!betterAuthUser) return null
 
   const id = String(betterAuthUser.id || "")
@@ -59,9 +57,7 @@ function mapBetterAuthUserToUser(
 
   // Parse role, defaulting to "customer" if not a valid role
   const rawRole = typeof betterAuthUser.role === "string" ? betterAuthUser.role : ""
-  const role: UserRole = VALID_ROLES.includes(rawRole as UserRole)
-    ? (rawRole as UserRole)
-    : "customer"
+  const role: UserRole = VALID_ROLES.includes(rawRole as UserRole) ? (rawRole as UserRole) : "customer"
 
   return {
     id,

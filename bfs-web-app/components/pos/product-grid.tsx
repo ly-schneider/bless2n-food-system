@@ -49,9 +49,7 @@ export function ProductGrid({
     return counts
   }, [activeItems])
 
-  const filtered = activeCat === "all"
-    ? sortedProducts
-    : sortedProducts.filter((it) => it.category?.id === activeCat)
+  const filtered = activeCat === "all" ? sortedProducts : sortedProducts.filter((it) => it.category?.id === activeCat)
 
   return (
     <main className="container mx-auto h-full space-y-3 overflow-y-auto px-3 pb-4 md:px-4">

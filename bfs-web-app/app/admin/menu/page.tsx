@@ -1,16 +1,6 @@
 "use client"
 
-import {
-  ArrowDown,
-  ArrowUp,
-  ChevronDown,
-  ChevronRight,
-  Pencil,
-  Plus,
-  RefreshCw,
-  Trash2,
-  X,
-} from "lucide-react"
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Pencil, Plus, RefreshCw, Trash2, X } from "lucide-react"
 import Image from "next/image"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
@@ -70,7 +60,7 @@ type FetchFn = ReturnType<typeof useAuthorizedFetch>
 
 async function apiCreateMenu(
   fetchAuth: FetchFn,
-  body: { categoryId: string; name: string; priceCents: number; image?: string },
+  body: { categoryId: string; name: string; priceCents: number; image?: string }
 ): Promise<Menu> {
   const res = await fetchAuth(`/api/v1/menus`, {
     method: "POST",
@@ -84,7 +74,7 @@ async function apiCreateMenu(
 async function apiUpdateMenu(
   fetchAuth: FetchFn,
   menuId: string,
-  body: Partial<{ name: string; priceCents: number; isActive: boolean; image: string | null }>,
+  body: Partial<{ name: string; priceCents: number; isActive: boolean; image: string | null }>
 ): Promise<Menu> {
   const res = await fetchAuth(`/api/v1/menus/${encodeURIComponent(menuId)}`, {
     method: "PATCH",
@@ -114,42 +104,29 @@ async function apiCreateSlot(fetchAuth: FetchFn, menuId: string, name: string): 
 }
 
 async function apiUpdateSlot(fetchAuth: FetchFn, menuId: string, slotId: string, name: string): Promise<MenuSlot> {
-  const res = await fetchAuth(
-    `/api/v1/menus/${encodeURIComponent(menuId)}/slots/${encodeURIComponent(slotId)}`,
-    {
-      method: "PATCH",
-      headers: csrfHeaders("PATCH"),
-      body: JSON.stringify({ name }),
-    },
-  )
+  const res = await fetchAuth(`/api/v1/menus/${encodeURIComponent(menuId)}/slots/${encodeURIComponent(slotId)}`, {
+    method: "PATCH",
+    headers: csrfHeaders("PATCH"),
+    body: JSON.stringify({ name }),
+  })
   if (!res.ok) throw new Error(await readErrorMessage(res))
   return (await res.json()) as MenuSlot
 }
 
 async function apiDeleteSlot(fetchAuth: FetchFn, menuId: string, slotId: string): Promise<void> {
-  const res = await fetchAuth(
-    `/api/v1/menus/${encodeURIComponent(menuId)}/slots/${encodeURIComponent(slotId)}`,
-    {
-      method: "DELETE",
-      headers: csrfHeaders("DELETE", false),
-    },
-  )
+  const res = await fetchAuth(`/api/v1/menus/${encodeURIComponent(menuId)}/slots/${encodeURIComponent(slotId)}`, {
+    method: "DELETE",
+    headers: csrfHeaders("DELETE", false),
+  })
   if (!res.ok) throw new Error(await readErrorMessage(res))
 }
 
-async function apiReorderSlots(
-  fetchAuth: FetchFn,
-  menuId: string,
-  positions: Record<string, number>,
-): Promise<void> {
-  const res = await fetchAuth(
-    `/api/v1/menus/${encodeURIComponent(menuId)}/slots/reorder`,
-    {
-      method: "PATCH",
-      headers: csrfHeaders("PATCH"),
-      body: JSON.stringify({ positions }),
-    },
-  )
+async function apiReorderSlots(fetchAuth: FetchFn, menuId: string, positions: Record<string, number>): Promise<void> {
+  const res = await fetchAuth(`/api/v1/menus/${encodeURIComponent(menuId)}/slots/reorder`, {
+    method: "PATCH",
+    headers: csrfHeaders("PATCH"),
+    body: JSON.stringify({ positions }),
+  })
   if (!res.ok) throw new Error(await readErrorMessage(res))
 }
 
@@ -157,7 +134,7 @@ async function apiAddOption(
   fetchAuth: FetchFn,
   menuId: string,
   slotId: string,
-  productId: string,
+  productId: string
 ): Promise<MenuSlotOption> {
   const res = await fetchAuth(
     `/api/v1/menus/${encodeURIComponent(menuId)}/slots/${encodeURIComponent(slotId)}/options`,
@@ -165,7 +142,7 @@ async function apiAddOption(
       method: "POST",
       headers: csrfHeaders("POST"),
       body: JSON.stringify({ productId }),
-    },
+    }
   )
   if (!res.ok) throw new Error(await readErrorMessage(res))
   return (await res.json()) as MenuSlotOption
@@ -175,14 +152,14 @@ async function apiRemoveOption(
   fetchAuth: FetchFn,
   menuId: string,
   slotId: string,
-  optionProductId: string,
+  optionProductId: string
 ): Promise<void> {
   const res = await fetchAuth(
     `/api/v1/menus/${encodeURIComponent(menuId)}/slots/${encodeURIComponent(slotId)}/options/${encodeURIComponent(optionProductId)}`,
     {
       method: "DELETE",
       headers: csrfHeaders("DELETE", false),
-    },
+    }
   )
   if (!res.ok) throw new Error(await readErrorMessage(res))
 }
@@ -249,7 +226,7 @@ export default function AdminMenuPage() {
         setError(e instanceof Error ? e.message : "Löschen fehlgeschlagen")
       }
     },
-    [fetchAuth, refetch],
+    [fetchAuth, refetch]
   )
 
   return (
@@ -551,7 +528,13 @@ function SlotsSection({
             }
           }}
         />
-        <Button size="sm" variant="outline" className="h-8 gap-1" disabled={!newSlotName.trim() || busy} onClick={handleAddSlot}>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 gap-1"
+          disabled={!newSlotName.trim() || busy}
+          onClick={handleAddSlot}
+        >
           <Plus className="size-3.5" />
           Slot
         </Button>
@@ -607,10 +590,7 @@ function SlotRow({
   }
 
   const assignedIds = useMemo(() => new Set((slot.options || []).map((o) => o.optionProductId)), [slot.options])
-  const availableProducts = useMemo(
-    () => products.filter((p) => !assignedIds.has(p.id)),
-    [products, assignedIds],
-  )
+  const availableProducts = useMemo(() => products.filter((p) => !assignedIds.has(p.id)), [products, assignedIds])
 
   const handleAddOption = async (productId: string) => {
     try {
@@ -797,7 +777,12 @@ function CreateMenuDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) onClose()
+      }}
+    >
       <DialogContent className="max-w-[520px] rounded-xl">
         <DialogHeader>
           <DialogTitle className="text-sm tracking-wider">NEUES MENU</DialogTitle>
@@ -931,7 +916,12 @@ function EditMenuDialog({
   }
 
   return (
-    <Dialog open={!!menu} onOpenChange={(o) => { if (!o) onClose() }}>
+    <Dialog
+      open={!!menu}
+      onOpenChange={(o) => {
+        if (!o) onClose()
+      }}
+    >
       <DialogContent className="max-w-[520px] rounded-xl">
         <DialogHeader>
           <DialogTitle className="text-sm tracking-wider">BEARBEITEN</DialogTitle>
@@ -940,12 +930,7 @@ function EditMenuDialog({
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
               <Label htmlFor="edit-name">Name</Label>
-              <Input
-                id="edit-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                maxLength={20}
-              />
+              <Input id="edit-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={20} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-price">Preis (CHF)</Label>
@@ -967,11 +952,7 @@ function EditMenuDialog({
             </div>
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor="edit-active">Aktiv</Label>
-              <Switch
-                id="edit-active"
-                checked={isActive}
-                onCheckedChange={setIsActive}
-              />
+              <Switch id="edit-active" checked={isActive} onCheckedChange={setIsActive} />
             </div>
             <div className="flex items-center justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={onClose} disabled={saving}>

@@ -83,14 +83,16 @@ export function ProductConfigurationModal({
         </DialogHeader>
 
         <div className="space-y-6">
-          {[...product.menu.slots].sort((a, b) => a.sequence - b.sequence).map((slot) => (
-            <MenuSlotSelector
-              key={slot.id}
-              slot={slot}
-              selectedProductId={selectedConfiguration[slot.id]}
-              onSelect={(productId) => handleSlotSelection(slot.id, productId)}
-            />
-          ))}
+          {[...product.menu.slots]
+            .sort((a, b) => a.sequence - b.sequence)
+            .map((slot) => (
+              <MenuSlotSelector
+                key={slot.id}
+                slot={slot}
+                selectedProductId={selectedConfiguration[slot.id]}
+                onSelect={(productId) => handleSlotSelection(slot.id, productId)}
+              />
+            ))}
         </div>
 
         <DialogFooter className="flex-col gap-4 sm:flex-col">

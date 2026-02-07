@@ -2,11 +2,7 @@
 
 import { useCallback } from "react"
 import { useRouter } from "next/navigation"
-import {
-  getDeviceToken,
-  clearDeviceToken,
-  type DeviceType,
-} from "@/lib/device-auth"
+import { getDeviceToken, clearDeviceToken, type DeviceType } from "@/lib/device-auth"
 
 /**
  * Device fetch hook for API requests with device JWT authentication.
@@ -35,12 +31,8 @@ export function useDeviceFetch(deviceType: DeviceType) {
   const setupPath = deviceType === "pos" ? "/pos/setup" : "/station/setup"
 
   return useCallback(
-    async (
-      input: RequestInfo | URL,
-      init?: RequestInit
-    ): Promise<Response> => {
-      const url =
-        typeof input === "string" ? input : (input as URL).toString()
+    async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const url = typeof input === "string" ? input : (input as URL).toString()
       const headers = new Headers(init?.headers || {})
 
       if (token) {
@@ -72,10 +64,7 @@ export function useDeviceFetch(deviceType: DeviceType) {
  * })
  * ```
  */
-export async function deviceFetch(
-  input: RequestInfo | URL,
-  init?: RequestInit
-): Promise<Response> {
+export async function deviceFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const token = getDeviceToken()
   const url = typeof input === "string" ? input : (input as URL).toString()
   const headers = new Headers(init?.headers || {})

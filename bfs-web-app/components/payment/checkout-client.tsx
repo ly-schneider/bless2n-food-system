@@ -36,10 +36,7 @@ export function CheckoutClient() {
       const returnUrl = `${window.location.origin}/food/checkout/payment/next`
 
       // Step 1: Create order
-      const orderRes = await createOrder(
-        { items, contactEmail: email || undefined },
-        accessToken || undefined
-      )
+      const orderRes = await createOrder({ items, contactEmail: email || undefined }, accessToken || undefined)
 
       // Store order ID for success page
       try {

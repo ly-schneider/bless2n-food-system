@@ -76,9 +76,7 @@ export default function InventoryHistoryPage() {
           limit: String(PAGE_SIZE),
           offset: String(newOffset),
         })
-        const res = await fetchAuth(
-          `/api/v1/products/${encodeURIComponent(productId)}/inventory/history?${params}`
-        )
+        const res = await fetchAuth(`/api/v1/products/${encodeURIComponent(productId)}/inventory/history?${params}`)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = (await res.json()) as { items?: LedgerEntry[] }
         const items = data.items ?? []
@@ -141,10 +139,10 @@ export default function InventoryHistoryPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left">
-                <th className="pb-2 pr-4 font-medium">Datum</th>
-                <th className="pb-2 pr-4 font-medium">Delta</th>
-                <th className="pb-2 pr-4 font-medium">Grund</th>
-                <th className="pb-2 pr-4 font-medium">Bestellung</th>
+                <th className="pr-4 pb-2 font-medium">Datum</th>
+                <th className="pr-4 pb-2 font-medium">Delta</th>
+                <th className="pr-4 pb-2 font-medium">Grund</th>
+                <th className="pr-4 pb-2 font-medium">Bestellung</th>
                 <th className="pb-2 font-medium">Erstellt von</th>
               </tr>
             </thead>

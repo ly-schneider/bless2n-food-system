@@ -15,10 +15,7 @@ interface PairingCodeDisplayProps {
   defaultName?: string
 }
 
-type PairingState =
-  | { phase: "input" }
-  | { phase: "showing"; code: string; expiresAt: Date }
-  | { phase: "expired" }
+type PairingState = { phase: "input" } | { phase: "showing"; code: string; expiresAt: Date } | { phase: "expired" }
 
 type PollResponse = {
   status: "pending" | "completed" | "expired"
@@ -142,9 +139,7 @@ export function PairingCodeDisplay({ deviceType, defaultName }: PairingCodeDispl
     <div className="grid min-h-[calc(100dvh-8rem)] place-items-center p-4">
       <div className="bg-background w-full max-w-md rounded-xl border p-5 shadow-sm">
         <h1 className="mb-2 text-2xl font-semibold">{title}</h1>
-        <p className="text-muted-foreground mb-4 text-sm">
-          Dieses Gerät muss von einem Admin gekoppelt werden.
-        </p>
+        <p className="text-muted-foreground mb-4 text-sm">Dieses Gerät muss von einem Admin gekoppelt werden.</p>
 
         {error && (
           <div className="mb-3 rounded-xl border border-red-200 bg-red-50 p-2 text-sm text-red-700">{error}</div>
@@ -171,9 +166,11 @@ export function PairingCodeDisplay({ deviceType, defaultName }: PairingCodeDispl
           <div className="grid gap-4">
             <div className="rounded-xl border bg-gray-50 p-6 text-center dark:bg-gray-900">
               <p className="text-muted-foreground mb-1 text-xs">Kopplungscode</p>
-              <p className="text-4xl font-bold my-4">{formatCode(state.code)}</p>
+              <p className="my-4 text-4xl font-bold">{formatCode(state.code)}</p>
               <p className="text-muted-foreground mt-4 text-xs">
-                {countdown > 0 ? `Gültig für ${Math.floor(countdown / 60)}:${String(countdown % 60).padStart(2, "0")}` : "Abgelaufen"}
+                {countdown > 0
+                  ? `Gültig für ${Math.floor(countdown / 60)}:${String(countdown % 60).padStart(2, "0")}`
+                  : "Abgelaufen"}
               </p>
             </div>
             <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">

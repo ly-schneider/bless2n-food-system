@@ -50,8 +50,8 @@ export default function DatenschutzPage() {
           </p>
           <ul>
             <li>
-              <strong>Zahlungen:</strong> z. B. Payrexx/TWINT; sie verarbeiten Zahlungen sicher und teilen nur notwendige
-              Infos (z. B. Erfolg/Fehlschlag, Transaktions-ID).
+              <strong>Zahlungen:</strong> z. B. Payrexx/TWINT; sie verarbeiten Zahlungen sicher und teilen nur
+              notwendige Infos (z. B. Erfolg/Fehlschlag, Transaktions-ID).
             </li>
             <li>
               <strong>Hosting/IT:</strong> vertraglich gebundene Dienstleister mit Auftragsverarbeitungsverträgen. Wir

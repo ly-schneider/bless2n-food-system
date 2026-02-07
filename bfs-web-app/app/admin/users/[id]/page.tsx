@@ -147,14 +147,11 @@ export default function AdminUserDetailPage() {
                 <span className="text-muted-foreground">E-Mail:</span> {user.email}
               </div>
               <div>
-                <span className="text-muted-foreground">Name:</span>{" "}
-                {user.name || "-"}
+                <span className="text-muted-foreground">Name:</span> {user.name || "-"}
               </div>
               <div>
                 <span className="text-muted-foreground">Rolle:</span>{" "}
-                <span className="uppercase">
-                  {ALL_ROLES.find((r) => r.value === user.role)?.label || user.role}
-                </span>
+                <span className="uppercase">{ALL_ROLES.find((r) => r.value === user.role)?.label || user.role}</span>
               </div>
               <div>
                 <span className="text-muted-foreground">Verifiziert:</span> {user.emailVerified ? "Ja" : "Nein"}

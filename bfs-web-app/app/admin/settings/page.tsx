@@ -90,7 +90,7 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <div className="pt-4 space-y-6">
+    <div className="space-y-6 pt-4">
       <h1 className="font-primary text-2xl">Einstellungen</h1>
 
       {error && (
@@ -139,19 +139,14 @@ export default function AdminSettingsPage() {
       <Card className="rounded-2xl">
         <CardHeader>
           <CardTitle>100 Club Einstellungen</CardTitle>
-          <p className="text-muted-foreground text-sm">
-            Wähle die Produkte, die 100 Club Mitglieder gratis erhalten.
-          </p>
+          <p className="text-muted-foreground text-sm">Wähle die Produkte, die 100 Club Mitglieder gratis erhalten.</p>
         </CardHeader>
         <CardContent className="max-w-lg space-y-4">
           <div className="space-y-2">
             <Label>Gratis-Produkte</Label>
-            <div className="max-h-48 overflow-y-auto rounded-xl border p-2 space-y-1">
+            <div className="max-h-48 space-y-1 overflow-y-auto rounded-xl border p-2">
               {products.map((p) => (
-                <label
-                  key={p.id}
-                  className="flex items-center gap-2 p-2 hover:bg-muted rounded-lg cursor-pointer"
-                >
+                <label key={p.id} className="hover:bg-muted flex cursor-pointer items-center gap-2 rounded-lg p-2">
                   <Checkbox
                     checked={club100FreeProductIds.includes(p.id)}
                     onCheckedChange={(checked) => {

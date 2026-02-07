@@ -105,7 +105,9 @@ export function ImageUpload({ currentImageUrl, onUpload, onRemove, disabled }: I
             sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 25vw"
             quality={90}
             className="rounded-[11px] object-cover"
-            unoptimized={displayUrl.startsWith("blob:") || displayUrl.includes("localhost") || displayUrl.includes("127.0.0.1")}
+            unoptimized={
+              displayUrl.startsWith("blob:") || displayUrl.includes("localhost") || displayUrl.includes("127.0.0.1")
+            }
           />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-zinc-500">
@@ -131,14 +133,7 @@ export function ImageUpload({ currentImageUrl, onUpload, onRemove, disabled }: I
       />
 
       {currentImageUrl && !uploading && (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="w-full"
-          onClick={handleRemove}
-          disabled={busy}
-        >
+        <Button type="button" variant="outline" size="sm" className="w-full" onClick={handleRemove} disabled={busy}>
           {removing ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Trash2 className="mr-1 h-3 w-3" />}
           Bild entfernen
         </Button>

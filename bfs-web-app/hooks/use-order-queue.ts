@@ -72,12 +72,9 @@ export function useOrderQueue({ token, deviceId, onOrderSynced, onPaymentError }
     return managerRef.current?.getOrder(localId)
   }, [])
 
-  const changePaymentMethod = useCallback(
-    (localId: string, newMethod: PosPaymentMethod, gratisInfo?: GratisInfo) => {
-      managerRef.current?.changePaymentMethod(localId, newMethod, gratisInfo)
-    },
-    []
-  )
+  const changePaymentMethod = useCallback((localId: string, newMethod: PosPaymentMethod, gratisInfo?: GratisInfo) => {
+    managerRef.current?.changePaymentMethod(localId, newMethod, gratisInfo)
+  }, [])
 
   const pendingCount = orders.filter((o) => o.status === "pending" || o.status === "syncing").length
   const failedOrders = orders.filter((o) => o.status === "failed" && o.attemptCount >= 5)

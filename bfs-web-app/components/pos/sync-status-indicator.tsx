@@ -10,12 +10,7 @@ interface SyncStatusIndicatorProps {
   onFailedClick?: () => void
 }
 
-export function SyncStatusIndicator({
-  isOnline,
-  pendingCount,
-  failedCount,
-  onFailedClick,
-}: SyncStatusIndicatorProps) {
+export function SyncStatusIndicator({ isOnline, pendingCount, failedCount, onFailedClick }: SyncStatusIndicatorProps) {
   if (isOnline && pendingCount === 0 && failedCount === 0) {
     return null
   }
@@ -26,7 +21,7 @@ export function SyncStatusIndicator({
         <Button
           variant="outline"
           size="sm"
-          className="pointer-events-none rounded-[11px] border-0 bg-destructive/10 text-destructive"
+          className="bg-destructive/10 text-destructive pointer-events-none rounded-[11px] border-0"
         >
           <CloudOff className="size-4" />
           <span>Offline</span>
@@ -34,11 +29,7 @@ export function SyncStatusIndicator({
       )}
 
       {pendingCount > 0 && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="pointer-events-none rounded-[11px] border-0"
-        >
+        <Button variant="outline" size="sm" className="pointer-events-none rounded-[11px] border-0">
           <Loader2 className="size-4 animate-spin" />
           <span>{pendingCount}</span>
         </Button>
@@ -48,7 +39,7 @@ export function SyncStatusIndicator({
         <Button
           variant="outline"
           size="sm"
-          className="rounded-[11px] border-0 bg-destructive/10 text-destructive hover:bg-destructive/20 hover:text-destructive"
+          className="bg-destructive/10 text-destructive hover:bg-destructive/20 hover:text-destructive rounded-[11px] border-0"
           onClick={onFailedClick}
         >
           <AlertCircle className="size-4" />

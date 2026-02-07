@@ -3,13 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import Image from "next/image"
 import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
 import { formatChf } from "@/lib/utils"
 
@@ -230,9 +224,7 @@ export default function AdminDashboard() {
         <Dialog>
           <div className="rounded-lg border border-gray-200">
             <div className="text-muted-foreground text-sm font-medium">Umsatz</div>
-            <div className="mt-1 text-3xl font-semibold">
-              {loading ? "–" : formatChf(totalRevenue)}
-            </div>
+            <div className="mt-1 text-3xl font-semibold">{loading ? "–" : formatChf(totalRevenue)}</div>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm" className="mt-3 gap-1 px-0" disabled={loading}>
                 Details <ChevronRight className="size-4" />

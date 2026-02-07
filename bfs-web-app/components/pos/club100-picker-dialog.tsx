@@ -56,9 +56,7 @@ export function Club100PickerDialog({
   const filtered = useMemo(() => {
     if (!search.trim()) return people
     const q = search.toLowerCase()
-    return people.filter(
-      (p) => p.firstName.toLowerCase().includes(q) || p.lastName.toLowerCase().includes(q)
-    )
+    return people.filter((p) => p.firstName.toLowerCase().includes(q) || p.lastName.toLowerCase().includes(q))
   }, [people, search])
 
   const calculateDiscount = useCallback(
@@ -133,13 +131,13 @@ export function Club100PickerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[80vh] flex flex-col">
+      <DialogContent className="flex max-h-[80vh] flex-col">
         <DialogHeader>
           <DialogTitle>100 Club Mitglied wählen</DialogTitle>
         </DialogHeader>
 
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             placeholder="Nach Name suchen..."
             value={search}
@@ -148,11 +146,11 @@ export function Club100PickerDialog({
           />
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto space-y-2 py-2">
-          {loading && <div className="text-center text-muted-foreground py-4">Laden...</div>}
-          {error && <div className="text-center text-red-600 py-4">{error}</div>}
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto py-2">
+          {loading && <div className="text-muted-foreground py-4 text-center">Laden...</div>}
+          {error && <div className="py-4 text-center text-red-600">{error}</div>}
           {!loading && !error && filtered.length === 0 && (
-            <div className="text-center text-muted-foreground py-4">Keine Mitglieder gefunden</div>
+            <div className="text-muted-foreground py-4 text-center">Keine Mitglieder gefunden</div>
           )}
           {!loading &&
             !error &&
@@ -166,29 +164,25 @@ export function Club100PickerDialog({
                   key={person.id}
                   disabled={noRedemptionsLeft}
                   onClick={() => handleSelect(person)}
-                  className={`w-full flex items-center justify-between rounded-lg border px-4 py-3 text-left transition-colors ${
-                    noRedemptionsLeft
-                      ? "opacity-50 cursor-not-allowed bg-muted"
-                      : "hover:bg-accent cursor-pointer"
+                  className={`flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left transition-colors ${
+                    noRedemptionsLeft ? "bg-muted cursor-not-allowed opacity-50" : "hover:bg-accent cursor-pointer"
                   }`}
                 >
                   <div className="flex-1">
                     <div className="font-medium">
                       {person.firstName} {person.lastName}
                     </div>
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-muted-foreground text-sm">
                       {person.remaining} von {person.max} verbleibend
                     </div>
                     {!noRedemptionsLeft && preview.eligibleCount > 0 && (
-                      <div className="text-sm text-green-600 font-medium mt-1">
-                        {preview.eligibleCount} Produkt{preview.eligibleCount > 1 ? "e" : ""} rabattfähig
-                        ({formatChf(preview.discountCents)} Rabatt)
+                      <div className="mt-1 text-sm font-medium text-green-600">
+                        {preview.eligibleCount} Produkt{preview.eligibleCount > 1 ? "e" : ""} rabattfähig (
+                        {formatChf(preview.discountCents)} Rabatt)
                       </div>
                     )}
                     {noEligibleProducts && (
-                      <div className="text-sm text-amber-600 mt-1">
-                        Keine rabattfähigen Produkte im Warenkorb
-                      </div>
+                      <div className="mt-1 text-sm text-amber-600">Keine rabattfähigen Produkte im Warenkorb</div>
                     )}
                   </div>
                   {!noRedemptionsLeft && (

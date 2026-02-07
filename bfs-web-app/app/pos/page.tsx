@@ -113,44 +113,41 @@ function PosInner() {
   const stockSnapshotRef = useRef<Map<string, number>>(new Map())
 
   // Helper to apply stock to products (including menu slot options)
-  const applyStockToProducts = useCallback(
-    (items: ProductDTO[], stockMap: Map<string, number>): ProductDTO[] => {
-      return items.map((p) => {
-        // Update menu slot options with stock data
-        if (p.type === "menu" && p.menu?.slots) {
-          return {
-            ...p,
-            menu: {
-              ...p.menu,
-              slots: p.menu.slots.map((slot) => ({
-                ...slot,
-                options: slot.options?.map((opt) => {
-                  const optStock = stockMap.get(opt.id)
-                  if (optStock === undefined) return opt
-                  return {
-                    ...opt,
-                    availableQuantity: optStock,
-                    isAvailable: optStock > 0,
-                    isLowStock: optStock > 0 && optStock <= 5,
-                  }
-                }),
-              })),
-            },
-          }
-        }
-        // Update simple product stock
-        const newStock = stockMap.get(p.id)
-        if (newStock === undefined) return p
+  const applyStockToProducts = useCallback((items: ProductDTO[], stockMap: Map<string, number>): ProductDTO[] => {
+    return items.map((p) => {
+      // Update menu slot options with stock data
+      if (p.type === "menu" && p.menu?.slots) {
         return {
           ...p,
-          availableQuantity: newStock,
-          isAvailable: newStock > 0,
-          isLowStock: newStock > 0 && newStock <= 5,
+          menu: {
+            ...p.menu,
+            slots: p.menu.slots.map((slot) => ({
+              ...slot,
+              options: slot.options?.map((opt) => {
+                const optStock = stockMap.get(opt.id)
+                if (optStock === undefined) return opt
+                return {
+                  ...opt,
+                  availableQuantity: optStock,
+                  isAvailable: optStock > 0,
+                  isLowStock: optStock > 0 && optStock <= 5,
+                }
+              }),
+            })),
+          },
         }
-      })
-    },
-    []
-  )
+      }
+      // Update simple product stock
+      const newStock = stockMap.get(p.id)
+      if (newStock === undefined) return p
+      return {
+        ...p,
+        availableQuantity: newStock,
+        isAvailable: newStock > 0,
+        isLowStock: newStock > 0 && newStock <= 5,
+      }
+    })
+  }, [])
 
   // Load products and apply any cached stock snapshot
   useEffect(() => {
@@ -269,7 +266,12 @@ function PosInner() {
             }}
           />
         </div>
-        <BasketPanel token={sessionToken || ""} mode={status?.mode} submitOrder={submitOrder} stockMap={stockSnapshotRef.current} />
+        <BasketPanel
+          token={sessionToken || ""}
+          mode={status?.mode}
+          submitOrder={submitOrder}
+          stockMap={stockSnapshotRef.current}
+        />
 
         {configProduct && (
           <ProductConfigurationModal

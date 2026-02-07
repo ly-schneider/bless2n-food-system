@@ -33,7 +33,8 @@ export function CartItemDisplay({
   const isMenuProduct = item.product.type === "menu"
   const hasConfiguration = item.configuration && Object.keys(item.configuration).length > 0
   const isFullyDiscounted = discountInfo && discountInfo.discountedQuantity >= item.quantity
-  const isPartiallyDiscounted = discountInfo && discountInfo.discountedQuantity > 0 && discountInfo.discountedQuantity < item.quantity
+  const isPartiallyDiscounted =
+    discountInfo && discountInfo.discountedQuantity > 0 && discountInfo.discountedQuantity < item.quantity
   const atMaxQuantity = maxQuantity != null && item.quantity >= maxQuantity
 
   return (
@@ -106,14 +107,18 @@ export function CartItemDisplay({
               <div className="flex items-center gap-2">
                 {isFullyDiscounted ? (
                   <>
-                    <h4 className={`font-family-secondary truncate text-muted-foreground line-through ${isPOS ? "text-xs" : "text-base"}`}>
+                    <h4
+                      className={`font-family-secondary text-muted-foreground truncate line-through ${isPOS ? "text-xs" : "text-base"}`}
+                    >
                       {formatChf(item.product.priceCents * item.quantity)}
                     </h4>
                     <span className={`font-medium text-green-600 ${isPOS ? "text-xs" : "text-base"}`}>Gratis</span>
                   </>
                 ) : isPartiallyDiscounted ? (
                   <>
-                    <h4 className={`font-family-secondary truncate text-muted-foreground line-through ${isPOS ? "text-xs" : "text-base"}`}>
+                    <h4
+                      className={`font-family-secondary text-muted-foreground truncate line-through ${isPOS ? "text-xs" : "text-base"}`}
+                    >
                       {formatChf(item.product.priceCents * item.quantity)}
                     </h4>
                     <span className={`font-medium text-green-600 ${isPOS ? "text-xs" : "text-base"}`}>
@@ -168,14 +173,18 @@ export function CartItemDisplay({
               <div className="flex items-center gap-2">
                 {isFullyDiscounted ? (
                   <>
-                    <h4 className={`font-family-secondary truncate text-muted-foreground line-through ${isPOS ? "text-xs" : "text-sm"}`}>
+                    <h4
+                      className={`font-family-secondary text-muted-foreground truncate line-through ${isPOS ? "text-xs" : "text-sm"}`}
+                    >
                       {formatChf(item.product.priceCents * item.quantity)}
                     </h4>
                     <span className={`font-medium text-green-600 ${isPOS ? "text-xs" : "text-sm"}`}>Gratis</span>
                   </>
                 ) : isPartiallyDiscounted ? (
                   <>
-                    <h4 className={`font-family-secondary truncate text-muted-foreground line-through ${isPOS ? "text-xs" : "text-sm"}`}>
+                    <h4
+                      className={`font-family-secondary text-muted-foreground truncate line-through ${isPOS ? "text-xs" : "text-sm"}`}
+                    >
                       {formatChf(item.product.priceCents * item.quantity)}
                     </h4>
                     <span className={`font-medium text-green-600 ${isPOS ? "text-xs" : "text-sm"}`}>

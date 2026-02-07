@@ -164,17 +164,27 @@ export default function AdminDevicesPage() {
         </div>
       </div>
 
-      <AlertDialog open={!!confirmRevoke} onOpenChange={(open) => { if (!open) setConfirmRevoke(null) }}>
+      <AlertDialog
+        open={!!confirmRevoke}
+        onOpenChange={(open) => {
+          if (!open) setConfirmRevoke(null)
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Gerät sperren</AlertDialogTitle>
             <AlertDialogDescription>
-              Möchtest du &quot;{confirmRevoke?.name}&quot; wirklich sperren? Das Gerät muss danach erneut registriert werden.
+              Möchtest du &quot;{confirmRevoke?.name}&quot; wirklich sperren? Das Gerät muss danach erneut registriert
+              werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { if (confirmRevoke) void handleRevoke(confirmRevoke.id) }}>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmRevoke) void handleRevoke(confirmRevoke.id)
+              }}
+            >
               Sperren
             </AlertDialogAction>
           </AlertDialogFooter>

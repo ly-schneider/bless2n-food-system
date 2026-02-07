@@ -27,7 +27,10 @@ export function PairDeviceCard({ onPaired }: PairDeviceCardProps) {
 
   function formatInput(raw: string): string {
     // Strip non-alphanumeric, uppercase, limit to 6
-    const cleaned = raw.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 6)
+    const cleaned = raw
+      .replace(/[^A-Za-z0-9]/g, "")
+      .toUpperCase()
+      .slice(0, 6)
     if (cleaned.length <= 3) return cleaned
     return `${cleaned.slice(0, 3)} ${cleaned.slice(3)}`
   }
@@ -94,9 +97,7 @@ export function PairDeviceCard({ onPaired }: PairDeviceCardProps) {
         Gib den 6-stelligen Code ein, der auf dem Gerät angezeigt wird.
       </p>
 
-      {error && (
-        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-2 text-sm text-red-700">{error}</div>
-      )}
+      {error && <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-2 text-sm text-red-700">{error}</div>}
 
       {success && (
         <div className="mb-3 rounded-lg border border-green-200 bg-green-50 p-2 text-sm text-green-700">
@@ -112,7 +113,7 @@ export function PairDeviceCard({ onPaired }: PairDeviceCardProps) {
             value={code}
             onChange={(e) => setCode(formatInput(e.target.value))}
             placeholder="z. B. X7K 2M9"
-            className="text-lg mt-1"
+            className="mt-1 text-lg"
             maxLength={7}
             onKeyDown={(e) => {
               if (e.key === "Enter") void handlePair()
