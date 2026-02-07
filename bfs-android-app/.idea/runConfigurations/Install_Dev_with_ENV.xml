@@ -3,7 +3,7 @@
     <ExternalSystemSettings>
       <option name="env">
         <map>
-          <entry key="POS_URL" value="http://127.0.0.1:3000/pos" />
+          <entry key="POS_URL" value="http://localhost:3000/pos" />
           <entry key="SUMUP_AFFILIATE_KEY" value="sup_afk_7lFr7hXW1inT9pue3Xr5Vo3KUfeMc1gX" />
         </map>
       </option>
@@ -23,8 +23,11 @@
     </ExternalSystemSettings>
     <ExternalSystemDebugServerProcess>false</ExternalSystemDebugServerProcess>
     <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+    <ExternalSystemDebugDisabled>false</ExternalSystemDebugDisabled>
     <DebugAllEnabled>false</DebugAllEnabled>
     <RunAsTest>false</RunAsTest>
+    <GradleProfilingDisabled>false</GradleProfilingDisabled>
+    <GradleCoverageDisabled>false</GradleCoverageDisabled>
     <method v="2" />
   </configuration>
 </component>
