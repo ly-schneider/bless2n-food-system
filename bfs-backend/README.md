@@ -38,7 +38,7 @@ The backend follows **Clean Architecture** with clear layer separation:
 - **Model-Driven Design**: Typed models with clear separation from persistence
 - **Better Auth Integration**: Authentication delegated to the Next.js app via Better Auth; the backend validates sessions through JWKS
 - **Payrexx Payments**: Payment processing via Payrexx API with webhook verification
-- **Flyway Migrations**: Database schema managed with versioned SQL migrations
+- **Atlas Migrations**: Database schema managed with versioned SQL migrations via [Atlas](https://atlasgo.io/) with Ent integration
 
 ## Prerequisites
 
@@ -97,8 +97,9 @@ make docker-down        # Stop services (keep volumes)
 make docker-down-v      # Stop services and remove volumes (DATA LOSS)
 
 # Database
-make migrate-local      # Run Flyway migrations against local PostgreSQL
-make migrate-info       # Show migration status
+just migrate            # Apply Atlas migrations against local PostgreSQL
+just migrate-status     # Show migration status
+just migrate-diff name  # Generate a new migration from Ent schema diff
 make seed               # Seed dev data (idempotent)
 make psql               # Open psql shell to local database
 
@@ -115,7 +116,7 @@ make tidy               # Tidy go modules
 bfs-backend/
 ├── cmd/backend/           # Application entry point
 ├── db/
-│   ├── flyway/migrations/ # Versioned SQL migrations (V1, V2, ...)
+│   ├── migrations/        # Atlas versioned SQL migrations
 │   ├── provisioning/      # Database role/schema provisioning SQL
 │   └── seed/              # Development seed data SQL files
 ├── internal/

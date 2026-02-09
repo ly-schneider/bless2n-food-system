@@ -217,6 +217,21 @@ jobs:
           args: --timeout=3m
           skip-cache: false
 
+  migrate-lint:
+    name: Migration Lint
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true'
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - name: Install Atlas CLI
+        uses: ariga/setup-atlas@v0
+
+      - name: Validate migration integrity
+        working-directory: bfs-backend
+        run: atlas migrate validate --dir "file://db/migrations"
+
   backend-test:
     name: Backend Tests
     runs-on: ubuntu-latest
@@ -286,6 +301,7 @@ jobs:
       - docs-quality
       - backend-lint
       - backend-test
+      - migrate-lint
       - terraform-quality
     if: always()
     steps:
@@ -296,6 +312,7 @@ jobs:
              [[ "${{ needs.docs-quality.result }}" == "failure" ]] || \
              [[ "${{ needs.backend-lint.result }}" == "failure" ]] || \
              [[ "${{ needs.backend-test.result }}" == "failure" ]] || \
+             [[ "${{ needs.migrate-lint.result }}" == "failure" ]] || \
              [[ "${{ needs.terraform-quality.result }}" == "failure" ]]; then
             echo "One or more required jobs failed"
             exit 1
