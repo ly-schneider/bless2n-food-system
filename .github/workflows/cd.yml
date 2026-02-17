@@ -199,18 +199,20 @@ jobs:
         with:
           ref: ${{ inputs.commit_sha }}
 
-      - name: Run Flyway migrations
+      - name: Install Atlas CLI
+        uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+
+      - name: Apply Atlas migrations
+        working-directory: bfs-backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          docker run --rm \
-            -v ${{ github.workspace }}/bfs-backend/db/flyway/migrations:/flyway/sql:ro \
-            -e FLYWAY_URL="${{ secrets.FLYWAY_URL }}" \
-            -e FLYWAY_USER="${{ secrets.FLYWAY_USER }}" \
-            -e FLYWAY_PASSWORD="${{ secrets.FLYWAY_PASSWORD }}" \
-            flyway/flyway:9-alpine \
-            -defaultSchema=app \
-            -initSql="SET ROLE app_owner" \
-            -baselineOnMigrate=true \
-            migrate
+          atlas migrate apply \
+            --dir "file://db/migrations" \
+            --url "$DATABASE_URL" \
+            --exec-order linear
 
   deploy:
     name: Deploy ${{ inputs.target_env }}

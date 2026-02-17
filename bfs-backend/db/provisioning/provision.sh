@@ -19,17 +19,17 @@ psql "$NEON_OWNER_URL" \
 
 echo "Setting passwords..."
 
-FLYWAY_PW=$(openssl rand -hex 32)
+ATLAS_PW=$(openssl rand -hex 32)
 APP_BACKEND_PW=$(openssl rand -hex 32)
 APP_ADMIN_PW=$(openssl rand -hex 32)
 
 psql "$NEON_OWNER_URL" <<EOF
-ALTER USER flyway      WITH PASSWORD '$FLYWAY_PW';
+ALTER USER atlas       WITH PASSWORD '$ATLAS_PW';
 ALTER USER app_backend WITH PASSWORD '$APP_BACKEND_PW';
 ALTER USER app_admin   WITH PASSWORD '$APP_ADMIN_PW';
 EOF
 
 echo ""
-echo "flyway:      $FLYWAY_PW"
+echo "atlas:       $ATLAS_PW"
 echo "app_backend: $APP_BACKEND_PW"
 echo "app_admin:   $APP_ADMIN_PW"
