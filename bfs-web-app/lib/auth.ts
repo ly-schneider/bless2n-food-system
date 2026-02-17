@@ -30,8 +30,6 @@ async function sendOTPEmailViaBackend(email: string, type: OTPType): Promise<voi
 export const auth = betterAuth({
   database: new Pool({
     connectionString: process.env.DATABASE_URL,
-    // Use the 'app' schema for all auth tables
-    options: "-c search_path=app",
   }),
 
   secret: process.env.BETTER_AUTH_SECRET,

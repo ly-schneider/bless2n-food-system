@@ -36,7 +36,7 @@ var (
 
 type AdminInviteService interface {
 	// Admin operations (requires auth)
-	List(ctx context.Context, status *string, email *string, limit, offset int) ([]*ent.AdminInvite, int64, error)
+	List(ctx context.Context, status *string, email *string) ([]*ent.AdminInvite, int64, error)
 	GetByID(ctx context.Context, id string) (*ent.AdminInvite, error)
 	Create(ctx context.Context, inviterID, email string, expiresInSec *int) (*ent.AdminInvite, error)
 	Delete(ctx context.Context, id string) error
@@ -86,21 +86,14 @@ func (s *adminInviteService) GetByID(ctx context.Context, id string) (*ent.Admin
 	return invite, nil
 }
 
-func (s *adminInviteService) List(ctx context.Context, status *string, email *string, limit, offset int) ([]*ent.AdminInvite, int64, error) {
-	if limit <= 0 {
-		limit = 50
-	}
-	if limit > 200 {
-		limit = 200
-	}
-
+func (s *adminInviteService) List(ctx context.Context, status *string, email *string) ([]*ent.AdminInvite, int64, error) {
 	var inviteStatus *admininvite.Status
 	if status != nil && *status != "" {
 		st := admininvite.Status(*status)
 		inviteStatus = &st
 	}
 
-	invites, total, err := s.inviteRepo.List(ctx, inviteStatus, email, limit, offset)
+	invites, total, err := s.inviteRepo.List(ctx, inviteStatus, email)
 	if err != nil {
 		return nil, 0, err
 	}

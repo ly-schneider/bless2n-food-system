@@ -20,7 +20,7 @@ func (h *Handlers) ListInvites(w http.ResponseWriter, r *http.Request, params ge
 		statusFilter = &s
 	}
 
-	invites, _, err := h.invites.List(r.Context(), statusFilter, params.Email, 100, 0)
+	invites, _, err := h.invites.List(r.Context(), statusFilter, params.Email)
 	if err != nil {
 		writeEntError(w, err)
 		return

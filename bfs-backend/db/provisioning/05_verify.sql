@@ -2,7 +2,7 @@
 SELECT n.nspname, r.rolname AS owner
 FROM pg_namespace n
 JOIN pg_roles r ON r.oid = n.nspowner
-WHERE n.nspname = 'app';
+WHERE n.nspname = 'public';
 
 -- memberships
 SELECT member.rolname AS member, role.rolname AS role

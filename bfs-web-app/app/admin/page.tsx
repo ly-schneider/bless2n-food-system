@@ -98,7 +98,7 @@ export default function AdminDashboard() {
 
         const [ordersRes, productsRes] = await Promise.all([
           fetchAuth(
-            `/api/v1/orders?date_from=${encodeURIComponent(from.toISOString())}&date_to=${encodeURIComponent(
+            `/api/v1/orders?status=paid&date_from=${encodeURIComponent(from.toISOString())}&date_to=${encodeURIComponent(
               to.toISOString()
             )}`
           ),

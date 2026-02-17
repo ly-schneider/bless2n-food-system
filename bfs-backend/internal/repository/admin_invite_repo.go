@@ -15,7 +15,7 @@ type AdminInviteRepository interface {
 	Create(ctx context.Context, invitedByUserID, inviteeEmail, tokenHash string, status admininvite.Status, expiresAt time.Time) (*ent.AdminInvite, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*ent.AdminInvite, error)
 	GetByTokenHash(ctx context.Context, tokenHash string) (*ent.AdminInvite, error)
-	List(ctx context.Context, status *admininvite.Status, email *string, limit, offset int) ([]*ent.AdminInvite, int64, error)
+	List(ctx context.Context, status *admininvite.Status, email *string) ([]*ent.AdminInvite, int64, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 	UpdateStatus(ctx context.Context, id uuid.UUID, status admininvite.Status) error
 	UpdateTokenAndExpiry(ctx context.Context, id uuid.UUID, tokenHash string, expiresAt time.Time) error
@@ -66,7 +66,7 @@ func (r *adminInviteRepo) GetByTokenHash(ctx context.Context, tokenHash string) 
 	return e, nil
 }
 
-func (r *adminInviteRepo) List(ctx context.Context, status *admininvite.Status, email *string, limit, offset int) ([]*ent.AdminInvite, int64, error) {
+func (r *adminInviteRepo) List(ctx context.Context, status *admininvite.Status, email *string) ([]*ent.AdminInvite, int64, error) {
 	var filters []predicate.AdminInvite
 	if status != nil {
 		filters = append(filters, admininvite.StatusEQ(*status))
@@ -84,8 +84,6 @@ func (r *adminInviteRepo) List(ctx context.Context, status *admininvite.Status, 
 		Where(filters...).
 		WithInviter().
 		Order(admininvite.ByCreatedAt(entDescOpt())).
-		Limit(limit).
-		Offset(offset).
 		All(ctx)
 	if err != nil {
 		return nil, 0, translateError(err)

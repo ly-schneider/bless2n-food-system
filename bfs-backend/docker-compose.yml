@@ -13,6 +13,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-bless2n_food_system}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./db/provisioning/docker-init.sql:/docker-entrypoint-initdb.d/01-provision.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-bless2n_food_system}"]
       interval: 5s

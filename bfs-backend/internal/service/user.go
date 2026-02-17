@@ -11,7 +11,7 @@ import (
 )
 
 type UserService interface {
-	List(ctx context.Context, role *string, limit, offset int) ([]*ent.User, int64, error)
+	List(ctx context.Context, role *string) ([]*ent.User, int64, error)
 	GetByID(ctx context.Context, id string) (*ent.User, error)
 	UpdateRole(ctx context.Context, id string, role string) error
 	UpdateName(ctx context.Context, id string, name string) error
@@ -33,14 +33,7 @@ func NewUserService(
 	}
 }
 
-func (s *userService) List(ctx context.Context, role *string, limit, offset int) ([]*ent.User, int64, error) {
-	if limit <= 0 {
-		limit = 50
-	}
-	if limit > 200 {
-		limit = 200
-	}
-
+func (s *userService) List(ctx context.Context, role *string) ([]*ent.User, int64, error) {
 	q := s.client.User.Query()
 	if role != nil && *role != "" {
 		q = q.Where(user.RoleEQ(user.Role(*role)))
@@ -51,11 +44,7 @@ func (s *userService) List(ctx context.Context, role *string, limit, offset int)
 		return nil, 0, err
 	}
 
-	users, err := q.
-		Order(user.ByCreatedAt(entDescOrder())).
-		Limit(limit).
-		Offset(offset).
-		All(ctx)
+	users, err := q.Order(user.ByCreatedAt(entDescOrder())).All(ctx)
 	if err != nil {
 		return nil, 0, err
 	}

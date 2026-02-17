@@ -21,7 +21,7 @@ func (h *Handlers) ListUsers(w http.ResponseWriter, r *http.Request, params gene
 
 	// After Task 6, a UserService will expose List/Get/Update/Delete
 	// that return ent.User types. For now this calls the future interface.
-	users, _, err := h.users.List(ctx, roleFilter, 100, 0)
+	users, _, err := h.users.List(ctx, roleFilter)
 	if err != nil {
 		writeEntError(w, err)
 		return

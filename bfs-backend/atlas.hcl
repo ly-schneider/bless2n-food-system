@@ -8,26 +8,26 @@ data "external_schema" "ent" {
   ]
 }
 
-data "composite_schema" "app" {
-  schema "app" {
+data "composite_schema" "public" {
+  schema "public" {
     url = data.external_schema.ent.url
   }
-  schema "app" {
+  schema "public" {
     url = "file://db/schema/auth.sql"
   }
 }
 
 env "local" {
-  src = data.composite_schema.app.url
-  dev = "docker://postgres/18/dev?search_path=app"
+  src = data.composite_schema.public.url
+  dev = "docker://postgres/18/dev?search_path=public"
   migration {
     dir = "file://db/migrations"
   }
 }
 
 env "ci" {
-  src = data.composite_schema.app.url
-  dev = "docker://postgres/18/dev?search_path=app"
+  src = data.composite_schema.public.url
+  dev = "docker://postgres/18/dev?search_path=public"
   migration {
     dir = "file://db/migrations"
   }

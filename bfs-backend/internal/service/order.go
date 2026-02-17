@@ -22,9 +22,7 @@ type OrderService interface {
 	GetByIDWithRelations(ctx context.Context, id uuid.UUID) (*ent.Order, error)
 	// GetOrderLines retrieves all order lines for an order.
 	GetOrderLines(ctx context.Context, orderID uuid.UUID) ([]*ent.OrderLine, error)
-	// ListByCustomerID lists orders for a customer with pagination.
-	ListByCustomerID(ctx context.Context, customerID string, limit, offset int) ([]*ent.Order, int64, error)
-	// ListAdmin lists orders for admin with filtering and pagination.
+	ListByCustomerID(ctx context.Context, customerID string) ([]*ent.Order, int64, error)
 	ListAdmin(ctx context.Context, params OrderListParams) ([]*ent.Order, int64, error)
 	// UpdateStatus updates an order's status.
 	UpdateStatus(ctx context.Context, id uuid.UUID, status order.Status) error
@@ -37,8 +35,6 @@ type OrderListParams struct {
 	From   *string // RFC3339 timestamp
 	To     *string // RFC3339 timestamp
 	Query  *string
-	Limit  int
-	Offset int
 }
 
 type orderService struct {
@@ -74,24 +70,11 @@ func (s *orderService) GetOrderLines(ctx context.Context, orderID uuid.UUID) ([]
 	return s.orderLineRepo.GetByOrderID(ctx, orderID)
 }
 
-func (s *orderService) ListByCustomerID(ctx context.Context, customerID string, limit, offset int) ([]*ent.Order, int64, error) {
-	if limit <= 0 {
-		limit = 20
-	}
-	if limit > 100 {
-		limit = 100
-	}
-	return s.orderRepo.ListByCustomerIDPaginated(ctx, customerID, limit, offset)
+func (s *orderService) ListByCustomerID(ctx context.Context, customerID string) ([]*ent.Order, int64, error) {
+	return s.orderRepo.ListByCustomerIDPaginated(ctx, customerID)
 }
 
 func (s *orderService) ListAdmin(ctx context.Context, params OrderListParams) ([]*ent.Order, int64, error) {
-	if params.Limit <= 0 {
-		params.Limit = 50
-	}
-	if params.Limit > 200 {
-		params.Limit = 200
-	}
-
 	// Parse time parameters if provided
 	var from, to *time.Time
 	if params.From != nil && *params.From != "" {
@@ -107,7 +90,7 @@ func (s *orderService) ListAdmin(ctx context.Context, params OrderListParams) ([
 		}
 	}
 
-	return s.orderRepo.ListAdmin(ctx, params.Status, from, to, params.Query, params.Limit, params.Offset)
+	return s.orderRepo.ListAdmin(ctx, params.Status, from, to, params.Query)
 }
 
 func (s *orderService) UpdateStatus(ctx context.Context, id uuid.UUID, status order.Status) error {

@@ -2,6 +2,10 @@ set dotenv-filename := ".env.local"
 
 BIN := justfile_directory() / "bin"
 
+# Default
+default:
+    @just --list
+
 # ── Private ──
 
 [private]
@@ -34,16 +38,6 @@ up *args:
 [group('dev')]
 down *args:
     docker compose --profile dev --profile observability down --remove-orphans {{args}}
-
-# Follow container logs
-[group('dev')]
-logs:
-    docker compose logs -f
-
-# Show running containers
-[group('dev')]
-ps:
-    docker compose ps -a
 
 # Clean build artifacts
 [group('dev')]
@@ -140,6 +134,16 @@ migrate-lint:
 [group('db')]
 migrate-clean:
     atlas schema clean --url "$DATABASE_URL"
+
+# Provision database roles and grants (idempotent)
+[group('db')]
+provision:
+    ./db/provisioning/provision.sh
+
+# Generate and set random passwords for database roles
+[group('db')]
+set-passwords:
+    ./db/provisioning/set-passwords.sh
 
 # Seed dev data
 [group('db')]

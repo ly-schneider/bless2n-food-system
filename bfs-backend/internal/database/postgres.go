@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"net/url"
 	"time"
 
 	"backend/internal/config"
@@ -68,13 +67,8 @@ func (p *PostgresDB) Close() error {
 	return nil
 }
 
-// NewEntClient creates an Ent client connected to PostgreSQL.
-// It sets search_path=app so Ent schemas map to the app.* tables.
-// Returns both the Ent client and the underlying *sql.DB (for health checks, etc.).
 func NewEntClient(cfg config.Config) (*ent.Client, *sql.DB, error) {
-	dsn := ensureSearchPath(cfg.Postgres.DSN, "app")
-
-	db, err := sql.Open("pgx", dsn)
+	db, err := sql.Open("pgx", cfg.Postgres.DSN)
 	if err != nil {
 		zap.L().Error("failed to open database for Ent", zap.Error(err))
 		return nil, nil, fmt.Errorf("failed to open database for Ent: %w", err)
@@ -100,20 +94,4 @@ func NewEntClient(cfg config.Config) (*ent.Client, *sql.DB, error) {
 	zap.L().Info("successfully connected to PostgreSQL with Ent")
 
 	return client, db, nil
-}
-
-// ensureSearchPath appends search_path to the DSN if not already present.
-func ensureSearchPath(dsn, schema string) string {
-	u, err := url.Parse(dsn)
-	if err != nil {
-		// If DSN is not a URL (e.g., key=value format), append directly
-		return dsn + " search_path=" + schema
-	}
-
-	q := u.Query()
-	if q.Get("search_path") == "" {
-		q.Set("search_path", schema)
-		u.RawQuery = q.Encode()
-	}
-	return u.String()
 }

@@ -1,24 +1,24 @@
 -- Menu products (in Menüs category)
-INSERT INTO app.product (id, category_id, type, name, image, price_cents, jeton_id, is_active) VALUES
+INSERT INTO product (id, category_id, type, name, image, price_cents, jeton_id, is_active) VALUES
   ('01970000-0000-7000-0002-000000000100', '01970000-0000-7000-0000-000000000004', 'menu', 'Menü Klein', '/assets/images/products/bless2n-takeaway-menu-1-klein-16x9.png', 1200, NULL, true),
   ('01970000-0000-7000-0002-000000000101', '01970000-0000-7000-0000-000000000004', 'menu', 'Menü Gross', '/assets/images/products/bless2n-takeaway-menu-2-gross-16x9.png', 1500, NULL, true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Menü Klein (Burger + Getränk)
-INSERT INTO app.menu_slot (id, menu_product_id, name, sequence) VALUES
+INSERT INTO menu_slot (id, menu_product_id, name, sequence) VALUES
   ('01970000-0000-7000-0003-000000000001', '01970000-0000-7000-0002-000000000100', 'Burger', 1),
   ('01970000-0000-7000-0003-000000000002', '01970000-0000-7000-0002-000000000100', 'Getränk', 2)
 ON CONFLICT (id) DO NOTHING;
 
 -- Menü Gross (Burger + Beilage + Getränk)
-INSERT INTO app.menu_slot (id, menu_product_id, name, sequence) VALUES
+INSERT INTO menu_slot (id, menu_product_id, name, sequence) VALUES
   ('01970000-0000-7000-0003-000000000010', '01970000-0000-7000-0002-000000000101', 'Burger', 1),
   ('01970000-0000-7000-0003-000000000011', '01970000-0000-7000-0002-000000000101', 'Beilage', 2),
   ('01970000-0000-7000-0003-000000000012', '01970000-0000-7000-0002-000000000101', 'Getränk', 3)
 ON CONFLICT (id) DO NOTHING;
 
 -- Menü Klein
-INSERT INTO app.menu_slot_option (menu_slot_id, option_product_id) VALUES
+INSERT INTO menu_slot_option (menu_slot_id, option_product_id) VALUES
   -- Burgers
   ('01970000-0000-7000-0003-000000000001', '01970000-0000-7000-0002-000000000010'),
   ('01970000-0000-7000-0003-000000000001', '01970000-0000-7000-0002-000000000011'),
@@ -31,7 +31,7 @@ INSERT INTO app.menu_slot_option (menu_slot_id, option_product_id) VALUES
 ON CONFLICT DO NOTHING;
 
 -- Menü Gross
-INSERT INTO app.menu_slot_option (menu_slot_id, option_product_id) VALUES
+INSERT INTO menu_slot_option (menu_slot_id, option_product_id) VALUES
   -- Burgers
   ('01970000-0000-7000-0003-000000000010', '01970000-0000-7000-0002-000000000010'),
   ('01970000-0000-7000-0003-000000000010', '01970000-0000-7000-0002-000000000011'),

@@ -1,9 +1,6 @@
 -- Baseline migration: consolidated from Flyway V1–V24.
 -- For existing databases, apply with: atlas migrate apply --baseline 20250101000000
 
-CREATE SCHEMA IF NOT EXISTS app;
-SET search_path TO app, public;
-
 -- ============================================================
 -- Enum types
 -- ============================================================

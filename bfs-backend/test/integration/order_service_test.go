@@ -97,39 +97,17 @@ func TestOrderService_ListByCustomerID(t *testing.T) {
 	fixtures.CreateOrderWithCustomer(500, entOrder.StatusPaid, entOrder.OriginShop, otherCustomer.String())
 
 	t.Run("ListByCustomerID returns customer orders", func(t *testing.T) {
-		orders, total, err := svc.ListByCustomerID(ctx, customerID.String(), 20, 0)
+		orders, total, err := svc.ListByCustomerID(ctx, customerID.String())
 		require.NoError(t, err)
 		require.Equal(t, int64(3), total)
 		require.Len(t, orders, 3)
 	})
 
-	t.Run("ListByCustomerID with pagination", func(t *testing.T) {
-		orders, total, err := svc.ListByCustomerID(ctx, customerID.String(), 2, 0)
-		require.NoError(t, err)
-		require.Equal(t, int64(3), total)
-		require.Len(t, orders, 2)
-
-		orders, total, err = svc.ListByCustomerID(ctx, customerID.String(), 2, 2)
-		require.NoError(t, err)
-		require.Equal(t, int64(3), total)
-		require.Len(t, orders, 1)
-	})
-
 	t.Run("ListByCustomerID returns empty for customer without orders", func(t *testing.T) {
-		orders, total, err := svc.ListByCustomerID(ctx, uuid.Must(uuid.NewV7()).String(), 20, 0)
+		orders, total, err := svc.ListByCustomerID(ctx, uuid.Must(uuid.NewV7()).String())
 		require.NoError(t, err)
 		require.Equal(t, int64(0), total)
 		require.Empty(t, orders)
-	})
-
-	t.Run("ListByCustomerID respects limit boundaries", func(t *testing.T) {
-		orders, _, err := svc.ListByCustomerID(ctx, customerID.String(), 0, 0)
-		require.NoError(t, err)
-		require.True(t, len(orders) > 0)
-
-		orders, _, err = svc.ListByCustomerID(ctx, customerID.String(), 200, 0)
-		require.NoError(t, err)
-		require.LessOrEqual(t, len(orders), 100)
 	})
 }
 
@@ -150,7 +128,7 @@ func TestOrderService_ListAdmin(t *testing.T) {
 	fixtures.CreateOrder(2000, entOrder.StatusCancelled, entOrder.OriginShop)
 
 	t.Run("ListAdmin returns all orders", func(t *testing.T) {
-		params := service.OrderListParams{Limit: 50, Offset: 0}
+		params := service.OrderListParams{}
 		orders, total, err := svc.ListAdmin(ctx, params)
 		require.NoError(t, err)
 		require.Equal(t, int64(3), total)
@@ -159,7 +137,7 @@ func TestOrderService_ListAdmin(t *testing.T) {
 
 	t.Run("ListAdmin filters by status", func(t *testing.T) {
 		status := entOrder.StatusPending
-		params := service.OrderListParams{Status: &status, Limit: 50}
+		params := service.OrderListParams{Status: &status}
 		orders, total, err := svc.ListAdmin(ctx, params)
 		require.NoError(t, err)
 		require.Equal(t, int64(1), total)
@@ -167,34 +145,20 @@ func TestOrderService_ListAdmin(t *testing.T) {
 		require.Equal(t, entOrder.StatusPending, orders[0].Status)
 	})
 
-	t.Run("ListAdmin with pagination", func(t *testing.T) {
-		params := service.OrderListParams{Limit: 2, Offset: 0}
-		orders, total, err := svc.ListAdmin(ctx, params)
-		require.NoError(t, err)
-		require.Equal(t, int64(3), total)
-		require.Len(t, orders, 2)
-
-		params = service.OrderListParams{Limit: 2, Offset: 2}
-		orders, _, err = svc.ListAdmin(ctx, params)
-		require.NoError(t, err)
-		require.Len(t, orders, 1)
-	})
-
 	t.Run("ListAdmin filters by date range", func(t *testing.T) {
 		now := time.Now()
 		from := now.Add(-1 * time.Hour).Format(time.RFC3339)
 		to := now.Add(1 * time.Hour).Format(time.RFC3339)
 
-		params := service.OrderListParams{From: &from, To: &to, Limit: 50}
+		params := service.OrderListParams{From: &from, To: &to}
 		orders, total, err := svc.ListAdmin(ctx, params)
 		require.NoError(t, err)
 		require.Equal(t, int64(3), total)
 		require.Len(t, orders, 3)
 
-		// Test with past date range (no orders)
 		pastFrom := now.Add(-48 * time.Hour).Format(time.RFC3339)
 		pastTo := now.Add(-24 * time.Hour).Format(time.RFC3339)
-		params = service.OrderListParams{From: &pastFrom, To: &pastTo, Limit: 50}
+		params = service.OrderListParams{From: &pastFrom, To: &pastTo}
 		orders, total, err = svc.ListAdmin(ctx, params)
 		require.NoError(t, err)
 		require.Equal(t, int64(0), total)

@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -44,9 +43,6 @@ func NewTestDB(t *testing.T) *TestDB {
 		t.Skip("POSTGRES_TEST_DSN not set; skipping integration tests")
 	}
 
-	// Ensure search_path=app so Ent tables land in the app schema
-	dsn = ensureSearchPath(dsn, "app")
-
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		t.Fatalf("failed to open test database: %v", err)
@@ -71,19 +67,10 @@ func NewTestDB(t *testing.T) *TestDB {
 	return tdb
 }
 
-// setupSchema creates the app schema and runs Ent auto-migration.
 func (tdb *TestDB) setupSchema(t *testing.T) {
 	t.Helper()
 
-	ctx := context.Background()
-
-	// Create app schema if it doesn't exist
-	if _, err := tdb.DB.ExecContext(ctx, "CREATE SCHEMA IF NOT EXISTS app"); err != nil {
-		t.Fatalf("failed to create app schema: %v", err)
-	}
-
-	// Use Ent auto-migration to create/update tables
-	if err := tdb.Client.Schema.Create(ctx); err != nil {
+	if err := tdb.Client.Schema.Create(context.Background()); err != nil {
 		t.Fatalf("failed to run Ent schema migration: %v", err)
 	}
 }
@@ -300,21 +287,6 @@ func TimeWithin(a, b time.Time, d time.Duration) bool {
 		diff = -diff
 	}
 	return diff <= d
-}
-
-// ensureSearchPath appends search_path to the DSN if not already present.
-func ensureSearchPath(dsn, schema string) string {
-	u, err := url.Parse(dsn)
-	if err != nil {
-		return dsn + " search_path=" + schema
-	}
-
-	q := u.Query()
-	if q.Get("search_path") == "" {
-		q.Set("search_path", schema)
-		u.RawQuery = q.Encode()
-	}
-	return u.String()
 }
 
 // MockElvantoService is a no-op ElvantoService for testing.

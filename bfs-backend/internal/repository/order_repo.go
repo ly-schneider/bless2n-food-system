@@ -23,9 +23,8 @@ type OrderRepository interface {
 	Update(ctx context.Context, id uuid.UUID, totalCents int64, status order.Status, origin order.Origin, customerID, contactEmail, paymentAttemptID *string, payrexxGatewayID, payrexxTransactionID *int) (*ent.Order, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status order.Status) error
 
-	// Admin and customer listing with pagination
-	ListAdmin(ctx context.Context, status *order.Status, from, to *time.Time, q *string, limit, offset int) ([]*ent.Order, int64, error)
-	ListByCustomerIDPaginated(ctx context.Context, customerID string, limit, offset int) ([]*ent.Order, int64, error)
+	ListAdmin(ctx context.Context, status *order.Status, from, to *time.Time, q *string) ([]*ent.Order, int64, error)
+	ListByCustomerIDPaginated(ctx context.Context, customerID string) ([]*ent.Order, int64, error)
 
 	// POS payment methods - creates payment record and updates order status
 	SetPosPaymentCash(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error
@@ -207,7 +206,7 @@ func (r *orderRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status order
 	return translateError(err)
 }
 
-func (r *orderRepo) ListAdmin(ctx context.Context, status *order.Status, from, to *time.Time, q *string, limit, offset int) ([]*ent.Order, int64, error) {
+func (r *orderRepo) ListAdmin(ctx context.Context, status *order.Status, from, to *time.Time, q *string) ([]*ent.Order, int64, error) {
 	// Build count query with filters
 	countQ := r.ec(ctx).Order.Query()
 	if status != nil {
@@ -264,8 +263,6 @@ func (r *orderRepo) ListAdmin(ctx context.Context, status *order.Status, from, t
 
 	rows, err := dataQ.
 		Order(order.ByCreatedAt(entDescOpt())).
-		Limit(limit).
-		Offset(offset).
 		All(ctx)
 	if err != nil {
 		return nil, 0, translateError(err)
@@ -274,7 +271,7 @@ func (r *orderRepo) ListAdmin(ctx context.Context, status *order.Status, from, t
 	return rows, int64(total), nil
 }
 
-func (r *orderRepo) ListByCustomerIDPaginated(ctx context.Context, customerID string, limit, offset int) ([]*ent.Order, int64, error) {
+func (r *orderRepo) ListByCustomerIDPaginated(ctx context.Context, customerID string) ([]*ent.Order, int64, error) {
 	total, err := r.ec(ctx).Order.Query().
 		Where(order.CustomerIDEQ(customerID)).
 		Count(ctx)
@@ -286,8 +283,6 @@ func (r *orderRepo) ListByCustomerIDPaginated(ctx context.Context, customerID st
 		Where(order.CustomerIDEQ(customerID)).
 		WithLines().
 		Order(order.ByCreatedAt(entDescOpt())).
-		Limit(limit).
-		Offset(offset).
 		All(ctx)
 	if err != nil {
 		return nil, 0, translateError(err)

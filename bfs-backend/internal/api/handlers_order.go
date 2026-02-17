@@ -39,7 +39,7 @@ func (h *Handlers) ListOrders(w http.ResponseWriter, r *http.Request, params gen
 			writeError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
 			return
 		}
-		rows, _, err := h.orders.ListByCustomerID(ctx, uid, 50, 0)
+		rows, _, err := h.orders.ListByCustomerID(ctx, uid)
 		if err != nil {
 			writeEntError(w, err)
 			return
@@ -52,10 +52,7 @@ func (h *Handlers) ListOrders(w http.ResponseWriter, r *http.Request, params gen
 		return
 	}
 
-	listParams := service.OrderListParams{
-		Limit:  50,
-		Offset: 0,
-	}
+	listParams := service.OrderListParams{}
 	if params.Status != nil {
 		s := order.Status(*params.Status)
 		listParams.Status = &s

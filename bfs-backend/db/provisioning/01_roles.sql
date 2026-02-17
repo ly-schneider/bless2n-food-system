@@ -1,11 +1,32 @@
-CREATE ROLE app_owner   NOLOGIN;
-CREATE ROLE app_runtime NOLOGIN;
-CREATE ROLE app_readonly NOLOGIN;
+DO $$ BEGIN
+  CREATE ROLE app_owner NOLOGIN;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE ROLE atlas       LOGIN NOINHERIT;
-CREATE ROLE app_admin   LOGIN NOINHERIT;
+DO $$ BEGIN
+  CREATE ROLE app_runtime NOLOGIN;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-CREATE ROLE app_backend LOGIN;
+DO $$ BEGIN
+  CREATE ROLE app_readonly NOLOGIN;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE ROLE atlas LOGIN NOINHERIT;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE ROLE app_admin LOGIN NOINHERIT;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE ROLE app_backend LOGIN;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 GRANT app_runtime  TO app_backend;
 GRANT app_owner    TO atlas;
