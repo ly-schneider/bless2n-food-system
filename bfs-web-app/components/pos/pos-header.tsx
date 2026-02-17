@@ -157,7 +157,7 @@ export function POSHeader({ mode, syncStatus }: POSHeaderProps) {
       )}
       <div className="pointer-events-none relative z-10 flex flex-col items-center gap-4">
         <div className="mb-2 flex items-center gap-2">
-          <div className="bg-muted flex h-10 w-10 items-center justify-center overflow-hidden rounded-full mr-1">
+          <div className="bg-muted mr-1 flex h-10 w-10 items-center justify-center overflow-hidden rounded-full">
             <Image src="/assets/images/blessthun.png" alt="BlessThun" width={40} height={40} />
           </div>
           <span className="text-lg font-semibold">BlessThun</span>

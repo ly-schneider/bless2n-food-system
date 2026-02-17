@@ -209,6 +209,13 @@ jobs:
           echo "package ent" > ./internal/generated/ent/ent.go
           go run -mod=mod entgo.io/ent/cmd/ent generate --feature sql/modifier --feature sql/upsert --target ./internal/generated/ent ./internal/schema
 
+      - name: Generate OpenAPI
+        working-directory: bfs-backend
+        run: |
+          npx @redocly/cli bundle openapi/openapi.yaml -o openapi/bundled.yaml
+          go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.1
+          oapi-codegen -config oapi-codegen.yaml openapi/bundled.yaml
+
       - name: Lint
         uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9
         with:
@@ -251,6 +258,13 @@ jobs:
           mkdir -p ./internal/generated/ent
           echo "package ent" > ./internal/generated/ent/ent.go
           go run -mod=mod entgo.io/ent/cmd/ent generate --feature sql/modifier --feature sql/upsert --target ./internal/generated/ent ./internal/schema
+
+      - name: Generate OpenAPI
+        working-directory: bfs-backend
+        run: |
+          npx @redocly/cli bundle openapi/openapi.yaml -o openapi/bundled.yaml
+          go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.1
+          oapi-codegen -config oapi-codegen.yaml openapi/bundled.yaml
 
       - name: Run tests
         working-directory: bfs-backend
