@@ -37,7 +37,7 @@ env "deploy" {
   url = getenv("DATABASE_URL")
   migration {
     dir        = "file://db/migrations"
-    exec_order = linear
+    exec_order = LINEAR
   }
   pre "migrate_apply" {
     exec {
