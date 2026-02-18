@@ -1,0 +1,145 @@
+collection:
+  get:
+    tags: [Users]
+    summary: List users
+    operationId: listUsers
+    security:
+      - sessionAuth: []
+    x-required-permissions: [users:read]
+    parameters:
+      - name: role
+        in: query
+        description: Filter by role
+        schema:
+          $ref: '../schemas/users.yaml#/UserRole'
+    responses:
+      '200':
+        description: User list
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/users.yaml#/UserList'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+item:
+  parameters:
+    - name: userId
+      in: path
+      required: true
+      description: Better Auth user ID (text, not UUID)
+      schema:
+        type: string
+
+  get:
+    tags: [Users]
+    summary: Get user
+    operationId: getUser
+    security:
+      - sessionAuth: []
+    x-required-permissions: [users:read]
+    responses:
+      '200':
+        description: User details
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/users.yaml#/User'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+  patch:
+    tags: [Users]
+    summary: Update user
+    description: Update user role or ban status.
+    operationId: updateUser
+    security:
+      - sessionAuth: []
+    x-required-permissions: [users:role-set]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/users.yaml#/UserUpdate'
+          examples:
+            promote_to_admin:
+              summary: Promote to admin
+              value:
+                role: admin
+            demote_to_customer:
+              summary: Demote to customer
+              value:
+                role: customer
+    responses:
+      '200':
+        description: User updated
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/users.yaml#/User'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+  delete:
+    tags: [Users]
+    summary: Delete user
+    description: |
+      Permanently deletes a user and cascades to sessions, accounts,
+      and API keys (Better Auth tables). Orders are preserved with
+      `customer_id` set to NULL.
+    operationId: deleteUser
+    security:
+      - sessionAuth: []
+    x-required-permissions: [users:role-set]
+    responses:
+      '204':
+        description: User deleted
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'

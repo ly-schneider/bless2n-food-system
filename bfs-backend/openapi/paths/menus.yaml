@@ -1,0 +1,468 @@
+collection:
+  get:
+    tags: [Menus]
+    summary: List menus
+    description: Returns all menu-type products with their slots and options.
+    operationId: listMenus
+    security:
+      - sessionAuth: []
+    x-required-permissions: [menus:write]
+    responses:
+      '200':
+        description: Menu list
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/menus.yaml#/MenuList'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+  post:
+    tags: [Menus]
+    summary: Create menu
+    description: |
+      Creates a new menu product (type=menu) with the given name and price.
+      Add slots and options after creation.
+    operationId: createMenu
+    security:
+      - sessionAuth: []
+    x-required-permissions: [menus:write]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/menus.yaml#/MenuCreate'
+          example:
+            name: "Lunch Menu"
+            priceCents: 1200
+            categoryId: "019412ab-0000-7000-8000-000000000001"
+    responses:
+      '201':
+        description: Menu created
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/menus.yaml#/Menu'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+item:
+  parameters:
+    - name: menuId
+      in: path
+      required: true
+      description: UUID of the menu product
+      schema:
+        type: string
+        format: uuid
+
+  get:
+    tags: [Menus]
+    summary: Get menu
+    description: Returns a menu product with all its slots and option products.
+    operationId: getMenu
+    security:
+      - sessionAuth: []
+    x-required-permissions: [menus:write]
+    responses:
+      '200':
+        description: Menu with slots and options
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/menus.yaml#/Menu'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+  patch:
+    tags: [Menus]
+    summary: Update menu
+    operationId: updateMenu
+    security:
+      - sessionAuth: []
+    x-required-permissions: [menus:write]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/menus.yaml#/MenuUpdate'
+          examples:
+            rename:
+              summary: Rename menu
+              value:
+                name: "Dinner Menu"
+            deactivate:
+              summary: Deactivate menu
+              value:
+                isActive: false
+    responses:
+      '200':
+        description: Menu updated
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/menus.yaml#/Menu'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+  delete:
+    tags: [Menus]
+    summary: Delete menu
+    description: Deletes the menu product and cascades to its slots and options.
+    operationId: deleteMenu
+    security:
+      - sessionAuth: []
+    x-required-permissions: [menus:write]
+    responses:
+      '204':
+        description: Menu deleted
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+slots:
+  parameters:
+    - name: menuId
+      in: path
+      required: true
+      description: UUID of the menu product
+      schema:
+        type: string
+        format: uuid
+
+  post:
+    tags: [Menus]
+    summary: Create menu slot
+    operationId: createMenuSlot
+    security:
+      - sessionAuth: []
+    x-required-permissions: [menus:write]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/menus.yaml#/MenuSlotCreate'
+          example:
+            name: "Main"
+    responses:
+      '201':
+        description: Slot created
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/menus.yaml#/MenuSlot'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+slots-reorder:
+  parameters:
+    - name: menuId
+      in: path
+      required: true
+      description: UUID of the menu product
+      schema:
+        type: string
+        format: uuid
+
+  patch:
+    tags: [Menus]
+    summary: Reorder menu slots
+    description: Sets the display order of all slots in this menu.
+    operationId: reorderMenuSlots
+    security:
+      - sessionAuth: []
+    x-required-permissions: [menus:write]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/menus.yaml#/MenuSlotReorder'
+          example:
+            positions:
+              "019412ab-0000-7000-8000-000000000010": 0
+              "019412ab-0000-7000-8000-000000000011": 1
+              "019412ab-0000-7000-8000-000000000012": 2
+    responses:
+      '200':
+        description: Slots reordered
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/menus.yaml#/MenuSlotList'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+slot-item:
+  parameters:
+    - name: menuId
+      in: path
+      required: true
+      description: UUID of the menu product
+      schema:
+        type: string
+        format: uuid
+    - name: slotId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  patch:
+    tags: [Menus]
+    summary: Rename menu slot
+    operationId: updateMenuSlot
+    security:
+      - sessionAuth: []
+    x-required-permissions: [menus:write]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/menus.yaml#/MenuSlotUpdate'
+          example:
+            name: "Side Dish"
+    responses:
+      '200':
+        description: Slot updated
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/menus.yaml#/MenuSlot'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+  delete:
+    tags: [Menus]
+    summary: Delete menu slot
+    description: Deletes the slot and cascades to its option assignments.
+    operationId: deleteMenuSlot
+    security:
+      - sessionAuth: []
+    x-required-permissions: [menus:write]
+    responses:
+      '204':
+        description: Slot deleted
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+options:
+  parameters:
+    - name: menuId
+      in: path
+      required: true
+      description: UUID of the menu product
+      schema:
+        type: string
+        format: uuid
+    - name: slotId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  post:
+    tags: [Menus]
+    summary: Add option product to slot
+    description: Attaches an existing simple product as an option in this slot.
+    operationId: addSlotOption
+    security:
+      - sessionAuth: []
+    x-required-permissions: [menus:write]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/menus.yaml#/MenuSlotOptionCreate'
+          example:
+            productId: "019412ab-0000-7000-8000-000000000005"
+    responses:
+      '201':
+        description: Option added
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/menus.yaml#/MenuSlotOption'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '409':
+        description: Product already assigned to this slot
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+option-item:
+  parameters:
+    - name: menuId
+      in: path
+      required: true
+      description: UUID of the menu product
+      schema:
+        type: string
+        format: uuid
+    - name: slotId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    - name: optionProductId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  delete:
+    tags: [Menus]
+    summary: Remove option product from slot
+    operationId: removeSlotOption
+    security:
+      - sessionAuth: []
+    x-required-permissions: [menus:write]
+    responses:
+      '204':
+        description: Option removed
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'

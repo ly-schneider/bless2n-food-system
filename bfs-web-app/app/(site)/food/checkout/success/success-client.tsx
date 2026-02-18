@@ -11,75 +11,71 @@ import { addOrder } from "@/lib/orders-storage"
 export default function CheckoutSuccessClient() {
   const sp = useSearchParams()
   const router = useRouter()
-  const { cart, clearCart } = useCart()
+  const { clearCart } = useCart()
   const clearedRef = useRef(false)
 
   const orderIdParam = sp.get("order_id")
-  const pi = sp.get("payment_intent")
-  const redirectStatus = sp.get("redirect_status")
 
   const [orderId, setOrderId] = useState<string | null>(orderIdParam)
+  const [loading, setLoading] = useState(!orderIdParam)
 
   useEffect(() => {
-    if (redirectStatus === "failed") {
-      router.replace("/food/checkout/error")
-      return
-    }
-    if (redirectStatus === "canceled") {
-      router.replace("/food/checkout/cancel")
-      return
-    }
+    const resolvePendingOrder = async () => {
+      if (orderIdParam) {
+        setOrderId(orderIdParam)
+        setLoading(false)
 
-    const resolvePI = async () => {
-      if (!pi) return
-      try {
-        const s = await getPaymentStatus(pi)
-        if (s.status === "succeeded") {
-          const oid = s.metadata?.order_id || null
-          if (oid) {
-            addOrder(oid, cart.items, cart.totalCents)
-            setOrderId(oid)
-          }
-          if (!clearedRef.current) {
-            clearedRef.current = true
-            clearCart()
-          }
-          try {
-            sessionStorage.removeItem("bfs.pi.current")
-          } catch {}
-        } else {
-          if (redirectStatus === "canceled") {
+        try {
+          const status = await getPaymentStatus(orderIdParam)
+          if (status.status !== "paid" && status.status !== "pending") {
             router.replace("/food/checkout/cancel")
-          } else {
-            router.replace("/food/checkout/error")
+            return
+          }
+        } catch {}
+
+        if (!clearedRef.current) {
+          clearedRef.current = true
+          addOrder(orderIdParam)
+          clearCart()
+        }
+        try {
+          sessionStorage.removeItem("bfs.pending_order")
+        } catch {}
+        return
+      }
+
+      try {
+        const raw = sessionStorage.getItem("bfs.pending_order")
+        if (raw) {
+          const parsed = JSON.parse(raw) as { orderId?: string }
+          if (parsed?.orderId) {
+            setOrderId(parsed.orderId)
+
+            if (!clearedRef.current) {
+              clearedRef.current = true
+              addOrder(parsed.orderId)
+              clearCart()
+            }
+            sessionStorage.removeItem("bfs.pending_order")
+            setLoading(false)
+            return
           }
         }
-      } catch {
-        router.replace("/food/checkout/error")
-      }
-    }
-    resolvePI()
-  }, [pi, redirectStatus, clearCart, router, cart.items, cart.totalCents])
+      } catch {}
 
-  useEffect(() => {
-    if (redirectStatus === "failed") {
-      router.replace("/food/checkout/error")
-      return
+      setLoading(false)
     }
-    if (redirectStatus === "canceled") {
-      router.replace("/food/checkout/cancel")
-      return
-    }
-    if (orderIdParam && !clearedRef.current) {
-      addOrder(orderIdParam, cart.items, cart.totalCents)
-      clearedRef.current = true
-      clearCart()
-    }
-  }, [orderIdParam, redirectStatus, clearCart, cart.items, cart.totalCents, router])
 
-  useEffect(() => {
-    if (orderId) addOrder(orderId)
-  }, [orderId])
+    resolvePendingOrder()
+  }, [orderIdParam, clearCart, router])
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center">
+        <p className="text-muted-foreground">Zahlungsstatus wird geprüft…</p>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center gap-10 px-4 pb-28">

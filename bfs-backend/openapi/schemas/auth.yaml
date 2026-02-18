@@ -1,0 +1,22 @@
+OtpEmailRequest:
+  type: object
+  required: [email, type]
+  properties:
+    email:
+      type: string
+      format: email
+    type:
+      type: string
+      enum: [sign-in, email-verification, forget-password]
+      description: |
+        - `sign-in`: Login OTP
+        - `email-verification`: Verify email address
+        - `forget-password`: Password reset
+
+OtpEmailResponse:
+  type: object
+  properties:
+    expiresAt:
+      type: string
+      format: date-time
+      description: When the OTP expires (5 minutes from now)

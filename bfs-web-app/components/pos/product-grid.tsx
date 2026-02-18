@@ -15,45 +15,41 @@ export function ProductGrid({
   const [activeCat, setActiveCat] = useState<string>("all")
 
   const getCatPos = (c?: { position?: number | null } | null) => {
-    const p = c?.position
-    return typeof p === "number" && isFinite(p) ? p : 1_000_000
+    const v = c?.position
+    return typeof v === "number" && isFinite(v) ? v : 1_000_000
   }
+
+  const activeItems = products.items.filter((it) => it.isActive !== false)
+
+  const sortedProducts = [...activeItems].sort((a, b) => {
+    const pa = getCatPos(a.category)
+    const pb = getCatPos(b.category)
+    if (pa !== pb) return pa - pb
+    return a.name.localeCompare(b.name)
+  })
 
   const cats = useMemo(() => {
     const byId = new Map<string, { id: string; name: string; position: number }>()
-    for (const p of products.items) {
-      if (p.isActive === false) continue
+    for (const p of activeItems) {
       const c = p.category
       if (c?.id) {
         byId.set(c.id, { id: c.id, name: c.name, position: getCatPos(c) })
       }
     }
     return Array.from(byId.values()).sort((a, b) => a.position - b.position || a.name.localeCompare(b.name))
-  }, [products])
+  }, [activeItems])
 
   const countsByCatId = useMemo(() => {
     const counts: Record<string, number> = {}
-    for (const it of products.items) {
-      if (it.isActive === false) continue
+    for (const it of activeItems) {
       const id = it.category?.id
       if (!id) continue
       counts[id] = (counts[id] || 0) + 1
     }
     return counts
-  }, [products])
+  }, [activeItems])
 
-  const filtered = useMemo(() => {
-    const activeItems = products.items.filter((it) => it.isActive !== false)
-    if (activeCat === "all") {
-      return [...activeItems].sort((a, b) => {
-        const pa = getCatPos(a.category)
-        const pb = getCatPos(b.category)
-        if (pa !== pb) return pa - pb
-        return a.name.localeCompare(b.name)
-      })
-    }
-    return activeItems.filter((it) => it.category?.id === activeCat).sort((a, b) => a.name.localeCompare(b.name))
-  }, [products, activeCat])
+  const filtered = activeCat === "all" ? sortedProducts : sortedProducts.filter((it) => it.category?.id === activeCat)
 
   return (
     <main className="container mx-auto h-full space-y-3 overflow-y-auto px-3 pb-4 md:px-4">
@@ -72,7 +68,7 @@ export function ProductGrid({
               activeCat === "all" ? "text-foreground bg-[#FFBBBB]" : "text-muted-foreground bg-[#D9D9D9]"
             }`}
           >
-            {products.items.length}
+            {activeItems.length}
           </span>
         </Button>
         {cats.map((c) => (

@@ -1,8 +1,10 @@
 "use client"
 import { useEffect, useState } from "react"
+import { PairDeviceCard } from "@/components/admin/pair-device-card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
+import { getCSRFToken } from "@/lib/csrf"
 
 type Station = {
   id: string
@@ -32,11 +34,11 @@ export default function AdminStationRequestsPage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetchAuth(`/api/v1/admin/stations`)
+      const res = await fetchAuth(`/api/v1/stations`)
       const json = (await res.json()) as { items: Station[] }
       setStations(json.items || [])
       // Load products for selection
-      const pr = await fetchAuth(`/api/v1/products?limit=500`)
+      const pr = await fetchAuth(`/api/v1/products`)
       const pj = (await pr.json()) as { items?: { id: string; name: string }[] }
       if (pj && Array.isArray(pj.items)) setAllProducts(pj.items.map((x) => ({ id: x.id, name: x.name })))
     } catch {
@@ -55,29 +57,23 @@ export default function AdminStationRequestsPage() {
       statusOrder(a.status) - statusOrder(b.status) || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   )
 
-  async function act(id: string, action: "approve" | "reject" | "revoke") {
+  async function revokeStation(id: string) {
     try {
-      const res = await fetchAuth(`/api/v1/admin/stations/requests/${id}/${action}`, { method: "POST" })
+      const csrf = getCSRFToken()
+      const res = await fetchAuth(`/api/v1/stations/${id}`, {
+        method: "DELETE",
+        headers: { "X-CSRF": csrf || "" },
+      })
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { detail?: string; message?: string }
         throw new Error(j.detail || j.message || `Error ${res.status}`)
       }
-      const nextStatus = action === "approve" ? "approved" : action === "revoke" ? "revoked" : "rejected"
-      const approvedAt = action === "approve" ? new Date().toISOString() : undefined
-      setStations((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, status: nextStatus, approved: action === "approve", approvedAt } : s))
-      )
-      if (action !== "approve" && editingId === id) {
+      setStations((prev) => prev.map((s) => (s.id === id ? { ...s, status: "revoked", approved: false } : s)))
+      if (editingId === id) {
         setEditingId(null)
       }
     } catch {
-      setError(
-        action === "approve"
-          ? "Annahme fehlgeschlagen"
-          : action === "revoke"
-            ? "Sperrung fehlgeschlagen"
-            : "Ablehnung fehlgeschlagen"
-      )
+      setError("Sperrung fehlgeschlagen")
     }
   }
 
@@ -89,7 +85,7 @@ export default function AdminStationRequestsPage() {
     setEditingId(next)
     if (next) {
       try {
-        const res = await fetchAuth(`/api/v1/admin/stations/${st.id}/products`)
+        const res = await fetchAuth(`/api/v1/stations/${st.id}/products`)
         const j = (await res.json()) as { items: { productId: string; name: string }[] }
         setAssigned((prev) => ({ ...prev, [st.id]: j.items || [] }))
         setAddProductId(undefined)
@@ -99,19 +95,19 @@ export default function AdminStationRequestsPage() {
 
   async function addProductToStation(stationId: string) {
     if (!addProductId) return
-    await fetchAuth(`/api/v1/admin/stations/${stationId}/products`, {
-      method: "POST",
+    await fetchAuth(`/api/v1/stations/${stationId}/products`, {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ productIds: [addProductId!] }),
     })
-    const res = await fetchAuth(`/api/v1/admin/stations/${stationId}/products`)
+    const res = await fetchAuth(`/api/v1/stations/${stationId}/products`)
     const j = (await res.json()) as { items: { productId: string; name: string }[] }
     setAssigned((prev) => ({ ...prev, [stationId]: j.items || [] }))
     setAddProductId(undefined)
   }
 
   async function removeProductFromStation(stationId: string, productId: string) {
-    await fetchAuth(`/api/v1/admin/stations/${stationId}/products/${productId}`, {
+    await fetchAuth(`/api/v1/stations/${stationId}/products/${productId}`, {
       method: "DELETE",
     })
     setAssigned((prev) => ({ ...prev, [stationId]: (prev[stationId] || []).filter((x) => x.productId !== productId) }))
@@ -120,6 +116,11 @@ export default function AdminStationRequestsPage() {
   return (
     <div className="pt-4">
       <h1 className="font-primary mb-4 text-2xl">Stationen</h1>
+
+      <div className="mb-6">
+        <PairDeviceCard onPaired={load} />
+      </div>
+
       {error && (
         <div role="alert" className="text-destructive bg-destructive/10 mb-3 rounded px-3 py-2">
           {error}
@@ -153,33 +154,18 @@ export default function AdminStationRequestsPage() {
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <StatusBadge status={st.status} />
-                  {st.status === "pending" && (
-                    <>
-                      <Button variant="destructive" onClick={() => act(st.id, "reject")}>
-                        Ablehnen
-                      </Button>
-                      <Button variant="success" onClick={() => act(st.id, "approve")}>
-                        Annehmen
-                      </Button>
-                    </>
-                  )}
                   {st.status === "approved" && (
                     <>
                       <Button variant="outline" onClick={() => openEditor(st)}>
                         Produkte bearbeiten
                       </Button>
-                      <Button variant="destructive" onClick={() => act(st.id, "revoke")}>
+                      <Button variant="destructive" onClick={() => revokeStation(st.id)}>
                         Entfernen
                       </Button>
                     </>
                   )}
                 </div>
               </div>
-              {st.status !== "approved" && (
-                <div className="text-muted-foreground mt-2 text-sm">
-                  Produkte können erst nach Freigabe verwaltet werden.
-                </div>
-              )}
               {isEditing && st.status === "approved" && (
                 <div className="border-border mt-3 rounded-lg border p-3">
                   <div className="flex flex-col gap-2">

@@ -1,0 +1,12 @@
+Error:
+  type: object
+  required: [code, message]
+  properties:
+    code:
+      type: string
+      examples: ["not_found"]
+    message:
+      type: string
+      examples: ["Resource not found"]
+    details:
+      type: object

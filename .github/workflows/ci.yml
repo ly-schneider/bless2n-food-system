@@ -20,6 +20,7 @@ jobs:
     outputs:
       web: ${{ steps.filter.outputs.web }}
       backend: ${{ steps.filter.outputs.backend }}
+      docs: ${{ steps.filter.outputs.docs }}
       terraform: ${{ steps.filter.outputs.terraform }}
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -34,10 +35,15 @@ jobs:
               - 'bfs-web-app/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
+              - 'VERSION'
             backend:
               - 'bfs-backend/**'
               - 'go.mod'
               - 'go.sum'
+              - 'VERSION'
+            docs:
+              - 'bfs-docs/**'
+              - 'VERSION'
             terraform:
               - 'bfs-cloud/**'
               - '*.tf'
@@ -153,6 +159,36 @@ jobs:
         working-directory: bfs-web-app
         run: pnpm test -- --shard=${{ matrix.shard }}/1
 
+  docs-quality:
+    name: Docs Quality Checks
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.docs == 'true'
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+        with:
+          version: 9
+
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: bfs-docs/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: bfs-docs
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        working-directory: bfs-docs
+        run: pnpm run lint
+
+      - name: Build
+        working-directory: bfs-docs
+        run: pnpm run build
+
   backend-lint:
     name: Backend Lint
     runs-on: ubuntu-latest
@@ -166,15 +202,38 @@ jobs:
           go-version: '1.25'
           cache-dependency-path: bfs-backend/go.sum
 
+      - name: Generate Ent
+        working-directory: bfs-backend
+        run: |
+          mkdir -p ./internal/generated/ent
+          echo "package ent" > ./internal/generated/ent/ent.go
+          go run -mod=mod entgo.io/ent/cmd/ent generate --feature sql/modifier --feature sql/upsert --target ./internal/generated/ent ./internal/schema
+
+      - name: Generate OpenAPI
+        working-directory: bfs-backend
+        run: |
+          npx @redocly/cli bundle openapi/openapi.yaml -o openapi/bundled.yaml
+          go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.1
+          oapi-codegen -config oapi-codegen.yaml openapi/bundled.yaml
+
       - name: Lint
-        uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9
-        with:
-          version: v2.5.0
-          working-directory: bfs-backend
-          args: --timeout=3m
-          skip-cache: false
-          skip-pkg-cache: false
-          skip-build-cache: false
+        working-directory: bfs-backend
+        run: go tool golangci-lint run --timeout=3m ./...
+
+  migrate-lint:
+    name: Migration Lint
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true'
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - name: Install Atlas CLI
+        uses: ariga/setup-atlas@v0
+
+      - name: Validate migration integrity
+        working-directory: bfs-backend
+        run: atlas migrate validate --dir "file://db/migrations"
 
   backend-test:
     name: Backend Tests
@@ -188,6 +247,20 @@ jobs:
         with:
           go-version: '1.25'
           cache-dependency-path: bfs-backend/go.sum
+
+      - name: Generate Ent
+        working-directory: bfs-backend
+        run: |
+          mkdir -p ./internal/generated/ent
+          echo "package ent" > ./internal/generated/ent/ent.go
+          go run -mod=mod entgo.io/ent/cmd/ent generate --feature sql/modifier --feature sql/upsert --target ./internal/generated/ent ./internal/schema
+
+      - name: Generate OpenAPI
+        working-directory: bfs-backend
+        run: |
+          npx @redocly/cli bundle openapi/openapi.yaml -o openapi/bundled.yaml
+          go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.1
+          oapi-codegen -config oapi-codegen.yaml openapi/bundled.yaml
 
       - name: Run tests
         working-directory: bfs-backend
@@ -235,8 +308,10 @@ jobs:
       - detect-changes
       - web-quality
       - web-test
+      - docs-quality
       - backend-lint
       - backend-test
+      - migrate-lint
       - terraform-quality
     if: always()
     steps:
@@ -244,8 +319,10 @@ jobs:
         run: |
           if [[ "${{ needs.web-quality.result }}" == "failure" ]] || \
              [[ "${{ needs.web-test.result }}" == "failure" ]] || \
+             [[ "${{ needs.docs-quality.result }}" == "failure" ]] || \
              [[ "${{ needs.backend-lint.result }}" == "failure" ]] || \
              [[ "${{ needs.backend-test.result }}" == "failure" ]] || \
+             [[ "${{ needs.migrate-lint.result }}" == "failure" ]] || \
              [[ "${{ needs.terraform-quality.result }}" == "failure" ]]; then
             echo "One or more required jobs failed"
             exit 1
@@ -268,6 +345,7 @@ jobs:
         (
           needs.detect-changes.outputs.web == 'true' ||
           needs.detect-changes.outputs.backend == 'true' ||
+          needs.detect-changes.outputs.docs == 'true' ||
           needs.detect-changes.outputs.terraform == 'true'
         )
       }}
@@ -276,6 +354,15 @@ jobs:
       actions: write
       pull-requests: read
     steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          sparse-checkout: VERSION
+          sparse-checkout-cone-mode: false
+
+      - name: Read version
+        id: version
+        run: echo "version=$(cat VERSION | tr -d '[:space:]')" >> "$GITHUB_OUTPUT"
+
       - name: Check commit message for skip flag
         id: check-skip
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
@@ -348,6 +435,7 @@ jobs:
               ref: env,
               inputs: {
                 target_env: env,
-                image_tag: context.sha,
+                version: '${{ steps.version.outputs.version }}',
+                commit_sha: context.sha,
               },
             });

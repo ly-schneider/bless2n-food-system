@@ -1,0 +1,121 @@
+DeviceType:
+  type: string
+  enum: [POS, STATION]
+
+DeviceStatus:
+  type: string
+  enum: [pending, approved, rejected, revoked]
+  description: |
+    Device approval lifecycle:
+    - `pending`: Awaiting admin approval
+    - `approved`: Active and authorized
+    - `rejected`: Admin denied the request
+    - `revoked`: Previously approved, now revoked
+
+Device:
+  type: object
+  required: [id, name, type, status]
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+      maxLength: 20
+    model:
+      type: string
+      maxLength: 50
+      nullable: true
+    os:
+      type: string
+      maxLength: 20
+      nullable: true
+    deviceKey:
+      type: string
+      maxLength: 100
+      description: Unique device fingerprint
+      x-admin-only: true
+    type:
+      $ref: '#/DeviceType'
+    status:
+      $ref: '#/DeviceStatus'
+    decidedBy:
+      type: string
+      nullable: true
+      description: User ID of admin who approved/rejected
+    decidedAt:
+      type: string
+      format: date-time
+      nullable: true
+    expiresAt:
+      type: string
+      format: date-time
+      nullable: true
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+DeviceList:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Device'
+
+DevicePairingCreate:
+  type: object
+  required: [name, deviceKey, type]
+  properties:
+    name:
+      type: string
+      maxLength: 20
+    model:
+      type: string
+      maxLength: 50
+    os:
+      type: string
+      maxLength: 20
+    deviceKey:
+      type: string
+      maxLength: 100
+      description: Unique device fingerprint for deduplication
+    type:
+      $ref: '#/DeviceType'
+
+DevicePairing:
+  type: object
+  required: [code, expiresAt]
+  properties:
+    code:
+      type: string
+      description: 6-digit pairing code
+    expiresAt:
+      type: string
+      format: date-time
+
+DevicePairingStatus:
+  type: object
+  required: [status]
+  properties:
+    status:
+      type: string
+      enum: [pending, completed, expired]
+    token:
+      type: string
+      description: Device binding token (only present when status=completed)
+    device:
+      $ref: '#/Device'
+      description: Device details (only present when status=completed)
+
+DevicePairingComplete:
+  type: object
+  required: [code]
+  properties:
+    code:
+      type: string
+      description: 6-digit pairing code from device display

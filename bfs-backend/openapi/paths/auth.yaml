@@ -1,0 +1,45 @@
+otp-email:
+  post:
+    tags: [Auth]
+    summary: Send OTP email
+    description: |
+      Sends a one-time password to the given email address.
+      The OTP is valid for 5 minutes (300 seconds).
+    operationId: sendOtpEmail
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/auth.yaml#/OtpEmailRequest'
+          examples:
+            sign_in:
+              summary: Sign-in OTP
+              value:
+                email: "user@example.com"
+                type: sign-in
+            email_verification:
+              summary: Email verification OTP
+              value:
+                email: "user@example.com"
+                type: email-verification
+            forget_password:
+              summary: Password reset OTP
+              value:
+                email: "user@example.com"
+                type: forget-password
+    responses:
+      '201':
+        description: OTP email sent
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/auth.yaml#/OtpEmailResponse'
+            example:
+              expiresAt: "2025-01-30T14:35:00Z"
+      '429':
+        description: Rate limit exceeded
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'

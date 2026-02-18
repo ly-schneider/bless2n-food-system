@@ -1,0 +1,233 @@
+collection:
+  get:
+    tags: [Devices]
+    summary: List device bindings
+    operationId: listDevices
+    security:
+      - sessionAuth: []
+    x-required-permissions: [devices:approve]
+    parameters:
+      - name: type
+        in: query
+        schema:
+          $ref: '../schemas/devices.yaml#/DeviceType'
+      - name: status
+        in: query
+        schema:
+          $ref: '../schemas/devices.yaml#/DeviceStatus'
+    responses:
+      '200':
+        description: Device list
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/devices.yaml#/DeviceList'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+item:
+  parameters:
+    - name: deviceId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  get:
+    tags: [Devices]
+    summary: Get device
+    operationId: getDevice
+    security:
+      - sessionAuth: []
+    x-required-permissions: [devices:approve]
+    responses:
+      '200':
+        description: Device details
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/devices.yaml#/Device'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+  delete:
+    tags: [Devices]
+    summary: Revoke device
+    description: Revokes the device binding. The device must re-pair to regain access.
+    operationId: revokeDevice
+    security:
+      - sessionAuth: []
+    x-required-permissions: [devices:revoke]
+    responses:
+      '204':
+        description: Device revoked
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+pairings:
+  post:
+    tags: [Devices]
+    summary: Generate pairing code
+    description: |
+      Device calls this to start the pairing flow.
+      Returns a 6-digit code and expiry time.
+      The device displays this code for the admin to enter in the dashboard.
+    operationId: createDevicePairing
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/devices.yaml#/DevicePairingCreate'
+          example:
+            name: "Station Grillplatz"
+            model: "Samsung Tab A8"
+            os: "Android 14"
+            deviceKey: "unique-device-fingerprint-abc"
+            type: STATION
+    responses:
+      '201':
+        description: Pairing code generated
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/devices.yaml#/DevicePairing'
+            example:
+              code: "482917"
+              expiresAt: "2025-01-30T14:40:00Z"
+      '400':
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+pairing-item:
+  parameters:
+    - name: code
+      in: path
+      required: true
+      description: 6-digit pairing code
+      schema:
+        type: string
+
+  get:
+    tags: [Devices]
+    summary: Poll pairing status
+    description: |
+      Device polls this endpoint to check if the admin has approved
+      the pairing. Returns the device token when completed.
+    operationId: getDevicePairing
+    responses:
+      '200':
+        description: Pairing status
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/devices.yaml#/DevicePairingStatus'
+            examples:
+              pending:
+                summary: Waiting for admin
+                value:
+                  status: pending
+              completed:
+                summary: Pairing approved
+                value:
+                  status: completed
+                  token: "eyJhbGciOiJIUzI1NiJ9..."
+                  device:
+                    id: "019412ab-0000-7000-8000-000000000400"
+                    name: "Station Grillplatz"
+                    type: STATION
+                    status: approved
+              expired:
+                summary: Code expired
+                value:
+                  status: expired
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+  post:
+    tags: [Devices]
+    summary: Complete pairing (admin)
+    description: |
+      Admin approves a pairing code in the dashboard.
+      Creates the device binding and generates the device token.
+    operationId: completeDevicePairing
+    security:
+      - sessionAuth: []
+    x-required-permissions: [devices:approve]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/devices.yaml#/DevicePairingComplete'
+          example:
+            code: "482917"
+    responses:
+      '200':
+        description: Pairing completed, device approved
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/devices.yaml#/Device'
+      '400':
+        description: Code expired or already used
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'

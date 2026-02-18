@@ -1,16 +1,25 @@
-variable "name" { type = string }
-variable "location" { type = string }
-variable "resource_group_name" { type = string }
-variable "subnet_id" { type = string }
-variable "logs_destination" {
-  type    = string
-  default = "azure-monitor"
+variable "name" {
+  description = "Name of the Container Apps Environment"
+  type        = string
 }
+
+variable "location" {
+  description = "Azure region for the Container Apps Environment"
+  type        = string
+}
+
+variable "resource_group_name" {
+  description = "Name of the resource group"
+  type        = string
+}
+
 variable "log_analytics_workspace_id" {
-  type    = string
-  default = null
+  description = "Log Analytics workspace ID for diagnostics"
+  type        = string
 }
+
 variable "tags" {
-  type    = map(string)
-  default = {}
+  description = "Resource tags"
+  type        = map(string)
+  default     = {}
 }

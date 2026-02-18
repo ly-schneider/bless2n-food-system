@@ -1,0 +1,177 @@
+---
+title: API-Referenz
+description: REST-Endpoints, Contracts und interaktive API-Dokumentation
+---
+
+Die vollständige, interaktive API-Dokumentation ist unter [food.blessthun.ch/api/docs](https://food.blessthun.ch/api/docs) verfügbar. Dort können Requests direkt getestet und Schemas eingesehen werden.
+
+Alle Pfade sind mit `/v1` präfixiert. Authentifizierung erfolgt per Session-Cookie oder Bearer-Token.
+
+---
+
+# Auth
+
+- [POST /v1/auth/otp-email](https://food.blessthun.ch/api/docs#tag/auth/POST/auth/otp-email): OTP-E-Mail anfordern (Backend sendet via Plunk).
+
+Better Auth Endpunkte (`/api/auth/...`) werden von der Web App verwaltet (E-Mail OTP, Google OIDC, Sessions). Das Backend validiert Sessions direkt gegen die PostgreSQL-Datenbank.
+
+---
+
+# Products
+
+- [GET /v1/products](https://food.blessthun.ch/api/docs#tag/products/GET/products): Aktive Produkte auflisten.
+- [POST /v1/products](https://food.blessthun.ch/api/docs#tag/products/POST/products): Produkt erstellen.
+- [GET /v1/products/:productId](https://food.blessthun.ch/api/docs#tag/products/GET/products/%7BproductId%7D): Produkt abrufen.
+- [PATCH /v1/products/:productId](https://food.blessthun.ch/api/docs#tag/products/PATCH/products/%7BproductId%7D): Produkt aktualisieren.
+- [DELETE /v1/products/:productId](https://food.blessthun.ch/api/docs#tag/products/DELETE/products/%7BproductId%7D): Produkt löschen.
+- [POST /v1/products/:productId/image](https://food.blessthun.ch/api/docs#tag/products/POST/products/%7BproductId%7D/image): Produktbild hochladen.
+- [DELETE /v1/products/:productId/image](https://food.blessthun.ch/api/docs#tag/products/DELETE/products/%7BproductId%7D/image): Produktbild entfernen.
+- [GET /v1/products/:productId/inventory](https://food.blessthun.ch/api/docs#tag/products/GET/products/%7BproductId%7D/inventory): Aktuellen Bestand abrufen.
+- [PATCH /v1/products/:productId/inventory](https://food.blessthun.ch/api/docs#tag/products/PATCH/products/%7BproductId%7D/inventory): Bestand anpassen.
+- [GET /v1/products/:productId/inventory/history](https://food.blessthun.ch/api/docs#tag/products/GET/products/%7BproductId%7D/inventory/history): Bestandshistorie abrufen.
+
+Schemas: [Product](https://food.blessthun.ch/api/docs#model/Product), [ProductCreate](https://food.blessthun.ch/api/docs#model/ProductCreate), [ProductUpdate](https://food.blessthun.ch/api/docs#model/ProductUpdate), [Inventory](https://food.blessthun.ch/api/docs#model/Inventory), [InventoryAdjustment](https://food.blessthun.ch/api/docs#model/InventoryAdjustment).
+
+---
+
+# Categories
+
+- [GET /v1/categories](https://food.blessthun.ch/api/docs#tag/categories/GET/categories): Kategorien auflisten.
+- [POST /v1/categories](https://food.blessthun.ch/api/docs#tag/categories/POST/categories): Kategorie erstellen.
+- [GET /v1/categories/:categoryId](https://food.blessthun.ch/api/docs#tag/categories/GET/categories/%7BcategoryId%7D): Kategorie abrufen.
+- [PATCH /v1/categories/:categoryId](https://food.blessthun.ch/api/docs#tag/categories/PATCH/categories/%7BcategoryId%7D): Kategorie aktualisieren.
+- [DELETE /v1/categories/:categoryId](https://food.blessthun.ch/api/docs#tag/categories/DELETE/categories/%7BcategoryId%7D): Kategorie löschen.
+
+Schemas: [Category](https://food.blessthun.ch/api/docs#model/Category), [CategoryCreate](https://food.blessthun.ch/api/docs#model/CategoryCreate), [CategoryUpdate](https://food.blessthun.ch/api/docs#model/CategoryUpdate).
+
+---
+
+# Menus
+
+- [GET /v1/menus](https://food.blessthun.ch/api/docs#tag/menus/GET/menus): Menus auflisten.
+- [POST /v1/menus](https://food.blessthun.ch/api/docs#tag/menus/POST/menus): Menu erstellen.
+- [GET /v1/menus/:menuId](https://food.blessthun.ch/api/docs#tag/menus/GET/menus/%7BmenuId%7D): Menu abrufen.
+- [PATCH /v1/menus/:menuId](https://food.blessthun.ch/api/docs#tag/menus/PATCH/menus/%7BmenuId%7D): Menu aktualisieren.
+- [DELETE /v1/menus/:menuId](https://food.blessthun.ch/api/docs#tag/menus/DELETE/menus/%7BmenuId%7D): Menu löschen.
+
+Slots:
+
+- [POST /v1/menus/:menuId/slots](https://food.blessthun.ch/api/docs#tag/menus/POST/menus/%7BmenuId%7D/slots): Slot erstellen.
+- [PATCH /v1/menus/:menuId/slots/reorder](https://food.blessthun.ch/api/docs#tag/menus/PATCH/menus/%7BmenuId%7D/slots/reorder): Slots sortieren.
+- [PATCH /v1/menus/:menuId/slots/:slotId](https://food.blessthun.ch/api/docs#tag/menus/PATCH/menus/%7BmenuId%7D/slots/%7BslotId%7D): Slot umbenennen.
+- [DELETE /v1/menus/:menuId/slots/:slotId](https://food.blessthun.ch/api/docs#tag/menus/DELETE/menus/%7BmenuId%7D/slots/%7BslotId%7D): Slot löschen.
+- [POST /v1/menus/:menuId/slots/:slotId/options](https://food.blessthun.ch/api/docs#tag/menus/POST/menus/%7BmenuId%7D/slots/%7BslotId%7D/options): Produkt-Option hinzufügen.
+- [DELETE /v1/menus/:menuId/slots/:slotId/options/:optionProductId](https://food.blessthun.ch/api/docs#tag/menus/DELETE/menus/%7BmenuId%7D/slots/%7BslotId%7D/options/%7BoptionProductId%7D): Produkt-Option entfernen.
+
+Schemas: [Menu](https://food.blessthun.ch/api/docs#model/Menu), [MenuCreate](https://food.blessthun.ch/api/docs#model/MenuCreate), [MenuSlot](https://food.blessthun.ch/api/docs#model/MenuSlot), [MenuSlotCreate](https://food.blessthun.ch/api/docs#model/MenuSlotCreate).
+
+---
+
+# Orders
+
+- [GET /v1/orders](https://food.blessthun.ch/api/docs#tag/orders/GET/orders): Bestellungen auflisten.
+- [POST /v1/orders](https://food.blessthun.ch/api/docs#tag/orders/POST/orders): Bestellung erstellen.
+- [GET /v1/orders/:orderId](https://food.blessthun.ch/api/docs#tag/orders/GET/orders/%7BorderId%7D): Bestellung abrufen.
+- [PATCH /v1/orders/:orderId](https://food.blessthun.ch/api/docs#tag/orders/PATCH/orders/%7BorderId%7D): Bestellstatus aktualisieren.
+
+Schemas: [Order](https://food.blessthun.ch/api/docs#model/Order), [OrderCreate](https://food.blessthun.ch/api/docs#model/OrderCreate), [OrderStatus](https://food.blessthun.ch/api/docs#model/OrderStatus), [OrderLine](https://food.blessthun.ch/api/docs#model/OrderLine).
+
+---
+
+# Payments
+
+- [POST /v1/orders/:orderId/payment](https://food.blessthun.ch/api/docs#tag/payments/POST/orders/%7BorderId%7D/payment): Zahlung erstellen (Payrexx Gateway).
+- [GET /v1/orders/:orderId/payment](https://food.blessthun.ch/api/docs#tag/payments/GET/orders/%7BorderId%7D/payment): Zahlungsstatus einer Bestellung abrufen.
+- [GET /v1/payments/:paymentId](https://food.blessthun.ch/api/docs#tag/payments/GET/payments/%7BpaymentId%7D): Zahlung nach ID abrufen.
+- [POST /v1/payments/webhooks/payrexx](https://food.blessthun.ch/api/docs#tag/payments/POST/payments/webhooks/payrexx): Payrexx Webhook empfangen.
+
+Schemas: [Payment](https://food.blessthun.ch/api/docs#model/Payment), [PaymentCreate](https://food.blessthun.ch/api/docs#model/PaymentCreate), [PaymentMethod](https://food.blessthun.ch/api/docs#model/PaymentMethod), [PaymentStatus](https://food.blessthun.ch/api/docs#model/PaymentStatus).
+
+---
+
+# Users
+
+- [GET /v1/users](https://food.blessthun.ch/api/docs#tag/users/GET/users): Benutzer auflisten.
+- [GET /v1/users/:userId](https://food.blessthun.ch/api/docs#tag/users/GET/users/%7BuserId%7D): Benutzer abrufen.
+- [PATCH /v1/users/:userId](https://food.blessthun.ch/api/docs#tag/users/PATCH/users/%7BuserId%7D): Benutzer aktualisieren.
+- [DELETE /v1/users/:userId](https://food.blessthun.ch/api/docs#tag/users/DELETE/users/%7BuserId%7D): Benutzer löschen.
+
+Schemas: [User](https://food.blessthun.ch/api/docs#model/User), [UserUpdate](https://food.blessthun.ch/api/docs#model/UserUpdate), [UserRole](https://food.blessthun.ch/api/docs#model/UserRole).
+
+---
+
+# Invites
+
+- [GET /v1/invites](https://food.blessthun.ch/api/docs#tag/invites/GET/invites): Einladungen auflisten.
+- [POST /v1/invites](https://food.blessthun.ch/api/docs#tag/invites/POST/invites): Einladung erstellen.
+- [GET /v1/invites/:inviteId](https://food.blessthun.ch/api/docs#tag/invites/GET/invites/%7BinviteId%7D): Einladung abrufen (public).
+- [DELETE /v1/invites/:inviteId](https://food.blessthun.ch/api/docs#tag/invites/DELETE/invites/%7BinviteId%7D): Einladung widerrufen.
+- [POST /v1/invites/verify](https://food.blessthun.ch/api/docs#tag/invites/POST/invites/verify): Einladungs-Token verifizieren.
+- [POST /v1/invites/accept](https://food.blessthun.ch/api/docs#tag/invites/POST/invites/accept): Einladung annehmen.
+
+Schemas: [Invite](https://food.blessthun.ch/api/docs#model/Invite), [InviteCreate](https://food.blessthun.ch/api/docs#model/InviteCreate), [InviteStatus](https://food.blessthun.ch/api/docs#model/InviteStatus).
+
+---
+
+# Stations
+
+- [GET /v1/stations](https://food.blessthun.ch/api/docs#tag/stations/GET/stations): Stationen auflisten.
+- [GET /v1/stations/me](https://food.blessthun.ch/api/docs#tag/stations/GET/stations/me): Eigene Station abrufen (Device-Auth).
+- [GET /v1/stations/:stationId](https://food.blessthun.ch/api/docs#tag/stations/GET/stations/%7BstationId%7D): Station abrufen.
+- [DELETE /v1/stations/:stationId](https://food.blessthun.ch/api/docs#tag/stations/DELETE/stations/%7BstationId%7D): Station widerrufen.
+- [GET /v1/stations/:stationId/products](https://food.blessthun.ch/api/docs#tag/stations/GET/stations/%7BstationId%7D/products): Station-Produkte auflisten.
+- [PUT /v1/stations/:stationId/products](https://food.blessthun.ch/api/docs#tag/stations/PUT/stations/%7BstationId%7D/products): Station-Produkte setzen.
+- [DELETE /v1/stations/:stationId/products/:productId](https://food.blessthun.ch/api/docs#tag/stations/DELETE/stations/%7BstationId%7D/products/%7BproductId%7D): Produkt von Station entfernen.
+- [POST /v1/stations/redeem](https://food.blessthun.ch/api/docs#tag/stations/POST/stations/redeem): Bestellposition an Station einlösen.
+
+Schemas: [Station](https://food.blessthun.ch/api/docs#model/Station), [StationProduct](https://food.blessthun.ch/api/docs#model/StationProduct), [RedemptionCreate](https://food.blessthun.ch/api/docs#model/RedemptionCreate).
+
+---
+
+# POS
+
+- [GET /v1/pos/me](https://food.blessthun.ch/api/docs#tag/pos/GET/pos/me): POS-Gerätestatus abrufen (Device-Auth).
+- [GET /v1/pos/settings](https://food.blessthun.ch/api/docs#tag/pos/GET/pos/settings): POS-Einstellungen abrufen.
+- [PATCH /v1/pos/settings](https://food.blessthun.ch/api/docs#tag/pos/PATCH/pos/settings): POS-Einstellungen aktualisieren.
+- [GET /v1/pos/devices](https://food.blessthun.ch/api/docs#tag/pos/GET/pos/devices): POS-Geräte auflisten.
+
+Schemas: [POSSettings](https://food.blessthun.ch/api/docs#model/POSSettings), [POSSettingsUpdate](https://food.blessthun.ch/api/docs#model/POSSettingsUpdate), [PosFulfillmentMode](https://food.blessthun.ch/api/docs#model/PosFulfillmentMode).
+
+---
+
+# Devices
+
+- [GET /v1/devices](https://food.blessthun.ch/api/docs#tag/devices/GET/devices): Geräte-Bindungen auflisten.
+- [GET /v1/devices/:deviceId](https://food.blessthun.ch/api/docs#tag/devices/GET/devices/%7BdeviceId%7D): Gerät abrufen.
+- [DELETE /v1/devices/:deviceId](https://food.blessthun.ch/api/docs#tag/devices/DELETE/devices/%7BdeviceId%7D): Gerät widerrufen.
+- [POST /v1/devices/pairings](https://food.blessthun.ch/api/docs#tag/devices/POST/devices/pairings): Pairing-Code generieren.
+- [GET /v1/devices/pairings/:code](https://food.blessthun.ch/api/docs#tag/devices/GET/devices/pairings/%7Bcode%7D): Pairing-Status abfragen.
+- [POST /v1/devices/pairings/:code](https://food.blessthun.ch/api/docs#tag/devices/POST/devices/pairings/%7Bcode%7D): Pairing abschliessen (Admin).
+
+Schemas: [Device](https://food.blessthun.ch/api/docs#model/Device), [DevicePairing](https://food.blessthun.ch/api/docs#model/DevicePairing), [DeviceType](https://food.blessthun.ch/api/docs#model/DeviceType), [DeviceStatus](https://food.blessthun.ch/api/docs#model/DeviceStatus).
+
+---
+
+# Jetons
+
+- [GET /v1/jetons](https://food.blessthun.ch/api/docs#tag/jetons/GET/jetons): Jetons auflisten.
+- [POST /v1/jetons](https://food.blessthun.ch/api/docs#tag/jetons/POST/jetons): Jeton erstellen.
+- [PATCH /v1/jetons/:jetonId](https://food.blessthun.ch/api/docs#tag/jetons/PATCH/jetons/%7BjetonId%7D): Jeton aktualisieren.
+- [DELETE /v1/jetons/:jetonId](https://food.blessthun.ch/api/docs#tag/jetons/DELETE/jetons/%7BjetonId%7D): Jeton löschen.
+
+Schemas: [Jeton](https://food.blessthun.ch/api/docs#model/Jeton), [JetonCreate](https://food.blessthun.ch/api/docs#model/JetonCreate), [JetonUpdate](https://food.blessthun.ch/api/docs#model/JetonUpdate).
+
+---
+
+# Error Model
+
+Alle Fehler folgen dem [Error](https://food.blessthun.ch/api/docs#model/Error)-Schema. Admin-Mutationen erfordern ein CSRF Cookie/Header (`X-CSRF`).
+
+---
+
+# Integration Setup
+
+- Payrexx: `PAYREXX_INSTANCE`, `PAYREXX_API_SECRET`, `PAYREXX_WEBHOOK_SECRET` setzen. Siehe [Zahlungen](/zahlungen).
+- Better Auth: `BETTER_AUTH_SECRET`, `DATABASE_URL`, Google OAuth Client ID/Secret in Web App konfigurieren.
+- SumUp (Android): Affiliate Key in CI; App Login via SDK.
+- E-Mail (Plunk): API Key plus From/Reply-Konfiguration.

@@ -121,6 +121,7 @@ secrets/
 
 # bin
 *bin/
+backend
 
 # docs
 docs/
@@ -128,5 +129,9 @@ docs/
 # cache
 .cache/
 .gocache/
+
+# generated
+internal/generated/
+openapi/bundled.yaml
 
 # End of https://www.toptal.com/developers/gitignore/api/go,visualstudiocode,windows,macos

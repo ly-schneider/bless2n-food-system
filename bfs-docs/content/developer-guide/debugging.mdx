@@ -3,31 +3,31 @@ title: Debugging & Troubleshooting
 description: Häufige Fehlerbilder und wie man sie analysiert
 ---
 
-# Auth (401/403), CORS/CSP
+# Auth (401/403), CORS
 
-- Refresh‑Cookie auf geschützten Routen vorhanden? Next Middleware leitet sonst nach `/login`.
-- CORS: Backend `SECURITY_TRUSTED_ORIGINS` muss Frontend‑URL(s) enthalten.
-- CSP: Stripe/Google Hosts müssen in der Middleware CSP erlaubt sein; Konsole auf Blockaden prüfen.
+- Session-Cookie auf geschützten Routen vorhanden? Next Middleware leitet sonst nach `/login`.
+- CORS: Backend `SECURITY_TRUSTED_ORIGINS` muss Frontend-URL(s) enthalten.
+- Better Auth: `BETTER_AUTH_SECRET` und `DATABASE_URL` korrekt gesetzt? Session in PostgreSQL vorhanden?
 
-# Payments
+# Payments (Payrexx)
 
-- `clientSecret` Probleme: Bei Item‑Änderungen neuen Intent erstellen; Publishable Key gesetzt?
-- Webhook: Signing Secret prüfen; Delivery im Stripe Dashboard; `/v1/payments/{id}` ansehen.
-- TWINT: App‑Autorisierung kann dauern; Desktop‑QR evtl. Verzögerung.
+- Gateway-Erstellung fehlgeschlagen: `PAYREXX_INSTANCE` und `PAYREXX_API_SECRET` prüfen.
+- Webhook: `PAYREXX_WEBHOOK_SECRET` prüfen; Delivery im Payrexx Dashboard; [GET /v1/payments/:paymentId](https://food.blessthun.ch/api/docs#tag/payments/GET/payments/%7BpaymentId%7D) ansehen.
+- Redirect: Nutzer kommt nach Zahlung zurück, aber Status ist noch `pending`. Webhook kann kurz verzögert sein.
 
 # POS Bridge
 
 - Keine `PosBridge`: Browser statt Android App; Android App nutzen für native Funktionen.
 - SumUp Login: App muss angemeldet sein; `bfs:sumup:result` mit `login_failed`.
-- Drucken: Bluetooth‑Berechtigungen/Kopplung prüfen; ESC/POS vs. Raster‑Fallback.
+- Drucken: Bluetooth-Berechtigungen/Kopplung prüfen; ESC/POS vs. Raster-Fallback.
 
 # Backend
 
-- Mongo Connectivity: URI/DB prüfen; Container‑zu‑Container vs. Host URIs.
+- Database Connectivity: `DATABASE_URL` prüfen; PostgreSQL erreichbar? Flyway-Migrationen ausgeführt?
 - Fehlende Env Vars: Start schlägt bei fehlenden Pflichtwerten fehl (Config Loader).
-- CSRF für Admin‑Writes: `X-CSRF` Header vom gleich‑origin Proxy sicherstellen.
+- CSRF für Admin-Writes: `X-CSRF` Header vom gleich-origin Proxy sicherstellen.
 
 # Web
 
-- API Proxy Fehler: `/api` Handler und Base URL prüfen; Cookies bei gleich‑origin Requests übertragen?
-- Middleware Logs: Next loggt Request‑Zeile/Headers; Server‑Output prüfen.
+- API Proxy Fehler: `/api` Handler und Base URL prüfen; Cookies bei gleich-origin Requests übertragen?
+- Middleware Logs: Next loggt Request-Zeile/Headers; Server-Output prüfen.

@@ -3,16 +3,6 @@ output "resource_group_name" {
   value       = module.rg.name
 }
 
-output "vnet_id" {
-  description = "ID of the virtual network"
-  value       = module.net.vnet_id
-}
-
-output "subnet_id" {
-  description = "ID of the container apps subnet"
-  value       = module.net.subnet_id
-}
-
 output "container_app_environment_id" {
   description = "ID of the container app environment"
   value       = module.aca_env.id
@@ -29,17 +19,12 @@ output "app_insights_connection_string" {
   sensitive   = true
 }
 
-output "cosmos_connection_string" {
-  description = "Cosmos DB connection string"
-  value       = module.cosmos.connection_string
-  sensitive   = true
-}
-
 output "app_urls" {
   description = "URLs of the deployed applications (latest revision FQDNs)"
   value = jsonencode(merge(
     { for k, m in module.apps_backend : k => m.url },
-    { for k, m in module.apps_frontend : k => m.url }
+    { for k, m in module.apps_frontend : k => m.url },
+    { for k, m in module.apps_docs : k => m.url }
   ))
 }
 
@@ -50,10 +35,15 @@ output "backend_fqdns" {
 
 output "key_vault_id" {
   description = "Key Vault ID"
-  value       = var.config.enable_security_features ? module.security[0].key_vault_id : null
+  value       = module.security.key_vault_id
 }
 
 output "key_vault_secret_ids" {
   description = "Map of Key Vault secret names to their versionless IDs"
-  value       = jsonencode(var.config.enable_security_features ? module.security[0].key_vault_secret_ids : {})
+  value       = jsonencode(module.security.key_vault_secret_ids)
+}
+
+output "blob_storage_endpoint" {
+  description = "Primary blob storage endpoint"
+  value       = module.blob_storage.blob_endpoint
 }

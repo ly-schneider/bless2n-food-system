@@ -8,6 +8,12 @@ import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
 import { formatChf } from "@/lib/utils"
 
 // Minimal shape expected from the admin orders endpoint
+type OrderPayment = {
+  method?: string
+  amountCents?: number | null
+  paidAt?: string | null
+}
+
 type Order = {
   id: string
   status: string
@@ -16,14 +22,14 @@ type Order = {
   updatedAt?: string
   contactEmail?: string | null
   customerId?: string | null
-  paymentIntentId?: string | null
-  stripeChargeId?: string | null
   paymentAttemptId?: string | null
+  payrexxGatewayId?: number | null
+  payrexxTransactionId?: number | null
   origin?: string | null
-  posPayment?: {
+  payments?: OrderPayment[] | null
+  payment?: {
     method: string
-    amountReceivedCents?: number | null
-    changeCents?: number | null
+    amountCents?: number | null
   } | null
 }
 
@@ -39,7 +45,7 @@ export default function AdminOrdersPage() {
       try {
         const qs = new URLSearchParams()
         if (status && status !== "all") qs.set("status", status)
-        const url = `/api/v1/admin/orders${qs.toString() ? `?${qs.toString()}` : ""}`
+        const url = `/api/v1/orders${qs.toString() ? `?${qs.toString()}` : ""}`
         const res = await fetchAuth(url)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = (await res.json()) as { items: Order[] }
@@ -84,10 +90,8 @@ export default function AdminOrdersPage() {
                   <TableHead className="whitespace-nowrap">Kontakt E-Mail</TableHead>
                   <TableHead className="whitespace-nowrap">Benutzer</TableHead>
                   <TableHead className="whitespace-nowrap">POS-Methode</TableHead>
-                  <TableHead className="whitespace-nowrap">Erhalten</TableHead>
-                  <TableHead className="whitespace-nowrap">Rückgeld</TableHead>
-                  <TableHead className="whitespace-nowrap">Stripe PI</TableHead>
-                  <TableHead className="whitespace-nowrap">Stripe Charge</TableHead>
+                  <TableHead className="whitespace-nowrap">Payrexx Gateway</TableHead>
+                  <TableHead className="whitespace-nowrap">Payrexx Txn</TableHead>
                   <TableHead className="whitespace-nowrap">Payment Attempt</TableHead>
                   <TableHead className="whitespace-nowrap">Erstellt</TableHead>
                   <TableHead className="whitespace-nowrap">Aktualisiert</TableHead>
@@ -98,13 +102,8 @@ export default function AdminOrdersPage() {
                 {items.map((o) => {
                   const price = typeof o.totalCents === "number" ? formatChf(o.totalCents) : "–"
                   const origin = o.origin || "shop"
-                  const posMethod = o.posPayment?.method || "–"
-                  const posReceived =
-                    typeof o.posPayment?.amountReceivedCents === "number"
-                      ? formatChf(o.posPayment!.amountReceivedCents!)
-                      : "–"
-                  const posChange =
-                    typeof o.posPayment?.changeCents === "number" ? formatChf(o.posPayment!.changeCents!) : "–"
+                  const primaryPayment = o.payments?.[0]
+                  const posMethod = primaryPayment?.method ?? o.payment?.method ?? "–"
                   const created = new Date(o.createdAt).toLocaleString("de-CH")
                   const updated = o.updatedAt ? new Date(o.updatedAt).toLocaleString("de-CH") : "–"
                   const userLink = o.customerId ? (
@@ -126,10 +125,8 @@ export default function AdminOrdersPage() {
                       <TableCell>{o.contactEmail || "–"}</TableCell>
                       <TableCell>{userLink}</TableCell>
                       <TableCell className="uppercase">{posMethod}</TableCell>
-                      <TableCell>{posReceived}</TableCell>
-                      <TableCell>{posChange}</TableCell>
-                      <TableCell className="text-xs">{o.paymentIntentId || "–"}</TableCell>
-                      <TableCell className="text-xs">{o.stripeChargeId || "–"}</TableCell>
+                      <TableCell className="text-xs">{o.payrexxGatewayId ?? "–"}</TableCell>
+                      <TableCell className="text-xs">{o.payrexxTransactionId ?? "–"}</TableCell>
                       <TableCell className="text-xs">{o.paymentAttemptId || "–"}</TableCell>
                       <TableCell className="whitespace-nowrap">{created}</TableCell>
                       <TableCell className="whitespace-nowrap">{updated}</TableCell>

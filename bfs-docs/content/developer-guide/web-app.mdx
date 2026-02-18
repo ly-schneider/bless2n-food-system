@@ -1,40 +1,50 @@
 ---
 title: Web App (Next.js)
-description: Struktur, Security‑Middleware, POS‑Seite & Bridge, Checkout, Admin und Analytics
+description: Struktur, Security-Middleware, POS-Seite & Bridge, Checkout, Admin und Analytics
 ---
 
 # Struktur
 
-- App Router unter `bfs-web-app/app` mit Layouts und Pages; `/app/layout.tsx` bindet Analytics‑Consent und Auth Provider ein.
+- App Router unter `bfs-web-app/app` mit Layouts und Pages; `/app/layout.tsx` bindet Analytics-Consent und Auth Provider ein.
 - Middleware `middleware.ts`:
-  - Leichtgewichtiges Request‑Logging; schützt `/profile` und `/admin` via Refresh‑Cookie.
-  - Setzt Security‑Header und CSP (Stripe/Google Hosts erlaubt).
-  - Setzt CSRF‑Cookie (Double‑Submit) für gleich‑origin API.
+  - Leichtgewichtiges Request-Logging; schützt `/profile` und `/admin` via Session-Cookie.
+  - Setzt Security-Header.
+  - Setzt CSRF-Cookie (Double-Submit) für gleich-origin API.
 
 # API Proxy
 
-- `lib/api.ts` nutzt gleich‑origin `/api` und leitet an das Backend (`NEXT_PUBLIC_API_BASE_URL`).
+- `lib/api.ts` nutzt gleich-origin `/api` und leitet an das Backend (`NEXT_PUBLIC_API_BASE_URL`).
 - Setzt automatisch `X-CSRF` bei mutierenden Requests im Browser.
+
+# Auth (Better Auth)
+
+- Better Auth Client in `lib/auth-client.ts` mit Plugins:
+  - `emailOTPClient()`: E-Mail OTP Login.
+  - `adminClient()`: Admin-Rollen und Berechtigungen.
+- Google OIDC als Social Login Provider.
+- Session-Cookies (`better-auth.session_token`) werden automatisch verwaltet.
+- Auth-Endpunkte unter `/api/auth/[...path]` (Better Auth Route Handler).
 
 # POS Page & Bridge
 
-- Web‑POS erkennt `window.PosBridge` Funktionen:
+- Web-POS erkennt `window.PosBridge` Funktionen:
   - `print(json)`: druckt Beleg; hört auf `bfs:print:result` (Erfolg/Fehler).
   - `payWithCard(payload)`: startet SumUp; hört auf `bfs:sumup:result`.
-- Bei erfolgreicher Karte: Order erstellen (`/api/v1/pos/orders`), Tender anhängen (`/api/v1/pos/orders/{id}/pay-card`), Pickup‑QR holen, Beleg im Hintergrund drucken.
+- Bei erfolgreicher Karte: [Order erstellen](https://food.blessthun.ch/api/docs#tag/orders/POST/orders), [Zahlung anhängen](https://food.blessthun.ch/api/docs#tag/payments/POST/orders/%7BorderId%7D/payment), Pickup-QR holen, Beleg im Hintergrund drucken.
 
-# Checkout Flow (TWINT)
+# Checkout Flow (Payrexx)
 
-- `clientSecret` via `/v1/payments/create-intent` mit Items holen.
-- Stripe Elements nutzen; auf der Return‑Seite `/v1/payments/{id}` pollen.
-- Optional vor Bestätigung `PATCH /v1/payments/attach-email` setzen (E‑Mail‑Receipt).
+- Gateway via [POST /v1/orders/:orderId/payment](https://food.blessthun.ch/api/docs#tag/payments/POST/orders/%7BorderId%7D/payment) erstellen.
+- Nutzer wird zur Payrexx-Zahlungsseite weitergeleitet (TWINT und weitere Methoden).
+- Return-Seite pollt [GET /v1/payments/:paymentId](https://food.blessthun.ch/api/docs#tag/payments/GET/payments/%7BpaymentId%7D) für den aktuellen Status.
+- [Payrexx Webhook](https://food.blessthun.ch/api/docs#tag/payments/POST/payments/webhooks/payrexx) finalisiert die Bestellung im Backend.
 
 # Admin UI
 
-- Features: Users, Products, Categories, Stations, Menus; Orders CSV Export.
-- Nutzt Authorized‑Fetch Hooks; CSRF für Admin‑Mutationen durch Backend‑Middleware erzwungen.
+- Features: Users, Products, Categories, Stations, Menus, Devices; Orders CSV Export.
+- Nutzt Authorized-Fetch Hooks; CSRF für Admin-Mutationen durch Backend-Middleware erzwungen.
 
 # Analytics
 
 - Google Measurement ID via `NEXT_PUBLIC_GA_MEASUREMENT_ID`.
-- Einfaches Cookie‑Gate (`ga_consent`) steuert Scripts und `ga-consent-changed` Events.
+- Einfaches Cookie-Gate (`ga_consent`) steuert Scripts und `ga-consent-changed` Events.

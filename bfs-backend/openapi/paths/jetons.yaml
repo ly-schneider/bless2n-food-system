@@ -1,0 +1,174 @@
+collection:
+  get:
+    tags: [Jetons]
+    summary: List jetons
+    description: Returns all jetons with their usage counts.
+    operationId: listJetons
+    security:
+      - sessionAuth: []
+    x-required-permissions: [pos:manage]
+    responses:
+      '200':
+        description: Jeton list
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/jetons.yaml#/JetonList'
+            example:
+              items:
+                - id: "019412ab-0000-7000-8000-000000000501"
+                  name: "Grill"
+                  color: "#EF4444"
+                  createdAt: "2025-01-15T10:00:00Z"
+                  updatedAt: "2025-01-15T10:00:00Z"
+                - id: "019412ab-0000-7000-8000-000000000502"
+                  name: "Getranke"
+                  color: "#3B82F6"
+                  createdAt: "2025-01-15T10:00:00Z"
+                  updatedAt: "2025-01-15T10:00:00Z"
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+  post:
+    tags: [Jetons]
+    summary: Create jeton
+    operationId: createJeton
+    security:
+      - sessionAuth: []
+    x-required-permissions: [pos:manage]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/jetons.yaml#/JetonCreate'
+          examples:
+            with_color:
+              summary: Custom hex color
+              value:
+                name: "Special"
+                color: "#FF5733"
+    responses:
+      '201':
+        description: Jeton created
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/jetons.yaml#/Jeton'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+item:
+  parameters:
+    - name: jetonId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  patch:
+    tags: [Jetons]
+    summary: Update jeton
+    operationId: updateJeton
+    security:
+      - sessionAuth: []
+    x-required-permissions: [pos:manage]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/jetons.yaml#/JetonUpdate'
+          examples:
+            rename:
+              summary: Rename jeton
+              value:
+                name: "Frittenbude"
+            change_color:
+              summary: Change color
+              value:
+                color: "#22C55E"
+    responses:
+      '200':
+        description: Jeton updated
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/jetons.yaml#/Jeton'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+  delete:
+    tags: [Jetons]
+    summary: Delete jeton
+    description: |
+      Deletes a jeton. Fails if products are still assigned to it
+      (products must be unassigned first).
+    operationId: deleteJeton
+    security:
+      - sessionAuth: []
+    x-required-permissions: [pos:manage]
+    responses:
+      '204':
+        description: Jeton deleted
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '409':
+        description: Jeton is still assigned to products
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'

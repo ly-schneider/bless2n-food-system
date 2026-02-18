@@ -1,16 +1,13 @@
 package app
 
 import (
+	"database/sql"
+
 	"backend/internal/config"
 	"backend/internal/database"
-
-	"go.mongodb.org/mongo-driver/v2/mongo"
+	"backend/internal/generated/ent"
 )
 
-func NewDB(cfg config.Config) (*database.MongoDB, error) {
-	return database.NewMongoDB(cfg)
-}
-
-func ProvideDatabase(mongoDB *database.MongoDB) *mongo.Database {
-	return mongoDB.Database
+func NewEntClient(cfg config.Config) (*ent.Client, *sql.DB, error) {
+	return database.NewEntClient(cfg)
 }

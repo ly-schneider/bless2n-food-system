@@ -1,0 +1,52 @@
+collection:
+  get:
+    tags: [Club100]
+    summary: List 100 Club members
+    description: Returns all 100 Club members from Elvanto with their redemption status.
+    operationId: listClub100People
+    security:
+      - deviceAuth: []
+      - sessionAuth: []
+    responses:
+      '200':
+        description: List of 100 Club members
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/club100.yaml#/Club100PersonList'
+      '500':
+        description: Server error
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+remaining:
+  parameters:
+    - name: elvantoPersonId
+      in: path
+      required: true
+      schema:
+        type: string
+
+  get:
+    tags: [Club100]
+    summary: Get remaining redemptions
+    description: Returns the remaining free redemptions for a specific 100 Club member.
+    operationId: getClub100Remaining
+    security:
+      - deviceAuth: []
+      - sessionAuth: []
+    responses:
+      '200':
+        description: Remaining redemptions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/club100.yaml#/Club100Remaining'
+      '500':
+        description: Server error
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'

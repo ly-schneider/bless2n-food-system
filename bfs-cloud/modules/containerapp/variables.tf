@@ -18,6 +18,11 @@ variable "allow_insecure_connections" {
   description = "Allow HTTP connections in addition to HTTPS (set to true for plain HTTP access)"
   default     = false
 }
+variable "custom_domains" {
+  type        = list(string)
+  description = "Custom domains to attach to the Container App (no certificates by default)"
+  default     = []
+}
 variable "cpu" {
   type    = number
   default = 0.5

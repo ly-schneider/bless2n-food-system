@@ -1,0 +1,203 @@
+order-payment:
+  parameters:
+    - name: orderId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  get:
+    tags: [Payments]
+    summary: Get order payment
+    operationId: getOrderPayment
+    security:
+      - sessionAuth: []
+      - deviceAuth: []
+      - {}
+    responses:
+      '200':
+        description: Payment details
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/payments.yaml#/Payment'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+  post:
+    tags: [Payments]
+    summary: Create payment for order
+    description: |
+      Initiates payment for an order.
+
+      **POS (cash/twint):** Immediately marks order as paid.
+
+      **POS (card via SumUp):** Records the SumUp transaction reference
+      after the POS device has processed payment locally.
+
+      **Web (twint via Payrexx):** Returns a redirect URL.
+      Payment completion is confirmed via webhook.
+
+      **Idempotency**: Pass an `Idempotency-Key` header to enable at-most-once
+      semantics. Duplicate requests with the same key return the cached response.
+    operationId: createOrderPayment
+    security:
+      - deviceAuth: []
+      - sessionAuth: []
+      - {}
+    parameters:
+      - name: Idempotency-Key
+        in: header
+        description: Unique key for idempotent request. Duplicate requests return cached response.
+        schema:
+          type: string
+          maxLength: 64
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/payments.yaml#/PaymentCreate'
+          examples:
+            pos_cash:
+              summary: POS cash payment
+              value:
+                method: cash
+                channel: pos
+                amountReceivedCents: 2000
+
+            pos_twint:
+              summary: POS TWINT payment
+              value:
+                method: twint
+                channel: pos
+
+            pos_card:
+              summary: POS card payment (after SumUp)
+              value:
+                method: card
+                channel: pos
+                externalRef: "su_tx_abc123"
+
+            web_twint:
+              summary: Web TWINT payment
+              value:
+                method: twint
+                channel: web
+                returnUrl: "https://shop.example.com/order/123/complete"
+    responses:
+      '201':
+        description: Payment created/completed
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/payments.yaml#/Payment'
+            examples:
+              pos_cash_result:
+                summary: Immediate completion (POS cash)
+                value:
+                  id: "019412ab-0000-7000-8000-000000000200"
+                  orderId: "019412ab-0000-7000-8000-000000000100"
+                  method: cash
+                  channel: pos
+                  status: completed
+                  amountCents: 1250
+                  receivedCents: 2000
+                  changeCents: 750
+                  completedAt: "2025-01-30T14:30:00Z"
+
+              pos_card_result:
+                summary: Immediate completion (POS card)
+                value:
+                  id: "019412ab-0000-7000-8000-000000000201"
+                  orderId: "019412ab-0000-7000-8000-000000000100"
+                  method: card
+                  channel: pos
+                  status: completed
+                  amountCents: 1250
+                  externalRef: "su_tx_abc123"
+                  completedAt: "2025-01-30T14:30:00Z"
+
+              web_redirect:
+                summary: Redirect required (Web TWINT)
+                value:
+                  id: "019412ab-0000-7000-8000-000000000202"
+                  orderId: "019412ab-0000-7000-8000-000000000100"
+                  method: twint
+                  channel: web
+                  status: pending
+                  amountCents: 1250
+                  gatewayId: "12345"
+                  redirectUrl: "https://payrexx.com/pay/abc123"
+      '400':
+        description: Invalid payment request
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '409':
+        description: Payment already exists for this order
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+item:
+  parameters:
+    - name: paymentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  get:
+    tags: [Payments]
+    summary: Get payment by ID
+    operationId: getPayment
+    security:
+      - sessionAuth: []
+      - {}
+    responses:
+      '200':
+        description: Payment details
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/payments.yaml#/Payment'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+payrexx-webhook:
+  post:
+    tags: [Payments]
+    summary: Payrexx webhook
+    description: |
+      Webhook endpoint for Payrexx payment status updates.
+      Verifies HMAC signature before processing.
+
+      On successful payment:
+      1. Updates payment status to `completed`
+      2. Updates order status to `paid`
+    operationId: handlePayrexxWebhook
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            description: Payrexx webhook payload (proprietary format)
+    responses:
+      '200':
+        description: Webhook processed
+      '400':
+        description: Invalid signature or payload

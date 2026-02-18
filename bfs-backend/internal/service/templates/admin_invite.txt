@@ -1,9 +1,0 @@
-Einladung als Admin für {{.Brand}}
-
-Du wurdest als Administrator eingeladen.
-
-Link zur Annahme:
-{{.AcceptURL}}
-
-Diese Einladung läuft in {{.TTL}} ab.
-

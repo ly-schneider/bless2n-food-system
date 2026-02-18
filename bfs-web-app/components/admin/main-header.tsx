@@ -1,5 +1,5 @@
 "use client"
-import { Home, LogOut, RefreshCw, TextAlignEnd, User } from "lucide-react"
+import { Home, LogOut, TextAlignEnd, User } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -21,20 +21,6 @@ export function AdminMainHeader({ className }: { className?: string }) {
             <span className="text-base font-semibold">BlessThun</span>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                try {
-                  window.dispatchEvent(new CustomEvent("admin:refresh"))
-                } catch {}
-              }}
-              aria-label="Aktualisieren"
-              className="rounded-[11px] border-0"
-            >
-              <RefreshCw className="size-4" />
-              <span>Aktualisieren</span>
-            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" aria-haspopup="menu" className="rounded-[11px] border-0 py-4.5">

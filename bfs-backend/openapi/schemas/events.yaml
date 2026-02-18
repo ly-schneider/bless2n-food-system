@@ -1,0 +1,21 @@
+Event:
+  type: object
+  required: [year, month, orderCount]
+  properties:
+    year:
+      type: integer
+    month:
+      type: integer
+      minimum: 1
+      maximum: 12
+    orderCount:
+      type: integer
+
+EventList:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Event'

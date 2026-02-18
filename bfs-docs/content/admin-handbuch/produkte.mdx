@@ -1,0 +1,73 @@
+---
+title: Produkte
+description: Produkte erstellen, bearbeiten, Bestand und Jetons verwalten
+---
+
+# Produktverwaltung
+
+Produkte sind die Grundlage des Bestellsystems. Es gibt zwei Typen:
+
+- Einfach (Simple): Eigenständiges Produkt mit Bestand und Preis.
+- Menü (Menu): Bundle mit Slots, in denen einfache Produkte als Optionen hinterlegt sind. Siehe [Menus](/admin-handbuch/menus).
+
+---
+
+# Produkt erstellen
+
+<Steps>
+### Typ wählen
+
+Beim Erstellen wird zwischen Simple und Menu unterschieden.
+
+### Pflichtfelder ausfüllen
+
+- Name: Produktname (Pflichtfeld).
+- Preis: Preis in CHF (z. B. `5.50`). Muss >= 0 sein.
+- Kategorie: Zuordnung zu einer bestehenden [Kategorie](/admin-handbuch/kategorien).
+
+### Bild hochladen (optional)
+
+Per Drag & Drop oder Klick ein Bild hochladen. Maximale Dateigrösse: 5 MB.
+
+### Jeton zuweisen (optional)
+
+Im Jeton-Modus muss jedem aktiven Produkt ein [Jeton](/admin-handbuch/jetons) zugewiesen werden.
+</Steps>
+
+---
+
+# Produkt bearbeiten
+
+Produkte werden als Karten angezeigt. Alle Felder können direkt auf der Karte bearbeitet werden:
+
+- Name und Preis: Inline editierbar.
+- Kategorie: Per Dropdown wechseln.
+- Bild: Neues Bild hochladen oder bestehendes löschen.
+- Aktiv/Inaktiv: Toggle-Schalter. Inaktive Produkte sind im Shop nicht sichtbar.
+
+Änderungen werden beim Speichern übernommen.
+
+---
+
+# Bestand verwalten
+
+Der Bestand eines einfachen Produkts kann auf der Produktkarte angepasst werden:
+
+- +/- Buttons: Bestand um 1 erhöhen oder senken.
+- Direkteingabe: Gewünschte Anpassung als Zahl eingeben.
+
+Jede Änderung wird als Eintrag im [Inventar-Ledger](/admin-handbuch/inventar) protokolliert.
+
+---
+
+# Produkt löschen
+
+Ein Produkt kann über den Löschen-Button auf der Karte entfernt werden. Eine Bestätigung wird angefordert.
+
+---
+
+# Validierung
+
+- Name ist ein Pflichtfeld.
+- Preis muss >= 0 CHF sein.
+- Im Jeton-Modus kann ein Produkt nicht aktiviert werden, wenn kein Jeton zugewiesen ist.

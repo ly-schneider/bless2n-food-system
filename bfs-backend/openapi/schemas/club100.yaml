@@ -1,0 +1,51 @@
+Club100Person:
+  type: object
+  required: [id, firstName, lastName, remaining, max]
+  properties:
+    id:
+      type: string
+      description: Elvanto person ID
+    firstName:
+      type: string
+    lastName:
+      type: string
+    remaining:
+      type: integer
+      description: Remaining free redemptions
+    max:
+      type: integer
+      description: Maximum free redemptions allowed
+
+Club100PersonList:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Club100Person'
+
+Club100Remaining:
+  type: object
+  required: [elvantoPersonId, remaining, max]
+  properties:
+    elvantoPersonId:
+      type: string
+    remaining:
+      type: integer
+    max:
+      type: integer
+
+Club100PaymentInfo:
+  type: object
+  required: [elvantoPersonId, elvantoPersonName, freeQuantity]
+  properties:
+    elvantoPersonId:
+      type: string
+      description: Elvanto person ID for the 100 Club member
+    elvantoPersonName:
+      type: string
+      description: Name of the 100 Club member
+    freeQuantity:
+      type: integer
+      description: Number of free products being redeemed

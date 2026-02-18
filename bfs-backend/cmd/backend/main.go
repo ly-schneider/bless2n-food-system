@@ -45,9 +45,10 @@ func main() {
 			app.NewConfig,
 			app.ProvideAppConfig,
 			app.NewLogger,
-			app.NewDB,
-			app.ProvideDatabase,
+			app.NewEntClient,
+			app.NewSessionMiddleware,
 			app.NewRouter,
+			app.NewBlobStore,
 		),
 		fx.WithLogger(func(lc fx.Lifecycle, l *zap.Logger) fxevent.Logger {
 			return &fxevent.ZapLogger{Logger: l}
@@ -57,6 +58,9 @@ func main() {
 		app.NewServices(),
 		app.NewHandlers(),
 
-		fx.Invoke(app.StartHTTPServer),
+		fx.Invoke(
+			app.SetupObservability,
+			app.StartHTTPServer,
+		),
 	).Run()
 }

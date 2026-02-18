@@ -1,153 +1,196 @@
 "use client"
-import { de } from "date-fns/locale"
-import { Calendar as CalendarIcon } from "lucide-react"
+import { ChevronLeft, ChevronRight } from "lucide-react"
+import Image from "next/image"
 import { useEffect, useMemo, useState } from "react"
-import type { DateRange } from "react-day-picker"
-import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import {
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
+import { formatChf } from "@/lib/utils"
 
-type OrderItem = { id: string; totalCents?: number | null; createdAt?: string }
+type OrderPayment = {
+  method?: string
+  amountCents?: number
+}
+
+type OrderLine = {
+  id: string
+  productId: string
+  title: string
+  quantity: number
+  lineType?: string
+  parentLineId?: string | null
+}
+
+type OrderItem = {
+  id: string
+  totalCents?: number | null
+  createdAt?: string
+  payments?: OrderPayment[] | null
+  lines?: OrderLine[] | null
+}
+
+type ProductWithStock = {
+  id: string
+  name: string
+  type?: string
+  image?: string | null
+  stock?: number | null
+}
+
+type EventMonth = {
+  year: number
+  month: number
+  orderCount: number
+}
+
+const LOW_STOCK_THRESHOLD = 10
 
 export default function AdminDashboard() {
   const fetchAuth = useAuthorizedFetch()
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const [series, setSeries] = useState<{ date: string; orders: number; revenue: number }[]>([])
-  const [lowStock, setLowStock] = useState<{ id: string; name: string; qty?: number | null }[]>([])
+  const [orders, setOrders] = useState<OrderItem[]>([])
+  const [products, setProducts] = useState<ProductWithStock[]>([])
 
-  // Date range: default to last 30 days (inclusive today)
-  const [range, setRange] = useState<DateRange>(() => {
-    const now = new Date()
-    const from = new Date(now)
-    from.setDate(now.getDate() - 29)
-    from.setHours(0, 0, 0, 0)
-    const to = new Date(now)
-    to.setHours(0, 0, 0, 0)
-    return { from, to }
-  })
+  const [events, setEvents] = useState<EventMonth[]>([])
+  const [currentEventIndex, setCurrentEventIndex] = useState(0)
+  const [eventsLoading, setEventsLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
+    setEventsLoading(true)
+    fetchAuth("/api/v1/events")
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Failed to load events"))))
+      .then((data) => {
+        if (!cancelled) {
+          const typedData = data as { items?: EventMonth[] }
+          setEvents(typedData.items || [])
+          setEventsLoading(false)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setEventsLoading(false)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [fetchAuth])
+
+  useEffect(() => {
+    if (events.length === 0) {
+      setLoading(false)
+      return
+    }
+    const event = events[currentEventIndex]
+    if (!event) {
+      setLoading(false)
+      return
+    }
+    let cancelled = false
+    setLoading(true)
     ;(async () => {
       try {
-        // Resolve date range and compute [start, endExclusive)
-        const now = new Date()
-        const today = new Date(now)
-        today.setHours(0, 0, 0, 0)
-        const start = new Date(range?.from ?? now)
-        start.setHours(0, 0, 0, 0)
-        const inclusiveTo = new Date(range?.to ?? today)
-        inclusiveTo.setHours(0, 0, 0, 0)
-        // Clamp to not go into the future
-        if (inclusiveTo.getTime() > today.getTime()) {
-          inclusiveTo.setTime(today.getTime())
-        }
-        const end = new Date(inclusiveTo)
-        end.setDate(inclusiveTo.getDate() + 1)
-        end.setHours(0, 0, 0, 0)
+        const from = new Date(event.year, event.month - 1, 1)
+        const to = new Date(event.year, event.month, 1)
 
         const [ordersRes, productsRes] = await Promise.all([
           fetchAuth(
-            `/api/v1/admin/orders?date_from=${encodeURIComponent(start.toISOString())}&date_to=${encodeURIComponent(
-              end.toISOString()
-            )}&limit=10000`
+            `/api/v1/orders?status=paid&date_from=${encodeURIComponent(from.toISOString())}&date_to=${encodeURIComponent(
+              to.toISOString()
+            )}`
           ),
-          fetchAuth(`/api/v1/products?limit=200`),
+          fetchAuth(`/api/v1/products`),
         ])
 
-        // Build timeseries for orders and revenue
-        let items: OrderItem[] = []
+        let fetchedOrders: OrderItem[] = []
         if (ordersRes.ok) {
           const data = (await ordersRes.json()) as { items?: OrderItem[] }
-          items = data.items || []
+          fetchedOrders = data.items || []
         }
 
-        // Use local calendar days so today's orders are included even with timezone offsets
-        const dayKey = (d: Date) => d.toLocaleDateString("en-CA") // YYYY-MM-DD in local time
-        const byDay = new Map<string, { orders: number; revenue: number }>()
-        // number of days between start (inclusive) and end (exclusive)
-        const millisPerDay = 24 * 60 * 60 * 1000
-        const totalDays = Math.max(0, Math.ceil((end.getTime() - start.getTime()) / millisPerDay))
-        for (let i = 0; i < totalDays; i++) {
-          const d = new Date(start)
-          d.setDate(start.getDate() + i)
-          byDay.set(dayKey(d), { orders: 0, revenue: 0 })
-        }
-        for (const it of items) {
-          const created = it.createdAt ? new Date(it.createdAt) : null
-          if (!created) continue
-          const key = dayKey(created)
-          if (!byDay.has(key)) continue
-          const rec = byDay.get(key)!
-          rec.orders += 1
-          rec.revenue += (it.totalCents ?? 0) / 100
-        }
-        const fmtDay = (iso: string) => {
-          const d = new Date(iso)
-          return d.toLocaleDateString("de-CH", { day: "2-digit", month: "2-digit" })
-        }
-        const builtSeries = Array.from(byDay.entries())
-          .sort(([a], [b]) => (a < b ? -1 : 1))
-          .map(([k, v]) => ({ date: fmtDay(k), orders: v.orders, revenue: Number(v.revenue.toFixed(2)) }))
-
-        // Low stock
-        let low: { id: string; name: string; qty?: number | null }[] = []
+        let fetchedProducts: ProductWithStock[] = []
         if (productsRes.ok) {
-          const pr = (await productsRes.json()) as {
-            items?: Array<{
-              id: string
-              name: string
-              isLowStock?: boolean
-              availableQuantity?: number | null
-            }>
-          }
-          const items = pr.items || []
-          low = items
-            .filter((p) => p.isLowStock)
-            .map((p) => ({ id: p.id, name: p.name, qty: p.availableQuantity ?? null }))
+          const data = (await productsRes.json()) as { items?: ProductWithStock[] }
+          fetchedProducts = data.items || []
         }
 
         if (!cancelled) {
-          setSeries(builtSeries)
-          setLowStock(low)
+          setOrders(fetchedOrders)
+          setProducts(fetchedProducts)
+          setLoading(false)
         }
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : "Dashboard laden fehlgeschlagen"
-        if (!cancelled) setError(msg)
+        if (!cancelled) {
+          setError(msg)
+          setLoading(false)
+        }
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [fetchAuth, range.from?.getTime(), range.to?.getTime()])
+  }, [fetchAuth, events, currentEventIndex])
 
-  const lowList = useMemo(() => lowStock.slice(0, 5), [lowStock])
+  const totalRevenue = useMemo(() => {
+    return orders.reduce((sum, o) => sum + (o.totalCents ?? 0), 0)
+  }, [orders])
 
-  const chartConfig = {
-    orders: { label: "Bestellungen", color: "#0ea5e9" }, // sky-500
-    revenue: { label: "Umsatz (CHF)", color: "#a78bfa" }, // violet-400
-    qty: { label: "Menge", color: "#f59e0b" }, // amber-500
-  } as const
+  const totalOrders = orders.length
 
-  const fmtRangeLabel = useMemo(() => {
-    const from = range?.from
-    const to = range?.to
-    if (!from && !to) return "Zeitraum wählen"
-    const fmt = (d: Date) => d.toLocaleDateString("de-CH")
-    if (from && !to) return `${fmt(from)} –`
-    if (!from && to) return `– ${fmt(to)}`
-    return `${fmt(from!)} – ${fmt(to!)}`
-  }, [range])
+  const revenueByPaymentType = useMemo(() => {
+    const byType: Record<string, number> = {}
+    for (const order of orders) {
+      const payment = order.payments?.[0]
+      const method = payment?.method ?? "unbekannt"
+      byType[method] = (byType[method] || 0) + (order.totalCents ?? 0)
+    }
+    return Object.entries(byType)
+      .map(([method, cents]) => ({ method, cents }))
+      .sort((a, b) => b.cents - a.cents)
+  }, [orders])
+
+  const productOrderCounts = useMemo(() => {
+    const counts: Record<string, { title: string; count: number }> = {}
+    for (const order of orders) {
+      for (const line of order.lines ?? []) {
+        if (line.lineType === "component" || line.parentLineId) continue
+        const key = line.productId
+        if (!counts[key]) {
+          counts[key] = { title: line.title, count: 0 }
+        }
+        counts[key].count += line.quantity
+      }
+    }
+    return Object.values(counts).sort((a, b) => b.count - a.count)
+  }, [orders])
+
+  const lowStockProducts = useMemo(() => {
+    return products
+      .filter((p) => p.type !== "menu" && typeof p.stock === "number" && p.stock <= LOW_STOCK_THRESHOLD)
+      .sort((a, b) => (a.stock ?? 0) - (b.stock ?? 0))
+      .slice(0, 10)
+  }, [products])
+
+  const paymentMethodLabels: Record<string, string> = {
+    cash: "Bargeld",
+    card: "Karte",
+    twint: "TWINT",
+    unbekannt: "Unbekannt",
+  }
+
+  const currentMonthLabel = useMemo(() => {
+    if (events.length === 0) return "–"
+    const event = events[currentEventIndex]
+    if (!event) return "–"
+    return new Date(event.year, event.month - 1).toLocaleDateString("de-CH", {
+      month: "long",
+      year: "numeric",
+    })
+  }, [events, currentEventIndex])
 
   return (
     <div className="space-y-6">
@@ -156,110 +199,133 @@ export default function AdminDashboard() {
 
       <div className="flex items-center gap-3">
         <span className="text-muted-foreground text-sm">Zeitraum:</span>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" className="justify-start gap-2">
-              <CalendarIcon className="size-4" />
-              <span className="font-normal">{fmtRangeLabel}</span>
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="range"
-              numberOfMonths={2}
-              selected={range}
-              onSelect={(r) => r && setRange(r)}
-              defaultMonth={range?.from ?? new Date()}
-              captionLayout="dropdown"
-              locale={de}
-              formatters={{
-                formatMonthDropdown: (date) => date.toLocaleString("de-CH", { month: "short" }),
-              }}
-              disabled={{
-                after: (() => {
-                  const d = new Date()
-                  d.setHours(0, 0, 0, 0)
-                  return d
-                })(),
-              }}
-            />
-          </PopoverContent>
-        </Popover>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setCurrentEventIndex((i) => i + 1)}
+            disabled={eventsLoading || currentEventIndex >= events.length - 1}
+          >
+            <ChevronLeft className="size-4" />
+          </Button>
+          <span className="min-w-[160px] text-center font-medium">{currentMonthLabel}</span>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setCurrentEventIndex((i) => i - 1)}
+            disabled={eventsLoading || currentEventIndex === 0}
+          >
+            <ChevronRight className="size-4" />
+          </Button>
+        </div>
       </div>
 
-      <section className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <div className="rounded-lg border border-gray-200 p-4">
-          <h2 className="mb-2 text-sm font-medium text-gray-600">Bestellungen</h2>
-          <ChartContainer config={chartConfig} className="h-60 w-full">
-            <BarChart data={series} margin={{ left: 8, right: 8 }}>
-              <CartesianGrid vertical={false} strokeDasharray="3 3" />
-              <XAxis dataKey="date" tickLine={false} axisLine={false} />
-              <YAxis allowDecimals={false} width={28} axisLine={false} tickLine={false} />
-              <ChartTooltip cursor={{ opacity: 0.1 }} content={<ChartTooltipContent />} />
-              <Bar dataKey="orders" fill="var(--color-orders)" radius={4} />
-              <ChartLegend content={<ChartLegendContent />} />
-            </BarChart>
-          </ChartContainer>
-        </div>
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Dialog>
+          <div className="rounded-lg border border-gray-200">
+            <div className="text-muted-foreground text-sm font-medium">Umsatz</div>
+            <div className="mt-1 text-3xl font-semibold">{loading ? "–" : formatChf(totalRevenue)}</div>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="mt-3 gap-1 px-0" disabled={loading}>
+                Details <ChevronRight className="size-4" />
+              </Button>
+            </DialogTrigger>
+          </div>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Umsatz nach Zahlungsart</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2">
+              {revenueByPaymentType.length === 0 ? (
+                <p className="text-muted-foreground text-sm">Keine Daten vorhanden.</p>
+              ) : (
+                revenueByPaymentType.map(({ method, cents }) => (
+                  <div key={method} className="flex items-center justify-between">
+                    <span className="capitalize">{paymentMethodLabels[method] ?? method}</span>
+                    <span className="font-medium">{formatChf(cents)}</span>
+                  </div>
+                ))
+              )}
+              <div className="mt-4 flex items-center justify-between border-t pt-3">
+                <span className="font-medium">Gesamt</span>
+                <span className="font-semibold">{formatChf(totalRevenue)}</span>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
-        <div className="rounded-lg border border-gray-200 p-4">
-          <h2 className="mb-2 text-sm font-medium text-gray-600">Umsatz</h2>
-          <ChartContainer config={chartConfig} className="h-60 w-full">
-            <LineChart data={series} margin={{ left: 8, right: 8 }}>
-              <CartesianGrid vertical={false} strokeDasharray="3 3" />
-              <XAxis dataKey="date" tickLine={false} axisLine={false} />
-              <YAxis width={40} axisLine={false} tickLine={false} />
-              <ChartTooltip
-                cursor={{ strokeOpacity: 0.1 }}
-                content={
-                  <ChartTooltipContent
-                    formatter={(value) => (
-                      <span>
-                        {new Intl.NumberFormat("de-CH", { style: "currency", currency: "CHF" }).format(Number(value))}
-                      </span>
-                    )}
-                  />
-                }
-              />
-              <Line
-                type="monotone"
-                dataKey="revenue"
-                stroke="var(--color-revenue)"
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 3 }}
-              />
-              <ChartLegend content={<ChartLegendContent />} />
-            </LineChart>
-          </ChartContainer>
-        </div>
+        <Dialog>
+          <div className="rounded-lg border border-gray-200">
+            <div className="text-muted-foreground text-sm font-medium">Bestellungen</div>
+            <div className="mt-1 text-3xl font-semibold">{loading ? "–" : totalOrders}</div>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="mt-3 gap-1 px-0" disabled={loading}>
+                Details <ChevronRight className="size-4" />
+              </Button>
+            </DialogTrigger>
+          </div>
+          <DialogContent className="max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Produkte nach Bestellmenge</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2">
+              {productOrderCounts.length === 0 ? (
+                <p className="text-muted-foreground text-sm">Keine Daten vorhanden.</p>
+              ) : (
+                productOrderCounts.map(({ title, count }, idx) => (
+                  <div key={idx} className="flex items-center justify-between">
+                    <span className="truncate pr-4">{title}</span>
+                    <span className="shrink-0 font-medium">{count}×</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </section>
 
-      <section className="rounded-lg border border-gray-200 p-4">
-        <h2 className="mb-2 text-sm font-medium text-gray-600">Artikel mit niedrigem Bestand</h2>
-        {lowList.length === 0 ? (
-          <div className="text-sm text-gray-500">Keine Artikel mit niedrigem Bestand.</div>
+      <section className="mt-12">
+        <h2 className="text-xl font-semibold">Artikel mit niedrigem Bestand</h2>
+        <p className="text-muted-foreground mt-1 text-sm">Produkte mit weniger als {LOW_STOCK_THRESHOLD} Einheiten</p>
+        {loading ? (
+          <div className="text-muted-foreground mt-4 text-sm">Lade…</div>
+        ) : lowStockProducts.length === 0 ? (
+          <div className="mt-4 text-sm text-green-700">Alle Produkte haben ausreichend Bestand.</div>
         ) : (
-          <ChartContainer config={chartConfig} className="h-60 w-full">
-            <BarChart
-              data={lowList.map((l) => ({ name: l.name, qty: typeof l.qty === "number" ? l.qty : 0 }))}
-              layout="vertical"
-              margin={{ left: 8, right: 8 }}
-            >
-              <CartesianGrid horizontal={false} strokeDasharray="3 3" />
-              <XAxis type="number" axisLine={false} tickLine={false} />
-              <YAxis
-                type="category"
-                dataKey="name"
-                width={160}
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 12 }}
-              />
-              <ChartTooltip cursor={{ opacity: 0.1 }} content={<ChartTooltipContent />} />
-              <Bar dataKey="qty" fill="var(--color-qty)" radius={4} />
-            </BarChart>
-          </ChartContainer>
+          <div className="mt-4 flex flex-col gap-3">
+            {lowStockProducts.map((p) => (
+              <div key={p.id} className="rounded-xl border p-3">
+                <div className="flex items-center gap-3">
+                  <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-[#cec9c6]">
+                    {p.image && (
+                      <Image
+                        src={p.image}
+                        alt={"Produktbild von " + p.name}
+                        fill
+                        sizes="40px"
+                        quality={90}
+                        unoptimized={p.image.includes("localhost:10000")}
+                        className="h-full w-full rounded-lg object-cover"
+                      />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="min-w-0 truncate font-medium">{p.name}</p>
+                      <div className="shrink-0 text-right">
+                        <p className="text-muted-foreground text-sm">Bestand</p>
+                        <p
+                          className={`font-medium ${(p.stock ?? 0) <= 0 ? "text-red-600" : (p.stock ?? 0) <= 5 ? "text-orange-600" : ""}`}
+                        >
+                          {p.stock ?? 0}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </section>
     </div>

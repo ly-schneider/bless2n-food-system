@@ -1,21 +1,17 @@
-output "nsg_id" {
-  description = "Network Security Group ID"
-  value       = azurerm_network_security_group.aca_nsg.id
-}
+# Outputs reference the existing Key Vault via data source
+# The Key Vault is no longer managed by Terraform but can still be referenced
 
 output "key_vault_id" {
   description = "Key Vault ID (if enabled)"
-  value       = var.enable_key_vault ? azurerm_key_vault.basic[0].id : null
+  value       = var.enable_key_vault ? data.azurerm_key_vault.existing[0].id : null
 }
 
 output "key_vault_uri" {
   description = "Key Vault URI (if enabled)"
-  value       = var.enable_key_vault ? azurerm_key_vault.basic[0].vault_uri : null
+  value       = var.enable_key_vault ? data.azurerm_key_vault.existing[0].vault_uri : null
 }
 
 output "key_vault_secret_ids" {
-  description = "Map of Key Vault secret names to their versionless IDs"
-  value = var.enable_key_vault ? {
-    "mongo-uri" = azurerm_key_vault_secret.cosmos_connection_string[0].versionless_id
-  } : {}
+  description = "Map of Key Vault secret names to their versionless IDs (constructed from URI)"
+  value       = var.enable_key_vault ? {} : {}
 }

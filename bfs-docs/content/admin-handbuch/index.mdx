@@ -1,0 +1,54 @@
+---
+title: Admin-Handbuch
+description: Alle Funktionen des Admin-Dashboards im Überblick
+---
+
+# Admin-Dashboard
+
+Das Admin-Dashboard ist die zentrale Verwaltungsoberfläche des Bless2n Food Systems. Hier werden Produkte, Bestellungen, Geräte und Benutzer verwaltet.
+
+Zugang erhalten nur Benutzer mit der Rolle Admin. Neue Admins werden per [Einladung](/admin-handbuch/einladungen) hinzugefügt.
+
+---
+
+# Bereiche im Überblick
+
+| Bereich | Beschreibung |
+|---|---|
+| [Dashboard](/admin-handbuch/dashboard) | Umsatz- und Bestellstatistiken mit Diagrammen |
+| [Benutzer](/admin-handbuch/benutzer) | Benutzerliste, Rollen zuweisen, Konten löschen |
+| [Einladungen](/admin-handbuch/einladungen) | Admin-Einladungen per E-Mail versenden und verwalten |
+| [Produkte](/admin-handbuch/produkte) | Produkte erstellen, bearbeiten, Bestand verwalten |
+| [Menus](/admin-handbuch/menus) | Menü-Bundles mit Slots und Auswahlmöglichkeiten |
+| [Kategorien](/admin-handbuch/kategorien) | Produktgruppierungen erstellen und sortieren |
+| [Bestellungen](/admin-handbuch/bestellungen) | Bestellungen einsehen, Status verfolgen |
+| [Inventar](/admin-handbuch/inventar) | Bestandshistorie pro Produkt einsehen |
+| [Geräte](/admin-handbuch/geraete) | POS- und Stations-Geräte koppeln und verwalten |
+| [Stationen](/admin-handbuch/stationen) | Ausgabestationen einrichten und Produkte zuweisen |
+| [POS](/admin-handbuch/pos) | POS-Einstellungen und Fulfillment-Modus wählen |
+| [Jetons](/admin-handbuch/jetons) | Farbige Jetons für die POS-Ausgabe konfigurieren |
+
+---
+
+# Grundlegende Konzepte
+
+Rollen:
+
+- Admin: Vollzugriff auf alle Verwaltungsbereiche.
+- Customer: Kann im Shop bestellen und eigene Bestellungen einsehen.
+
+Produkttypen:
+
+- Einfach (Simple): Einzelprodukt mit eigenem Bestand und Preis.
+- Menü (Menu): Bundle aus mehreren Slots, in denen jeweils einfache Produkte als Optionen hinterlegt sind.
+
+Bestellstatus:
+
+- `pending`: Bestellung erstellt, Zahlung ausstehend.
+- `paid`: Zahlung erfolgreich abgeschlossen.
+- `cancelled`: Bestellung storniert.
+- `refunded`: Betrag zurückerstattet.
+
+Inventar:
+
+Das System führt ein append-only Inventar-Ledger. Jede Bestandsänderung wird mit Grund (Verkauf, Stornierung, manuelle Korrektur usw.) protokolliert. Der aktuelle Bestand ergibt sich aus der Summe aller Einträge.

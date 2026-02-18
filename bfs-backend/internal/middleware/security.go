@@ -95,10 +95,20 @@ func (s *SecurityMiddleware) SecurityHeaders(next http.Handler) http.Handler {
 
 				var csp strings.Builder
 
-				// Relaxed CSP for Swagger UI (requires inline styles/scripts and API calls)
-				if strings.HasPrefix(r.URL.Path, "/swagger/") {
+				if strings.HasPrefix(r.URL.Path, "/docs") {
 					fmt.Fprintf(&csp,
-						"default-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src *;",
+						"default-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; "+
+							"script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "+
+							"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "+
+							"img-src 'self' data: https://cdn.jsdelivr.net; "+
+							"font-src 'self' data: https://fonts.scalar.com; "+
+							"connect-src *;",
+					)
+				} else if strings.HasPrefix(r.URL.Path, "/swagger/") {
+					fmt.Fprintf(&csp,
+						"default-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; "+
+							"script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "+
+							"img-src 'self' data:; connect-src *;",
 					)
 				} else {
 					// Base policy (nonce-based JS)

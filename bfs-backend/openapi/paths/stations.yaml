@@ -1,0 +1,292 @@
+collection:
+  get:
+    tags: [Stations]
+    summary: List stations
+    description: Returns all station-type devices.
+    operationId: listStations
+    security:
+      - sessionAuth: []
+    x-required-permissions: [stations:manage]
+    parameters:
+      - name: status
+        in: query
+        schema:
+          $ref: '../schemas/devices.yaml#/DeviceStatus'
+    responses:
+      '200':
+        description: Station list
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/stations.yaml#/StationList'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+me:
+  get:
+    tags: [Stations]
+    summary: Get current station
+    description: Returns station info for the authenticated station device.
+    operationId: getCurrentStation
+    security:
+      - deviceAuth: []
+    x-device-types: [STATION]
+    responses:
+      '200':
+        description: Station details with assigned products
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/stations.yaml#/Station'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+redeem:
+  post:
+    tags: [Stations]
+    summary: Redeem items at station
+    description: |
+      Redeems the order items assigned to this station.
+
+      Rate limited: 5 requests per 10 seconds.
+    operationId: redeemAtStation
+    security:
+      - deviceAuth: []
+    x-device-types: [STATION]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/stations.yaml#/RedemptionCreate'
+          example:
+            orderId: "019412ab-0000-7000-8000-000000000002"
+    responses:
+      '201':
+        description: Items redeemed
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/stations.yaml#/RedemptionResult'
+            example:
+              matched: 3
+              redeemed: 3
+              items:
+                - id: "019412ab-0000-7000-8000-000000000050"
+                  title: "Bratwurst"
+                  quantity: 2
+                  redeemedAt: "2025-01-30T14:35:00Z"
+                - id: "019412ab-0000-7000-8000-000000000051"
+                  title: "Pommes"
+                  quantity: 1
+                  redeemedAt: "2025-01-30T14:35:00Z"
+      '400':
+        description: Invalid QR code or already fully redeemed
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '429':
+        description: Rate limit exceeded
+        headers:
+          Retry-After:
+            schema:
+              type: integer
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+item:
+  parameters:
+    - name: stationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  get:
+    tags: [Stations]
+    summary: Get station
+    operationId: getStation
+    security:
+      - sessionAuth: []
+    x-required-permissions: [stations:manage]
+    responses:
+      '200':
+        description: Station details
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/stations.yaml#/Station'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+  delete:
+    tags: [Stations]
+    summary: Revoke station
+    description: Revokes the station device binding.
+    operationId: revokeStation
+    security:
+      - sessionAuth: []
+    x-required-permissions: [stations:manage]
+    responses:
+      '204':
+        description: Station revoked
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+products:
+  parameters:
+    - name: stationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  get:
+    tags: [Stations]
+    summary: List station products
+    description: Returns products assigned to this station for redemption.
+    operationId: listStationProducts
+    security:
+      - sessionAuth: []
+    x-required-permissions: [stations:manage]
+    responses:
+      '200':
+        description: Product assignments
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/stations.yaml#/StationProductList'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+  put:
+    tags: [Stations]
+    summary: Set station products
+    description: Replaces all product assignments for a station.
+    operationId: setStationProducts
+    security:
+      - sessionAuth: []
+    x-required-permissions: [stations:manage]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/stations.yaml#/StationProductAssignment'
+          example:
+            productIds:
+              - "019412ab-0000-7000-8000-000000000001"
+              - "019412ab-0000-7000-8000-000000000002"
+              - "019412ab-0000-7000-8000-000000000003"
+    responses:
+      '200':
+        description: Products assigned
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/stations.yaml#/StationProductList'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+product-item:
+  parameters:
+    - name: stationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    - name: productId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  delete:
+    tags: [Stations]
+    summary: Remove product from station
+    operationId: removeStationProduct
+    security:
+      - sessionAuth: []
+    x-required-permissions: [stations:manage]
+    responses:
+      '204':
+        description: Product removed
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'

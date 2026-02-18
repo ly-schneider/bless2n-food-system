@@ -8,8 +8,8 @@ import QRCode from "@/components/qrcode"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/contexts/cart-context"
 
-import { getOrderPublicById, type PublicOrderDetailsDTO } from "@/lib/api/orders"
-import { addOrder, getOrder } from "@/lib/orders-storage"
+import { getOrderPublicById, type OrderLineDTO, type PublicOrderDetailsDTO } from "@/lib/api/orders"
+import { addOrder } from "@/lib/orders-storage"
 import { formatChf } from "@/lib/utils"
 
 export default function OrderPageClient() {
@@ -22,10 +22,8 @@ export default function OrderPageClient() {
   const [footerHeight, setFooterHeight] = useState(0)
   const [mounted, setMounted] = useState(false)
   const [serverOrder, setServerOrder] = useState<PublicOrderDetailsDTO | null>(null)
-  const [pickupCode, setPickupCode] = useState<string | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
   const [apiError, setApiError] = useState<string | null>(null)
-  // Ensure we don't render a QR before the pickup-qr request finishes
   const [qrReady, setQrReady] = useState<boolean>(false)
 
   useEffect(() => {
@@ -43,12 +41,6 @@ export default function OrderPageClient() {
       try {
         const res = await getOrderPublicById(orderId)
         if (!cancelled) setServerOrder(res)
-        // Fetch signed pickup QR payload for stations
-        const q = await fetch(`/api/v1/orders/${encodeURIComponent(orderId)}/pickup-qr`)
-        if (q.ok) {
-          const data = (await q.json()) as { code?: string }
-          if (!cancelled) setPickupCode(data.code || null)
-        }
       } catch (e: unknown) {
         const msg =
           typeof e === "object" && e && "message" in e ? String((e as { message?: unknown }).message ?? "") : undefined
@@ -96,32 +88,27 @@ export default function OrderPageClient() {
     }
   }, [from, mounted])
 
-  const order = orderId ? getOrder(orderId) : undefined
-
   const groupedItems = useMemo(() => {
-    if (!serverOrder?.items)
-      return [] as Array<{ parent: PublicOrderDetailsDTO["items"][number]; children: PublicOrderDetailsDTO["items"] }>
+    if (!serverOrder?.lines || serverOrder.lines.length === 0)
+      return [] as Array<{ parent: OrderLineDTO; children: OrderLineDTO[] }>
 
-    // Build quick lookup maps
-    const byId: Record<string, PublicOrderDetailsDTO["items"][number]> = {}
-    for (const it of serverOrder.items) byId[it.id] = it
+    const byId: Record<string, OrderLineDTO> = {}
+    for (const it of serverOrder.lines) byId[it.id] = it
 
-    // Group children by their ultimate root parent (walk up until no parent)
-    const childrenByRoot: Record<string, PublicOrderDetailsDTO["items"]> = {}
-    const roots: Array<PublicOrderDetailsDTO["items"][number]> = []
+    const childrenByRoot: Record<string, OrderLineDTO[]> = {}
+    const roots: OrderLineDTO[] = []
 
-    for (const it of serverOrder.items) {
-      const hasParent = typeof it.parentItemId === "string" && it.parentItemId.length > 0
+    for (const it of serverOrder.lines) {
+      const hasParent = typeof it.parentLineId === "string" && it.parentLineId.length > 0
       if (!hasParent) {
         roots.push(it)
         continue
       }
-      // follow chain to root
-      let parentId = it.parentItemId as string
+      let parentId = it.parentLineId as string
       while (parentId) {
         const node = byId[parentId]
         if (!node) break
-        const p = node.parentItemId
+        const p = node.parentLineId
         if (typeof p === "string" && p.length > 0) {
           parentId = p
         } else {
@@ -133,7 +120,6 @@ export default function OrderPageClient() {
       childrenByRoot[parentId] = arr
     }
 
-    // Preserve original order of roots
     return roots.map((root) => ({ parent: root, children: childrenByRoot[root.id] || [] }))
   }, [serverOrder])
 
@@ -145,7 +131,7 @@ export default function OrderPageClient() {
       return <p className="text-red-600">Bestellnummer fehlt.</p>
     }
     if (qrReady) {
-      return <QRCode value={pickupCode ?? orderId ?? ""} size={260} className="mx-auto rounded-[11px] border-2 p-1" />
+      return <QRCode value={orderId ?? ""} size={260} className="mx-auto rounded-[11px] border-2 p-1" />
     }
     return <div className="mx-auto h-[260px] w-[260px] animate-pulse rounded-[11px] border-2 bg-gray-100" />
   })()
@@ -177,7 +163,7 @@ export default function OrderPageClient() {
                         src={parent.productImage}
                         alt={"Produktbild von " + parent.title}
                         fill
-                        sizes="64px"
+                        sizes="128px"
                         quality={90}
                         className="h-full w-full rounded-[11px] object-cover"
                       />
@@ -202,7 +188,7 @@ export default function OrderPageClient() {
                       </div>
                       <div className="shrink-0 text-right">
                         <p className="text-muted-foreground text-sm">x{parent.quantity}</p>
-                        <p className="font-medium">{formatChf(parent.pricePerUnitCents * parent.quantity)}</p>
+                        <p className="font-medium">{formatChf(parent.unitPriceCents * parent.quantity)}</p>
                       </div>
                     </div>
                   </div>
@@ -214,70 +200,6 @@ export default function OrderPageClient() {
             <div className="mt-4 flex items-center justify-between">
               <span className="text-muted-foreground text-sm">Summe</span>
               <span className="text-base font-semibold">{formatChf(serverOrder.totalCents)}</span>
-            </div>
-          )}
-        </div>
-      ) : mounted && order && order.items && order.items.length > 0 ? (
-        <div className="mt-8">
-          <h2 className="mb-3 text-lg font-semibold">Bestellte Artikel</h2>
-          <div className="flex flex-col gap-3">
-            {order.items.map((item) => {
-              const isMenuProduct = item.product.type === "menu"
-              const hasConfiguration = item.configuration && Object.keys(item.configuration).length > 0
-              return (
-                <div key={item.id} className="rounded-xl border p-3">
-                  <div className="flex items-center gap-3">
-                    {item.product.image && (
-                      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-[11px] bg-[#cec9c6]">
-                        <Image
-                          src={item.product.image}
-                          alt={"Produktbild von " + item.product.name}
-                          fill
-                          sizes="80px"
-                          quality={90}
-                          className="h-full w-full rounded-[11px] object-cover"
-                        />
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate font-medium">{item.product.name}</p>
-                          {isMenuProduct && hasConfiguration && (
-                            <div className="mt-1 flex flex-row flex-wrap gap-1.5">
-                              {Object.entries(item.configuration || {}).map(([slotId, productId]) => {
-                                const slot = item.product.menu?.slots?.find((s) => s.id === slotId)
-                                const slotItem = slot?.menuSlotItems?.find((si) => si.id === productId)
-                                if (slot && slotItem) {
-                                  return (
-                                    <span
-                                      key={slotId}
-                                      className="text-muted-foreground border-border rounded-lg border px-2 py-0.5 text-xs"
-                                    >
-                                      {slot.name}: {slotItem.name}
-                                    </span>
-                                  )
-                                }
-                                return null
-                              })}
-                            </div>
-                          )}
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <p className="text-muted-foreground text-sm">x{item.quantity}</p>
-                          <p className="font-medium">{formatChf(item.totalPriceCents)}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-          {typeof order.totalCents === "number" && (
-            <div className="mt-4 flex items-center justify-between">
-              <span className="text-muted-foreground text-sm">Summe</span>
-              <span className="text-base font-semibold">{formatChf(order.totalCents)}</span>
             </div>
           )}
         </div>

@@ -12,9 +12,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
@@ -30,8 +28,6 @@ export default function AdminCategoriesPage() {
   const [name, setName] = useState("")
   const [position, setPosition] = useState<number>(0)
   const [error, setError] = useState<string | null>(null)
-  const [editItem, setEditItem] = useState<{ id: string; name: string; isActive: boolean } | null>(null)
-  const [editSaving, setEditSaving] = useState(false)
 
   useEffect(() => {
     void reload()
@@ -39,7 +35,7 @@ export default function AdminCategoriesPage() {
 
   async function reload() {
     try {
-      const res = await fetchAuth(`/api/v1/admin/categories`)
+      const res = await fetchAuth(`/api/v1/categories`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = (await res.json()) as { items: Category[] }
       const sorted = (data.items || []).slice().sort((a, b) => a.position - b.position || a.name.localeCompare(b.name))
@@ -57,7 +53,7 @@ export default function AdminCategoriesPage() {
       return
     }
     const csrf = getCSRFToken()
-    const res = await fetchAuth(`/api/v1/admin/categories`, {
+    const res = await fetchAuth(`/api/v1/categories`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
       body: JSON.stringify({ name: name.trim(), position }),
@@ -79,7 +75,7 @@ export default function AdminCategoriesPage() {
       return
     }
     const csrf = getCSRFToken()
-    const res = await fetchAuth(`/api/v1/admin/categories/${id}`, {
+    const res = await fetchAuth(`/api/v1/categories/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
       body: JSON.stringify({ position: pos }),
@@ -93,7 +89,7 @@ export default function AdminCategoriesPage() {
 
   async function toggle(id: string, isActive: boolean) {
     const csrf = getCSRFToken()
-    const res = await fetchAuth(`/api/v1/admin/categories/${id}`, {
+    const res = await fetchAuth(`/api/v1/categories/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
       body: JSON.stringify({ isActive }),
@@ -107,7 +103,7 @@ export default function AdminCategoriesPage() {
 
   async function remove(id: string) {
     const csrf = getCSRFToken()
-    const res = await fetchAuth(`/api/v1/admin/categories/${id}`, {
+    const res = await fetchAuth(`/api/v1/categories/${id}`, {
       method: "DELETE",
       headers: { "X-CSRF": csrf || "" },
     })
@@ -118,12 +114,14 @@ export default function AdminCategoriesPage() {
     await reload()
   }
 
-  async function updateNameAndActive(id: string, newName: string, newActive: boolean) {
+  async function rename(id: string, newName: string) {
+    const trimmed = newName.trim()
+    if (!trimmed) return
     const csrf = getCSRFToken()
-    const res = await fetchAuth(`/api/v1/admin/categories/${id}`, {
+    const res = await fetchAuth(`/api/v1/categories/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
-      body: JSON.stringify({ name: newName, isActive: newActive }),
+      body: JSON.stringify({ name: trimmed }),
     })
     if (!res.ok) {
       setError(await readErrorMessage(res))
@@ -169,7 +167,7 @@ export default function AdminCategoriesPage() {
             <Table className="whitespace-nowrap">
               <TableHeader className="bg-card sticky top-0">
                 <TableRow>
-                  <TableHead className="whitespace-nowrap">Pos</TableHead>
+                  <TableHead className="whitespace-nowrap">Position</TableHead>
                   <TableHead className="whitespace-nowrap">Name</TableHead>
                   <TableHead className="whitespace-nowrap">Status</TableHead>
                   <TableHead className="text-right whitespace-nowrap">Aktionen</TableHead>
@@ -190,7 +188,23 @@ export default function AdminCategoriesPage() {
                         className="h-7"
                       />
                     </TableCell>
-                    <TableCell>{c.name}</TableCell>
+                    <TableCell>
+                      <Input
+                        value={c.name}
+                        onChange={(e) => {
+                          setItems((prev) => prev.map((it) => (it.id === c.id ? { ...it, name: e.target.value } : it)))
+                        }}
+                        onBlur={(e) => void rename(c.id, e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                            e.currentTarget.blur()
+                          }
+                        }}
+                        maxLength={20}
+                        className="h-7 w-40"
+                      />
+                    </TableCell>
                     <TableCell>
                       <label className="inline-flex items-center gap-2">
                         <Switch checked={c.isActive} onCheckedChange={(v) => void toggle(c.id, v)} />
@@ -199,14 +213,6 @@ export default function AdminCategoriesPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="inline-flex items-center gap-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7"
-                          onClick={() => setEditItem({ id: c.id, name: c.name, isActive: c.isActive })}
-                        >
-                          Bearbeiten
-                        </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="ghost" size="sm" className="h-7 text-red-700">
@@ -236,62 +242,6 @@ export default function AdminCategoriesPage() {
           </div>
         </div>
       </div>
-
-      {/* Edit dialog */}
-      <Dialog
-        open={!!editItem}
-        onOpenChange={(o) => {
-          if (!o) setEditItem(null)
-        }}
-      >
-        <DialogContent className="max-w-[520px] rounded-xl">
-          <DialogHeader>
-            <DialogTitle>Kategorie bearbeiten</DialogTitle>
-          </DialogHeader>
-          {editItem && (
-            <form
-              className="space-y-4"
-              onSubmit={async (e) => {
-                e.preventDefault()
-                const newName = editItem.name.trim()
-                if (!newName) return
-                setEditSaving(true)
-                await updateNameAndActive(editItem.id, newName, editItem.isActive)
-                setEditSaving(false)
-                setEditItem(null)
-              }}
-            >
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  value={editItem.name}
-                  onChange={(e) => setEditItem({ ...editItem, name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="active">Status</Label>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id="active"
-                    checked={editItem.isActive}
-                    onCheckedChange={(v) => setEditItem({ ...editItem, isActive: v })}
-                  />
-                  <span>{editItem.isActive ? "Aktiv" : "Inaktiv"}</span>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <Button type="button" variant="outline" onClick={() => setEditItem(null)} disabled={editSaving}>
-                  Abbrechen
-                </Button>
-                <Button type="submit" disabled={editSaving}>
-                  Speichern
-                </Button>
-              </div>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

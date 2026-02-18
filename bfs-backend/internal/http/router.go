@@ -3,278 +3,200 @@ package http
 import (
 	"net/http"
 
-	"backend/internal/domain"
-	"backend/internal/handler"
-	jwtMiddleware "backend/internal/middleware"
-	"backend/internal/repository"
-	"backend/internal/service"
-
-	"go.mongodb.org/mongo-driver/v2/bson"
+	"backend/internal/api"
+	"backend/internal/auth"
+	"backend/internal/generated/api/generated"
+	"backend/internal/middleware"
+	"backend/internal/observability"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-
-	httpSwagger "github.com/swaggo/http-swagger/v2"
-	"github.com/swaggo/swag"
+	chiMw "github.com/go-chi/chi/v5/middleware"
+	"go.uber.org/zap"
 )
 
 func NewRouter(
-	authHandler *handler.AuthHandler,
-	devHandler *handler.DevHandler,
-	adminHandler *handler.AdminHandler,
-	userHandler *handler.UserHandler,
-	orderHandler *handler.OrderHandler,
-	stationHandler *handler.StationHandler,
-	posHandler *handler.POSHandler,
-	categoryHandler *handler.CategoryHandler,
-	productHandler *handler.ProductHandler,
-	paymentHandler *handler.PaymentHandler,
-	redemptionHandler *handler.RedemptionHandler,
-	healthHandler *handler.HealthHandler,
-	jwksHandler *handler.JWKSHandler,
-	jwtMw *jwtMiddleware.JWTMiddleware,
-	securityMw *jwtMiddleware.SecurityMiddleware,
-	productRepo repository.ProductRepository,
-	inventoryRepo repository.InventoryLedgerRepository,
-	auditRepo repository.AuditRepository,
-	orderRepo repository.OrderRepository,
-	orderItemRepo repository.OrderItemRepository,
-	userRepo repository.UserRepository,
-	menuSlotRepo repository.MenuSlotRepository,
-	menuSlotItemRepo repository.MenuSlotItemRepository,
-	categoryRepo repository.CategoryRepository,
-	adminInviteRepo repository.AdminInviteRepository,
-	refreshTokenRepo repository.RefreshTokenRepository,
-	stationRepo repository.StationRepository,
-	posDeviceRepo repository.PosDeviceRepository,
-	stationProductRepo repository.StationProductRepository,
-	posConfig service.POSConfigService,
-	emailSvc service.EmailService,
-	jwtSvc service.JWTService,
+	apiHandlers *api.Handlers,
+	betterAuthMw *auth.SessionMiddleware,
+	deviceAuthMw *auth.DeviceAuthMiddleware,
+	securityMw *middleware.SecurityMiddleware,
+	logger *zap.Logger,
 	isDev bool,
 ) http.Handler {
-	r := chi.NewRouter()
-	// wire chi URLParam to admin handler helpers
-	handler.ChiURLParamFn = chi.URLParam
+	// ── SSE router (minimal middleware to preserve flushing) ──────────
+	sseRouter := chi.NewRouter()
+	sseRouter.Use(securityMw.CORS)
+	sseRouter.Get("/v1/inventory/stream", apiHandlers.StreamInventory)
 
-	// Security middleware (applied first for all requests)
+	// ── Main router with full middleware stack ────────────────────────
+	r := chi.NewRouter()
+	r.Use(observability.ChiMiddleware(nil))
 	r.Use(securityMw.SecurityHeaders)
 	r.Use(securityMw.CacheControlForSensitive)
 	r.Use(securityMw.CORS)
+	r.Use(chiMw.Logger)
+	r.Use(chiMw.Recoverer)
+	r.Use(chiMw.RequestID)
+	r.Use(chiMw.RealIP)
+	r.Use(chiMw.Heartbeat("/ping"))
+	r.Use(middleware.LogServerErrors)
 
-	// Standard middleware
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Heartbeat("/ping"))
-	r.Use(jwtMiddleware.LogServerErrors)
-
-	// Health check endpoint
-	r.Get("/health", healthHandler.Health)
-
-	// JWKS endpoint (public access for JWT verification)
-	r.Get("/.well-known/jwks.json", jwksHandler.GetJWKS)
-
-	// Swagger documentation (available when docs are generated)
-	if swag.GetSwagger(swag.Name) != nil {
-		r.Get("/swagger/*", httpSwagger.WrapHandler)
+	// ── Create the generated wrapper ──────────────────────────────────
+	wrapper := generated.ServerInterfaceWrapper{
+		Handler: apiHandlers,
+		ErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		},
 	}
 
-	// Dev-only email preview endpoints (only accessible in dev/local environments)
-	if isDev {
-		r.Get("/dev/email/preview/login", devHandler.PreviewLoginEmail)
-		r.Get("/dev/email/preview/email-change", devHandler.PreviewEmailChangeEmail)
-		r.Get("/dev/email/preview/admin-invite", devHandler.PreviewAdminInviteEmail)
-	}
+	// ── Health check ──────────────────────────────────────────────────
+	r.Get("/health", apiHandlers.HealthCheck)
+
+	// ── API documentation (Scalar) ───────────────────────────────────
+	r.Get("/docs", DocsScalarHandler())
+	r.Get("/docs/openapi.json", DocsOpenAPIHandler())
 
 	r.Route("/v1", func(v1 chi.Router) {
-		// Auth routes
-		v1.Route("/auth", func(a chi.Router) {
-			a.Post("/otp/request", authHandler.RequestOTP)
-			a.Post("/otp/verify", authHandler.VerifyOTP)
-			a.Post("/google/code", authHandler.GoogleCode)
-			a.Post("/refresh", authHandler.Refresh)
-			a.Post("/logout", authHandler.Logout)
+
+		// ── Public routes (no auth) ───────────────────────────────
+		v1.Post("/auth/otp-email", wrapper.SendOtpEmail)
+		v1.Get("/products", wrapper.ListProducts)
+		v1.Get("/products/{productId}", wrapper.GetProduct)
+		v1.Get("/orders/{orderId}", wrapper.GetOrder)
+
+		// Device pairing (devices initiate, no user auth)
+		v1.Post("/devices/pairings", wrapper.CreateDevicePairing)
+		v1.Get("/devices/pairings/{code}", wrapper.GetDevicePairing)
+
+		// Invite public endpoints
+		v1.Post("/invites/verify", wrapper.VerifyInvite)
+		v1.Post("/invites/accept", wrapper.AcceptInvite)
+
+		// Payment webhook (no auth, Payrexx-signed)
+		v1.Post("/payments/webhooks/payrexx", wrapper.HandlePayrexxWebhook)
+		v1.Get("/payments/{paymentId}", wrapper.GetPayment)
+
+		// Menus (public read)
+		v1.Get("/menus", wrapper.ListMenus)
+		v1.Get("/menus/{menuId}", wrapper.GetMenu)
+
+		// Categories (public read)
+		v1.Get("/categories", wrapper.ListCategories)
+		v1.Get("/categories/{categoryId}", wrapper.GetCategory)
+
+		// ── Device-authenticated routes ───────────────────────────
+		v1.Group(func(station chi.Router) {
+			station.Use(deviceAuthMw.RequireDevice(auth.DeviceTypeStation))
+			station.Get("/stations/me", wrapper.GetCurrentStation)
+			station.Post("/stations/redeem", wrapper.RedeemAtStation)
 		})
 
-		// Users resource (self)
-		v1.Route("/users", func(users chi.Router) {
-			users.Use(jwtMw.RequireAuth)
-			users.Route("/me", func(me chi.Router) {
-				me.Get("/", userHandler.GetCurrent)
-				me.Method("PATCH", "/", http.HandlerFunc(userHandler.UpdateUser))
-				me.Method("DELETE", "/", http.HandlerFunc(userHandler.DeleteUser))
-				me.Post("/email-change", userHandler.RequestEmailChange)
-				me.Post("/email-change/confirm", userHandler.ConfirmEmailChange)
-				me.Get("/sessions", authHandler.Sessions)
-				me.Delete("/sessions/{id}", authHandler.RevokeSession)
-				me.Delete("/sessions", authHandler.RevokeAllSessions)
-			})
+		v1.Group(func(pos chi.Router) {
+			pos.Use(deviceAuthMw.RequireDevice(auth.DeviceTypePOS))
+			pos.Get("/pos/me", wrapper.GetCurrentPos)
+			pos.Get("/club100/people", wrapper.ListClub100People)
+			pos.Get("/club100/remaining/{elvantoPersonId}", wrapper.GetClub100Remaining)
 		})
 
-		v1.Route("/products", func(product chi.Router) {
-			product.Get("/", productHandler.ListProducts)
+		// ── Orders (anonymous allowed, session optional) ─────────
+		v1.Group(func(orders chi.Router) {
+			orders.Use(betterAuthMw.OptionalAuth())
+			orders.Post("/orders", wrapper.CreateOrder)
+			orders.Get("/orders/{orderId}/payment", wrapper.GetOrderPayment)
+			orders.Post("/orders/{orderId}/payment", wrapper.CreateOrderPayment)
 		})
 
-		// Station public endpoints
-		v1.Route("/stations", func(st chi.Router) {
-			st.Post("/requests", stationHandler.CreateRequest)
-			st.Get("/me", stationHandler.Me)
-			st.Post("/verify-qr", stationHandler.VerifyQR)
-			st.Post("/redeem", stationHandler.Redeem)
+		// ── User-authenticated routes ─────────────────────────────
+		v1.Group(func(authed chi.Router) {
+			authed.Use(betterAuthMw.RequireAuth())
+			authed.Get("/orders", wrapper.ListOrders)
 		})
 
-		// POS public endpoints (device-gated via X-Pos-Token)
-		v1.Route("/pos", func(pos chi.Router) {
-			pos.Post("/requests", posHandler.CreateRequest)
-			pos.Get("/me", posHandler.Me)
-			pos.Post("/orders", posHandler.CreateOrder)
-			pos.Post("/orders/{id}/pay-cash", posHandler.PayCash)
-			pos.Post("/orders/{id}/pay-card", posHandler.PayCard)
-			pos.Post("/orders/{id}/pay-twint", posHandler.PayTwint)
-		})
-
-		// Orders: public details by id, and authenticated list
-		v1.Route("/orders", func(orders chi.Router) {
-			// Public access to order details by id (no auth)
-			orders.Get("/{id}", orderHandler.GetPublicByID)
-			orders.Get("/{id}/pickup-qr", stationHandler.GetPickupQR)
-			// Authenticated list of own orders
-			orders.With(jwtMw.RequireAuth).Get("/", orderHandler.ListMyOrders)
-		})
-
-		// Admin routes
-		v1.Route("/admin", func(admin chi.Router) {
-			admin.Use(jwtMw.RequireAuth)
-			// Require admin role, but allow immediate effect on role changes by checking DB if token is not yet updated
-			admin.Use(func(next http.Handler) http.Handler {
-				return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					claims, ok := jwtMiddleware.GetUserFromContext(r.Context())
-					if !ok || claims == nil {
-						http.Error(w, "Unauthorized", http.StatusUnauthorized)
-						return
-					}
-					if string(claims.Role) == string(domain.UserRoleAdmin) {
-						next.ServeHTTP(w, r)
-						return
-					}
-					// Fallback to DB role check for immediate RBAC change effect
-					if userRepo != nil {
-						if oid, err := bson.ObjectIDFromHex(claims.Subject); err == nil {
-							if u, err := userRepo.FindByID(r.Context(), oid); err == nil && u != nil && u.Role == domain.UserRoleAdmin {
-								next.ServeHTTP(w, r)
-								return
-							}
-						}
-					}
-					http.Error(w, "Forbidden", http.StatusForbidden)
-				})
-			})
-			// CSRF required on state changes
-			csrf := jwtMiddleware.NewCSRFMiddleware()
+		// ── Admin routes (auth + admin RBAC + CSRF) ───────────────
+		v1.Group(func(admin chi.Router) {
+			admin.Use(betterAuthMw.RequireAuth())
+			admin.Use(betterAuthMw.RequirePermission(auth.PermAdminAccess))
+			csrf := middleware.NewCSRFMiddleware()
 			admin.Use(csrf.Require)
-			admin.Get("/ping", adminHandler.Ping)
 
-			// Products admin
-			ap := handler.NewAdminProductHandler(productRepo, inventoryRepo, auditRepo, menuSlotItemRepo, categoryRepo, posConfig)
-			admin.Patch("/products/{id}/price", http.HandlerFunc(ap.PatchPrice))
-			admin.Patch("/products/{id}/active", http.HandlerFunc(ap.PatchActive))
-			admin.Post("/products/{id}/inventory-adjust", http.HandlerFunc(ap.AdjustInventory))
-			admin.Delete("/products/{id}", http.HandlerFunc(ap.DeleteHard))
-			admin.Patch("/products/{id}/category", http.HandlerFunc(ap.PatchCategory))
-			admin.Patch("/products/{id}/jeton", http.HandlerFunc(ap.PatchJeton))
-			admin.Post("/products", http.HandlerFunc(ap.Create))
-			// Orders admin
-			ao := handler.NewAdminOrderHandler(orderRepo, orderItemRepo, productRepo, auditRepo)
-			admin.Get("/orders", http.HandlerFunc(ao.List))
-			admin.Get("/orders/{id}", http.HandlerFunc(ao.GetByID))
-			admin.Get("/orders/export.csv", http.HandlerFunc(ao.ExportCSV))
-			admin.Patch("/orders/{id}/status", http.HandlerFunc(ao.PatchStatus))
-			// Users admin
-			au := handler.NewAdminUserHandler(userRepo)
-			admin.Get("/users", http.HandlerFunc(au.List))
-			admin.Get("/users/{id}", http.HandlerFunc(au.GetByID))
-			admin.Patch("/users/{id}", http.HandlerFunc(au.PatchProfile))
-			admin.Delete("/users/{id}", http.HandlerFunc(au.Delete))
-			admin.Patch("/users/{id}/role", http.HandlerFunc(au.PatchRole))
-			// Legacy: promote
-			admin.Post("/users/{id}/promote", http.HandlerFunc(au.Promote))
-			// Sessions admin
-			as := handler.NewAdminSessionsHandler(refreshTokenRepo, userRepo)
-			admin.Get("/sessions", http.HandlerFunc(as.List))
-			admin.Post("/users/{id}/sessions/revoke", http.HandlerFunc(as.RevokeFamily))
-			admin.Post("/users/{id}/sessions/revoke-all", http.HandlerFunc(as.RevokeAll))
-			// Categories admin
-			ac := handler.NewAdminCategoryHandler(categoryRepo, auditRepo)
-			admin.Get("/categories", http.HandlerFunc(ac.List))
-			admin.Post("/categories", http.HandlerFunc(ac.Create))
-			admin.Patch("/categories/{id}", http.HandlerFunc(ac.Update))
-			admin.Delete("/categories/{id}", http.HandlerFunc(ac.Delete))
-			// Menus admin
-			am := handler.NewAdminMenuHandler(productRepo, categoryRepo, menuSlotRepo, menuSlotItemRepo, auditRepo)
-			admin.Get("/menus", http.HandlerFunc(am.List))
-			admin.Post("/menus", http.HandlerFunc(am.Create))
-			admin.Get("/menus/{id}", http.HandlerFunc(am.Get))
-			admin.Patch("/menus/{id}", http.HandlerFunc(am.Update)) // legacy generic update
-			admin.Patch("/menus/{id}/active", http.HandlerFunc(am.PatchActive))
-			admin.Delete("/menus/{id}", http.HandlerFunc(am.DeleteHard))
-			admin.Post("/menus/{id}/slots", http.HandlerFunc(am.CreateSlot))
-			admin.Patch("/menus/{id}/slots/{slotId}", http.HandlerFunc(am.RenameSlot))
-			admin.Patch("/menus/{id}/slots/reorder", http.HandlerFunc(am.ReorderSlots))
-			admin.Delete("/menus/{id}/slots/{slotId}", http.HandlerFunc(am.DeleteSlot))
-			admin.Post("/menus/{id}/slots/{slotId}/items", http.HandlerFunc(am.AttachItem))
-			admin.Delete("/menus/{id}/slots/{slotId}/items/{productId}", http.HandlerFunc(am.DetachItem))
-			// Admin invites (admin-only for creating new admins)
-			ai := handler.NewAdminInviteHandler(adminInviteRepo, userRepo, auditRepo, emailSvc, jwtSvc, refreshTokenRepo)
-			admin.Get("/invites", http.HandlerFunc(ai.List))
-			admin.Post("/invites", http.HandlerFunc(ai.Create))
-			admin.Delete("/invites/{id}", http.HandlerFunc(ai.Delete))
-			admin.Post("/invites/{id}/revoke", http.HandlerFunc(ai.Revoke))
-			admin.Post("/invites/{id}/resend", http.HandlerFunc(ai.Resend))
+			// Products management
+			admin.Post("/products", wrapper.CreateProduct)
+			admin.Patch("/products/{productId}", wrapper.UpdateProduct)
+			admin.Delete("/products/{productId}", wrapper.DeleteProduct)
+			admin.Post("/products/{productId}/image", wrapper.UploadProductImage)
+			admin.Delete("/products/{productId}/image", wrapper.DeleteProductImage)
+			admin.Get("/products/{productId}/inventory", wrapper.GetProductInventory)
+			admin.Get("/products/{productId}/inventory/history", wrapper.GetProductInventoryHistory)
+			admin.Patch("/products/{productId}/inventory", wrapper.AdjustProductInventory)
 
-			// Stations admin
-			ast := handler.NewAdminStationHandler(stationRepo, stationProductRepo, productRepo, auditRepo, nil)
-			admin.Get("/stations/requests", http.HandlerFunc(ast.ListRequests))
-			admin.Get("/stations", http.HandlerFunc(ast.ListStations))
-			admin.Post("/stations/requests/{id}/approve", http.HandlerFunc(ast.Approve))
-			admin.Post("/stations/requests/{id}/reject", http.HandlerFunc(ast.Reject))
-			admin.Post("/stations/requests/{id}/revoke", http.HandlerFunc(ast.Revoke))
-			admin.Get("/stations/{id}/products", http.HandlerFunc(ast.ListStationProducts))
-			admin.Post("/stations/{id}/products", http.HandlerFunc(ast.AssignProducts))
-			admin.Delete("/stations/{id}/products/{productId}", http.HandlerFunc(ast.RemoveProduct))
+			// Categories management
+			admin.Post("/categories", wrapper.CreateCategory)
+			admin.Patch("/categories/{categoryId}", wrapper.UpdateCategory)
+			admin.Delete("/categories/{categoryId}", wrapper.DeleteCategory)
 
-			// POS admin
-			apos := handler.NewAdminPOSHandler(posDeviceRepo, posConfig, productRepo)
-			admin.Get("/pos/settings", http.HandlerFunc(apos.GetSettings))
-			admin.Patch("/pos/settings", http.HandlerFunc(apos.PatchSettings))
-			admin.Get("/pos/requests", http.HandlerFunc(apos.ListRequests))
-			admin.Post("/pos/requests/{id}/approve", http.HandlerFunc(apos.Approve))
-			admin.Post("/pos/requests/{id}/reject", http.HandlerFunc(apos.Reject))
-			admin.Post("/pos/requests/{id}/revoke", http.HandlerFunc(apos.Revoke))
-			admin.Get("/pos/devices", http.HandlerFunc(apos.ListDevices))
-			admin.Patch("/pos/devices/{id}/config", http.HandlerFunc(apos.PatchConfig))
-			admin.Get("/pos/jetons", http.HandlerFunc(apos.ListJetons))
-			admin.Post("/pos/jetons", http.HandlerFunc(apos.CreateJeton))
-			admin.Patch("/pos/jetons/{id}", http.HandlerFunc(apos.UpdateJeton))
-			admin.Delete("/pos/jetons/{id}", http.HandlerFunc(apos.DeleteJeton))
+			// Menu management
+			admin.Post("/menus", wrapper.CreateMenu)
+			admin.Patch("/menus/{menuId}", wrapper.UpdateMenu)
+			admin.Delete("/menus/{menuId}", wrapper.DeleteMenu)
+			admin.Post("/menus/{menuId}/slots", wrapper.CreateMenuSlot)
+			admin.Patch("/menus/{menuId}/slots/reorder", wrapper.ReorderMenuSlots)
+			admin.Patch("/menus/{menuId}/slots/{slotId}", wrapper.UpdateMenuSlot)
+			admin.Delete("/menus/{menuId}/slots/{slotId}", wrapper.DeleteMenuSlot)
+			admin.Post("/menus/{menuId}/slots/{slotId}/options", wrapper.AddSlotOption)
+			admin.Delete("/menus/{menuId}/slots/{slotId}/options/{optionProductId}", wrapper.RemoveSlotOption)
+
+			// Orders (admin)
+			admin.Patch("/orders/{orderId}", wrapper.UpdateOrderStatus)
+
+			// Stations management
+			admin.Get("/stations", wrapper.ListStations)
+			admin.Get("/stations/{stationId}", wrapper.GetStation)
+			admin.Get("/stations/{stationId}/products", wrapper.ListStationProducts)
+			admin.Put("/stations/{stationId}/products", wrapper.SetStationProducts)
+			admin.Delete("/stations/{stationId}/products/{productId}", wrapper.RemoveStationProduct)
+			admin.Delete("/stations/{stationId}", wrapper.RevokeStation)
+
+			// POS management
+			admin.Get("/pos/devices", wrapper.ListPosDevices)
+
+			// Settings management
+			admin.Get("/settings", wrapper.GetSettings)
+			admin.Patch("/settings", wrapper.UpdateSettings)
+
+			// Jetons management
+			admin.Get("/jetons", wrapper.ListJetons)
+			admin.Post("/jetons", wrapper.CreateJeton)
+			admin.Patch("/jetons/{jetonId}", wrapper.UpdateJeton)
+			admin.Delete("/jetons/{jetonId}", wrapper.DeleteJeton)
+
+			// Users management
+			admin.Get("/users", wrapper.ListUsers)
+			admin.Get("/users/{userId}", wrapper.GetUser)
+			admin.Patch("/users/{userId}", wrapper.UpdateUser)
+			admin.Delete("/users/{userId}", wrapper.DeleteUser)
+
+			// Devices management
+			admin.Get("/devices", wrapper.ListDevices)
+			admin.Get("/devices/{deviceId}", wrapper.GetDevice)
+			admin.Delete("/devices/{deviceId}", wrapper.RevokeDevice)
+			admin.Post("/devices/pairings/{code}", wrapper.CompleteDevicePairing)
+
+			// Invites management
+			admin.Get("/invites", wrapper.ListInvites)
+			admin.Post("/invites", wrapper.CreateInvite)
+			admin.Get("/invites/{inviteId}", wrapper.GetInvite)
+			admin.Delete("/invites/{inviteId}", wrapper.DeleteInvite)
+
+			// Events (dashboard aggregation)
+			admin.Get("/events", wrapper.ListEvents)
 		})
-
-		v1.Route("/payments", func(pay chi.Router) {
-			// Allow optional auth so we can attach user to order if logged in
-			pay.Use(jwtMw.OptionalAuth)
-			// Payment Intents (TWINT via Payment Element)
-			pay.Post("/create-intent", paymentHandler.CreateIntent)
-			pay.Patch("/attach-email", paymentHandler.AttachEmail)
-			pay.Get("/{id}", paymentHandler.GetPayment)
-			// Stripe webhook receiver
-			pay.Post("/webhook", paymentHandler.Webhook)
-		})
-
-		// Public invite endpoints
-		v1.Post("/invites/accept", http.HandlerFunc(handler.NewAdminInviteHandler(adminInviteRepo, userRepo, auditRepo, emailSvc, jwtSvc, refreshTokenRepo).Accept))
-		v1.Post("/invites/verify", http.HandlerFunc(handler.NewAdminInviteHandler(adminInviteRepo, userRepo, auditRepo, emailSvc, jwtSvc, refreshTokenRepo).Verify))
 	})
 
-	return r
+	// Compose: SSE bypasses main middleware, everything else uses full stack
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/v1/inventory/stream" {
+			sseRouter.ServeHTTP(w, req)
+			return
+		}
+		r.ServeHTTP(w, req)
+	})
 }

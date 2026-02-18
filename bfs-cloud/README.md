@@ -11,7 +11,7 @@ This Terraform setup uses a single, concrete approach: deploy from `envs/<env>` 
 - **Container Apps**: Auto-scaling web applications with intelligent scaling rules
   - HTTPS ingress enabled by default (no standalone IPs)
   - Default `azurecontainerapps.io` FQDNs for each app
-- **Database**: Cosmos DB with MongoDB API
+- **Database**: External PostgreSQL (managed outside Terraform)
 - **Observability**: Log Analytics (both envs), Diagnostic Settings
 - **Monitoring**: Metric-based alerts and monitoring (configurable per environment)
 
@@ -43,7 +43,6 @@ bfs-cloud/
     ├── observability/
     ├── diagnostic_setting/
     ├── alerts/
-    ├── cosmos_mongo/
     ├── network/
     ├── rg/
     └── security/
@@ -80,7 +79,7 @@ terraform apply
 ### App URLs via Key Vault
 - Terraform provisions a Key Vault; apps reference the following secret names (not auto-created to avoid overwriting existing values):
   - `backend-url`: public HTTPS URL for the backend (used by frontend `NEXT_PUBLIC_API_BASE_URL` and `BACKEND_INTERNAL_URL`).
-  - `frontend-url`: public HTTPS URL for the frontend (used by backend `SECURITY_TRUSTED_ORIGINS`, `JWT_ISSUER`, `PUBLIC_BASE_URL`).
+  - `frontend-url`: public HTTPS URL for the frontend (used by backend `SECURITY_TRUSTED_ORIGINS`, `PUBLIC_BASE_URL`).
 - Create or update these secrets in Azure Portal > Key Vaults > `<kv-name>` > Secrets, or via CI/CD.
 - The previous `shared_config` module and its separate env have been removed; no extra Terraform step is required.
 
@@ -150,7 +149,6 @@ If `enable_acr` is false, the env can use GHCR via:
 The stack includes a module (`modules/rbac_tfc`) that grants the minimal roles your Terraform Cloud service principal needs at the environment Resource Group scope:
 - Network Contributor: manage VNets/subnets and Private Endpoints
 - Private DNS Zone Contributor: manage Private DNS zones/links (when enabled)
-- Cosmos DB Account Contributor: create/update Cosmos resources
 - User Access Administrator: create RBAC role assignments (Key Vault access, ACR Pull, etc.)
 - Managed Identity Contributor: create user-assigned identities used by Container Apps
 
@@ -162,15 +160,10 @@ az role assignment list --assignee-object-id $(az ad sp show --id $AZURE_CLIENT_
   --scope $(az group show -n <rg-name> --query id -o tsv) --include-inherited -o table
 ```
 
-Cosmos keys vs AAD note:
-- If local auth is disabled on Cosmos, keys cannot be listed. Switch apps to AAD data-plane auth and set the RBAC module to avoid key-related permissions.
-
 ### Providing App Secrets and Registries
 
 Provide secrets and registries via env variables or tfvars at the env root:
 - Use `TF_VAR_registry_*`, `TF_VAR_image_tag` (branch), and optionally `TF_VAR_frontend_digest` / `TF_VAR_backend_digest` (immutable digests) and `TF_VAR_revision_suffix` (commit SHA) in CI.
-- Optionally pass per-app overrides via `TF_VAR_app_secrets` and `TF_VAR_app_registries`.
-  - Example: `TF_VAR_app_secrets='{"frontend-staging":{"API_KEY":"..."}}'`
 These propagate to Azure Container Apps as `secret {}` and `registry {}` blocks.
 
 The previous `common/` + `env-configs/*.tfvars` path has been removed in favor of the simpler env roots.

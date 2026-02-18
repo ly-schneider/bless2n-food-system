@@ -1,7 +1,6 @@
 import "styles/tailwind.css"
 import { Golos_Text } from "next/font/google"
-import CookieBanner from "@/components/cookie-banner"
-import AnalyticsConsentGate from "@/components/google-analytics"
+import AnalyticsWrapper from "@/components/analytics-wrapper"
 import { AuthProvider } from "@/contexts/auth-context"
 
 const golosText = Golos_Text({
@@ -15,8 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="de" className={golosText.variable}>
       <body>
         <AuthProvider>{children}</AuthProvider>
-        <AnalyticsConsentGate gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
-        <CookieBanner />
+        <AnalyticsWrapper gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
       </body>
     </html>
   )

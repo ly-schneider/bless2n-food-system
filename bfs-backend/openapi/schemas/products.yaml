@@ -1,0 +1,191 @@
+ProductType:
+  type: string
+  enum: [simple, menu]
+  description: |
+    - `simple`: Standalone product
+    - `menu`: Composite product with menu slots and options
+
+Product:
+  type: object
+  required: [id, categoryId, type, name, priceCents, isActive]
+  properties:
+    id:
+      type: string
+      format: uuid
+    categoryId:
+      type: string
+      format: uuid
+    type:
+      $ref: '#/ProductType'
+    name:
+      type: string
+      maxLength: 20
+    image:
+      type: string
+      nullable: true
+      description: Image URL
+    priceCents:
+      type: integer
+      format: int64
+      description: Price in cents (CHF)
+    jetonId:
+      type: string
+      format: uuid
+      nullable: true
+    isActive:
+      type: boolean
+    # Admin-only fields
+    createdAt:
+      type: string
+      format: date-time
+      x-admin-only: true
+    updatedAt:
+      type: string
+      format: date-time
+      x-admin-only: true
+    stock:
+      type: integer
+      description: Current inventory level (computed from ledger)
+      x-admin-only: true
+    # Embedded relations (included in list responses)
+    category:
+      $ref: 'categories.yaml#/CategorySummary'
+    jeton:
+      $ref: 'jetons.yaml#/JetonSummary'
+      nullable: true
+    menuSlots:
+      type: array
+      items:
+        $ref: 'menus.yaml#/MenuSlotSummary'
+      description: Only present for menu-type products
+
+ProductCreate:
+  type: object
+  required: [categoryId, name, priceCents]
+  properties:
+    categoryId:
+      type: string
+      format: uuid
+    type:
+      $ref: '#/ProductType'
+      default: simple
+    name:
+      type: string
+      maxLength: 20
+    image:
+      type: string
+    priceCents:
+      type: integer
+      format: int64
+      minimum: 0
+    jetonId:
+      type: string
+      format: uuid
+
+ProductUpdate:
+  type: object
+  properties:
+    name:
+      type: string
+      maxLength: 20
+    image:
+      type: string
+      nullable: true
+    priceCents:
+      type: integer
+      format: int64
+      minimum: 0
+    isActive:
+      type: boolean
+    categoryId:
+      type: string
+      format: uuid
+    jetonId:
+      type: string
+      format: uuid
+      nullable: true
+
+ProductImageResponse:
+  type: object
+  required: [imageUrl]
+  properties:
+    imageUrl:
+      type: string
+
+ProductList:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Product'
+
+Inventory:
+  type: object
+  required: [productId, quantity]
+  properties:
+    productId:
+      type: string
+      format: uuid
+    quantity:
+      type: integer
+    updatedAt:
+      type: string
+      format: date-time
+
+InventoryAdjustment:
+  type: object
+  required: [delta, reason]
+  properties:
+    delta:
+      type: integer
+      description: Positive to add, negative to remove
+    reason:
+      $ref: '#/InventoryReason'
+
+InventoryReason:
+  type: string
+  enum: [opening_balance, sale, refund, manual_adjust, correction]
+
+InventoryLedgerEntry:
+  type: object
+  required: [id, productId, delta, reason, createdAt]
+  properties:
+    id:
+      type: string
+      format: uuid
+    productId:
+      type: string
+      format: uuid
+    delta:
+      type: integer
+    reason:
+      $ref: '#/InventoryReason'
+    createdAt:
+      type: string
+      format: date-time
+    orderId:
+      type: string
+      format: uuid
+      nullable: true
+    orderLineId:
+      type: string
+      format: uuid
+      nullable: true
+    deviceId:
+      type: string
+      format: uuid
+      nullable: true
+    createdBy:
+      type: string
+      nullable: true
+
+InventoryLedgerList:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/InventoryLedgerEntry'

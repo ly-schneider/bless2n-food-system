@@ -21,7 +21,7 @@ export function FloatingBottomNav() {
   const [editingItem, setEditingItem] = useState<CartItem | null>(null)
   const isMobile = useIsMobile()
   const router = useRouter()
-  const { suggestion, contiguous, startIndex, endIndex } = useBestMenuSuggestion()
+  const { suggestion, contiguous, startIndex, endIndex, dismissSuggestion } = useBestMenuSuggestion()
 
   const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0)
 
@@ -128,6 +128,7 @@ export function FloatingBottomNav() {
                             suggestion={suggestion}
                             items={grouped}
                             onEditItem={(it) => setEditingItem(it)}
+                            onDismiss={dismissSuggestion}
                           />
                         )
                         for (let i = endIndex + 1; i < cart.items.length; i++) {
@@ -228,6 +229,7 @@ export function FloatingBottomNav() {
                             suggestion={suggestion}
                             items={grouped}
                             onEditItem={(it) => setEditingItem(it)}
+                            onDismiss={dismissSuggestion}
                           />
                         )
                         for (let i = endIndex + 1; i < cart.items.length; i++) {

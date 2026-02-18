@@ -1,12 +1,8 @@
 "use client"
 
-import type { CartItem } from "@/types/cart"
-
 export type StoredOrder = {
   id: string
-  createdAt: string // ISO date
-  items?: CartItem[]
-  totalCents?: number
+  createdAt: string
 }
 
 const STORAGE_KEY = "bfs-orders"
@@ -32,19 +28,10 @@ function write(list: StoredOrder[]) {
   }
 }
 
-export function addOrder(id: string, items?: CartItem[], totalCents?: number) {
+export function addOrder(id: string) {
   const list = read()
-  const idx = list.findIndex((o) => o.id === id)
-  if (idx >= 0) {
-    // If already stored but without items, enrich the record.
-    const existing = list[idx]!
-    if ((!existing.items || existing.items.length === 0) && items && items.length > 0) {
-      list[idx] = { ...existing, items, totalCents }
-      write(list)
-    }
-    return
-  }
-  list.unshift({ id, createdAt: new Date().toISOString(), items, totalCents })
+  if (list.some((o) => o.id === id)) return
+  list.unshift({ id, createdAt: new Date().toISOString() })
   write(list)
 }
 

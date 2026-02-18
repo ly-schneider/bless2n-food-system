@@ -1,0 +1,64 @@
+Category:
+  type: object
+  required: [id, name, isActive, position]
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+      maxLength: 20
+    isActive:
+      type: boolean
+    position:
+      type: integer
+      description: Display order (lower = first)
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+CategorySummary:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    position:
+      type: integer
+      description: Display order (lower = first)
+
+CategoryCreate:
+  type: object
+  required: [name]
+  properties:
+    name:
+      type: string
+      maxLength: 20
+    position:
+      type: integer
+      default: 0
+
+CategoryUpdate:
+  type: object
+  properties:
+    name:
+      type: string
+      maxLength: 20
+    isActive:
+      type: boolean
+    position:
+      type: integer
+
+CategoryList:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Category'

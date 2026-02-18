@@ -1,0 +1,28 @@
+---
+title: Daten & Datenschutz
+description: Datenmodell, PII-Handling, Security und Retention/Backups
+---
+
+# Data Model Deep Dive
+
+Tabellen (PostgreSQL):
+
+- Users: E-Mail, Rolle (admin/customer), verified, Name.
+- Products & Categories: `type` (simple/menu), Preis in Cents, Aktiv-Status, Menu Slots/Items.
+- Orders & Order Lines: Status (`pending|paid|cancelled|refunded`), Origin (`shop|pos`), Payrexx Felder und `order_payments` für POS-Tender.
+- Inventory Ledger: Append-only Anpassungen mit `reason` und `delta`.
+- Devices & Device Bindings: Geräte-Registrierung und -Zuordnung (Station/POS).
+- Sessions: Better Auth Sessions mit Token, User-ID, Ablaufzeit.
+
+# PII & Security
+
+- PII: E-Mail-Adressen; optionale Namen; keine Kartendaten (PAN) im System. Karten via Payrexx oder nicht-sensitive Metadaten via SumUp.
+- Sessions: Better Auth Session-Tokens in PostgreSQL; Session-Cookie (`better-auth.session_token`) im Browser.
+- Secrets: In Key Vault; Apps beziehen via Secret Refs.
+- Auth: E-Mail OTP und Google OIDC via Better Auth; CORS aktiv.
+
+# Retention & Backups
+
+- LAW Retention: Standard 30 Tage; je Policy anpassen.
+- PostgreSQL Backups: Datenbankanbieterspezifische Backup Policy; RPO/RTO Anforderungen prüfen.
+- Exports: Admin Orders CSV Export vorhanden; keine sensiblen Felder ausgeben.

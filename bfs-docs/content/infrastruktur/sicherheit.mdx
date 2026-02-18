@@ -1,0 +1,28 @@
+---
+title: Sicherheit & Zugriffskontrolle
+description: Azure RBAC, Least Privilege, Key Vault Zugriff und App-Auth
+---
+
+# Azure RBAC
+
+- Terraform Principal (Terraform Cloud oder GitHub OIDC) erhält minimale Rollen auf RG-Scope der Umgebung:
+  - Network Contributor, Private DNS Zone Contributor,
+  - User Access Administrator (für Rollenzuweisungen), Managed Identity Contributor.
+- Container Apps Identities erhalten `AcrPull` und Key Vault Secrets User Rechte.
+
+# Key Vault Zugriff
+
+- KV pro Umgebung (z. B. `bfs-staging-kv`): speichert Secrets für Backend und Frontend.
+- Secret-Namen u. a.: `database-url`, `better-auth-url`, `better-auth-secret`, `payrexx-instance`, `payrexx-api-secret`, `payrexx-webhook-secret`, `station-qr-secret`, `google-client-id`, `google-client-secret`, `plunk-api-key`, `security-trusted-origins`, `public-base-url`, `next-public-api-base-url`, `backend-internal-url`.
+- Apps referenzieren KV-Secrets über Container Apps `key_vault_secrets` oder `key_vault_secret_refs`.
+
+# Application Security
+
+- Backend Auth: Better Auth Sessions; das Backend validiert Session-Tokens aus Cookies oder Bearer-Headern direkt gegen die PostgreSQL-Datenbank.
+- Auth Flows: E-Mail OTP und Google OIDC via Better Auth; CSRF Double-Submit Cookie für Admin-Writes.
+- Web Security: Middleware setzt Security Headers; HSTS in Prod; CORS für Trusted Origins.
+
+# Least Privilege
+
+- Breite Contributor-Rollen vermeiden; gezielt Data-Plane/Identity-Rollen vergeben.
+- Zugriff auf KV und Datenbank minimieren; Operationen via Runbooks und CI/CD-Variablen.

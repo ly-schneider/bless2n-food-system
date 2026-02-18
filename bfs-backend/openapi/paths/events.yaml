@@ -1,0 +1,21 @@
+collection:
+  get:
+    tags: [Events]
+    summary: List months with order activity
+    description: Returns a list of year/month pairs that have at least one paid order.
+    operationId: listEvents
+    security:
+      - sessionAuth: []
+    responses:
+      '200':
+        description: List of months with orders
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/events.yaml#/EventList'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'

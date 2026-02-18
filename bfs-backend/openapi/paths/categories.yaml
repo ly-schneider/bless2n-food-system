@@ -1,0 +1,172 @@
+collection:
+  get:
+    tags: [Categories]
+    summary: List categories
+    description: Returns all categories ordered by position.
+    operationId: listCategories
+    security:
+      - {}
+      - sessionAuth: []
+    responses:
+      '200':
+        description: Category list
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/categories.yaml#/CategoryList'
+
+  post:
+    tags: [Categories]
+    summary: Create category
+    operationId: createCategory
+    security:
+      - sessionAuth: []
+    x-required-permissions: [categories:write]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/categories.yaml#/CategoryCreate'
+          example:
+            name: "Getranke"
+            position: 2
+    responses:
+      '201':
+        description: Category created
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/categories.yaml#/Category'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+item:
+  parameters:
+    - name: categoryId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  get:
+    tags: [Categories]
+    summary: Get category
+    operationId: getCategory
+    security:
+      - {}
+      - sessionAuth: []
+    responses:
+      '200':
+        description: Category details
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/categories.yaml#/Category'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+  patch:
+    tags: [Categories]
+    summary: Update category
+    operationId: updateCategory
+    security:
+      - sessionAuth: []
+    x-required-permissions: [categories:write]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/categories.yaml#/CategoryUpdate'
+          examples:
+            rename:
+              summary: Rename category
+              value:
+                name: "Snacks"
+            reorder:
+              summary: Change position
+              value:
+                position: 3
+            deactivate:
+              summary: Deactivate
+              value:
+                isActive: false
+    responses:
+      '200':
+        description: Category updated
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/categories.yaml#/Category'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+  delete:
+    tags: [Categories]
+    summary: Delete category
+    description: |
+      Deletes a category. Fails if products are still assigned to it
+      (foreign key constraint: `ON DELETE RESTRICT`).
+    operationId: deleteCategory
+    security:
+      - sessionAuth: []
+    x-required-permissions: [categories:write]
+    responses:
+      '204':
+        description: Category deleted
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '409':
+        description: Category has assigned products
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'

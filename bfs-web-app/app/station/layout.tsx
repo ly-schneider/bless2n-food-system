@@ -1,5 +1,6 @@
 import { Metadata } from "next"
 import Image from "next/image"
+import { VersionLabel } from "@/components/layout/version-label"
 
 export const metadata: Metadata = {
   title: "Station Portal - BlessThun Food",
@@ -16,6 +17,7 @@ export default function StationLayout({ children }: { children: React.ReactNode 
         </div>
       </div>
       <div>{children}</div>
+      <VersionLabel className="mt-4 block text-center" />
     </main>
   )
 }

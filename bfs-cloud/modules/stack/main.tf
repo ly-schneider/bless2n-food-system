@@ -17,25 +17,14 @@ variable "tags" {
 variable "config" {
   description = "Environment-specific configuration"
   type = object({
-    rg_name                  = string
-    vnet_name                = string
-    subnet_name              = string
-    vnet_cidr                = string
-    subnet_cidr              = string
-    delegate_aca_subnet      = optional(bool, false)
-    pe_subnet_name           = optional(string, "private-endpoints-subnet")
-    pe_subnet_cidr           = optional(string, "10.1.8.0/24")
-    env_name                 = string
-    law_name                 = string
-    appi_name                = string
-    enable_app_insights      = bool
-    retention_days           = number
-    cosmos_name              = string
-    database_throughput      = number
-    enable_security_features = optional(bool, true)
-    key_vault_name           = optional(string)
-    enable_private_endpoint  = optional(bool, false)
-    allowed_ip_ranges        = optional(list(string), [])
+    rg_name             = string
+    env_name            = string
+    law_name            = string
+    appi_name           = string
+    enable_app_insights = bool
+    retention_days      = number
+    key_vault_name      = optional(string)
+    allowed_ip_ranges   = optional(list(string), [])
     apps = map(object({
       port                           = number
       image                          = string
@@ -46,6 +35,7 @@ variable "config" {
       revision_suffix                = optional(string)
       external_ingress               = optional(bool, true)
       allow_insecure_connections     = optional(bool, false)
+      custom_domains                 = optional(list(string), [])
       health_check_path              = optional(string)
       liveness_path                  = optional(string)
       liveness_interval_seconds      = optional(number)
@@ -96,6 +86,10 @@ locals {
   environment_variables = var.config.enable_app_insights ? {
     APPINSIGHTS_CONNECTION_STRING = coalesce(module.obs.app_insights_connection_string, "")
   } : {}
+  key_vault_name   = var.config.key_vault_name != null ? var.config.key_vault_name : "${var.environment}-kv"
+  key_vault_uri    = "https://${local.key_vault_name}.vault.azure.net"
+  uami_name        = "${var.environment}-aca-uami"
+  uami_resource_id = "/subscriptions/${data.azurerm_client_config.current.subscription_id}/resourceGroups/${var.config.rg_name}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/${local.uami_name}"
 }
 
 module "rg" {
@@ -108,20 +102,7 @@ module "rg" {
 locals {
   backend_apps  = { for k, v in var.config.apps : k => v if can(regex("^backend", k)) }
   frontend_apps = { for k, v in var.config.apps : k => v if can(regex("^frontend", k)) }
-}
-
-module "net" {
-  source                        = "../network"
-  resource_group_name           = module.rg.name
-  location                      = var.location
-  vnet_name                     = var.config.vnet_name
-  vnet_cidr                     = var.config.vnet_cidr
-  subnet_name                   = var.config.subnet_name
-  subnet_cidr                   = var.config.subnet_cidr
-  private_endpoints_subnet_name = try(var.config.pe_subnet_name, "private-endpoints-subnet")
-  private_endpoints_subnet_cidr = try(var.config.pe_subnet_cidr, "10.1.8.0/24")
-  delegate_containerapps_subnet = try(var.config.delegate_aca_subnet, false)
-  tags                          = var.tags
+  docs_apps     = { for k, v in var.config.apps : k => v if can(regex("^docs", k)) }
 }
 
 module "obs" {
@@ -140,8 +121,6 @@ module "aca_env" {
   name                       = var.config.env_name
   location                   = var.location
   resource_group_name        = module.rg.name
-  subnet_id                  = module.net.subnet_id
-  logs_destination           = "azure-monitor"
   log_analytics_workspace_id = module.obs.log_analytics_id
   tags                       = var.tags
 }
@@ -153,23 +132,6 @@ module "env_diag" {
   log_analytics_workspace_id = module.obs.log_analytics_id
   category_groups            = []
   enable_metrics             = true
-}
-
-module "cosmos" {
-  source                     = "../cosmos_mongo"
-  name                       = var.config.cosmos_name
-  location                   = var.location
-  resource_group_name        = module.rg.name
-  create_database            = true
-  database_name              = "appdb"
-  database_throughput        = var.config.database_throughput
-  subnet_id                  = module.net.subnet_id
-  private_endpoint_subnet_id = module.net.private_endpoints_subnet_id
-  vnet_id                    = module.net.vnet_id
-  allowed_ip_ranges          = []
-  enable_private_endpoint    = try(var.config.enable_private_endpoint, false)
-  log_analytics_workspace_id = module.obs.log_analytics_id
-  tags                       = var.tags
 }
 
 module "apps_backend" {
@@ -187,26 +149,22 @@ module "apps_backend" {
   liveness_initial_delay_seconds = lookup(each.value, "liveness_initial_delay_seconds", 20)
   external_ingress               = try(each.value.external_ingress, true)
   allow_insecure_connections     = try(each.value.allow_insecure_connections, false)
+  custom_domains                 = try(each.value.custom_domains, [])
   cpu                            = each.value.cpu
   memory                         = each.value.memory
   min_replicas                   = each.value.min_replicas
   max_replicas                   = each.value.max_replicas
   enable_system_identity         = false
-  user_assigned_identity_ids     = [azurerm_user_assigned_identity.aca_uami.id]
+  user_assigned_identity_ids     = [local.uami_resource_id]
   log_analytics_workspace_id     = module.obs.log_analytics_id
   environment_variables          = merge(local.environment_variables, each.value.environment_variables)
   secrets                        = each.value.secrets
   key_vault_secrets              = each.value.key_vault_secrets
   revision_suffix                = try(each.value.revision_suffix, null)
-  key_vault_secret_refs = merge(
-    try(each.value.key_vault_secret_refs, {}),
-    var.config.enable_security_features && length(module.security) > 0 ? {
-      for env_var, secret_name in try(each.value.key_vault_secrets, {}) :
-      lower(replace(env_var, "_", "-")) => contains(keys(module.security[0].key_vault_secret_ids), secret_name) ?
-      module.security[0].key_vault_secret_ids[secret_name] :
-      format("%ssecrets/%s", module.security[0].key_vault_uri, secret_name)
-    } : {}
-  )
+  key_vault_secret_refs = {
+    for secret_name in distinct(values(try(each.value.key_vault_secrets, {}))) :
+    secret_name => "${local.key_vault_uri}/secrets/${secret_name}"
+  }
   registries              = each.value.registries
   http_scale_rule         = each.value.http_scale_rule
   cpu_scale_rule          = each.value.cpu_scale_rule
@@ -214,6 +172,11 @@ module "apps_backend" {
   azure_queue_scale_rules = each.value.azure_queue_scale_rules
   custom_scale_rules      = each.value.custom_scale_rules
   tags                    = merge(var.tags, { app = each.key })
+
+  depends_on = [
+    module.security,
+    azurerm_user_assigned_identity.aca_uami
+  ]
 }
 
 module "apps_frontend" {
@@ -231,12 +194,13 @@ module "apps_frontend" {
   liveness_initial_delay_seconds = lookup(each.value, "liveness_initial_delay_seconds", 20)
   external_ingress               = try(each.value.external_ingress, true)
   allow_insecure_connections     = try(each.value.allow_insecure_connections, false)
+  custom_domains                 = each.value.custom_domains
   cpu                            = each.value.cpu
   memory                         = each.value.memory
   min_replicas                   = each.value.min_replicas
   max_replicas                   = each.value.max_replicas
   enable_system_identity         = false
-  user_assigned_identity_ids     = [azurerm_user_assigned_identity.aca_uami.id]
+  user_assigned_identity_ids     = [local.uami_resource_id]
   log_analytics_workspace_id     = module.obs.log_analytics_id
   environment_variables = merge(
     local.environment_variables,
@@ -245,15 +209,10 @@ module "apps_frontend" {
   secrets           = each.value.secrets
   key_vault_secrets = each.value.key_vault_secrets
   revision_suffix   = try(each.value.revision_suffix, null)
-  key_vault_secret_refs = merge(
-    try(each.value.key_vault_secret_refs, {}),
-    var.config.enable_security_features && length(module.security) > 0 ? {
-      for env_var, secret_name in try(each.value.key_vault_secrets, {}) :
-      lower(replace(env_var, "_", "-")) => contains(keys(module.security[0].key_vault_secret_ids), secret_name) ?
-      module.security[0].key_vault_secret_ids[secret_name] :
-      format("%ssecrets/%s", module.security[0].key_vault_uri, secret_name)
-    } : {}
-  )
+  key_vault_secret_refs = {
+    for secret_name in distinct(values(try(each.value.key_vault_secrets, {}))) :
+    secret_name => "${local.key_vault_uri}/secrets/${secret_name}"
+  }
   registries              = each.value.registries
   http_scale_rule         = each.value.http_scale_rule
   cpu_scale_rule          = each.value.cpu_scale_rule
@@ -261,6 +220,59 @@ module "apps_frontend" {
   azure_queue_scale_rules = each.value.azure_queue_scale_rules
   custom_scale_rules      = each.value.custom_scale_rules
   tags                    = merge(var.tags, { app = each.key })
+
+  depends_on = [
+    module.security,
+    azurerm_user_assigned_identity.aca_uami
+  ]
+}
+
+module "apps_docs" {
+  for_each = local.docs_apps
+  source   = "../containerapp"
+
+  name                           = each.key
+  resource_group_name            = module.rg.name
+  environment_id                 = module.aca_env.id
+  image                          = each.value.image
+  target_port                    = each.value.port
+  health_check_path              = lookup(each.value, "health_check_path", "/api/health")
+  liveness_path                  = lookup(each.value, "liveness_path", "/api/health")
+  liveness_interval_seconds      = lookup(each.value, "liveness_interval_seconds", 30)
+  liveness_initial_delay_seconds = lookup(each.value, "liveness_initial_delay_seconds", 20)
+  external_ingress               = try(each.value.external_ingress, true)
+  allow_insecure_connections     = try(each.value.allow_insecure_connections, false)
+  custom_domains                 = each.value.custom_domains
+  cpu                            = each.value.cpu
+  memory                         = each.value.memory
+  min_replicas                   = each.value.min_replicas
+  max_replicas                   = each.value.max_replicas
+  enable_system_identity         = false
+  user_assigned_identity_ids     = [local.uami_resource_id]
+  log_analytics_workspace_id     = module.obs.log_analytics_id
+  environment_variables = merge(
+    local.environment_variables,
+    each.value.environment_variables
+  )
+  secrets           = each.value.secrets
+  key_vault_secrets = each.value.key_vault_secrets
+  revision_suffix   = try(each.value.revision_suffix, null)
+  key_vault_secret_refs = {
+    for secret_name in distinct(values(try(each.value.key_vault_secrets, {}))) :
+    secret_name => "${local.key_vault_uri}/secrets/${secret_name}"
+  }
+  registries              = each.value.registries
+  http_scale_rule         = each.value.http_scale_rule
+  cpu_scale_rule          = each.value.cpu_scale_rule
+  memory_scale_rule       = each.value.memory_scale_rule
+  azure_queue_scale_rules = each.value.azure_queue_scale_rules
+  custom_scale_rules      = each.value.custom_scale_rules
+  tags                    = merge(var.tags, { app = each.key })
+
+  depends_on = [
+    module.security,
+    azurerm_user_assigned_identity.aca_uami
+  ]
 }
 
 data "azurerm_client_config" "current" {}
@@ -272,20 +284,20 @@ resource "azurerm_user_assigned_identity" "aca_uami" {
   tags                = var.tags
 }
 
-module "security" {
-  count = var.config.enable_security_features ? 1 : 0
+module "blob_storage" {
+  source              = "../blob_storage"
+  name                = "${replace(var.config.env_name, "-", "")}bfsimages"
+  resource_group_name = module.rg.name
+  location            = var.location
+  container_name      = "product-images"
+  tags                = var.tags
+}
 
-  source                     = "../security"
-  name_prefix                = var.environment
-  location                   = var.location
-  resource_group_name        = module.rg.name
-  subnet_id                  = module.net.subnet_id
-  enable_key_vault           = true
-  key_vault_name             = var.config.key_vault_name != null ? var.config.key_vault_name : "${var.config.cosmos_name}-kv"
-  allowed_ip_ranges          = var.config.allowed_ip_ranges != null ? var.config.allowed_ip_ranges : []
-  key_vault_admins           = [data.azurerm_client_config.current.object_id]
-  uami_principal_id          = azurerm_user_assigned_identity.aca_uami.principal_id
-  cosmos_connection_string   = module.cosmos.connection_string
-  log_analytics_workspace_id = module.obs.log_analytics_id
-  tags                       = var.tags
+module "security" {
+  source              = "../security"
+  name_prefix         = var.environment
+  location            = var.location
+  resource_group_name = module.rg.name
+  key_vault_name      = local.key_vault_name
+  tags                = var.tags
 }

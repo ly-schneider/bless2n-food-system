@@ -5,19 +5,19 @@ description: Module, Environment Roots, Container Apps Config, Key Vault und Dig
 
 # Module & Umgebungen
 
-- Module unter `modules/`: `stack`, `containerapp`, `containerapps_env`, `cosmos_mongo`, `security`, `alerts`, `rg`, `network`, `diagnostic_setting`, `observability`, `budget`, `action_group`.
-- Envs unter `envs/<env>`: Root‑Module, die `modules/stack` parametrisieren.
+- Module unter `modules/`: `stack`, `containerapp`, `containerapps_env`, `security`, `alerts`, `rg`, `network`, `diagnostic_setting`, `observability`, `budget`, `action_group`.
+- Envs unter `envs/<env>`: Root-Module, die `modules/stack` parametrisieren.
 
 # Container Apps
 
 - Image Auswahl: Bevorzugt immutable Digests (`frontend_digest`, `backend_digest`) aus CI; Fallback auf Tag + `revision_suffix`.
-- Scaling Rules pro App; Health Checks und Liveness; 0–N Replicas (Scale‑to‑Zero).
-- Secrets/Envs: `secrets` für Werte und `key_vault_secrets` für KV‑Namen; zu versionless IDs aufgelöst.
+- Scaling Rules pro App; Health Checks und Liveness; 0-N Replicas (Scale-to-Zero).
+- Secrets/Envs: `secrets` für Werte und `key_vault_secrets` für KV-Namen; zu versionless IDs aufgelöst.
 
 # Security
 
 - Key Vault für Secrets; Role Assignments mit KV Secrets User; optional KV Admins.
-- Alerts auf Container Apps‑Metriken; Diagnostic Settings für KV.
+- Alerts auf Container Apps-Metriken; Diagnostic Settings für KV.
 
 # ACR & CI
 

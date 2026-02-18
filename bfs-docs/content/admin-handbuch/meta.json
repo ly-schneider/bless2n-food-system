@@ -1,0 +1,19 @@
+{
+  "title": "Admin-Handbuch",
+  "pages": [
+    "index",
+    "anmeldung",
+    "dashboard",
+    "benutzer",
+    "einladungen",
+    "produkte",
+    "menus",
+    "kategorien",
+    "bestellungen",
+    "inventar",
+    "geraete",
+    "stationen",
+    "pos",
+    "jetons"
+  ]
+}

@@ -62,7 +62,7 @@ export function ProductConfigurationModal({
     return product.menu.slots.every((slot) => {
       const sel = selectedConfiguration[slot.id]
       if (!sel) return false
-      const item = slot.menuSlotItems?.find((it) => it.id === sel)
+      const item = slot.options?.find((it) => it.id === sel)
       if (!item) return false
       // must be active and available
       const isActive = item.isActive !== false
@@ -83,14 +83,16 @@ export function ProductConfigurationModal({
         </DialogHeader>
 
         <div className="space-y-6">
-          {product.menu.slots.map((slot) => (
-            <MenuSlotSelector
-              key={slot.id}
-              slot={slot}
-              selectedProductId={selectedConfiguration[slot.id]}
-              onSelect={(productId) => handleSlotSelection(slot.id, productId)}
-            />
-          ))}
+          {[...product.menu.slots]
+            .sort((a, b) => a.sequence - b.sequence)
+            .map((slot) => (
+              <MenuSlotSelector
+                key={slot.id}
+                slot={slot}
+                selectedProductId={selectedConfiguration[slot.id]}
+                onSelect={(productId) => handleSlotSelection(slot.id, productId)}
+              />
+            ))}
         </div>
 
         <DialogFooter className="flex-col gap-4 sm:flex-col">
@@ -109,6 +111,11 @@ export function ProductConfigurationModal({
   )
 }
 
+/** Strip the "-16x9" suffix before the file extension to get a 1:1 crop URL. */
+function squareImageUrl(url: string): string {
+  return url.replace(/-16x9(\.\w+)$/, "$1")
+}
+
 interface MenuSlotSelectorProps {
   slot: MenuSlotDTO
   selectedProductId?: string
@@ -116,7 +123,7 @@ interface MenuSlotSelectorProps {
 }
 
 function MenuSlotSelector({ slot, selectedProductId, onSelect }: MenuSlotSelectorProps) {
-  if (!slot.menuSlotItems) {
+  if (!slot.options) {
     return null
   }
 
@@ -125,7 +132,7 @@ function MenuSlotSelector({ slot, selectedProductId, onSelect }: MenuSlotSelecto
       <h3 className="font-family-secondary text-lg font-medium">{slot.name}</h3>
 
       <div className="grid gap-2">
-        {slot.menuSlotItems.map((item) => {
+        {slot.options.map((item) => {
           const isActive = item.isActive !== false
           const isAvailable = item.isAvailable !== false
           const isSelected = selectedProductId === item.id
@@ -135,8 +142,8 @@ function MenuSlotSelector({ slot, selectedProductId, onSelect }: MenuSlotSelecto
           return (
             <Card
               key={item.id}
-              className={`relative transition-all hover:shadow-md ${
-                isSelected ? "ring-primary bg-primary/5 ring-2" : "hover:bg-gray-50"
+              className={`relative rounded-2xl py-0 transition-all hover:shadow-md ${
+                isSelected ? "ring-primary bg-primary/5 ring-2" : "bg-muted/40 hover:bg-muted/70"
               } ${!isAvailable ? "pointer-events-none opacity-60 grayscale" : "cursor-pointer"}`}
               onClick={() => {
                 if (isAvailable) onSelect(item.id)
@@ -154,24 +161,23 @@ function MenuSlotSelector({ slot, selectedProductId, onSelect }: MenuSlotSelecto
                 </span>
               )}
               <CardContent className="p-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {item.image && (
-                      <div className="relative h-12 w-12 overflow-hidden rounded-lg bg-gray-200">
+                <div className="flex items-center gap-3">
+                  {item.image && (
+                    <div className="relative flex size-14 shrink-0 items-center justify-center rounded-xl bg-[#cec9c6]">
+                      <div className="relative size-11 overflow-hidden">
                         <Image
-                          src={item.image}
+                          src={squareImageUrl(item.image)}
                           alt={item.name}
                           fill
-                          sizes="48px"
+                          sizes="44px"
                           quality={90}
                           className="h-full w-full object-cover"
+                          unoptimized={item.image.includes("localhost") || item.image.includes("127.0.0.1")}
                         />
                       </div>
-                    )}
-                    <div>
-                      <h4 className="font-family-secondary font-medium">{item.name}</h4>
                     </div>
-                  </div>
+                  )}
+                  <h4 className="font-family-secondary font-medium">{item.name}</h4>
                 </div>
               </CardContent>
             </Card>

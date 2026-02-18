@@ -1,0 +1,391 @@
+collection:
+  get:
+    tags: [Products]
+    summary: List products
+    description: |
+      Returns the product catalog.
+
+      **Public callers** receive only active products with public fields.
+
+      **Admin callers** (`products:write`) receive all products including
+      inactive ones, plus `createdAt`, `updatedAt`, `stock`, and computed fields.
+    operationId: listProducts
+    security:
+      - {}
+      - sessionAuth: []
+    parameters:
+      - name: category_id
+        in: query
+        description: Filter by category
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: Product list
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/products.yaml#/ProductList'
+
+  post:
+    tags: [Products]
+    summary: Create product
+    operationId: createProduct
+    security:
+      - sessionAuth: []
+    x-required-permissions: [products:write]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/products.yaml#/ProductCreate'
+          examples:
+            simple:
+              summary: Simple product
+              value:
+                categoryId: "019412ab-0000-7000-8000-000000000001"
+                name: "Bratwurst"
+                priceCents: 650
+                image: "https://cdn.example.com/bratwurst.jpg"
+            menu:
+              summary: Menu product
+              value:
+                categoryId: "019412ab-0000-7000-8000-000000000001"
+                type: menu
+                name: "Lunch Menu"
+                priceCents: 1200
+    responses:
+      '201':
+        description: Product created
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/products.yaml#/Product'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+item:
+  parameters:
+    - name: productId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  get:
+    tags: [Products]
+    summary: Get product
+    operationId: getProduct
+    security:
+      - {}
+      - sessionAuth: []
+    responses:
+      '200':
+        description: Product details
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/products.yaml#/Product'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+  patch:
+    tags: [Products]
+    summary: Update product
+    operationId: updateProduct
+    security:
+      - sessionAuth: []
+    x-required-permissions: [products:write]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/products.yaml#/ProductUpdate'
+          examples:
+            update_price:
+              summary: Update price
+              value:
+                priceCents: 750
+            deactivate:
+              summary: Deactivate product
+              value:
+                isActive: false
+            assign_jeton:
+              summary: Assign jeton
+              value:
+                jetonId: "019412ab-0000-7000-8000-000000000099"
+    responses:
+      '200':
+        description: Product updated
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/products.yaml#/Product'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+  delete:
+    tags: [Products]
+    summary: Delete product
+    operationId: deleteProduct
+    security:
+      - sessionAuth: []
+    x-required-permissions: [products:write]
+    responses:
+      '204':
+        description: Product deleted
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+image:
+  parameters:
+    - name: productId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  post:
+    tags: [Products]
+    summary: Upload product image
+    operationId: uploadProductImage
+    security:
+      - sessionAuth: []
+    x-required-permissions: [products:write]
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            type: object
+            required: [file]
+            properties:
+              file:
+                type: string
+                format: binary
+    responses:
+      '200':
+        description: Image uploaded
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/products.yaml#/ProductImageResponse'
+      '400':
+        description: Invalid file
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '404':
+        description: Product not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+  delete:
+    tags: [Products]
+    summary: Delete product image
+    operationId: deleteProductImage
+    security:
+      - sessionAuth: []
+    x-required-permissions: [products:write]
+    responses:
+      '204':
+        description: Image deleted
+      '404':
+        description: Product not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+inventory-history:
+  parameters:
+    - name: productId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  get:
+    tags: [Products]
+    summary: Get inventory history
+    description: Returns paginated inventory ledger entries for a product.
+    operationId: getProductInventoryHistory
+    security:
+      - sessionAuth: []
+    x-required-permissions: [products:write]
+    parameters:
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          default: 50
+      - name: offset
+        in: query
+        schema:
+          type: integer
+          default: 0
+    responses:
+      '200':
+        description: Inventory ledger entries
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/products.yaml#/InventoryLedgerList'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '404':
+        description: Product not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+inventory:
+  parameters:
+    - name: productId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  get:
+    tags: [Products]
+    summary: Get product inventory
+    operationId: getProductInventory
+    security:
+      - sessionAuth: []
+    x-required-permissions: [products:write]
+    responses:
+      '200':
+        description: Current inventory level
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/products.yaml#/Inventory'
+            example:
+              productId: "019412ab-0000-7000-8000-000000000001"
+              quantity: 42
+              updatedAt: "2025-01-30T10:00:00Z"
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+  patch:
+    tags: [Products]
+    summary: Adjust inventory
+    description: Apply a delta adjustment to product inventory.
+    operationId: adjustProductInventory
+    security:
+      - sessionAuth: []
+    x-required-permissions: [products:write]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/products.yaml#/InventoryAdjustment'
+          examples:
+            restock:
+              summary: Restock 50 units
+              value:
+                delta: 50
+                reason: opening_balance
+            correction:
+              summary: Correct inventory down
+              value:
+                delta: -5
+                reason: correction
+    responses:
+      '200':
+        description: Inventory adjusted
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/products.yaml#/Inventory'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'

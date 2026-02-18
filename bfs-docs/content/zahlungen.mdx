@@ -1,0 +1,82 @@
+---
+title: Zahlungen
+description: Payrexx-Einrichtung, TWINT-Integration und Zahlungsablauf
+---
+
+# Zahlungen
+
+Das Bless2n Food System nutzt Payrexx als Zahlungsgateway. Kunden bezahlen im Checkout per TWINT (Schweizer Mobile Payment) oder anderen von Payrexx unterstützten Methoden.
+
+---
+
+# Payrexx-Konto einrichten
+
+<Steps>
+### Konto erstellen
+
+Registriere dich bei [Payrexx](https://www.payrexx.com) und notiere den Instanznamen (z. B. `mein-shop`).
+
+### API-Secret generieren
+
+Im Payrexx-Dashboard unter Integrationen > API ein API-Secret erstellen.
+
+### Webhook-Secret generieren
+
+Unter Integrationen > Webhooks ein Webhook-Secret erstellen und die Webhook-URL hinterlegen: `https://<deine-domain>/api/v1/payments/webhooks/payrexx`.
+</Steps>
+
+---
+
+# Konfiguration
+
+Drei Umgebungsvariablen müssen im Backend gesetzt werden:
+
+| Variable | Beschreibung |
+|---|---|
+| `PAYREXX_INSTANCE` | Instanzname des Payrexx-Kontos |
+| `PAYREXX_API_SECRET` | API-Secret für die Gateway-Erstellung |
+| `PAYREXX_WEBHOOK_SECRET` | Geheimnis zur Verifizierung von Webhook-Signaturen |
+
+In der Cloud-Umgebung werden diese Werte im Key Vault hinterlegt und als Secret Refs an die Container Apps übergeben.
+
+---
+
+# Zahlungsablauf
+
+<Steps>
+### Bestellung auslösen
+
+Der Kunde schliesst den Checkout ab. Das Backend erstellt ein Payrexx-Gateway mit dem Bestellbetrag.
+
+### Zahlungsseite
+
+Der Kunde wird zur Payrexx-Zahlungsseite weitergeleitet und wählt eine Zahlungsmethode (z. B. TWINT).
+
+### TWINT-Zahlung
+
+Bei TWINT scannt der Kunde den angezeigten QR-Code mit der TWINT-App und bestätigt die Zahlung.
+
+### Bestätigung
+
+Payrexx sendet einen Webhook an das Backend. Die Bestellung wird auf `paid` gesetzt. Der Kunde wird zur Bestätigungsseite weitergeleitet.
+</Steps>
+
+---
+
+# TWINT-Besonderheiten
+
+- Währung: Nur CHF.
+- Limit: Maximaler Betrag pro Transaktion: CHF 5'000.
+- Verfügbarkeit: Nur in der Schweiz nutzbar.
+- Ablauf: Ein Payrexx-Gateway ist standardmässig 15 Minuten gültig.
+
+---
+
+# Fehlerbehebung
+
+| Problem | Lösung |
+|---|---|
+| Webhook kommt nicht an | Webhook-URL korrekt? HTTPS erforderlich. `PAYREXX_WEBHOOK_SECRET` stimmt mit Payrexx-Dashboard überein? |
+| Signatur-Fehler | `PAYREXX_WEBHOOK_SECRET` prüfen, muss exakt übereinstimmen. |
+| Gateway-Erstellung schlägt fehl | `PAYREXX_INSTANCE` und `PAYREXX_API_SECRET` prüfen. |
+| Zahlung erfolgreich, aber Bestellung noch `pending` | Webhook-Zustellung prüfen. Der Status wird erst nach Webhook-Empfang aktualisiert. |

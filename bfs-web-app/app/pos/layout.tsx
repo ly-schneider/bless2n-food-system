@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import { VersionLabel } from "@/components/layout/version-label"
 
 export const metadata: Metadata = {
   title: "POS - BlessThun Food",
@@ -6,5 +7,10 @@ export const metadata: Metadata = {
 }
 
 export default function POSLayout({ children }: { children: React.ReactNode }) {
-  return <div className="min-h-screen">{children}</div>
+  return (
+    <div className="min-h-screen">
+      {children}
+      <VersionLabel className="fixed bottom-4 left-2" />
+    </div>
+  )
 }

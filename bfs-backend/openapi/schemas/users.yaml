@@ -1,0 +1,69 @@
+UserRole:
+  type: string
+  enum: [admin, customer]
+
+User:
+  type: object
+  required: [id, email, role, createdAt]
+  properties:
+    id:
+      type: string
+      description: Better Auth user ID
+    name:
+      type: string
+      nullable: true
+    email:
+      type: string
+      format: email
+    emailVerified:
+      type: boolean
+    image:
+      type: string
+      nullable: true
+    role:
+      $ref: '#/UserRole'
+    isAnonymous:
+      type: boolean
+    banned:
+      type: boolean
+    banReason:
+      type: string
+      nullable: true
+    banExpires:
+      type: string
+      format: date-time
+      nullable: true
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+UserUpdate:
+  type: object
+  properties:
+    role:
+      $ref: '#/UserRole'
+    name:
+      type: string
+
+UserSummary:
+  type: object
+  properties:
+    id:
+      type: string
+    name:
+      type: string
+    email:
+      type: string
+      format: email
+
+UserList:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/User'

@@ -1,0 +1,216 @@
+collection:
+  get:
+    tags: [Orders]
+    summary: List orders
+    description: |
+      Returns orders based on caller context:
+
+      - **POS device**: Orders created by this device.
+      - **Authenticated customer**: Own orders only.
+      - **Admin** (`orders:read-all`): All orders with filters.
+    operationId: listOrders
+    security:
+      - deviceAuth: []
+      - sessionAuth: []
+    parameters:
+      - name: scope
+        in: query
+        description: |
+          - `mine`: Return only the authenticated user's orders (regardless of role).
+          - Omitted: Admins see all orders; customers see their own.
+        schema:
+          type: string
+          enum: [mine]
+      - name: status
+        in: query
+        schema:
+          $ref: '../schemas/orders.yaml#/OrderStatus'
+      - name: origin
+        in: query
+        schema:
+          $ref: '../schemas/orders.yaml#/OrderOrigin'
+      - name: date_from
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - name: date_to
+        in: query
+        schema:
+          type: string
+          format: date-time
+    responses:
+      '200':
+        description: Order list
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/orders.yaml#/OrderList'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+  post:
+    tags: [Orders]
+    summary: Create order
+    description: |
+      Creates a new order with the given items.
+
+      - **POS device**: Order origin is set to `pos`.
+      - **Authenticated user**: Order is linked to the user (origin `shop`).
+      - **Anonymous**: Order is created without a user link (origin `shop`).
+
+      Inventory is reserved immediately. If the order is not paid
+      within the gateway validity window, inventory is released.
+
+      **Idempotency**: Pass an `Idempotency-Key` header to enable at-most-once
+      semantics. Duplicate requests with the same key return the cached response.
+    operationId: createOrder
+    security:
+      - deviceAuth: []
+      - sessionAuth: []
+      - {}
+    parameters:
+      - name: Idempotency-Key
+        in: header
+        description: Unique key for idempotent request. Duplicate requests return cached response.
+        schema:
+          type: string
+          maxLength: 64
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/orders.yaml#/OrderCreate'
+          examples:
+            simple_items:
+              summary: Simple product order
+              value:
+                items:
+                  - productId: "019412ab-0000-7000-8000-000000000001"
+                    quantity: 2
+                  - productId: "019412ab-0000-7000-8000-000000000002"
+                    quantity: 1
+                contactEmail: "customer@example.com"
+            menu_order:
+              summary: Order with menu selections
+              value:
+                items:
+                  - productId: "019412ab-0000-7000-8000-000000000010"
+                    quantity: 1
+                    menuSelections:
+                      - slotId: "019412ab-0000-7000-8000-000000000020"
+                        productId: "019412ab-0000-7000-8000-000000000005"
+                      - slotId: "019412ab-0000-7000-8000-000000000021"
+                        productId: "019412ab-0000-7000-8000-000000000006"
+    responses:
+      '201':
+        description: Order created
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/orders.yaml#/Order'
+            example:
+              id: "019412ab-0000-7000-8000-000000000100"
+              totalCents: 1950
+              status: pending
+              origin: shop
+              createdAt: "2025-01-30T14:30:00Z"
+      '400':
+        description: Validation error (invalid items, insufficient stock)
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+item:
+  parameters:
+    - name: orderId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  get:
+    tags: [Orders]
+    summary: Get order
+    description: |
+      Returns order details.
+      Public callers can view order status.
+      Authenticated owner or admin gets full details including lines.
+    operationId: getOrder
+    security:
+      - sessionAuth: []
+      - {}
+    responses:
+      '200':
+        description: Order details
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/orders.yaml#/Order'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+  patch:
+    tags: [Orders]
+    summary: Update order status
+    operationId: updateOrderStatus
+    security:
+      - sessionAuth: []
+    x-required-permissions: [orders:status-write]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/orders.yaml#/OrderStatusUpdate'
+          examples:
+            cancel:
+              summary: Cancel order
+              value:
+                status: cancelled
+            refund:
+              summary: Refund paid order
+              value:
+                status: refunded
+    responses:
+      '200':
+        description: Order updated
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/orders.yaml#/Order'
+      '400':
+        description: Invalid status transition
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '404':
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'

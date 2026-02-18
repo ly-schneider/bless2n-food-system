@@ -1,81 +1,67 @@
 name: bfs-backend
 
 services:
-  mongo:
-    image: mongo:8
-    restart: always
-    ports:
-      - "${MONGO_PORT:-27017}:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          'if [ -n "$MONGO_INITDB_ROOT_USERNAME" ]; then mongosh "mongodb://$MONGO_INITDB_ROOT_USERNAME:$MONGO_INITDB_ROOT_PASSWORD@localhost:27017/admin" --quiet --eval "db.adminCommand(''ping'').ok" | grep -q 1; else mongosh "mongodb://localhost:27017/admin" --quiet --eval "db.adminCommand(''ping'').ok" | grep -q 1; fi',
-        ]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-      start_period: 5s
-
-  mongo-express:
-    image: mongo-express:1.0.2-20-alpine3.19
-    restart: always
-    ports:
-      - "8081:8081"
-    environment:
-      ME_CONFIG_MONGODB_URL: "${MONGO_URI_DOCKER}"
-      ME_CONFIG_BASICAUTH_ENABLED: "true"
-      ME_CONFIG_BASICAUTH_USERNAME: ${MONGOEXPRESS_BASIC_USER}
-      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGOEXPRESS_BASIC_PASSWORD}
-    depends_on:
-      - mongo
-
-  backend:
-    profiles: ["backend"]
-    build:
-      context: .
-      dockerfile: Dockerfile
-    depends_on:
-      mongo:
-        condition: service_healthy
+  # PostgreSQL for local development (production uses db/provisioning/ for role setup)
+  postgres:
+    image: postgres:18.1-alpine
     restart: unless-stopped
     ports:
-      - "${APP_PORT}:8080"
+      - "${POSTGRES_PORT:-5432}:5432"
     environment:
-      MONGO_URI: ${MONGO_URI}
-      MONGO_DATABASE: ${MONGO_DATABASE}
-      MONGO_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
-      MONGO_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
-
-      PLUNK_API_KEY: ${PLUNK_API_KEY}
-      PLUNK_FROM_EMAIL: ${PLUNK_FROM_EMAIL}
-      PLUNK_FROM_NAME: ${PLUNK_FROM_NAME}
-      PLUNK_REPLY_TO: ${PLUNK_REPLY_TO}
-
-      APP_ENV: ${APP_ENV}
-      APP_PORT: ${APP_PORT}
-      JWT_ISSUER: ${JWT_ISSUER}
-      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
-      JWT_PRIV_PEM: ${JWT_PRIV_PEM}
-      JWT_PUB_PEM: ${JWT_PUB_PEM}
-
-      STATION_QR_SECRET: ${STATION_QR_SECRET}
-      STATION_QR_MAX_AGE_SECONDS: ${STATION_QR_MAX_AGE_SECONDS}
-
-      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-
-      LOG_LEVEL: ${LOG_LEVEL}
-      LOG_DEVELOPMENT: ${LOG_DEVELOPMENT}
-
-      SECURITY_ENABLE_HSTS: ${SECURITY_ENABLE_HSTS}
-      SECURITY_ENABLE_CSP: ${SECURITY_ENABLE_CSP}
-      SECURITY_TRUSTED_ORIGINS: ${SECURITY_TRUSTED_ORIGINS}
-
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-bless2n_food_system}
     volumes:
-      - ./secrets/dev:/app/secrets/dev:ro
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/provisioning/docker-init.sql:/docker-entrypoint-initdb.d/01-provision.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-bless2n_food_system}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  jaeger:
+    image: jaegertracing/jaeger:2.14.1
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"   # Jaeger UI only
+      # 4317/4318 handled by otel-collector
+    profiles:
+      - observability
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.132.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    depends_on:
+      - jaeger
+    volumes:
+      - ${OTELCOL_CONFIG:-./otelcol.dev.yaml}:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    profiles:
+      - observability
+
+  # Azurite for local Azure Blob Storage emulation
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    restart: unless-stopped
+    ports:
+      - "10000:10000"
+    volumes:
+      - azurite_data:/data
+    command: "azurite-blob --blobHost 0.0.0.0 --blobPort 10000 --skipApiVersionCheck"
+
+  # Mailpit for email testing
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "8025:8025"   # Web UI
+      - "1025:1025"   # SMTP
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+  azurite_data:

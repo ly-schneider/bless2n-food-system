@@ -11,9 +11,10 @@ import { readErrorMessage } from "@/lib/http"
 
 type Invite = {
   id: string
-  email: string
+  inviteeEmail: string
   status: string
-  invitedBy: string
+  invitedByUserId: string
+  inviter?: { id: string; name: string | null; email?: string }
   expiresAt: string
   createdAt: string
 }
@@ -30,7 +31,7 @@ export default function AdminInvitesPage() {
 
   async function reload() {
     try {
-      const res = await fetchAuth(`/api/v1/admin/invites`)
+      const res = await fetchAuth(`/api/v1/invites`)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = (await res.json()) as { items: Invite[] }
       setItems(data.items || [])
@@ -43,7 +44,7 @@ export default function AdminInvitesPage() {
   async function createInvite() {
     if (!email.trim()) return
     const csrf = getCSRFToken()
-    const res = await fetchAuth(`/api/v1/admin/invites`, {
+    const res = await fetchAuth(`/api/v1/invites`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
       body: JSON.stringify({ email: email.trim() }),
@@ -59,7 +60,7 @@ export default function AdminInvitesPage() {
   async function deleteInvite(id: string) {
     try {
       const csrf = getCSRFToken()
-      const res = await fetchAuth(`/api/v1/admin/invites/${encodeURIComponent(id)}`, {
+      const res = await fetchAuth(`/api/v1/invites/${encodeURIComponent(id)}`, {
         method: "DELETE",
         headers: { "X-CSRF": csrf || "" },
       })
@@ -106,7 +107,7 @@ export default function AdminInvitesPage() {
                   <TableHead className="whitespace-nowrap">ID</TableHead>
                   <TableHead className="whitespace-nowrap">Eingeladene E-Mail</TableHead>
                   <TableHead className="whitespace-nowrap">Status</TableHead>
-                  <TableHead className="whitespace-nowrap">Eingeladet von</TableHead>
+                  <TableHead className="whitespace-nowrap">Eingeladen von</TableHead>
                   <TableHead className="whitespace-nowrap">Erstellt</TableHead>
                   <TableHead className="whitespace-nowrap">Läuft ab</TableHead>
                   <TableHead className="text-right whitespace-nowrap">Aktionen</TableHead>
@@ -116,18 +117,19 @@ export default function AdminInvitesPage() {
                 {items.map((i) => {
                   const created = new Date(i.createdAt).toLocaleString("de-CH")
                   const expires = new Date(i.expiresAt).toLocaleString("de-CH")
+                  const inviterId = i.inviter?.id ?? i.invitedByUserId
                   const inviter = (
                     <Link
-                      href={`/admin/users/${encodeURIComponent(i.invitedBy)}`}
+                      href={`/admin/users/${encodeURIComponent(inviterId)}`}
                       className="text-xs underline underline-offset-2"
                     >
-                      {i.invitedBy}
+                      {i.inviter?.name || i.invitedByUserId}
                     </Link>
                   )
                   return (
                     <TableRow key={i.id} className="even:bg-card odd:bg-muted/40">
                       <TableCell className="text-xs">{i.id}</TableCell>
-                      <TableCell>{i.email}</TableCell>
+                      <TableCell>{i.inviteeEmail}</TableCell>
                       <TableCell className="uppercase">{i.status}</TableCell>
                       <TableCell>{inviter}</TableCell>
                       <TableCell className="whitespace-nowrap">{created}</TableCell>

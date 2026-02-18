@@ -1,30 +1,38 @@
 "use client"
 
-import { Banknote, Check, CreditCard, Printer, QrCode, ShoppingCart, XCircle } from "lucide-react"
+import { Banknote, Check, CreditCard, Gift, Printer, QrCode, ShoppingCart, XCircle } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { CartItemDisplay } from "@/components/cart/cart-item-display"
 import { InlineMenuGroup } from "@/components/cart/inline-menu-group"
 import { ProductConfigurationModal } from "@/components/cart/product-configuration-modal"
 import { useBestMenuSuggestion } from "@/components/cart/use-best-menu-suggestion"
+import { Club100PickerDialog } from "@/components/pos/club100-picker-dialog"
+import { GratisTypeDialog } from "@/components/pos/gratis-type-dialog"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useCart } from "@/contexts/cart-context"
 
+import type { Club100Person } from "@/lib/api/club100"
 import { formatChf } from "@/lib/utils"
 import type { CartItem } from "@/types/cart"
 import type { PosFulfillmentMode } from "@/types/jeton"
+import type {
+  Club100Discount,
+  GratisInfo,
+  PosPaymentMethod,
+  QueuedOrder,
+  QueuedOrderItem,
+  ReceiptItem,
+} from "@/types/order-queue"
 import type { ProductSummaryDTO } from "@/types/product"
 
-type PosPaymentMethod = "cash" | "card" | "twint"
 type Tender = PosPaymentMethod | null
 type Receipt = {
   method: PosPaymentMethod
   totalCents: number
   orderId?: string
-  amountReceivedCents?: number
-  changeCents?: number
   items?: Array<{
     title: string
     quantity: number
@@ -43,6 +51,11 @@ const getBridge = () => (globalThis as unknown as { PosBridge?: PosBridge }).Pos
 
 type JetonTotal = { id: string; name: string; color: string; count: number }
 
+function toMenuSelections(config?: Record<string, string>) {
+  if (!config) return undefined
+  return Object.entries(config).map(([slotId, productId]) => ({ slotId, productId }))
+}
+
 function textColorForBg(hex: string) {
   const h = (hex || "").replace("#", "")
   if (h.length !== 6) return "#0f172a"
@@ -53,9 +66,30 @@ function textColorForBg(hex: string) {
   return luminance > 0.55 ? "#0f172a" : "#ffffff"
 }
 
-export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?: PosFulfillmentMode }) {
+interface BasketPanelProps {
+  token: string
+  mode?: PosFulfillmentMode
+  submitOrder: (
+    items: QueuedOrderItem[],
+    totalCents: number,
+    paymentMethod: PosPaymentMethod,
+    receiptData?: { items: ReceiptItem[]; pickupQr: string | null },
+    gratisInfo?: GratisInfo
+  ) => QueuedOrder | null
+  stockMap?: Map<string, number>
+}
+
+export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: BasketPanelProps) {
   const { cart, updateQuantity, removeFromCart, clearCart } = useCart()
-  const { suggestion, contiguous, startIndex, endIndex } = useBestMenuSuggestion()
+
+  const getMaxQuantity = useCallback(
+    (item: CartItem): number | null => {
+      if (!stockMap || item.product.type === "menu") return null
+      return stockMap.get(item.product.id) ?? null
+    },
+    [stockMap]
+  )
+  const { suggestion, contiguous, startIndex, endIndex, dismissSuggestion } = useBestMenuSuggestion()
   const [showCheckout, setShowCheckout] = useState(false)
   const [tender, setTender] = useState<Tender>(null)
   const [received, setReceived] = useState<string>("")
@@ -70,27 +104,31 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
   const [hasPosBridge, setHasPosBridge] = useState(false)
   const [canPrint, setCanPrint] = useState(false)
   const [canPayWithCard, setCanPayWithCard] = useState(false)
-  // Card payment UI states
   const [showCard, setShowCard] = useState(false)
   const [cardProcessing, setCardProcessing] = useState(false)
   const [cardSuccess, setCardSuccess] = useState(false)
   const [cardError, setCardError] = useState<string | null>(null)
   const [cardRef, setCardRef] = useState<string | null>(null)
-  // Background print progress for card success screen
   const [cardPrintInProgress, setCardPrintInProgress] = useState(false)
   const [cardPrintDone, setCardPrintDone] = useState(false)
-  // Background print error dialog (used for both cash and card flows)
   const [printErrorDialog, setPrintErrorDialog] = useState<string | null>(null)
   const [jetonSummary, setJetonSummary] = useState<{
     items: JetonTotal[]
     orderId?: string
     payment?: PosPaymentMethod
   } | null>(null)
-  const total = cart.totalCents
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const prevItemCount = useRef(cart.items.length)
+  const [showGratisDialog, setShowGratisDialog] = useState(false)
+  const [showClub100Picker, setShowClub100Picker] = useState(false)
+  const [selectedGratisInfo, setSelectedGratisInfo] = useState<GratisInfo | null>(null)
+  const [club100Discount, setClub100Discount] = useState<Club100Discount | null>(null)
+  const [club100FreeProductIds, setClub100FreeProductIds] = useState<string[]>([])
+  const originalTotal = cart.totalCents
+  const discountAmount = club100Discount?.totalDiscountCents ?? 0
+  const total = originalTotal - discountAmount
   const receivedCents = useMemo(() => Math.round((parseFloat(received || "0") || 0) * 100), [received])
   const changeCents = Math.max(0, receivedCents - total)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const prevItemCount = useRef(cart.items.length)
   const cartIsEmpty = cart.items.length === 0
   const jetonMode = mode === "JETON"
   const resolveMenuSelections = useCallback((item: CartItem) => {
@@ -99,7 +137,7 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
     const selections: ProductSummaryDTO[] = []
     for (const [slotId, productId] of Object.entries(item.configuration)) {
       const slot = slots.find((s) => s.id === slotId)
-      const choice = slot?.menuSlotItems?.find((p) => p.id === productId)
+      const choice = slot?.options?.find((p) => p.id === productId)
       if (choice) selections.push(choice)
     }
     return selections
@@ -129,7 +167,7 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
           if (!jeton) continue
           const existing = totals.get(jeton.id)
           if (existing) existing.count += it.quantity
-          else totals.set(jeton.id, { id: jeton.id, name: jeton.name, color: jeton.colorHex, count: it.quantity })
+          else totals.set(jeton.id, { id: jeton.id, name: jeton.name, color: jeton.color, count: it.quantity })
         }
         continue
       }
@@ -137,7 +175,7 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
       if (!jeton) continue
       const existing = totals.get(jeton.id)
       if (existing) existing.count += it.quantity
-      else totals.set(jeton.id, { id: jeton.id, name: jeton.name, color: jeton.colorHex, count: it.quantity })
+      else totals.set(jeton.id, { id: jeton.id, name: jeton.name, color: jeton.color, count: it.quantity })
     }
     return Array.from(totals.values()).sort((a, b) => a.name.localeCompare(b.name))
   }, [cart.items, resolveMenuSelections])
@@ -147,7 +185,7 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
       if (it.product.type === "menu" && it.configuration && it.product.menu?.slots) {
         for (const [slotId, productId] of Object.entries(it.configuration)) {
           const slot = it.product.menu.slots.find((s) => s.id === slotId)
-          const choice = slot?.menuSlotItems?.find((p) => p.id === productId)
+          const choice = slot?.options?.find((p) => p.id === productId)
           if (slot && choice) cfg.push({ slot: slot.name, choice: choice.name })
         }
       }
@@ -159,14 +197,25 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
       }
     })
   }, [cart.items])
-  const fetchPickupQr = useCallback(async (orderId: string) => {
-    try {
-      const r = await fetch(`/api/v1/orders/${orderId}/pickup-qr`)
-      const q = (await r.json()) as { code?: string }
-      return q.code || null
-    } catch {
-      return null
+  const generatePickupQr = useCallback((orderId: string) => {
+    return orderId
+  }, [])
+
+  const emitInventoryDecrement = useCallback((items: typeof cart.items) => {
+    const decrements = new Map<string, number>()
+    for (const item of items) {
+      decrements.set(item.product.id, (decrements.get(item.product.id) || 0) - item.quantity)
+      if (item.product.type === "menu" && item.configuration && item.product.menu?.slots) {
+        for (const [slotId, productId] of Object.entries(item.configuration)) {
+          const slot = item.product.menu.slots.find((s) => s.id === slotId)
+          const choice = slot?.options?.find((p) => p.id === productId)
+          if (choice) {
+            decrements.set(productId, (decrements.get(productId) || 0) - item.quantity)
+          }
+        }
+      }
     }
+    window.dispatchEvent(new CustomEvent("pos:inventory-decrement", { detail: decrements }))
   }, [])
 
   useEffect(() => {
@@ -175,9 +224,30 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
       setShowReceipt(false)
       setTender(null)
       setEditingItem(null)
+      setClub100Discount(null)
     }
     window.addEventListener("pos:lock", onLock)
     return () => window.removeEventListener("pos:lock", onLock)
+  }, [])
+
+  useEffect(() => {
+    if (!token) return
+    ;(async () => {
+      try {
+        const res = await fetch("/api/v1/settings", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (res.ok) {
+          const data = (await res.json()) as { club100FreeProductIds?: string[] }
+          setClub100FreeProductIds(data.club100FreeProductIds ?? [])
+        }
+      } catch {}
+    })()
+  }, [token])
+
+  const clearClub100Discount = useCallback(() => {
+    setClub100Discount(null)
+    setSelectedGratisInfo(null)
   }, [])
 
   // Auto-scroll to bottom when new items are added
@@ -187,6 +257,14 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
     }
     prevItemCount.current = cart.items.length
   }, [cart.items.length])
+
+  // Clear Club100 discount when cart items change (quantities, items added/removed)
+  const cartItemsKey = useMemo(() => cart.items.map((i) => `${i.id}:${i.quantity}`).join(","), [cart.items])
+  useEffect(() => {
+    if (club100Discount) {
+      clearClub100Discount()
+    }
+  }, [cartItemsKey])
 
   // Listen for native print results from the Android WebView bridge
   useEffect(() => {
@@ -209,8 +287,10 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
             setPrintErrorDialog(detail.error || "Drucken fehlgeschlagen")
           }
         } else {
-          // Background printing path — only surface errors
-          if (!detail.success) setPrintErrorDialog(detail.error || "Drucken fehlgeschlagen")
+          // Background printing path — only surface errors (ignore "no_paired_printer" as it's expected in Jeton mode)
+          if (!detail.success && detail.error !== "no_paired_printer") {
+            setPrintErrorDialog(detail.error || "Drucken fehlgeschlagen")
+          }
         }
       } catch {
         if (showReceipt) {
@@ -238,71 +318,51 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
         if (!showCard) return
 
         if (d.success) {
-          // Create order and mark paid; then show success screen and print in background
-          try {
-            const itemsBody = cart.items.map((it) => ({
-              productId: it.product.id,
-              quantity: it.quantity,
-              configuration: it.configuration || undefined,
-            }))
-            const resOrder = await fetch(`/api/v1/pos/orders`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json", "X-Pos-Token": token },
-              body: JSON.stringify({ items: itemsBody }),
-            })
-            const jOrder = (await resOrder.json()) as { orderId?: string; detail?: string }
-            if (!resOrder.ok || !jOrder.orderId) throw new Error(jOrder.detail || "order_failed")
-            const orderId = jOrder.orderId
+          const itemsBody = cart.items.map((it) => ({
+            productId: it.product.id,
+            quantity: it.quantity,
+            menuSelections: toMenuSelections(it.configuration),
+          }))
+          const printItems = buildPrintItems()
+          const localOrderId = `local_${Date.now()}`
+          const pickupQr = generatePickupQr(localOrderId)
 
-            // Attach card payment result (SumUp)
-            await fetch(`/api/v1/pos/orders/${orderId}/pay-card`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json", "X-Pos-Token": token },
-              body: JSON.stringify({ processor: "sumup", transactionId: d.txId || null, status: "succeeded" }),
-            })
+          const nextReceipt: Receipt & { orderTimestamp?: number } = {
+            method: "card",
+            totalCents: total,
+            items: printItems,
+            pickupQr,
+            orderTimestamp: Date.now(),
+          }
+          const jetons = computeJetonTotals()
 
-            // Fetch pickup QR
-            const pickupQr = await fetchPickupQr(orderId)
-            const printItems = buildPrintItems()
-            const orderTimestamp = Date.now()
+          submitOrder(
+            itemsBody,
+            originalTotal,
+            "card",
+            { items: printItems, pickupQr },
+            selectedGratisInfo ?? undefined
+          )
+          emitInventoryDecrement(cart.items)
 
-            const nextReceipt: Receipt & { orderTimestamp?: number } = {
-              method: "card",
-              totalCents: total,
-              orderId,
-              items: printItems,
-              pickupQr,
-              orderTimestamp,
-            }
-            const jetons = computeJetonTotals()
-            if (jetonMode) {
-              setCardProcessing(false)
-              setCardSuccess(true)
-              setShowCard(false)
-              setJetonSummary({ items: jetons, orderId, payment: "card" })
-              try {
-                clearCart()
-              } catch {}
-              return
-            }
-            // Show success and start background print
+          if (jetonMode) {
             setCardProcessing(false)
             setCardSuccess(true)
-            setCardPrintInProgress(true)
-            try {
-              if (canPrint) getBridge()?.print?.(JSON.stringify(nextReceipt))
-              else setPrintErrorDialog("Drucken nicht verfügbar")
-            } catch {}
-            // Clear cart; dialog closes automatically after print completes
-            try {
-              clearCart()
-            } catch {}
-          } catch (e) {
-            // Keep success UI but surface backend error
-            setCardProcessing(false)
-            setCardSuccess(false)
-            setCardError(e instanceof Error ? e.message : "Fehler bei Bestellabschluss")
+            setShowCard(false)
+            setJetonSummary({ items: jetons, orderId: localOrderId, payment: "card" })
+            clearCart()
+            clearClub100Discount()
+            return
           }
+
+          setCardProcessing(false)
+          setCardSuccess(true)
+          setCardPrintInProgress(true)
+          try {
+            if (canPrint) getBridge()?.print?.(JSON.stringify(nextReceipt))
+          } catch {}
+          clearCart()
+          clearClub100Discount()
         } else {
           setCardProcessing(false)
           setCardSuccess(false)
@@ -316,7 +376,23 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
     }
     window.addEventListener("bfs:sumup:result", onSumup as EventListener)
     return () => window.removeEventListener("bfs:sumup:result", onSumup as EventListener)
-  }, [token, total, showCard, cardRef, clearCart, jetonMode, computeJetonTotals, buildPrintItems, fetchPickupQr])
+  }, [
+    total,
+    originalTotal,
+    showCard,
+    cardRef,
+    clearCart,
+    clearClub100Discount,
+    jetonMode,
+    computeJetonTotals,
+    buildPrintItems,
+    generatePickupQr,
+    cart.items,
+    submitOrder,
+    canPrint,
+    emitInventoryDecrement,
+    selectedGratisInfo,
+  ])
 
   useEffect(() => {
     try {
@@ -378,89 +454,57 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
     }
     setBusy(true)
     setError(null)
-    try {
-      const items = cart.items.map((it) => ({
-        productId: it.product.id,
-        quantity: it.quantity,
-        configuration: it.configuration || undefined,
-      }))
-      const resOrder = await fetch(`/api/v1/pos/orders`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Pos-Token": token },
-        body: JSON.stringify({ items }),
-      })
-      type ApiError = { detail?: string }
-      type OrderOk = { orderId: string }
-      const orderJson = (await resOrder.json()) as OrderOk & ApiError
-      if (!resOrder.ok) throw new Error(orderJson.detail || "order failed")
-      const orderId = orderJson.orderId
 
-      const resPay = await fetch(`/api/v1/pos/orders/${orderId}/pay-cash`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Pos-Token": token },
-        body: JSON.stringify({ amountReceivedCents: receivedCents }),
-      })
-      type PayOk = { changeCents?: number }
-      const payJson = (await resPay.json()) as PayOk & ApiError
-      if (!resPay.ok) throw new Error(payJson.detail || "payment failed")
-      const jetons = computeJetonTotals()
+    const items = cart.items.map((it) => ({
+      productId: it.product.id,
+      quantity: it.quantity,
+      menuSelections: toMenuSelections(it.configuration),
+    }))
+    const printItems = buildPrintItems()
+    const jetons = computeJetonTotals()
+    const localOrderId = `local_${Date.now()}`
+    const pickupQr = generatePickupQr(localOrderId)
 
-      // Build print items snapshot before clearing cart
-      const printItems = buildPrintItems()
-
-      // Fetch official pickup QR before printing (best-effort)
-      const pickupQr = await fetchPickupQr(orderId)
-      const orderTimestamp = Date.now()
-
-      const receiptPayload: Receipt & { orderTimestamp?: number } = {
-        method: "cash",
-        orderId,
-        totalCents: total,
-        amountReceivedCents: receivedCents,
-        changeCents: payJson.changeCents,
-        items: printItems,
-        pickupQr: pickupQr || undefined,
-        orderTimestamp,
-      }
-
-      if (jetonMode) {
-        setJetonSummary({ items: jetons, orderId, payment: "cash" })
-      } else {
-        // Background print (no UI). If unavailable or fails, show error dialog.
-        try {
-          if (canPrint) getBridge()?.print?.(JSON.stringify(receiptPayload))
-          else setPrintErrorDialog("Drucken nicht verfügbar")
-        } catch {
-          setPrintErrorDialog("Drucken fehlgeschlagen")
-        }
-      }
-
-      // Clear cart and close checkout immediately
-      try {
-        clearCart()
-      } catch {}
-      setShowCheckout(false)
-      setTender(null)
-      setReceived("")
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Bezahlen fehlgeschlagen"
-      setError(msg)
-    } finally {
-      setBusy(false)
+    const receiptPayload: Receipt & { orderTimestamp?: number } = {
+      method: "cash",
+      totalCents: total,
+      items: printItems,
+      pickupQr: pickupQr || undefined,
+      orderTimestamp: Date.now(),
     }
+
+    submitOrder(items, originalTotal, "cash", { items: printItems, pickupQr }, selectedGratisInfo ?? undefined)
+    emitInventoryDecrement(cart.items)
+
+    if (jetonMode) {
+      setJetonSummary({ items: jetons, orderId: localOrderId, payment: "cash" })
+    } else {
+      try {
+        if (canPrint) getBridge()?.print?.(JSON.stringify(receiptPayload))
+      } catch {}
+    }
+
+    clearCart()
+    clearClub100Discount()
+    setShowCheckout(false)
+    setTender(null)
+    setBusy(false)
   }, [
     busy,
     cart.items,
-    token,
-    receivedCents,
+    originalTotal,
     total,
     canPrint,
     jetonMode,
     hasMissingJeton,
     computeJetonTotals,
     clearCart,
+    clearClub100Discount,
     buildPrintItems,
-    fetchPickupQr,
+    generatePickupQr,
+    submitOrder,
+    emitInventoryDecrement,
+    selectedGratisInfo,
   ])
 
   const startTwintPayment = useCallback(async () => {
@@ -471,79 +515,57 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
     }
     setBusy(true)
     setError(null)
-    try {
-      const items = cart.items.map((it) => ({
-        productId: it.product.id,
-        quantity: it.quantity,
-        configuration: it.configuration || undefined,
-      }))
-      const resOrder = await fetch(`/api/v1/pos/orders`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Pos-Token": token },
-        body: JSON.stringify({ items }),
-      })
-      type ApiError = { detail?: string }
-      type OrderOk = { orderId: string }
-      const orderJson = (await resOrder.json()) as OrderOk & ApiError
-      if (!resOrder.ok) throw new Error(orderJson.detail || "order failed")
-      const orderId = orderJson.orderId
 
-      const resPay = await fetch(`/api/v1/pos/orders/${orderId}/pay-twint`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Pos-Token": token },
-        body: JSON.stringify({ status: "succeeded" }),
-      })
-      const payJson = (await resPay.json()) as ApiError
-      if (!resPay.ok) throw new Error(payJson.detail || "payment failed")
+    const items = cart.items.map((it) => ({
+      productId: it.product.id,
+      quantity: it.quantity,
+      menuSelections: toMenuSelections(it.configuration),
+    }))
+    const printItems = buildPrintItems()
+    const jetons = computeJetonTotals()
+    const localOrderId = `local_${Date.now()}`
+    const pickupQr = generatePickupQr(localOrderId)
 
-      const jetons = computeJetonTotals()
-      const printItems = buildPrintItems()
-      const pickupQr = await fetchPickupQr(orderId)
-      const orderTimestamp = Date.now()
-      const receiptPayload: Receipt & { orderTimestamp?: number } = {
-        method: "twint",
-        orderId,
-        totalCents: total,
-        items: printItems,
-        pickupQr: pickupQr || undefined,
-        orderTimestamp,
-      }
-
-      if (jetonMode) {
-        setJetonSummary({ items: jetons, orderId, payment: "twint" })
-      } else {
-        try {
-          if (canPrint) getBridge()?.print?.(JSON.stringify(receiptPayload))
-          else setPrintErrorDialog("Drucken nicht verfügbar")
-        } catch {
-          setPrintErrorDialog("Drucken fehlgeschlagen")
-        }
-      }
-
-      try {
-        clearCart()
-      } catch {}
-      setShowCheckout(false)
-      setTender(null)
-      setReceived("")
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Bezahlen fehlgeschlagen"
-      setError(msg)
-    } finally {
-      setBusy(false)
+    const receiptPayload: Receipt & { orderTimestamp?: number } = {
+      method: "twint",
+      totalCents: total,
+      items: printItems,
+      pickupQr: pickupQr || undefined,
+      orderTimestamp: Date.now(),
     }
+
+    submitOrder(items, originalTotal, "twint", { items: printItems, pickupQr }, selectedGratisInfo ?? undefined)
+    emitInventoryDecrement(cart.items)
+
+    if (jetonMode) {
+      setJetonSummary({ items: jetons, orderId: localOrderId, payment: "twint" })
+    } else {
+      try {
+        if (canPrint) getBridge()?.print?.(JSON.stringify(receiptPayload))
+      } catch {}
+    }
+
+    clearCart()
+    clearClub100Discount()
+    setShowCheckout(false)
+    setTender(null)
+    setBusy(false)
   }, [
     busy,
     jetonMode,
     hasMissingJeton,
     cart.items,
-    token,
     computeJetonTotals,
     buildPrintItems,
-    fetchPickupQr,
+    generatePickupQr,
+    originalTotal,
     total,
     canPrint,
     clearCart,
+    clearClub100Discount,
+    submitOrder,
+    emitInventoryDecrement,
+    selectedGratisInfo,
   ])
 
   const startCardPayment = useCallback(() => {
@@ -597,9 +619,123 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
         ? "Barzahlung"
         : tender === "card"
           ? "Kartenzahlung"
-          : "TWINT-Zahlung"
-  const paymentMethodLabel = (method: PosPaymentMethod) =>
-    method === "cash" ? "Bar" : method === "card" ? "Karte" : "TWINT"
+          : tender === "twint"
+            ? "TWINT-Zahlung"
+            : "Gratis"
+  const paymentMethodLabel = (method: PosPaymentMethod) => {
+    switch (method) {
+      case "cash":
+        return "Bar"
+      case "card":
+        return "Karte"
+      case "twint":
+        return "TWINT"
+      case "gratis_guest":
+        return "Gratis (Gast)"
+      case "gratis_vip":
+        return "Gratis (VIP)"
+      case "gratis_staff":
+        return "Gratis (Mitarbeiter)"
+      case "gratis_100club":
+        return "Gratis (100 Club)"
+      default:
+        return method
+    }
+  }
+
+  const completeGratisPayment = useCallback(
+    (paymentMethod: PosPaymentMethod, gratisInfo: GratisInfo) => {
+      if (jetonMode && hasMissingJeton) {
+        setError("Im Jeton-Modus benötigt jedes Produkt einen Jeton.")
+        return
+      }
+
+      const items = cart.items.map((it) => ({
+        productId: it.product.id,
+        quantity: it.quantity,
+        menuSelections: toMenuSelections(it.configuration),
+      }))
+      const printItems = buildPrintItems()
+      const jetons = computeJetonTotals()
+      const localOrderId = `local_${Date.now()}`
+      const pickupQr = generatePickupQr(localOrderId)
+
+      submitOrder(items, total, paymentMethod, { items: printItems, pickupQr }, gratisInfo)
+      emitInventoryDecrement(cart.items)
+
+      if (jetonMode) {
+        setJetonSummary({ items: jetons, orderId: localOrderId, payment: paymentMethod })
+      }
+
+      clearCart()
+      setShowCheckout(false)
+      setTender(null)
+    },
+    [
+      cart.items,
+      total,
+      jetonMode,
+      hasMissingJeton,
+      computeJetonTotals,
+      buildPrintItems,
+      generatePickupQr,
+      submitOrder,
+      emitInventoryDecrement,
+      clearCart,
+    ]
+  )
+
+  const handleGratisTypeSelect = useCallback(
+    (type: "guest" | "vip" | "staff" | "100club") => {
+      setShowGratisDialog(false)
+      if (type === "100club") {
+        setShowClub100Picker(true)
+      } else {
+        setSelectedGratisInfo({ type })
+        const paymentMethodMap: Record<"guest" | "vip" | "staff", PosPaymentMethod> = {
+          guest: "gratis_guest",
+          vip: "gratis_vip",
+          staff: "gratis_staff",
+        }
+        completeGratisPayment(paymentMethodMap[type], { type })
+      }
+    },
+    [completeGratisPayment]
+  )
+
+  const handleClub100Select = useCallback((person: Club100Person, discount: Club100Discount | null) => {
+    setShowClub100Picker(false)
+
+    if (!discount || discount.discountedItems.length === 0) {
+      setClub100Discount(null)
+      setSelectedGratisInfo(null)
+      return
+    }
+
+    setClub100Discount(discount)
+
+    const totalDiscountedQty = discount.discountedItems.reduce((sum, d) => sum + d.discountedQuantity, 0)
+    const gratisInfo: GratisInfo = {
+      type: "100club",
+      elvantoPersonId: person.id,
+      elvantoPersonName: `${person.firstName} ${person.lastName}`,
+      freeQuantity: totalDiscountedQty,
+    }
+    setSelectedGratisInfo(gratisInfo)
+  }, [])
+
+  const getItemDiscountInfo = useCallback(
+    (itemId: string) => {
+      if (!club100Discount) return undefined
+      const discountItem = club100Discount.discountedItems.find((d) => d.cartItemId === itemId)
+      if (!discountItem) return undefined
+      return {
+        discountedQuantity: discountItem.discountedQuantity,
+        unitPriceCents: discountItem.unitPriceCents,
+      }
+    },
+    [club100Discount]
+  )
 
   return (
     <>
@@ -629,6 +765,8 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
                         onRemove={() => removeFromCart(item.id)}
                         onEdit={() => setEditingItem(item)}
                         isPOS
+                        discountInfo={getItemDiscountInfo(item.id)}
+                        maxQuantity={getMaxQuantity(item)}
                       />
                     </div>
                   )
@@ -640,6 +778,7 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
                       suggestion={suggestion}
                       items={grouped}
                       onEditItem={(it) => setEditingItem(it)}
+                      onDismiss={dismissSuggestion}
                       isPOS
                     />
                   </div>
@@ -654,6 +793,8 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
                         onRemove={() => removeFromCart(item.id)}
                         onEdit={() => setEditingItem(item)}
                         isPOS
+                        discountInfo={getItemDiscountInfo(item.id)}
+                        maxQuantity={getMaxQuantity(item)}
                       />
                     </div>
                   )
@@ -668,6 +809,8 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
                         onRemove={() => removeFromCart(item.id)}
                         onEdit={() => setEditingItem(item)}
                         isPOS
+                        discountInfo={getItemDiscountInfo(item.id)}
+                        maxQuantity={getMaxQuantity(item)}
                       />
                     </div>
                   )
@@ -678,12 +821,37 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
           )}
         </div>
         <div className="border-border flex flex-col gap-3 border-t p-4">
+          {club100Discount && (
+            <div className="flex items-center justify-between rounded-xl bg-green-100 px-3 py-2 dark:bg-green-950/30">
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                  100 Club: {club100Discount.person.firstName} {club100Discount.person.lastName}
+                </span>
+                <span className="text-xs text-green-600 dark:text-green-500">
+                  {club100Discount.discountedItems.reduce((sum, d) => sum + d.discountedQuantity, 0)} Produkt(e) gratis
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearClub100Discount}
+                className="h-7 px-2 text-xs text-red-500 hover:text-green-900 dark:text-green-400"
+              >
+                Entfernen
+              </Button>
+            </div>
+          )}
           <div className="flex items-center justify-between pb-2">
             <div className="flex flex-col">
               <p className="text-base font-semibold">Total</p>
               <span className="text-muted-foreground text-xs">{cart.items.length} Produkte</span>
             </div>
-            <p className="text-base font-semibold">{formatChf(total)}</p>
+            <div className="flex flex-col items-end">
+              {discountAmount > 0 && (
+                <span className="text-muted-foreground text-sm line-through">{formatChf(originalTotal)}</span>
+              )}
+              <p className="text-base font-semibold">{formatChf(total)}</p>
+            </div>
           </div>
           <div className="flex flex-col gap-2">
             <Button
@@ -694,12 +862,16 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
                   setError("Bitte weise allen Produkten einen Jeton zu.")
                   return
                 }
+                if (club100Discount && selectedGratisInfo && total <= 0) {
+                  completeGratisPayment("gratis_100club", selectedGratisInfo)
+                  return
+                }
                 setTender(null)
                 setReceived("")
                 setShowCheckout(true)
               }}
             >
-              Jetzt bezahlen
+              {club100Discount && total <= 0 ? "Gratis abschliessen" : "Jetzt bezahlen"}
             </Button>
             <Button
               variant="outline"
@@ -744,6 +916,7 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
                 variant="outline"
                 onClick={() => {
                   setError(null)
+                  setReceived("")
                   setTender("cash")
                 }}
                 aria-label="Bar bezahlen"
@@ -778,6 +951,22 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
               >
                 <QrCode className="size-12" />
                 <span className="text-base font-medium">TWINT</span>
+              </Button>
+            </div>
+          )}
+
+          {tender === null && (
+            <div className="mt-2 flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowCheckout(false)
+                  setShowGratisDialog(true)
+                }}
+              >
+                <Gift className="mr-2 size-4" />
+                Gratis
               </Button>
             </div>
           )}
@@ -835,15 +1024,23 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
               </div>
               <div className="flex items-center justify-between">
                 <span>Rückgeld</span>
-                <span>{formatChf(changeCents)}</span>
+                <span className="font-semibold">{formatChf(changeCents)}</span>
               </div>
-              <div className="grid gap-2">
+              <div className="flex flex-col gap-2">
                 <Button
                   className="h-12 w-full rounded-xl text-base"
                   disabled={receivedCents < total || busy}
                   onClick={startCashPayment}
                 >
-                  Abschliessen
+                  Barzahlung abschliessen
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-10 w-full rounded-xl text-xs"
+                  disabled={busy}
+                  onClick={startCashPayment}
+                >
+                  Überspringen
                 </Button>
                 {error && <div className="text-sm text-red-600">{error}</div>}
               </div>
@@ -890,25 +1087,6 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
               </div>
             </div>
           )}
-
-          <DialogFooter>
-            {tender !== null ? (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setTender(null)
-                  setReceived("")
-                  setError(null)
-                }}
-              >
-                Zurück
-              </Button>
-            ) : (
-              <Button variant="outline" onClick={() => setShowCheckout(false)}>
-                Abbrechen
-              </Button>
-            )}
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -1115,18 +1293,6 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
                   <span>Gesamt</span>
                   <span className="font-medium">{formatChf(receipt.totalCents)}</span>
                 </div>
-                {typeof receipt.amountReceivedCents === "number" && (
-                  <div className="flex items-center justify-between">
-                    <span>Erhalten</span>
-                    <span className="font-medium">{formatChf(receipt.amountReceivedCents)}</span>
-                  </div>
-                )}
-                {typeof receipt.changeCents === "number" && (
-                  <div className="flex items-center justify-between">
-                    <span>Rückgeld</span>
-                    <span className="font-medium">{formatChf(receipt.changeCents)}</span>
-                  </div>
-                )}
                 {receipt.orderId && (
                   <div className="flex items-center justify-between">
                     <span>Bestellung</span>
@@ -1158,6 +1324,19 @@ export function BasketPanel({ token, mode = "QR_CODE" }: { token: string; mode?:
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Gratis type selection dialog */}
+      <GratisTypeDialog open={showGratisDialog} onOpenChange={setShowGratisDialog} onSelect={handleGratisTypeSelect} />
+
+      {/* 100 Club member picker dialog */}
+      <Club100PickerDialog
+        open={showClub100Picker}
+        onOpenChange={setShowClub100Picker}
+        onSelect={handleClub100Select}
+        token={token}
+        cartItems={cart.items}
+        freeProductIds={club100FreeProductIds}
+      />
     </>
   )
 }

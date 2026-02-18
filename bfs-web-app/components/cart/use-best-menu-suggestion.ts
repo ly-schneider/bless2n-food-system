@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useCart } from "@/contexts/cart-context"
 import { listProducts } from "@/lib/api/products"
 import { findBestMenuSuggestion, MenuSuggestion } from "@/lib/menu-suggestions"
@@ -12,12 +12,24 @@ export interface BestMenuSuggestionState {
   contiguous: boolean
   startIndex: number
   endIndex: number
+  dismissSuggestion: () => void
 }
 
 export function useBestMenuSuggestion(products?: ProductDTO[]): BestMenuSuggestionState {
   const { cart } = useCart()
   const [allProducts, setAllProducts] = useState<ProductDTO[] | null>(products ?? null)
-  const [suggestion, setSuggestion] = useState<MenuSuggestion | null>(null)
+  const [rawSuggestion, setRawSuggestion] = useState<MenuSuggestion | null>(null)
+  const [dismissedMenuId, setDismissedMenuId] = useState<string | null>(null)
+  const [dismissedCartKey, setDismissedCartKey] = useState<string | null>(null)
+
+  const cartKey = useMemo(() => cart.items.map((i) => `${i.product.id}:${i.quantity}`).join(","), [cart.items])
+
+  useEffect(() => {
+    if (dismissedMenuId && cartKey !== dismissedCartKey) {
+      setDismissedMenuId(null)
+      setDismissedCartKey(null)
+    }
+  }, [cartKey, dismissedMenuId, dismissedCartKey])
 
   useEffect(() => {
     let cancelled = false
@@ -39,8 +51,21 @@ export function useBestMenuSuggestion(products?: ProductDTO[]): BestMenuSuggesti
   useEffect(() => {
     if (!allProducts) return
     const best = findBestMenuSuggestion(cart, allProducts)
-    setSuggestion(best)
+    setRawSuggestion(best)
   }, [cart, allProducts])
+
+  const suggestion = useMemo(() => {
+    if (!rawSuggestion) return null
+    if (dismissedMenuId && rawSuggestion.menuProduct.id === dismissedMenuId) return null
+    return rawSuggestion
+  }, [rawSuggestion, dismissedMenuId])
+
+  const dismissSuggestion = useCallback(() => {
+    if (rawSuggestion) {
+      setDismissedMenuId(rawSuggestion.menuProduct.id)
+      setDismissedCartKey(cartKey)
+    }
+  }, [rawSuggestion, cartKey])
 
   const { contiguous, startIndex, endIndex } = useMemo(() => {
     if (!suggestion) return { contiguous: false, startIndex: -1, endIndex: -1 }
@@ -59,5 +84,5 @@ export function useBestMenuSuggestion(products?: ProductDTO[]): BestMenuSuggesti
     return { contiguous: true, startIndex: min, endIndex: max }
   }, [cart.items, suggestion])
 
-  return { suggestion, allProductsReady: !!allProducts, contiguous, startIndex, endIndex }
+  return { suggestion, allProductsReady: !!allProducts, contiguous, startIndex, endIndex, dismissSuggestion }
 }

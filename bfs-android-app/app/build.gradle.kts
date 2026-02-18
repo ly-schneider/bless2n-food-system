@@ -18,7 +18,6 @@ val computedVersionName = "$maj.$min.$pat"
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
 
@@ -50,12 +49,13 @@ android {
         }
         buildConfigField("String", "SUMUP_AFFILIATE_KEY", "\"$sumupAffiliateKey\"")
 
-        buildConfigField("String", "POS_URL", "\"http://127.0.0.1:3000/pos\"")
+        buildConfigField("String", "POS_URL", "\"http://localhost:3000/pos\"")
         buildConfigField("boolean", "DEV_BUILD", "true")
     }
 
     buildFeatures {
         buildConfig = true
+        resValues = true
     }
 
     // Configure release signing via environment variables (set by CI)
@@ -119,7 +119,7 @@ android {
 
             val posUrl = (project.findProperty("posUrl") as String?)
                 ?: System.getenv("POS_URL")
-                ?: "http://127.0.0.1:3000/pos"
+                ?: "http://localhost:3000/pos"
             buildConfigField("String", "POS_URL", "\"$posUrl\"")
             buildConfigField("boolean", "DEV_BUILD", "true")
 
@@ -137,7 +137,7 @@ android {
 
             val posUrl = (project.findProperty("posUrl") as String?)
                 ?: System.getenv("POS_URL")
-                ?: "http://127.0.0.1:3000/pos"
+                ?: "http://localhost:3000/pos"
             buildConfigField("String", "POS_URL", "\"$posUrl\"")
             buildConfigField("boolean", "DEV_BUILD", "false")
 
@@ -176,7 +176,7 @@ dependencies {
     implementation("com.github.DantSu:ESCPOS-ThermalPrinter-Android:3.4.0")
     implementation("com.google.zxing:core:3.5.4")
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
-    implementation("androidx.webkit:webkit:1.14.0")
+    implementation("androidx.webkit:webkit:1.15.0")
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -196,5 +196,5 @@ dependencies {
 
     // Compile-only annotations used by transitive libraries to satisfy R8 analysis
     // Align with dependency constraints resolved for runtime classpath
-    compileOnly("com.google.errorprone:error_prone_annotations:2.15.0")
+    compileOnly("com.google.errorprone:error_prone_annotations:2.47.0")
 }

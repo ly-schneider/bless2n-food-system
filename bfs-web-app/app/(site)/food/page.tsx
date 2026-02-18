@@ -1,6 +1,6 @@
 import { Metadata } from "next"
 import { FloatingBottomNav } from "@/components/cart/floating-bottom-nav"
-import MenuGrid from "@/components/menu/menu-grid"
+import { MenuGridLive } from "@/components/menu/menu-grid-live"
 import { listProducts } from "@/lib/api/products"
 import { ListResponse, ProductDTO } from "@/types"
 
@@ -24,7 +24,7 @@ export default async function HomePage() {
     <div className="bg-background min-h-screen">
       <main className="container mx-auto p-4">
         <h2 className="mb-2 text-2xl">Alle Produkte</h2>
-        <MenuGrid products={products} />
+        <MenuGridLive initialProducts={products} />
       </main>
 
       <FloatingBottomNav />

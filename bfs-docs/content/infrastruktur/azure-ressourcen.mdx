@@ -1,0 +1,72 @@
+---
+title: Azure Ressourcen
+description: Azure-Umgebungen, Kernressourcen, Sicherheit, Observability und Registry
+---
+
+# Azure Überblick & Ressourcen-Map
+
+Umgebungen:
+
+- Staging und Production: Separate Terraform-Wurzeln unter `bfs-cloud/envs/staging` und `bfs-cloud/envs/production` mit isolierten Resource Groups.
+
+Ressourcen-Namen (Staging Beispiele):
+
+- Resource Group: `bfs-staging-rg`
+- Container Apps Environment: `bfs-staging-env`
+- VNet + Subnets: `bfs-staging-vnet`, `container-apps-subnet` (+ optional Private Endpoints Subnet)
+- PostgreSQL: externe Datenbank (z. B. NeonDB oder Azure Database for PostgreSQL)
+- Log Analytics: `bfs-logs-workspace`
+- Application Insights: `bfs-staging-insights` (optional)
+- Key Vault: `bfs-staging-kv`
+- ACR: `bfsstagingacr`
+
+Apps (Azure Container Apps):
+
+- Frontend: `frontend-staging` (Port 3000)
+- Backend: `backend-staging` (Port 8080)
+
+---
+
+# Container Apps
+
+- Image References: In CI bevorzugt immutable Digests; sonst Tags + `revision_suffix` je Deployment.
+- Ingress: External; Health-Endpoints `/health` (Frontend) und `/health` + `/ping` (Backend Liveness).
+- Scaling (Staging Default):
+  - Frontend: 0-20 Replicas; HTTP Concurrent Requests = 20; CPU = 75%.
+  - Backend: 0-20 Replicas; HTTP Concurrent Requests = 40; CPU = 80%.
+- Env Vars & Secrets: Über Container Apps gesetzt; sensible Werte via Key Vault Secret Refs.
+
+---
+
+# Datenbank (PostgreSQL)
+
+- Datenbankname: `bless2n_food_system`.
+- Schema-Migrationen via Flyway (Versionierte SQL-Dateien unter `db/flyway/migrations/`).
+- Verbindung: `DATABASE_URL` als PostgreSQL Connection String.
+- Better Auth speichert Sessions und User-Daten in denselben PostgreSQL-Tabellen.
+
+---
+
+# Security
+
+- Key Vault: Speichert Verbindungsgeheimnisse (`database-url`), Better Auth Secret, Payrexx Webhook Secret, Google Client Secret, Plunk API Key, Station-QR Secret, URL-Secrets.
+- Managed Identity: Container Apps Identities für ACR Pull und Key Vault Zugriff.
+- RBAC: Minimale Rollen für Terraform Principal und Container Apps.
+- App Security Headers: HSTS, CSP in Produktion; CORS für Trusted Origins.
+
+---
+
+# Observability
+
+- Log Analytics Workspace (LAW): Zentrale Logs; Retention standardmässig 30 Tage.
+- Diagnostic Settings: Für Key Vault u. a. Ressourcen aktiviert.
+- Alerts (metrisch): z. B. 5xx für Container Apps; konfiguriert unter `modules/alerts`.
+- KQL-Snippets: Nach App-Name filtern, 5xx-Trends, Latenzen.
+
+---
+
+# Registry (ACR)
+
+- Naming: `${ACR_NAME}.azurecr.io/{repo}:{tag}`; Repos: `frontend`, `backend`.
+- Digest-first Deployments: CI veröffentlicht Image Digest Artifacts; Terraform nutzt `frontend_digest` / `backend_digest`.
+- Zugriff: Container Apps erhalten `AcrPull` via Identity.

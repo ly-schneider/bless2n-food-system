@@ -1,0 +1,50 @@
+me:
+  get:
+    tags: [POS]
+    summary: Get current POS
+    description: Returns POS device info for the authenticated POS device.
+    operationId: getCurrentPos
+    security:
+      - deviceAuth: []
+    x-device-types: [POS]
+    responses:
+      '200':
+        description: POS device details
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/pos.yaml#/POSDevice'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+devices:
+  get:
+    tags: [POS]
+    summary: List POS devices
+    operationId: listPosDevices
+    security:
+      - sessionAuth: []
+    x-required-permissions: [pos:manage]
+    responses:
+      '200':
+        description: POS device list
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/pos.yaml#/POSDeviceList'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'

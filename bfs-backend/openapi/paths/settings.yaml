@@ -1,0 +1,88 @@
+collection:
+  get:
+    tags: [Settings]
+    summary: Get application settings
+    description: Returns all application settings including POS mode and Club100 configuration.
+    operationId: getSettings
+    security:
+      - sessionAuth: []
+    x-required-permissions: [admin:access]
+    responses:
+      '200':
+        description: Settings
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/settings.yaml#/Settings'
+            example:
+              id: "default"
+              posMode: QR_CODE
+              club100FreeProductIds: []
+              club100MaxRedemptions: 2
+              updatedAt: "2025-02-07T10:00:00Z"
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+
+  patch:
+    tags: [Settings]
+    summary: Update application settings
+    description: Updates application settings. All fields are optional - only provided fields will be updated.
+    operationId: updateSettings
+    security:
+      - sessionAuth: []
+    x-required-permissions: [admin:access]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/settings.yaml#/SettingsUpdate'
+          examples:
+            qr_mode:
+              summary: Switch to QR code mode
+              value:
+                posMode: QR_CODE
+            jeton_mode:
+              summary: Switch to jeton mode
+              value:
+                posMode: JETON
+            club100:
+              summary: Update Club100 settings
+              value:
+                club100FreeProductIds: ["123e4567-e89b-12d3-a456-426614174000"]
+                club100MaxRedemptions: 3
+    responses:
+      '200':
+        description: Settings updated
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/settings.yaml#/Settings'
+      '400':
+        description: Invalid request (e.g., missing jetons for JETON mode)
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '401':
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'
+      '403':
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/common.yaml#/Error'

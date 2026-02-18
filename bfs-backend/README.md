@@ -1,226 +1,162 @@
 # Bless2n Food System Backend
 
-A comprehensive Go-based HTTP backend service for the Bless2n Food System
+A Go HTTP backend for the Bless2n Food System -- food ordering, inventory, POS, and device management.
 
-## 📋 Table of Contents
+## Table of Contents
 
-- [Features](#-features)
-- [Architecture Overview](#-architecture-overview)
-- [Prerequisites](#-prerequisites)
-- [Development Setup](#-development-setup)
-- [Available Commands](#-available-commands)
-- [Project Structure](#-project-structure)
-- [Testing](#-testing)
+- [Architecture Overview](#architecture-overview)
+- [Prerequisites](#prerequisites)
+- [Development Setup](#development-setup)
+- [Available Commands](#available-commands)
+- [Project Structure](#project-structure)
+- [Testing](#testing)
 
-## ✨ Features
+## Architecture Overview
 
-### Core Functionality
-- **RESTful API**: Built with Chi router for high-performance HTTP routing
-- **Clean Architecture**: Separation of concerns with domain, repository, service, and handler layers
-- **Authentication & Authorization**: JWT-based authentication with role-based access control
-- **User Management**: Support for admin and customer roles with verification system
-- **Order Management**: Complete order processing with status tracking
-- **Product Catalog**: Product and category management with bundle support
-- **Device Management**: IoT device integration for food stations
-- **Inventory Tracking**: Real-time inventory ledger system
-
-### Technical Features
-- **Dependency Injection**: Uber FX for clean dependency management
-- **Database**: MongoDB with custom repository pattern
-- **Email Service**: Plunk API integration for transactional emails
-- **Configuration Management**: Environment-based configuration
-- **Live Reload**: Air integration for development productivity
-- **Docker Support**: Complete containerization with Docker Compose
-- **Logging**: Structured logging with Uber Zap
-- **Validation**: Request validation with go-playground/validator
-- **Security**: Argon2 password hashing and JWT tokens
-
-## 🏗 Architecture Overview
-
-This backend follows **Clean Architecture** principles with clear separation of concerns:
+The backend follows **Clean Architecture** with clear layer separation:
 
 ```
-┌─────────────────────────────────────────┐
-│              HTTP Layer                 │
-│  (Chi Router, Middleware, Handlers)     │
-├─────────────────────────────────────────┤
-│             Service Layer               │
-│    (Business Logic, Auth, Email)        │
-├─────────────────────────────────────────┤
-│           Repository Layer              │
-│        (Data Access, MongoDB)           │
-├─────────────────────────────────────────┤
-│             Domain Layer                │
-│      (Entities, Business Rules)         │
-└─────────────────────────────────────────┘
++------------------------------------------+
+|             HTTP Layer                    |
+|   (Chi Router, Middleware, Handlers)      |
++------------------------------------------+
+|            Service Layer                  |
+|     (Business Logic, Email, Payments)     |
++------------------------------------------+
+|           Postgres Layer                  |
+|         (Data Access, pgx/GORM)          |
++------------------------------------------+
+|             Model Layer                   |
+|        (Entities, Value Objects)          |
++------------------------------------------+
 ```
 
 ### Key Architectural Decisions
 
 - **Dependency Injection**: Uber FX manages all dependencies and lifecycle
-- **Repository Pattern**: Clean abstraction over MongoDB operations
-- **Domain-Driven Design**: Rich domain models with business logic
-- **Configuration**: Environment-based with Docker and local development support
-- **Error Handling**: Centralized error handling with proper HTTP status codes
+- **Repository Pattern**: Clean abstraction over PostgreSQL via pgx and GORM
+- **Model-Driven Design**: Typed models with clear separation from persistence
+- **Better Auth Integration**: Authentication delegated to the Next.js app via Better Auth; the backend validates sessions through JWKS
+- **Payrexx Payments**: Payment processing via Payrexx API with webhook verification
+- **Atlas Migrations**: Database schema managed with versioned SQL migrations via [Atlas](https://atlasgo.io/) with Ent integration
 
-## 📋 Prerequisites
+## Prerequisites
 
 ### Required
-- **Go 1.24.3+**: Latest Go version for optimal performance
-- **Docker & Docker Compose**: For running services (MongoDB, Mongo Express, etc.)
+- **Go 1.25+**
+- **Docker & Docker Compose**: For running PostgreSQL and Mailpit
 - **Make**: For running development commands
 
 ### Optional
-- **Air**: For live reload during development (installed automatically)
-- **MongoDB Compass**: For database visualization
-- **Postman/Insomnia**: For API testing
+- **Air**: For live reload during development (installed automatically via `make tools`)
+- **psql**: For direct database access
 
-## 🔧 Development Setup
-
-### Local Development (Recommended)
-
-This approach runs MongoDB in Docker while running the backend locally with live reload:
+## Development Setup
 
 ```bash
 # 1. Environment setup
 cp .env.example .env
-# Configure your .env file (see Configuration section)
+# Edit .env if needed (defaults work for local Docker PostgreSQL)
 
-# 2. Generate JWT keys (REQUIRED)
-mkdir -p secrets/dev
-openssl genpkey -algorithm Ed25519 -out secrets/dev/jwt-priv.pem
-openssl pkey -in secrets/dev/jwt-priv.pem -pubout -out secrets/dev/jwt-pub.pub.pem
-
-# 3. Start supporting services (MongoDB, Mongo Express, etc.)
+# 2. Start supporting services (PostgreSQL + Mailpit)
 make docker-up
 
-# 4a. Run backend with live reload
+# 3. Run database migrations
+make migrate-local
+
+# 4. Seed development data (optional)
+make seed
+
+# 5. Run backend with live reload
 make dev
 ```
-
-**Advantages:**
-- Fast rebuilds with Air
-- Easy debugging and profiling
-- Direct access to Go tooling
-- Better IDE integration
-
-### Full Docker Development
-
-Run everything in Docker containers:
-
-```bash
-# 1. Setup environment and JWT keys (same as above)
-cp .env.example .env
-mkdir -p secrets/dev
-openssl genpkey -algorithm Ed25519 -out secrets/dev/ed25519.pem
-openssl pkey -in secrets/dev/ed25519.pem -pubout -out secrets/dev/ed25519.pub.pem
-
-# 2. Start all services including backend
-make docker-up-backend
-```
-
-**Use cases:**
-- Production-like testing
-- Consistent environment across team
-- CI/CD pipeline testing
 
 ### Service URLs
 
 When services are running:
 
 - **Backend API**: http://localhost:8080
-- **Mongo Express**: http://localhost:8081 (Database UI)
-- **MongoDB**: localhost:27017 (Direct connection)
+- **Mailpit UI** (email testing): http://localhost:8025
+- **PostgreSQL**: localhost:5432
 
-### Payments (Stripe + TWINT via Payment Intents)
-
-This service integrates Stripe Payment Intents + Payment Element (custom UI) with TWINT (Switzerland) as the only payment method.
-
-- Enable TWINT in your Stripe Dashboard (Settings → Payment methods).
-- Configure environment variables in `.env` or your runtime:
-
-```
-PUBLIC_BASE_URL=http://localhost:3000           # bfs-web-app base URL (used in return_url)
-STRIPE_SECRET_KEY=sk_test_xxx                   # Stripe secret key
-STRIPE_WEBHOOK_SECRET=whsec_xxx                 # Webhook signing secret
-```
-
-Endpoints:
-
-- `POST /v1/payments/create-intent` – creates a Stripe Payment Intent (TWINT-only, CHF). Also persists a pending order.
-  Request body: `{ "items": [{"productId":"...","quantity":1, "configuration":{}}], "customerEmail":"optional@example.com" }`
-  Response: `{ "clientSecret": "pi_..._secret_...", "paymentIntentId": "pi_...", "orderId": "..." }`
-
-- `PATCH /v1/payments/attach-email` – set/clear `receipt_email` before confirmation.
-  Request body: `{ "paymentIntentId": "pi_...", "email": "optional@example.com" }`
-
-- `GET /v1/payments/{id}` – fetch sanitized Payment Intent status for the return page.
-
-- `POST /v1/payments/webhook` – Stripe webhook receiver. Handles `payment_intent.succeeded` / `payment_intent.payment_failed` to finalize orders.
-
-Notes:
-- Presentment currency is `CHF`; only `twint` is enabled on Payment Intents. No setup/subscription.
-- Desktop flows may show a QR; mobile users authorize in the TWINT app.
-
-### Federated Login (Google)
-
-This backend verifies Google identity tokens server-side and issues our own JWTs (access + refresh with rotation). The frontend uses Authorization Code + PKCE flow.
-
-- Provide `GOOGLE_CLIENT_ID` and (for web client exchange) `GOOGLE_CLIENT_SECRET` in `.env`.
-
-Endpoints (backend):
-- `POST /v1/auth/google/code` – body: `{ code, code_verifier, redirect_uri, nonce }`
-
-Data model adds `identity_links` collection with unique `provider + provider_user_id` and reference to local user. Existing refresh token rotation and revocation logic is reused.
-
-## 📝 Available Commands
+## Available Commands
 
 Run `make` or `make help` to see all available commands with descriptions.
 
 ### Key Commands
 ```bash
-make dev                    # Start with live-reload
-make docker-up              # Start supporting services
-make docker-up-backend      # Start all services (including backend)
-make logs                   # View service logs
-make mongo-shell           # Access MongoDB shell
-make clean                  # Clean build artifacts
+# Development
+make dev                # Start with live-reload (via Air)
+make test               # Run unit tests
+make test-integration   # Run integration tests
+
+# Docker
+make docker-up          # Start PostgreSQL + Mailpit
+make docker-up-dev      # Start all dev services (+ pgAdmin)
+make docker-down        # Stop services (keep volumes)
+make docker-down-v      # Stop services and remove volumes (DATA LOSS)
+
+# Database
+just migrate            # Apply Atlas migrations against local PostgreSQL
+just migrate-status     # Show migration status
+just migrate-diff name  # Generate a new migration from Ent schema diff
+make seed               # Seed dev data (idempotent)
+make psql               # Open psql shell to local database
+
+# Code quality
+make lint               # Run linters
+make lint-fix           # Auto-fix linting issues
+make fmt                # Format code
+make tidy               # Tidy go modules
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
-backend/
+bfs-backend/
 ├── cmd/backend/           # Application entry point
+├── db/
+│   ├── migrations/        # Atlas versioned SQL migrations
+│   ├── provisioning/      # Database role/schema provisioning SQL
+│   └── seed/              # Development seed data SQL files
 ├── internal/
-│   ├── app/              # Application wiring & DI setup
-│   ├── config/           # Configuration management
-│   ├── database/         # Database connection
-│   ├── domain/           # Business entities
-│   ├── handler/          # HTTP handlers
-│   ├── middleware/       # HTTP middleware
-│   ├── repository/       # Data access layer
-│   ├── service/          # Business logic
-│   ├── utils/            # Utility functions
-│   └── http/             # HTTP routing
-├── secrets/dev/          # Development JWT keys
-├── .air.toml             # Live reload config
-├── .env.example          # Environment template
-├── docker-compose.yml    # Docker services
-├── Dockerfile            # Container definition
-├── go.mod & go.sum       # Go dependencies
-├── Makefile              # Development commands
+│   ├── app/               # Application wiring & DI setup (Uber FX)
+│   ├── auth/              # Auth middleware (Better Auth JWKS, RBAC, device auth)
+│   ├── config/            # Configuration management
+│   ├── handler/           # HTTP handlers
+│   ├── http/              # Chi router setup
+│   ├── middleware/        # Common HTTP middleware
+│   ├── model/             # Data models / entities
+│   ├── observability/     # OpenTelemetry setup
+│   ├── payrexx/           # Payrexx payment integration
+│   ├── postgres/          # PostgreSQL repositories (pgx / GORM)
+│   ├── response/          # HTTP response helpers
+│   ├── service/           # Business logic
+│   └── utils/             # Utility functions
+├── test/                  # Integration and E2E tests
+├── .air.toml              # Live reload config
+├── .env.example           # Environment template
+├── docker-compose.yml     # Docker services (PostgreSQL, Mailpit, etc.)
+├── Dockerfile             # Container definition
+├── go.mod & go.sum        # Go dependencies
+├── Makefile               # Development commands
 └── README.md
 ```
 
-## 🧪 Testing
+## Testing
 
-### Test Structure (Planned)
+### Test Structure
 
 ```
-backend/
+bfs-backend/
 └── test/
-    ├── integration/           # Integration tests
-    ├── e2e/                   # e2e tests
-    └── fixtures/              # Test data and fixtures
+    ├── integration/       # Integration tests (requires PostgreSQL)
+    └── fixtures/          # Test data and fixtures
+```
+
+### Running Tests
+
+```bash
+make test               # Unit tests: go test -v -race ./internal/...
+make test-integration   # Integration tests (requires POSTGRES_TEST_DSN)
 ```

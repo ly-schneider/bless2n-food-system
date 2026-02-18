@@ -1,23 +1,6 @@
 import { headers } from "next/headers"
 
-type SameSite = "lax" | "strict" | "none"
-
-export type CookieRecord = { value?: string }
-
-export interface CookieStore {
-  set: (args: {
-    name: string
-    value: string
-    path: string
-    httpOnly: boolean
-    secure: boolean
-    sameSite: SameSite
-    maxAge: number
-  }) => void
-  get: (name: string) => CookieRecord | undefined
-}
-
-export type CookieNames = { secure: boolean; rtName: string; csrfName: string }
+export type CookieNames = { secure: boolean; csrfName: string }
 
 export async function resolveCookieNames(): Promise<CookieNames> {
   const hdrs = await headers()
@@ -25,74 +8,6 @@ export async function resolveCookieNames(): Promise<CookieNames> {
   const secure = proto === "https"
   return {
     secure,
-    rtName: secure ? "__Host-rt" : "rt",
     csrfName: secure ? "__Host-csrf" : "csrf",
   }
-}
-
-export function clearAuthCookies(cookieStore: CookieStore, names: CookieNames) {
-  // Clear detected cookie names
-  cookieStore.set({
-    name: names.rtName,
-    value: "",
-    path: "/",
-    httpOnly: true,
-    secure: names.secure,
-    sameSite: "lax",
-    maxAge: -1,
-  })
-  cookieStore.set({
-    name: names.csrfName,
-    value: "",
-    path: "/",
-    httpOnly: false,
-    secure: names.secure,
-    sameSite: "lax",
-    maxAge: -1,
-  })
-  // Also clear opposite variants for resilience
-  const altRt = names.rtName === "__Host-rt" ? "rt" : "__Host-rt"
-  const altCsrf = names.csrfName === "__Host-csrf" ? "csrf" : "__Host-csrf"
-  cookieStore.set({
-    name: altRt,
-    value: "",
-    path: "/",
-    httpOnly: true,
-    secure: altRt.startsWith("__Host-"),
-    sameSite: "lax",
-    maxAge: -1,
-  })
-  cookieStore.set({
-    name: altCsrf,
-    value: "",
-    path: "/",
-    httpOnly: false,
-    secure: altCsrf.startsWith("__Host-"),
-    sameSite: "lax",
-    maxAge: -1,
-  })
-}
-
-export function setRefreshCookie(cookieStore: CookieStore, names: CookieNames, refreshToken: string) {
-  cookieStore.set({
-    name: names.rtName,
-    value: refreshToken,
-    httpOnly: true,
-    secure: names.secure,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 7 * 24 * 60 * 60,
-  })
-}
-
-export function setCsrfCookie(cookieStore: CookieStore, names: CookieNames, csrfToken: string) {
-  cookieStore.set({
-    name: names.csrfName,
-    value: csrfToken,
-    httpOnly: false,
-    secure: names.secure,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 7 * 24 * 60 * 60,
-  })
 }

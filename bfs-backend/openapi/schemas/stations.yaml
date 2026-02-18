@@ -1,0 +1,138 @@
+Station:
+  type: object
+  description: A station is a device (type=STATION) with assigned products.
+  required: [id, name, status]
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+      maxLength: 20
+    model:
+      type: string
+      nullable: true
+    os:
+      type: string
+      nullable: true
+    status:
+      $ref: 'devices.yaml#/DeviceStatus'
+    decidedBy:
+      type: string
+      nullable: true
+    decidedAt:
+      type: string
+      format: date-time
+      nullable: true
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+    products:
+      type: array
+      items:
+        $ref: '#/StationProduct'
+
+StationProduct:
+  type: object
+  properties:
+    deviceId:
+      type: string
+      format: uuid
+    productId:
+      type: string
+      format: uuid
+    name:
+      type: string
+    priceCents:
+      type: integer
+      format: int64
+
+StationList:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Station'
+
+StationProductList:
+  type: object
+  required: [items]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/StationProduct'
+
+StationProductAssignment:
+  type: object
+  required: [productIds]
+  properties:
+    productIds:
+      type: array
+      items:
+        type: string
+        format: uuid
+
+QRVerifyResult:
+  type: object
+  required: [valid]
+  properties:
+    valid:
+      type: boolean
+    orderId:
+      type: string
+      format: uuid
+    items:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: string
+            format: uuid
+          title:
+            type: string
+          quantity:
+            type: integer
+    reason:
+      type: string
+      description: Reason if invalid (e.g. invalid_signature, expired, already_redeemed)
+
+RedemptionCreate:
+  type: object
+  required: [orderId]
+  properties:
+    orderId:
+      type: string
+      format: uuid
+
+RedemptionResult:
+  type: object
+  required: [matched, redeemed]
+  properties:
+    matched:
+      type: integer
+      description: Number of items matched to this station
+    redeemed:
+      type: integer
+      description: Number of items successfully redeemed
+    items:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: string
+            format: uuid
+          title:
+            type: string
+          quantity:
+            type: integer
+          redeemedAt:
+            type: string
+            format: date-time
