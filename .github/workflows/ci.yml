@@ -217,12 +217,8 @@ jobs:
           oapi-codegen -config oapi-codegen.yaml openapi/bundled.yaml
 
       - name: Lint
-        uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9
-        with:
-          version: v2.5.0
-          working-directory: bfs-backend
-          args: --timeout=3m
-          skip-cache: false
+        working-directory: bfs-backend
+        run: go tool golangci-lint run --timeout=3m ./...
 
   migrate-lint:
     name: Migration Lint
