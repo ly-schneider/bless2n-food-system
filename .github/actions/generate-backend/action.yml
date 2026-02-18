@@ -1,5 +1,5 @@
 name: Generate Backend Code
-description: Run Ent and OpenAPI code generation for the Go backend
+description: Run Ent, OpenAPI, and Swagger code generation for the Go backend
 
 runs:
   using: composite
@@ -19,3 +19,10 @@ runs:
         npx @redocly/cli bundle openapi/openapi.yaml -o openapi/bundled.yaml
         go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.1
         oapi-codegen -config oapi-codegen.yaml openapi/bundled.yaml
+
+    - name: Generate Swagger
+      shell: bash
+      working-directory: bfs-backend
+      run: |
+        go install github.com/swaggo/swag/cmd/swag@v1.16.6
+        swag init -g cmd/backend/main.go --parseInternal --parseDependency --generatedTime=false

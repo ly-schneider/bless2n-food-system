@@ -1,5 +1,5 @@
 name: Docker Build & Push
-description: Build and push a Docker image to GHCR with registry caching
+description: Build and push a Docker image to GHCR with GHA caching
 
 inputs:
   context:
@@ -49,10 +49,7 @@ runs:
         tags: |
           ghcr.io/ly-schneider/bless2n-food-system/${{ inputs.image-name }}:${{ inputs.image-tag }}
           ghcr.io/ly-schneider/bless2n-food-system/${{ inputs.image-name }}:${{ inputs.env-tag }}
-        cache-from: |
-          type=registry,ref=ghcr.io/ly-schneider/bless2n-food-system/${{ inputs.image-name }}:buildcache
-          type=registry,ref=ghcr.io/ly-schneider/bless2n-food-system/${{ inputs.image-name }}:${{ inputs.env-tag }}
-        cache-to: type=registry,ref=ghcr.io/ly-schneider/bless2n-food-system/${{ inputs.image-name }}:buildcache,mode=max
+        cache-from: type=gha,scope=${{ inputs.image-name }}
+        cache-to: type=gha,scope=${{ inputs.image-name }},mode=max
         build-args: |
-          BUILDKIT_INLINE_CACHE=1
           APP_VERSION=${{ inputs.app-version }}

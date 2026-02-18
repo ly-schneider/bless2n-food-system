@@ -110,10 +110,13 @@ jobs:
         with:
           ref: ${{ needs.resolve-context.outputs.commit_sha }}
 
+      - uses: ./.github/actions/setup-go-env
+      - uses: ./.github/actions/generate-backend
+
       - uses: ./.github/actions/docker-build-push
         with:
           context: ./bfs-backend
-          dockerfile: ./bfs-backend/Dockerfile
+          dockerfile: ./bfs-backend/Dockerfile.ci
           image-name: backend
           image-tag: ${{ needs.resolve-context.outputs.image_tag }}
           env-tag: staging
