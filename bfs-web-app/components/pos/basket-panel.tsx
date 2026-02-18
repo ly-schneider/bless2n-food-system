@@ -264,7 +264,6 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
     if (club100Discount) {
       clearClub100Discount()
     }
-     
   }, [cartItemsKey])
 
   // Listen for native print results from the Android WebView bridge

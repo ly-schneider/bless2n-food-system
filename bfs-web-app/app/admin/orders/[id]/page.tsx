@@ -128,7 +128,6 @@ export default function AdminOrderDetailPage() {
     return () => {
       cancelled = true
     }
-     
   }, [fetchAuth, id])
 
   async function handleStatusChange(newStatus: string) {
