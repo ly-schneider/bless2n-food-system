@@ -1,3 +1,5 @@
+CREATE SCHEMA IF NOT EXISTS atlas_schema_revisions AUTHORIZATION app_owner;
+
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_runtime;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO app_readonly;
 
