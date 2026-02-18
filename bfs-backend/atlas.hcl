@@ -32,3 +32,16 @@ env "ci" {
     dir = "file://db/migrations"
   }
 }
+
+env "deploy" {
+  url = getenv("DATABASE_URL")
+  migration {
+    dir        = "file://db/migrations"
+    exec_order = linear
+  }
+  pre "migrate_apply" {
+    exec {
+      src = "file://db/scripts/set-role.sql"
+    }
+  }
+}

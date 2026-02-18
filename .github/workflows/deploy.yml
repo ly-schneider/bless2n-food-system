@@ -185,26 +185,26 @@ jobs:
         with:
           ref: ${{ needs.resolve-context.outputs.commit_sha }}
 
+      - name: Install PostgreSQL client
+        run: sudo apt-get install -y --no-install-recommends postgresql-client
+
       - name: Provision database roles
         working-directory: bfs-backend
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_ADMIN_URL }}
         run: ./db/provisioning/provision.sh
 
       - name: Install Atlas CLI
         uses: ariga/setup-atlas@v0
         with:
+          version: v0.38.0
           cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
 
       - name: Apply Atlas migrations
         working-directory: bfs-backend
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: |
-          atlas migrate apply \
-            --dir "file://db/migrations" \
-            --url "$DATABASE_URL" \
-            --exec-order linear
+        run: atlas migrate apply --env deploy
 
   deploy:
     name: Deploy ${{ needs.resolve-context.outputs.target_env }}
