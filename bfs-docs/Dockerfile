@@ -18,7 +18,7 @@ RUN corepack enable
 
 USER nodejs
 
-COPY --chown=nodejs:nodejs package.json pnpm-lock.yaml* yarn.lock* package-lock.json* ./
+COPY --chown=nodejs:nodejs package.json pnpm-lock.yaml* yarn.lock* package-lock.json* next.config.* source.config.* ./
 
 RUN --mount=type=cache,target=/home/nodejs/.npm,uid=1001,gid=1001 \
     --mount=type=cache,target=/home/nodejs/.pnpm-store,uid=1001,gid=1001 \

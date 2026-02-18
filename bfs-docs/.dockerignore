@@ -1,0 +1,12 @@
+node_modules
+.next
+.source
+out
+build
+coverage
+.git
+.DS_Store
+*.md
+!README.md
+.env*.local
+.vercel
