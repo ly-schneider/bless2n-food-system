@@ -1,0 +1,58 @@
+name: Docker Build & Push
+description: Build and push a Docker image to GHCR with registry caching
+
+inputs:
+  context:
+    description: Docker build context path
+    required: true
+  dockerfile:
+    description: Path to Dockerfile
+    required: true
+  image-name:
+    description: Image name without registry prefix (e.g. frontend)
+    required: true
+  image-tag:
+    description: Immutable version tag
+    required: true
+  env-tag:
+    description: Mutable environment tag (e.g. staging)
+    required: true
+  app-version:
+    description: APP_VERSION build arg
+    required: true
+  registry-password:
+    description: GHCR authentication token
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db
+      with:
+        driver-opts: |
+          image=moby/buildkit:latest
+          network=host
+
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ inputs.registry-password }}
+
+    - name: Build & push image
+      uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75
+      with:
+        context: ${{ inputs.context }}
+        file: ${{ inputs.dockerfile }}
+        push: true
+        tags: |
+          ghcr.io/ly-schneider/bless2n-food-system/${{ inputs.image-name }}:${{ inputs.image-tag }}
+          ghcr.io/ly-schneider/bless2n-food-system/${{ inputs.image-name }}:${{ inputs.env-tag }}
+        cache-from: |
+          type=registry,ref=ghcr.io/ly-schneider/bless2n-food-system/${{ inputs.image-name }}:buildcache
+          type=registry,ref=ghcr.io/ly-schneider/bless2n-food-system/${{ inputs.image-name }}:${{ inputs.env-tag }}
+        cache-to: type=registry,ref=ghcr.io/ly-schneider/bless2n-food-system/${{ inputs.image-name }}:buildcache,mode=max
+        build-args: |
+          BUILDKIT_INLINE_CACHE=1
+          APP_VERSION=${{ inputs.app-version }}

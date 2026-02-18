@@ -1,0 +1,270 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: "Environment to deploy to"
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      version:
+        description: "Semantic version from VERSION file (e.g. 1.0.0)"
+        required: true
+        type: string
+      commit_sha:
+        description: "Git commit SHA to build and deploy"
+        required: true
+        type: string
+  release:
+    types: [published]
+
+run-name: >-
+  ${{ github.event_name == 'release'
+    && format('Deploy | production | {0}', github.event.release.tag_name)
+    || format('Deploy | {0} | v{1} | {2}', inputs.target_env, inputs.version, inputs.commit_sha) }}
+
+jobs:
+  resolve-context:
+    name: Resolve Deployment Context
+    runs-on: ubuntu-latest
+    outputs:
+      target_env: ${{ steps.compute.outputs.target_env }}
+      image_tag: ${{ steps.compute.outputs.image_tag }}
+      revision_suffix: ${{ steps.compute.outputs.revision_suffix }}
+      commit_sha: ${{ steps.compute.outputs.commit_sha }}
+      is_production: ${{ steps.compute.outputs.is_production }}
+    steps:
+      - name: Compute deployment context
+        id: compute
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_SHA: ${{ github.sha }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_TARGET_ENV: ${{ inputs.target_env }}
+          INPUT_COMMIT_SHA: ${{ inputs.commit_sha }}
+        run: |
+          if [ "$EVENT_NAME" = "release" ]; then
+            VERSION="${RELEASE_TAG#v}"
+            TARGET_ENV="production"
+            COMMIT_SHA="$RELEASE_SHA"
+            IS_PRODUCTION="true"
+          else
+            VERSION="$INPUT_VERSION"
+            TARGET_ENV="$INPUT_TARGET_ENV"
+            COMMIT_SHA="$INPUT_COMMIT_SHA"
+            if [ "$TARGET_ENV" = "production" ]; then
+              IS_PRODUCTION="true"
+            else
+              IS_PRODUCTION="false"
+            fi
+          fi
+
+          IMAGE_TAG="$VERSION"
+          SHORT_SHA="${COMMIT_SHA:0:8}"
+          SAFE_TAG=$(echo "$IMAGE_TAG" | tr '.' '-')
+          REVISION_SUFFIX="${SAFE_TAG}-${SHORT_SHA}"
+
+          echo "target_env=$TARGET_ENV" >> "$GITHUB_OUTPUT"
+          echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+          echo "revision_suffix=$REVISION_SUFFIX" >> "$GITHUB_OUTPUT"
+          echo "commit_sha=$COMMIT_SHA" >> "$GITHUB_OUTPUT"
+          echo "is_production=$IS_PRODUCTION" >> "$GITHUB_OUTPUT"
+
+  build-frontend:
+    name: Build Frontend Image
+    runs-on: ubuntu-latest
+    needs: [resolve-context]
+    if: needs.resolve-context.outputs.is_production != 'true'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          ref: ${{ needs.resolve-context.outputs.commit_sha }}
+
+      - uses: ./.github/actions/docker-build-push
+        with:
+          context: ./bfs-web-app
+          dockerfile: ./bfs-web-app/Dockerfile
+          image-name: frontend
+          image-tag: ${{ needs.resolve-context.outputs.image_tag }}
+          env-tag: staging
+          app-version: ${{ needs.resolve-context.outputs.image_tag }}
+          registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+  build-backend:
+    name: Build Backend Image
+    runs-on: ubuntu-latest
+    needs: [resolve-context]
+    if: needs.resolve-context.outputs.is_production != 'true'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          ref: ${{ needs.resolve-context.outputs.commit_sha }}
+
+      - uses: ./.github/actions/docker-build-push
+        with:
+          context: ./bfs-backend
+          dockerfile: ./bfs-backend/Dockerfile
+          image-name: backend
+          image-tag: ${{ needs.resolve-context.outputs.image_tag }}
+          env-tag: staging
+          app-version: ${{ needs.resolve-context.outputs.image_tag }}
+          registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+  build-docs:
+    name: Build Docs Image
+    runs-on: ubuntu-latest
+    needs: [resolve-context]
+    if: needs.resolve-context.outputs.is_production != 'true'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          ref: ${{ needs.resolve-context.outputs.commit_sha }}
+
+      - uses: ./.github/actions/docker-build-push
+        with:
+          context: ./bfs-docs
+          dockerfile: ./bfs-docs/Dockerfile
+          image-name: docs
+          image-tag: ${{ needs.resolve-context.outputs.image_tag }}
+          env-tag: staging
+          app-version: ${{ needs.resolve-context.outputs.image_tag }}
+          registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+  promote-images:
+    name: Promote Staging Images to Production
+    runs-on: ubuntu-latest
+    needs: [resolve-context]
+    if: needs.resolve-context.outputs.is_production == 'true'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install crane
+        uses: imjasonh/setup-crane@31b88efe9de28ae0ffa220711af4b60be9435f6e
+      - name: Promote images
+        env:
+          IMAGE_TAG: ${{ needs.resolve-context.outputs.image_tag }}
+          REGISTRY: ghcr.io/ly-schneider/bless2n-food-system
+        run: |
+          for img in frontend backend docs; do
+            crane tag "${REGISTRY}/${img}:${IMAGE_TAG}" "production"
+          done
+
+  migrate:
+    name: Run Migrations
+    runs-on: ubuntu-latest
+    environment: ${{ needs.resolve-context.outputs.target_env }}
+    needs: [resolve-context, build-frontend, build-backend, build-docs, promote-images]
+    if: |
+      always() && !cancelled() &&
+      (needs.build-frontend.result == 'success' || needs.build-frontend.result == 'skipped') &&
+      (needs.build-backend.result == 'success' || needs.build-backend.result == 'skipped') &&
+      (needs.build-docs.result == 'success' || needs.build-docs.result == 'skipped') &&
+      (needs.promote-images.result == 'success' || needs.promote-images.result == 'skipped')
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          ref: ${{ needs.resolve-context.outputs.commit_sha }}
+
+      - name: Provision database roles
+        working-directory: bfs-backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: ./db/provisioning/provision.sh
+
+      - name: Install Atlas CLI
+        uses: ariga/setup-atlas@v0
+        with:
+          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
+
+      - name: Apply Atlas migrations
+        working-directory: bfs-backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          atlas migrate apply \
+            --dir "file://db/migrations" \
+            --url "$DATABASE_URL" \
+            --exec-order linear
+
+  deploy:
+    name: Deploy ${{ needs.resolve-context.outputs.target_env }}
+    runs-on: ubuntu-latest
+    environment: ${{ needs.resolve-context.outputs.target_env }}
+    needs:
+      - resolve-context
+      - migrate
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.resolve-context.outputs.commit_sha }}
+
+      - name: Terraform Cloud apply
+        uses: kvrhdn/tfe-run@4953a73eaf2b24b7fc7c2a98bc8d112eea1b34c7
+        with:
+          token: ${{ secrets.TF_API_TOKEN }}
+          organization: ${{ vars.TF_ORG_NAME }}
+          workspace: ${{ vars.TF_WORKSPACE }}
+          message: "Deploy | env=${{ needs.resolve-context.outputs.target_env }} | v${{ needs.resolve-context.outputs.image_tag }}"
+          wait-for-completion: ${{ needs.resolve-context.outputs.target_env == 'staging' }}
+          tf-vars: |
+            image_tag       = "${{ needs.resolve-context.outputs.image_tag }}"
+            revision_suffix = "${{ needs.resolve-context.outputs.revision_suffix }}"
+            ghcr_token      = "${{ secrets.GHCR_TOKEN }}"
+
+  post-release-bump:
+    name: Bump to next version
+    runs-on: ubuntu-latest
+    needs: [deploy, resolve-context]
+    if: needs.resolve-context.outputs.is_production == 'true'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Bump patch version
+        env:
+          RELEASED_TAG: ${{ needs.resolve-context.outputs.image_tag }}
+        run: |
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$RELEASED_TAG"
+          NEXT_PATCH=$((PATCH + 1))
+          NEXT_VERSION="${MAJOR}.${MINOR}.${NEXT_PATCH}"
+
+          echo "$NEXT_VERSION" > VERSION
+
+          cd bfs-web-app
+          ESCAPED=$(echo "$NEXT_VERSION" | sed 's/[&/]/\\&/g')
+          sed -i "s/\"version\": \".*\"/\"version\": \"${ESCAPED}\"/" package.json
+          cd ..
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add VERSION bfs-web-app/package.json
+          git commit -m "chore: bump version to ${NEXT_VERSION} [skip cd]"
+          git push origin main

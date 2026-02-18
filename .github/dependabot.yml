@@ -6,7 +6,7 @@ updates:
       interval: "cron"
       cronjob: "0 2 * * fri%2"
       timezone: "Europe/Zurich"
-    target-branch: "staging"
+    target-branch: "main"
     commit-message:
       prefix: "[skip cd]"
     labels:
@@ -25,7 +25,7 @@ updates:
       interval: "cron"
       cronjob: "0 2 * * fri%2"
       timezone: "Europe/Zurich"
-    target-branch: "staging"
+    target-branch: "main"
     commit-message:
       prefix: "[skip cd]"
     labels:
@@ -44,7 +44,7 @@ updates:
       interval: "cron"
       cronjob: "0 2 * * fri%2"
       timezone: "Europe/Zurich"
-    target-branch: "staging"
+    target-branch: "main"
     commit-message:
       prefix: "[skip cd]"
     labels:
@@ -63,7 +63,7 @@ updates:
       interval: "cron"
       cronjob: "0 2 * * fri%2"
       timezone: "Europe/Zurich"
-    target-branch: "staging"
+    target-branch: "main"
     commit-message:
       prefix: "[skip cd]"
     labels:
@@ -79,7 +79,7 @@ updates:
       interval: "cron"
       cronjob: "0 2 * * fri%2"
       timezone: "Europe/Zurich"
-    target-branch: "staging"
+    target-branch: "main"
     commit-message:
       prefix: "[skip cd]"
     labels:
@@ -95,7 +95,7 @@ updates:
       interval: "cron"
       cronjob: "0 2 * * fri%2"
       timezone: "Europe/Zurich"
-    target-branch: "staging"
+    target-branch: "main"
     commit-message:
       prefix: "[skip cd]"
     labels:

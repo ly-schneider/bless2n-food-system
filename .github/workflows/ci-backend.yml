@@ -1,0 +1,53 @@
+name: CI Backend
+
+on:
+  workflow_call:
+
+jobs:
+  lint:
+    name: Backend Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - uses: ./.github/actions/setup-go-env
+
+      - uses: ./.github/actions/generate-backend
+
+      - name: Lint
+        working-directory: bfs-backend
+        run: go tool golangci-lint run --timeout=3m ./...
+
+  test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - uses: ./.github/actions/setup-go-env
+
+      - uses: ./.github/actions/generate-backend
+
+      - name: Run tests
+        working-directory: bfs-backend
+        run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7
+        with:
+          files: ./bfs-backend/coverage.out
+          flags: backend
+          fail_ci_if_error: false
+
+  migrate-lint:
+    name: Migration Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - name: Install Atlas CLI
+        uses: ariga/setup-atlas@v0
+
+      - name: Validate migration integrity
+        working-directory: bfs-backend
+        run: atlas migrate validate --dir "file://db/migrations"

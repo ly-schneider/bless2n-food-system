@@ -2,9 +2,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [ production, staging ]
+    branches: [main]
   push:
-    branches: [ production, staging ]
+    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -48,116 +48,15 @@ jobs:
               - 'bfs-cloud/**'
               - '*.tf'
 
-  setup-dependencies:
-    name: Setup Dependencies
-    runs-on: ubuntu-latest
+  ci-web:
     needs: detect-changes
-    if: ${{ fromJSON(needs.detect-changes.outputs.web || 'false') || fromJSON(needs.detect-changes.outputs.backend || 'false') }}
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
-        with:
-          version: 9
-
-      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: bfs-web-app/pnpm-lock.yaml
-
-      - name: Install web dependencies
-        working-directory: bfs-web-app
-        run: pnpm install --frozen-lockfile
-
-      - name: Cache web node_modules
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: bfs-web-app/node_modules
-          key: node-modules-${{ runner.os }}-${{ hashFiles('bfs-web-app/pnpm-lock.yaml') }}
-
-      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
-        with:
-          go-version: '1.25'
-          cache-dependency-path: bfs-backend/go.sum
-
-      - name: Download Go modules
-        working-directory: bfs-backend
-        run: go mod download
-
-  web-quality:
-    name: Web Quality Checks
-    runs-on: ubuntu-latest
-    needs:
-      - detect-changes
-      - setup-dependencies
     if: needs.detect-changes.outputs.web == 'true'
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+    uses: ./.github/workflows/ci-web.yml
 
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
-        with:
-          version: 9
-
-      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: bfs-web-app/pnpm-lock.yaml
-
-      - name: Restore web node_modules
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc398304
-        with:
-          path: bfs-web-app/node_modules
-          key: node-modules-${{ runner.os }}-${{ hashFiles('bfs-web-app/pnpm-lock.yaml') }}
-          fail-on-cache-miss: true
-
-      - name: Format check
-        working-directory: bfs-web-app
-        run: pnpm run prettier
-
-      - name: Lint
-        working-directory: bfs-web-app
-        run: pnpm run lint
-
-      - name: Type check
-        working-directory: bfs-web-app
-        run: pnpm run typecheck
-
-  web-test:
-    name: Web Tests (Shard ${{ matrix.shard }})
-    runs-on: ubuntu-latest
-    needs:
-      - detect-changes
-      - setup-dependencies
-    if: needs.detect-changes.outputs.web == 'true'
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1]
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
-        with:
-          version: 9
-
-      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: bfs-web-app/pnpm-lock.yaml
-
-      - name: Restore web node_modules
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: bfs-web-app/node_modules
-          key: node-modules-${{ runner.os }}-${{ hashFiles('bfs-web-app/pnpm-lock.yaml') }}
-          fail-on-cache-miss: true
-
-      - name: Run tests
-        working-directory: bfs-web-app
-        run: pnpm test -- --shard=${{ matrix.shard }}/1
+  ci-backend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true'
+    uses: ./.github/workflows/ci-backend.yml
 
   docs-quality:
     name: Docs Quality Checks
@@ -167,19 +66,9 @@ jobs:
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
 
-      - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+      - uses: ./.github/actions/setup-node-pnpm
         with:
-          version: 9
-
-      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: bfs-docs/pnpm-lock.yaml
-
-      - name: Install dependencies
-        working-directory: bfs-docs
-        run: pnpm install --frozen-lockfile
+          working-directory: bfs-docs
 
       - name: Lint
         working-directory: bfs-docs
@@ -188,90 +77,6 @@ jobs:
       - name: Build
         working-directory: bfs-docs
         run: pnpm run build
-
-  backend-lint:
-    name: Backend Lint
-    runs-on: ubuntu-latest
-    needs: detect-changes
-    if: needs.detect-changes.outputs.backend == 'true'
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-
-      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
-        with:
-          go-version: '1.25'
-          cache-dependency-path: bfs-backend/go.sum
-
-      - name: Generate Ent
-        working-directory: bfs-backend
-        run: |
-          mkdir -p ./internal/generated/ent
-          echo "package ent" > ./internal/generated/ent/ent.go
-          go run -mod=mod entgo.io/ent/cmd/ent generate --feature sql/modifier --feature sql/upsert --target ./internal/generated/ent ./internal/schema
-
-      - name: Generate OpenAPI
-        working-directory: bfs-backend
-        run: |
-          npx @redocly/cli bundle openapi/openapi.yaml -o openapi/bundled.yaml
-          go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.1
-          oapi-codegen -config oapi-codegen.yaml openapi/bundled.yaml
-
-      - name: Lint
-        working-directory: bfs-backend
-        run: go tool golangci-lint run --timeout=3m ./...
-
-  migrate-lint:
-    name: Migration Lint
-    runs-on: ubuntu-latest
-    needs: detect-changes
-    if: needs.detect-changes.outputs.backend == 'true'
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-
-      - name: Install Atlas CLI
-        uses: ariga/setup-atlas@v0
-
-      - name: Validate migration integrity
-        working-directory: bfs-backend
-        run: atlas migrate validate --dir "file://db/migrations"
-
-  backend-test:
-    name: Backend Tests
-    runs-on: ubuntu-latest
-    needs: detect-changes
-    if: needs.detect-changes.outputs.backend == 'true'
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-
-      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
-        with:
-          go-version: '1.25'
-          cache-dependency-path: bfs-backend/go.sum
-
-      - name: Generate Ent
-        working-directory: bfs-backend
-        run: |
-          mkdir -p ./internal/generated/ent
-          echo "package ent" > ./internal/generated/ent/ent.go
-          go run -mod=mod entgo.io/ent/cmd/ent generate --feature sql/modifier --feature sql/upsert --target ./internal/generated/ent ./internal/schema
-
-      - name: Generate OpenAPI
-        working-directory: bfs-backend
-        run: |
-          npx @redocly/cli bundle openapi/openapi.yaml -o openapi/bundled.yaml
-          go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.1
-          oapi-codegen -config oapi-codegen.yaml openapi/bundled.yaml
-
-      - name: Run tests
-        working-directory: bfs-backend
-        run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
-
-      - name: Upload coverage
-        uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7
-        with:
-          files: ./bfs-backend/coverage.out
-          flags: backend
-          fail_ci_if_error: false
 
   terraform-quality:
     name: Terraform Quality
@@ -301,47 +106,40 @@ jobs:
           terraform init -upgrade -backend=false
           terraform validate
 
-  ci-success:
+  ci-gate:
     name: CI Success
     runs-on: ubuntu-latest
     needs:
       - detect-changes
-      - web-quality
-      - web-test
+      - ci-web
+      - ci-backend
       - docs-quality
-      - backend-lint
-      - backend-test
-      - migrate-lint
       - terraform-quality
     if: always()
     steps:
       - name: Check all jobs succeeded
         run: |
-          if [[ "${{ needs.web-quality.result }}" == "failure" ]] || \
-             [[ "${{ needs.web-test.result }}" == "failure" ]] || \
+          if [[ "${{ needs.ci-web.result }}" == "failure" ]] || \
+             [[ "${{ needs.ci-backend.result }}" == "failure" ]] || \
              [[ "${{ needs.docs-quality.result }}" == "failure" ]] || \
-             [[ "${{ needs.backend-lint.result }}" == "failure" ]] || \
-             [[ "${{ needs.backend-test.result }}" == "failure" ]] || \
-             [[ "${{ needs.migrate-lint.result }}" == "failure" ]] || \
              [[ "${{ needs.terraform-quality.result }}" == "failure" ]]; then
             echo "One or more required jobs failed"
             exit 1
           fi
 
-          # Allow skipped jobs (when path filtering excludes them)
           echo "All required jobs passed or were skipped"
 
   trigger-cd:
     name: Trigger CD deploy
     runs-on: ubuntu-latest
     needs:
-      - ci-success
+      - ci-gate
       - detect-changes
     if: >
       ${{
-        needs.ci-success.result == 'success' &&
+        needs.ci-gate.result == 'success' &&
         github.event_name == 'push' &&
-        (github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/production') &&
+        github.ref == 'refs/heads/main' &&
         (
           needs.detect-changes.outputs.web == 'true' ||
           needs.detect-changes.outputs.backend == 'true' ||
@@ -378,15 +176,12 @@ jobs:
             const message = commit.data.commit.message;
             const author = commit.data.commit.author.name;
 
-            // Check commit message for skip flag
             let shouldSkip = message.includes('[skip cd]') || message.includes('[skip-cd]');
 
-            // Check if this is a Dependabot commit
             const isDependabot = author === 'dependabot[bot]' ||
                                  author === 'dependabot-preview[bot]' ||
                                  message.includes('dependabot');
 
-            // If it's a merge commit, check the PR title
             if (message.startsWith('Merge pull request')) {
               const prMatch = message.match(/#(\d+)/);
               if (prMatch) {
@@ -417,24 +212,19 @@ jobs:
 
             return shouldSkip || isDependabot;
 
-      - name: Trigger CD workflow via workflow_dispatch
+      - name: Trigger Deploy workflow via workflow_dispatch
         if: steps.check-skip.outputs.result == 'false'
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const env =
-              context.ref === 'refs/heads/staging'
-                ? 'staging'
-                : 'production';
-
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              workflow_id: 'cd.yml',
-              ref: env,
+              workflow_id: 'deploy.yml',
+              ref: 'main',
               inputs: {
-                target_env: env,
+                target_env: 'staging',
                 version: '${{ steps.version.outputs.version }}',
                 commit_sha: context.sha,
               },

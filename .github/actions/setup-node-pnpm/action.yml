@@ -1,0 +1,25 @@
+name: Setup Node & pnpm
+description: Install pnpm, Node.js 22, and project dependencies
+
+inputs:
+  working-directory:
+    description: Directory containing pnpm-lock.yaml
+    default: bfs-web-app
+
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061
+      with:
+        version: 9
+
+    - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+      with:
+        node-version: 22
+        cache: pnpm
+        cache-dependency-path: ${{ inputs.working-directory }}/pnpm-lock.yaml
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: pnpm install --frozen-lockfile

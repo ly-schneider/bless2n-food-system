@@ -1,0 +1,41 @@
+name: CI Web
+
+on:
+  workflow_call:
+
+jobs:
+  quality:
+    name: Web Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - uses: ./.github/actions/setup-node-pnpm
+
+      - name: Format check
+        working-directory: bfs-web-app
+        run: pnpm run prettier
+
+      - name: Lint
+        working-directory: bfs-web-app
+        run: pnpm run lint
+
+      - name: Type check
+        working-directory: bfs-web-app
+        run: pnpm run typecheck
+
+  test:
+    name: Web Tests (Shard ${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1]
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - uses: ./.github/actions/setup-node-pnpm
+
+      - name: Run tests
+        working-directory: bfs-web-app
+        run: pnpm test -- --shard=${{ matrix.shard }}/1
