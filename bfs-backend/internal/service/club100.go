@@ -77,12 +77,12 @@ func (s *club100Service) GetPeopleWithRedemptions(ctx context.Context) ([]Club10
 			remaining = 0
 		}
 		result = append(result, Club100Person{
-			ID:              p.ID,
-			FirstName:       p.FirstName,
-			LastName:        p.LastName,
+			ID:               p.ID,
+			FirstName:        p.FirstName,
+			LastName:         p.LastName,
 			TotalRedemptions: total,
-			Remaining:       remaining,
-			Max:             maxRedemptions,
+			Remaining:        remaining,
+			Max:              maxRedemptions,
 		})
 	}
 

@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -19,7 +18,7 @@ func (h *Handlers) StreamInventory(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	products, err := h.products.GetAll(ctx)
 	if err != nil {
-		fmt.Fprintf(w, "event: error\ndata: {\"error\":\"failed to load products\"}\n\n")
+		_, _ = w.Write([]byte("event: error\ndata: {\"error\":\"failed to load products\"}\n\n"))
 		_ = rc.Flush()
 		return
 	}
@@ -31,7 +30,7 @@ func (h *Handlers) StreamInventory(w http.ResponseWriter, r *http.Request) {
 
 	stocks, err := h.products.GetStockBatch(ctx, ids)
 	if err != nil {
-		fmt.Fprintf(w, "event: error\ndata: {\"error\":\"failed to load stock\"}\n\n")
+		_, _ = w.Write([]byte("event: error\ndata: {\"error\":\"failed to load stock\"}\n\n"))
 		_ = rc.Flush()
 		return
 	}
@@ -42,7 +41,7 @@ func (h *Handlers) StreamInventory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data, _ := json.Marshal(snapshot)
-	fmt.Fprintf(w, "event: inventory-snapshot\ndata: %s\n\n", data)
+	_, _ = w.Write(append(append([]byte("event: inventory-snapshot\ndata: "), data...), '\n', '\n'))
 	_ = rc.Flush()
 
 	subID := uuid.New().String()
@@ -56,7 +55,7 @@ func (h *Handlers) StreamInventory(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			data, _ := json.Marshal(update)
-			fmt.Fprintf(w, "event: inventory-update\ndata: %s\n\n", data)
+			_, _ = w.Write(append(append([]byte("event: inventory-update\ndata: "), data...), '\n', '\n'))
 			_ = rc.Flush()
 		case <-ctx.Done():
 			return

@@ -87,7 +87,7 @@ func (c *Client) doRequest(method, endpoint string, params url.Values) ([]byte, 
 	if err != nil {
 		return nil, fmt.Errorf("payrexx: request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

@@ -102,7 +102,7 @@ func (s *emailService) SendInviteEmail(ctx context.Context, to string, inviteURL
 	if err != nil {
 		return fmt.Errorf("failed to send email: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("plunk returned status %d", resp.StatusCode)
@@ -175,13 +175,12 @@ func (s *emailService) SendOTPEmail(ctx context.Context, to string, otp string, 
 	if err != nil {
 		return fmt.Errorf("failed to send OTP email: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		// DEBUG: Read response body for error details
 		var respBody bytes.Buffer
-		respBody.ReadFrom(resp.Body)
-		s.logger.Error("DEBUG: Plunk error response",
+		_, _ = respBody.ReadFrom(resp.Body)
+		s.logger.Error("plunk error response",
 			zap.Int("status", resp.StatusCode),
 			zap.String("body", respBody.String()),
 			zap.String("request_body", string(jsonData)),

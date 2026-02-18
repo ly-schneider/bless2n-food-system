@@ -78,7 +78,7 @@ func (s *elvantoService) SearchPeople(ctx context.Context) ([]ElvantoPerson, err
 		s.logger.Error("elvanto request failed", zap.Error(err))
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)

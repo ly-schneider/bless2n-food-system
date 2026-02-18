@@ -89,11 +89,7 @@ func (s *posService) CreateOrder(ctx context.Context, items []POSCheckoutItem, c
 	// Convert to payment service input
 	checkoutItems := make([]CheckoutItemInput, len(items))
 	for i, item := range items {
-		checkoutItems[i] = CheckoutItemInput{
-			ProductID:     item.ProductID,
-			Quantity:      item.Quantity,
-			Configuration: item.Configuration,
-		}
+		checkoutItems[i] = CheckoutItemInput(item)
 	}
 
 	in := CreateCheckoutInput{

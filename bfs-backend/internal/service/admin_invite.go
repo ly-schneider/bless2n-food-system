@@ -128,10 +128,7 @@ func (s *adminInviteService) Create(ctx context.Context, inviterID, email string
 
 	// Build invite URL and send email
 	inviteURL := s.buildInviteURL(token)
-	if err := s.emailSvc.SendInviteEmail(ctx, email, inviteURL, expiresAt); err != nil {
-		// Log but don't fail - invite was created
-		// The caller can resend if needed
-	}
+	_ = s.emailSvc.SendInviteEmail(ctx, email, inviteURL, expiresAt)
 
 	return invite, nil
 }

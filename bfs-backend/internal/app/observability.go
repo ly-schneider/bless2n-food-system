@@ -13,7 +13,7 @@ import (
 
 // SetupObservability bootstraps tracing and wires shutdown into the Fx lifecycle.
 func SetupObservability(lc fx.Lifecycle, cfg config.Config) error {
-	var shutdown func(context.Context) error = func(context.Context) error { return nil }
+	var shutdown = func(context.Context) error { return nil }
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {

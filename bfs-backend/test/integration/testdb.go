@@ -52,7 +52,7 @@ func NewTestDB(t *testing.T) *TestDB {
 	defer cancel()
 
 	if err := db.PingContext(ctx); err != nil {
-		db.Close()
+		_ = db.Close()
 		t.Fatalf("failed to ping test database: %v", err)
 	}
 
@@ -116,26 +116,26 @@ func (tdb *TestDB) Cleanup(t *testing.T) {
 
 // Close closes the database connection.
 func (tdb *TestDB) Close() {
-	tdb.Client.Close()
-	tdb.DB.Close()
+	_ = tdb.Client.Close()
+	_ = tdb.DB.Close()
 }
 
 // Repositories holds all repository instances for tests.
 type Repositories struct {
-	Category           pgRepo.CategoryRepository
-	Product            *pgRepo.ProductRepository
-	Jeton              pgRepo.JetonRepository
-	MenuSlot           pgRepo.MenuSlotRepository
-	MenuSlotOption     pgRepo.MenuSlotOptionRepository
-	Order              pgRepo.OrderRepository
-	OrderLine          pgRepo.OrderLineRepository
-	OrderRedemption    pgRepo.OrderLineRedemptionRepository
-	Club100Redemption  pgRepo.Club100RedemptionRepository
-	Inventory          pgRepo.InventoryLedgerRepository
-	Device             pgRepo.DeviceRepository
-	DeviceProduct      pgRepo.DeviceProductRepository
-	Settings           pgRepo.SettingsRepository
-	Idempotency        pgRepo.IdempotencyRepository
+	Category          pgRepo.CategoryRepository
+	Product           *pgRepo.ProductRepository
+	Jeton             pgRepo.JetonRepository
+	MenuSlot          pgRepo.MenuSlotRepository
+	MenuSlotOption    pgRepo.MenuSlotOptionRepository
+	Order             pgRepo.OrderRepository
+	OrderLine         pgRepo.OrderLineRepository
+	OrderRedemption   pgRepo.OrderLineRedemptionRepository
+	Club100Redemption pgRepo.Club100RedemptionRepository
+	Inventory         pgRepo.InventoryLedgerRepository
+	Device            pgRepo.DeviceRepository
+	DeviceProduct     pgRepo.DeviceProductRepository
+	Settings          pgRepo.SettingsRepository
+	Idempotency       pgRepo.IdempotencyRepository
 }
 
 // NewRepositories creates all repository instances from an Ent client.

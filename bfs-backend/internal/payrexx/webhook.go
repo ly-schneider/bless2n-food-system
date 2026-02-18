@@ -9,17 +9,17 @@ import (
 
 // TransactionStatus represents transaction statuses in Payrexx.
 const (
-	TransactionStatusWaiting     = "waiting"
-	TransactionStatusConfirmed   = "confirmed"
-	TransactionStatusAuthorized  = "authorized"
-	TransactionStatusReserved    = "reserved"
-	TransactionStatusRefunded    = "refunded"
-	TransactionStatusPartRefund  = "partially-refunded"
-	TransactionStatusCancelled   = "cancelled"
-	TransactionStatusDeclined    = "declined"
-	TransactionStatusError       = "error"
-	TransactionStatusUncaptured  = "uncaptured"
-	TransactionStatusChargeback  = "chargeback"
+	TransactionStatusWaiting    = "waiting"
+	TransactionStatusConfirmed  = "confirmed"
+	TransactionStatusAuthorized = "authorized"
+	TransactionStatusReserved   = "reserved"
+	TransactionStatusRefunded   = "refunded"
+	TransactionStatusPartRefund = "partially-refunded"
+	TransactionStatusCancelled  = "cancelled"
+	TransactionStatusDeclined   = "declined"
+	TransactionStatusError      = "error"
+	TransactionStatusUncaptured = "uncaptured"
+	TransactionStatusChargeback = "chargeback"
 )
 
 // WebhookEvent represents a parsed Payrexx webhook event.

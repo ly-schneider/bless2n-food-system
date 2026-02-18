@@ -42,7 +42,7 @@ func NewRouter(
 
 	// ── Create the generated wrapper ──────────────────────────────────
 	wrapper := generated.ServerInterfaceWrapper{
-		Handler:          apiHandlers,
+		Handler: apiHandlers,
 		ErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		},

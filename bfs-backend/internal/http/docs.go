@@ -26,7 +26,7 @@ const scalarHTML = `<!doctype html>
 func DocsScalarHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write([]byte(scalarHTML))
+		_, _ = w.Write([]byte(scalarHTML))
 	}
 }
 
@@ -43,6 +43,6 @@ func DocsOpenAPIHandler() http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(specJSON)
+		_, _ = w.Write(specJSON)
 	}
 }

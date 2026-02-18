@@ -129,8 +129,8 @@ func toAPIJetons(rows []*ent.Jeton) []generated.Jeton {
 
 func toAPIJetonSummary(e *ent.Jeton) generated.JetonSummary {
 	return generated.JetonSummary{
-		Id:       ptr(openapi_types.UUID(e.ID)),
-		Name:     ptr(e.Name),
+		Id:    ptr(openapi_types.UUID(e.ID)),
+		Name:  ptr(e.Name),
 		Color: ptr(e.Color),
 	}
 }
@@ -383,19 +383,19 @@ func toAPIMenuSlotSummary(e *ent.MenuSlot) generated.MenuSlotSummary {
 	// Map Options edge if loaded, producing inline option summaries.
 	if opts, err := e.Edges.OptionsOrErr(); err == nil {
 		optSummaries := make([]struct {
-			Image      *string              `json:"image"`
+			Image      *string                 `json:"image"`
 			Jeton      *generated.JetonSummary `json:"jeton,omitempty"`
-			Name       *string              `json:"name,omitempty"`
-			PriceCents *int64               `json:"priceCents,omitempty"`
-			ProductId  *openapi_types.UUID  `json:"productId,omitempty"`
+			Name       *string                 `json:"name,omitempty"`
+			PriceCents *int64                  `json:"priceCents,omitempty"`
+			ProductId  *openapi_types.UUID     `json:"productId,omitempty"`
 		}, 0, len(opts))
 		for _, o := range opts {
 			entry := struct {
-				Image      *string              `json:"image"`
+				Image      *string                 `json:"image"`
 				Jeton      *generated.JetonSummary `json:"jeton,omitempty"`
-				Name       *string              `json:"name,omitempty"`
-				PriceCents *int64               `json:"priceCents,omitempty"`
-				ProductId  *openapi_types.UUID  `json:"productId,omitempty"`
+				Name       *string                 `json:"name,omitempty"`
+				PriceCents *int64                  `json:"priceCents,omitempty"`
+				ProductId  *openapi_types.UUID     `json:"productId,omitempty"`
 			}{
 				ProductId: ptr(openapi_types.UUID(o.OptionProductID)),
 			}

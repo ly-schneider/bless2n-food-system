@@ -10,19 +10,19 @@ import (
 
 // Gateway represents a Payrexx payment gateway (payment session).
 type Gateway struct {
-	ID            int       `json:"id"`
-	Status        string    `json:"status"`
-	Hash          string    `json:"hash"`
-	Link          string    `json:"link"`
-	Amount        int       `json:"amount"` // in cents
-	Currency      string    `json:"currency"`
-	ReferenceID   string    `json:"referenceId"`
-	PaymentMeans  []string  `json:"pm"`
-	CreatedAt     time.Time `json:"-"`
-	InvoiceItems  []InvoiceItem
-	SuccessURL    string
-	FailedURL     string
-	CancelURL     string
+	ID           int       `json:"id"`
+	Status       string    `json:"status"`
+	Hash         string    `json:"hash"`
+	Link         string    `json:"link"`
+	Amount       int       `json:"amount"` // in cents
+	Currency     string    `json:"currency"`
+	ReferenceID  string    `json:"referenceId"`
+	PaymentMeans []string  `json:"pm"`
+	CreatedAt    time.Time `json:"-"`
+	InvoiceItems []InvoiceItem
+	SuccessURL   string
+	FailedURL    string
+	CancelURL    string
 }
 
 // InvoiceItem represents a line item in a Payrexx invoice.
@@ -34,8 +34,8 @@ type InvoiceItem struct {
 
 // GatewayResponse wraps the Payrexx API response for Gateway operations.
 type GatewayResponse struct {
-	Status  string   `json:"status"`
-	Message string   `json:"message,omitempty"`
+	Status  string    `json:"status"`
+	Message string    `json:"message,omitempty"`
 	Data    []Gateway `json:"data"`
 }
 

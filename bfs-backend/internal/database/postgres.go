@@ -84,7 +84,7 @@ func NewEntClient(cfg config.Config) (*ent.Client, *sql.DB, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := db.PingContext(ctx); err != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, nil, fmt.Errorf("failed to ping PostgreSQL for Ent: %w", err)
 	}
 

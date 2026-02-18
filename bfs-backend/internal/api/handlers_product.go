@@ -298,7 +298,7 @@ func (h *Handlers) UploadProductImage(w http.ResponseWriter, r *http.Request, pr
 		writeError(w, http.StatusBadRequest, "invalid_body", "Missing file field")
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	buf := make([]byte, 512)
 	n, err := io.ReadAtLeast(file, buf, 1)
