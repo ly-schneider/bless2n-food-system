@@ -1,8 +1,8 @@
 "use client"
 
+import { adminClient, emailOTPClient } from "better-auth/client/plugins"
 import { createAuthClient } from "better-auth/react"
-import { emailOTPClient, adminClient } from "better-auth/client/plugins"
-import { ac, customerRole, adminRole } from "./auth/permissions"
+import { ac, adminRole, customerRole } from "./auth/permissions"
 
 export const authClient = createAuthClient({
   baseURL: process.env.NEXT_PUBLIC_APP_URL,

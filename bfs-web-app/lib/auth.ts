@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth"
-import { emailOTP, admin } from "better-auth/plugins"
+import { admin, emailOTP } from "better-auth/plugins"
 import { Pool } from "pg"
-import { ac, customerRole, adminRole } from "./auth/permissions"
+import { ac, adminRole, customerRole } from "./auth/permissions"
 
 // OTP types supported by the backend
 type OTPType = "sign-in" | "email-verification" | "forget-password"

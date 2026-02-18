@@ -1,6 +1,6 @@
 import withBundleAnalyzer from "@next/bundle-analyzer"
-import { readFileSync } from "fs"
 import { type NextConfig } from "next"
+import { readFileSync } from "fs"
 import { resolve } from "path"
 
 if (!process.env.NEXT_PUBLIC_APP_VERSION) {

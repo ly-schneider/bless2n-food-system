@@ -264,7 +264,7 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
     if (club100Discount) {
       clearClub100Discount()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [cartItemsKey])
 
   // Listen for native print results from the Android WebView bridge

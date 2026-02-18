@@ -2,8 +2,8 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useCart } from "@/contexts/cart-context"
 import { VersionLabel } from "@/components/layout/version-label"
+import { useCart } from "@/contexts/cart-context"
 
 export default function Footer() {
   const pathname = usePathname()

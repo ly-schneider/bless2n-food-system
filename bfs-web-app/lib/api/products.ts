@@ -1,4 +1,4 @@
-import type { ListResponse, ProductDTO } from "@/types"
+import type { ListResponse, ProductDTO, ProductSummaryDTO } from "@/types"
 import { apiRequest } from "../api"
 
 export interface ListProductsParams {
@@ -7,45 +7,55 @@ export interface ListProductsParams {
   offset?: number
 }
 
-/**
- * The backend returns menu slot data as `product.menuSlots[]` with option items
- * containing `productId`. The frontend expects `product.menu.slots[]` with items
- * containing `id`. This function normalizes the response shape.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function normalizeProduct(raw: any): ProductDTO {
+interface RawSlotOption {
+  productId?: string
+  id?: string
+  name?: string
+  priceCents?: number
+  image?: string | null
+  jeton?: { id: string; name: string; color: string } | null
+}
+
+interface RawMenuSlot {
+  id: string
+  name: string
+  sequence?: number
+  options?: RawSlotOption[]
+}
+
+interface RawProduct extends ProductDTO {
+  stock?: number
+  menuSlots?: RawMenuSlot[]
+}
+
+function normalizeProduct(raw: RawProduct): ProductDTO {
   const product = raw as ProductDTO
 
-  // Compute availability from stock (backend returns stock as inventory count)
-  // Menu products don't have stock - they're always available
   const isMenu = raw.type === "menu"
-  const stock = raw.stock as number | undefined
+  const stock = raw.stock
   if (!isMenu && typeof stock === "number") {
     product.availableQuantity = stock
     product.isAvailable = stock > 0
     product.isLowStock = stock > 0 && stock <= 10
   }
 
-  // Map menuSlots (backend shape) → menu.slots (frontend shape)
   const menuSlots = raw.menuSlots
-  if (menuSlots && Array.isArray(menuSlots) && menuSlots.length > 0) {
+  if (menuSlots && menuSlots.length > 0) {
     product.menu = {
-      slots: menuSlots.map((slot: any) => ({
-        // eslint-disable-line @typescript-eslint/no-explicit-any
+      slots: menuSlots.map((slot) => ({
         id: slot.id,
         name: slot.name,
         sequence: slot.sequence ?? 0,
         options: Array.isArray(slot.options)
-          ? slot.options.map((opt: any) => ({
-              // eslint-disable-line @typescript-eslint/no-explicit-any
-              id: opt.productId ?? opt.id,
+          ? slot.options.map((opt) => ({
+              id: opt.productId ?? opt.id ?? "",
               name: opt.name ?? "",
               priceCents: opt.priceCents ?? 0,
               type: "simple" as const,
               image: opt.image ?? null,
               isActive: true,
               isAvailable: true,
-              category: null,
+              category: null as unknown as ProductSummaryDTO["category"],
               jeton: opt.jeton ? { id: opt.jeton.id, name: opt.jeton.name, color: opt.jeton.color } : undefined,
             }))
           : null,
@@ -74,7 +84,7 @@ export async function listProducts(params: ListProductsParams = {}): Promise<Lis
   const queryString = searchParams.toString()
   const endpoint = `/v1/products${queryString ? `?${queryString}` : ""}`
 
-  const raw = await apiRequest<ListResponse<ProductDTO>>(endpoint)
+  const raw = await apiRequest<ListResponse<RawProduct>>(endpoint)
   const items = (raw.items || []).map(normalizeProduct)
 
   // Build stock map from simple products to apply to menu slot options

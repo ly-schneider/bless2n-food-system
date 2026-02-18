@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { Label } from "@/components/ui/label"
-import { authClient, signIn, emailOtp } from "@/lib/auth/client"
+import { authClient, emailOtp, signIn } from "@/lib/auth/client"
 
 type LoginStep = "email" | "otp"
 
@@ -38,7 +38,7 @@ export default function LoginClient() {
         provider: "google",
         callbackURL: next,
       })
-    } catch (err) {
+    } catch {
       setError("Google-Anmeldung fehlgeschlagen. Bitte erneut versuchen.")
       setLoading(false)
     }

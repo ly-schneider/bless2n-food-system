@@ -8,7 +8,7 @@ import QRCode from "@/components/qrcode"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/contexts/cart-context"
 
-import { getOrderPublicById, type PublicOrderDetailsDTO, type OrderLineDTO } from "@/lib/api/orders"
+import { getOrderPublicById, type OrderLineDTO, type PublicOrderDetailsDTO } from "@/lib/api/orders"
 import { addOrder } from "@/lib/orders-storage"
 import { formatChf } from "@/lib/utils"
 

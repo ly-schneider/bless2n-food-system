@@ -1,8 +1,8 @@
 "use client"
 
-import { useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { getDeviceToken, clearDeviceToken, type DeviceType } from "@/lib/device-auth"
+import { useCallback } from "react"
+import { clearDeviceToken, type DeviceType, getDeviceToken } from "@/lib/device-auth"
 
 /**
  * Device fetch hook for API requests with device JWT authentication.

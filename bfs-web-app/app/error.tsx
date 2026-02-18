@@ -1,6 +1,7 @@
 "use client"
 
 import { AlertTriangle, Home, RefreshCw } from "lucide-react"
+import Link from "next/link"
 import { useEffect } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -30,10 +31,10 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
           </Button>
 
           <Button asChild variant="outline" className="h-10 rounded-xl px-6!">
-            <a href="/">
+            <Link href="/">
               <Home className="size-4" />
               Zur Startseite
-            </a>
+            </Link>
           </Button>
         </div>
 
