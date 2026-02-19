@@ -185,7 +185,7 @@ module "apps_backend" {
   depends_on = [
     module.security,
     module.blob_storage,
-    azurerm_role_assignment.aca_uami_kv_secrets,
+    azurerm_user_assigned_identity.aca_uami,
   ]
 }
 
@@ -233,7 +233,7 @@ module "apps_frontend" {
 
   depends_on = [
     module.security,
-    azurerm_role_assignment.aca_uami_kv_secrets,
+    azurerm_user_assigned_identity.aca_uami,
   ]
 }
 
@@ -281,7 +281,7 @@ module "apps_docs" {
 
   depends_on = [
     module.security,
-    azurerm_role_assignment.aca_uami_kv_secrets,
+    azurerm_user_assigned_identity.aca_uami,
   ]
 }
 
@@ -292,13 +292,6 @@ resource "azurerm_user_assigned_identity" "aca_uami" {
   resource_group_name = module.rg.name
   location            = var.location
   tags                = var.tags
-}
-
-resource "azurerm_role_assignment" "aca_uami_kv_secrets" {
-  scope                = module.security.key_vault_id
-  role_definition_name = "Key Vault Secrets User"
-  principal_id         = azurerm_user_assigned_identity.aca_uami.principal_id
-  principal_type       = "ServicePrincipal"
 }
 
 module "blob_storage" {
