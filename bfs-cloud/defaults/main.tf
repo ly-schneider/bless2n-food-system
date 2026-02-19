@@ -225,6 +225,7 @@ output "config" {
           "PAYREXX_API_SECRET"       = "payrexx-api-secret"
           "PAYREXX_WEBHOOK_SECRET"   = "payrexx-webhook-secret"
           "PLUNK_API_KEY"            = "plunk-api-key"
+          "ELVANTO_API_KEY"          = "elvanto-api-key"
         }
         http_scale_rule = {
           name                = "backend-http-scale"
