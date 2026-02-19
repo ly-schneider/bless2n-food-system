@@ -2,9 +2,9 @@ import { readFileSync } from 'fs';
 import { createMDX } from 'fumadocs-mdx/next';
 import { resolve } from 'path';
 
-if (!process.env.NEXT_PUBLIC_APP_VERSION) {
+if (!process.env.APP_VERSION) {
   try {
-    process.env.NEXT_PUBLIC_APP_VERSION = readFileSync(resolve(process.cwd(), '..', 'VERSION'), 'utf-8').trim();
+    process.env.APP_VERSION = readFileSync(resolve(process.cwd(), '..', 'VERSION'), 'utf-8').trim();
   } catch {}
 }
 

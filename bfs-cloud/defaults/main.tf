@@ -153,6 +153,7 @@ output "config" {
         environment_variables = {
           NODE_ENV                      = "production"
           LOG_LEVEL                     = "info"
+          APP_VERSION                   = var.image_tag
           NEXT_PUBLIC_POS_PIN           = "0000"
           NEXT_PUBLIC_POS_IDLE_TIMEOUT  = "300000"
           NEXT_PUBLIC_GA_MEASUREMENT_ID = "G-9W8S03MJEM"
@@ -191,7 +192,8 @@ output "config" {
         registries                     = local.registries
         secrets                        = { ghcr-token = var.ghcr_token }
         environment_variables = {
-          NODE_ENV = "production"
+          NODE_ENV    = "production"
+          APP_VERSION = var.image_tag
         }
         key_vault_secrets = {}
         http_scale_rule = {
@@ -217,6 +219,7 @@ output "config" {
         environment_variables = {
           APP_ENV                  = var.env
           APP_PORT                 = "8080"
+          APP_VERSION              = var.image_tag
           LOG_LEVEL                = "info"
           LOG_DEVELOPMENT          = "false"
           SECURITY_ENABLE_HSTS     = "true"

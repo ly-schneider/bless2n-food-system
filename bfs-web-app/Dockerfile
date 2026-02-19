@@ -28,10 +28,8 @@ RUN --mount=type=cache,target=/home/nodejs/.npm,uid=1001,gid=1001 \
 
 COPY --chown=nodejs:nodejs . .
 
-ARG APP_VERSION="dev"
 ENV NODE_ENV=production \
-    NEXT_TELEMETRY_DISABLED=1 \
-    NEXT_PUBLIC_APP_VERSION=${APP_VERSION}
+    NEXT_TELEMETRY_DISABLED=1
 
 RUN --mount=type=cache,target=/home/nodejs/.next/cache,uid=1001,gid=1001 \
     if [ -f pnpm-lock.yaml ]; then pnpm run build; \

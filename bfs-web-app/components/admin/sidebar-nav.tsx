@@ -25,7 +25,7 @@ type NavItem = {
   badge?: number
 }
 
-export function AdminSidebar({ badges }: { badges?: Partial<Record<string, number>> }) {
+export function AdminSidebar({ badges, version }: { badges?: Partial<Record<string, number>>; version?: string }) {
   const pathname = usePathname()
   const items: NavItem[] = [
     { href: "/admin", label: "Home", icon: <Home className="size-5" /> },
@@ -66,7 +66,7 @@ export function AdminSidebar({ badges }: { badges?: Partial<Record<string, numbe
             </Link>
           )
         })}
-        <VersionLabel className="mt-1 w-full text-center" />
+        <VersionLabel className="mt-1 w-full text-center" version={version} />
       </div>
       {/* Desktop: vertical rounded panel with margin spacing from left */}
       <div className="hidden md:block">
@@ -93,7 +93,7 @@ export function AdminSidebar({ badges }: { badges?: Partial<Record<string, numbe
             )
           })}
         </div>
-        <VersionLabel className="mt-2 ml-6 block max-w-md text-center md:ml-8 lg:ml-10" />
+        <VersionLabel className="mt-2 ml-6 block max-w-md text-center md:ml-8 lg:ml-10" version={version} />
       </div>
     </nav>
   )
@@ -102,19 +102,21 @@ export function AdminSidebar({ badges }: { badges?: Partial<Record<string, numbe
 export function AdminShell({
   children,
   badges,
+  version,
 }: {
   children: React.ReactNode
   badges?: Partial<Record<string, number>>
+  version?: string
 }) {
   return (
     <div className="min-h-dvh w-full overflow-x-clip">
       <div className="mx-auto w-full">
         <div className="pt-3 md:hidden">
-          <AdminSidebar badges={badges} />
+          <AdminSidebar badges={badges} version={version} />
         </div>
         <div className="hidden md:grid md:grid-cols-[300px_1fr] md:gap-6">
           <div>
-            <AdminSidebar badges={badges} />
+            <AdminSidebar badges={badges} version={version} />
           </div>
           <div className="min-w-0 pr-6 md:pr-8 lg:pr-10">{children}</div>
         </div>

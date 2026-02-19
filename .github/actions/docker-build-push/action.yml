@@ -17,9 +17,6 @@ inputs:
   env-tag:
     description: Mutable environment tag (e.g. staging)
     required: true
-  app-version:
-    description: APP_VERSION build arg
-    required: true
   registry-password:
     description: GHCR authentication token
     required: true
@@ -51,5 +48,3 @@ runs:
           ghcr.io/ly-schneider/bless2n-food-system/${{ inputs.image-name }}:${{ inputs.env-tag }}
         cache-from: type=gha,scope=${{ inputs.image-name }}
         cache-to: type=gha,scope=${{ inputs.image-name }},mode=max
-        build-args: |
-          APP_VERSION=${{ inputs.app-version }}

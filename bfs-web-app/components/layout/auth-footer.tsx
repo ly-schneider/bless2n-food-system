@@ -1,6 +1,8 @@
 import Link from "next/link"
 import { VersionLabel } from "@/components/layout/version-label"
 
+const version = process.env.APP_VERSION
+
 export default function AuthFooter() {
   return (
     <footer id="auth-footer" className={`text-muted-foreground mb-4 w-full border-t border-gray-200/70 py-4 text-sm`}>
@@ -23,7 +25,7 @@ export default function AuthFooter() {
             GitHub
           </Link>
         </nav>
-        <VersionLabel className="mt-2 block text-center" />
+        <VersionLabel className="mt-2 block text-center" version={version} />
       </div>
     </footer>
   )

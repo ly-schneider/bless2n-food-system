@@ -17,7 +17,7 @@ export default function StationLayout({ children }: { children: React.ReactNode 
         </div>
       </div>
       <div>{children}</div>
-      <VersionLabel className="mt-4 block text-center" />
+      <VersionLabel className="mt-4 block text-center" version={process.env.APP_VERSION} />
     </main>
   )
 }

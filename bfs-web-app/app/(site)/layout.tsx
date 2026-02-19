@@ -24,7 +24,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       <CartProvider>
         <Header />
         <main className="flex-1">{children}</main>
-        <Footer />
+        <Footer version={process.env.APP_VERSION} />
       </CartProvider>
     </div>
   )

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { VersionLabel } from "@/components/layout/version-label"
 import { useCart } from "@/contexts/cart-context"
 
-export default function Footer() {
+export default function Footer({ version }: { version?: string }) {
   const pathname = usePathname()
   const { cart } = useCart()
   const totalItems = cart.items.reduce((sum, it) => sum + it.quantity, 0)
@@ -42,7 +42,7 @@ export default function Footer() {
             GitHub
           </Link>
         </nav>
-        <VersionLabel className="mt-2 block text-center" />
+        <VersionLabel className="mt-2 block text-center" version={version} />
       </div>
     </footer>
   )

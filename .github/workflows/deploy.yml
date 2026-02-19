@@ -94,7 +94,6 @@ jobs:
           image-name: frontend
           image-tag: ${{ needs.resolve-context.outputs.image_tag }}
           env-tag: staging
-          app-version: ${{ needs.resolve-context.outputs.image_tag }}
           registry-password: ${{ secrets.GITHUB_TOKEN }}
 
   build-backend:
@@ -120,7 +119,6 @@ jobs:
           image-name: backend
           image-tag: ${{ needs.resolve-context.outputs.image_tag }}
           env-tag: staging
-          app-version: ${{ needs.resolve-context.outputs.image_tag }}
           registry-password: ${{ secrets.GITHUB_TOKEN }}
 
   build-docs:
@@ -143,7 +141,6 @@ jobs:
           image-name: docs
           image-tag: ${{ needs.resolve-context.outputs.image_tag }}
           env-tag: staging
-          app-version: ${{ needs.resolve-context.outputs.image_tag }}
           registry-password: ${{ secrets.GITHUB_TOKEN }}
 
   promote-images:
