@@ -157,10 +157,19 @@ module "apps_backend" {
   enable_system_identity         = false
   user_assigned_identity_ids     = [local.uami_resource_id]
   log_analytics_workspace_id     = module.obs.log_analytics_id
-  environment_variables          = merge(local.environment_variables, each.value.environment_variables)
-  secrets                        = each.value.secrets
-  key_vault_secrets              = each.value.key_vault_secrets
-  revision_suffix                = try(each.value.revision_suffix, null)
+  environment_variables = merge(local.environment_variables, each.value.environment_variables, {
+    AZURE_STORAGE_CONTAINER     = module.blob_storage.container_name
+    AZURE_STORAGE_BLOB_ENDPOINT = module.blob_storage.blob_endpoint
+  })
+  secrets = merge(each.value.secrets, {
+    azure-storage-account-name = module.blob_storage.storage_account_name
+    azure-storage-account-key  = module.blob_storage.primary_access_key
+  })
+  key_vault_secrets = merge(each.value.key_vault_secrets, {
+    "AZURE_STORAGE_ACCOUNT_NAME" = "azure-storage-account-name"
+    "AZURE_STORAGE_ACCOUNT_KEY"  = "azure-storage-account-key"
+  })
+  revision_suffix = try(each.value.revision_suffix, null)
   key_vault_secret_refs = {
     for secret_name in distinct(values(try(each.value.key_vault_secrets, {}))) :
     secret_name => "${local.key_vault_uri}/secrets/${secret_name}"
@@ -175,6 +184,7 @@ module "apps_backend" {
 
   depends_on = [
     module.security,
+    module.blob_storage,
     azurerm_user_assigned_identity.aca_uami
   ]
 }
@@ -286,7 +296,7 @@ resource "azurerm_user_assigned_identity" "aca_uami" {
 
 module "blob_storage" {
   source              = "../blob_storage"
-  name                = "${replace(var.config.env_name, "-", "")}bfsimages"
+  name                = "bfs${var.environment}images"
   resource_group_name = module.rg.name
   location            = var.location
   container_name      = "product-images"

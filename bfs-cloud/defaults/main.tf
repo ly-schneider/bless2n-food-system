@@ -147,10 +147,10 @@ output "config" {
         }
         key_vault_secrets = {
           "BACKEND_INTERNAL_URL"     = "backend-internal-url"
-          "NEXT_PUBLIC_API_BASE_URL" = "next-public-api-base-url"
-          "NEXT_PUBLIC_APP_URL"      = "next-public-app-url"
+          "NEXT_PUBLIC_API_BASE_URL" = "backend-public-url"
+          "NEXT_PUBLIC_APP_URL"      = "frontend-url"
           "BETTER_AUTH_SECRET"       = "better-auth-secret"
-          "BETTER_AUTH_URL"          = "better-auth-url"
+          "BETTER_AUTH_URL"          = "frontend-url"
           "DATABASE_URL"             = "database-url"
           "GOOGLE_CLIENT_ID"         = "google-client-id"
           "GOOGLE_CLIENT_SECRET"     = "google-client-secret"
@@ -206,28 +206,25 @@ output "config" {
         secrets                        = { ghcr-token = var.ghcr_token }
         custom_domains                 = var.backend_custom_domains
         environment_variables = {
-          APP_ENV                 = var.env
-          APP_PORT                = "8080"
-          LOG_LEVEL               = "info"
-          LOG_DEVELOPMENT         = "false"
-          SECURITY_ENABLE_HSTS    = "true"
-          SECURITY_ENABLE_CSP     = "true"
-          PLUNK_FROM_NAME         = "BlessThun Food"
-          PLUNK_FROM_EMAIL        = ""
-          PLUNK_REPLY_TO          = ""
-          AZURE_STORAGE_CONTAINER = "product-images"
+          APP_ENV              = var.env
+          APP_PORT             = "8080"
+          LOG_LEVEL            = "info"
+          LOG_DEVELOPMENT      = "false"
+          SECURITY_ENABLE_HSTS = "true"
+          SECURITY_ENABLE_CSP  = "true"
+          PLUNK_FROM_NAME      = "BlessThun Food"
+          PLUNK_FROM_EMAIL     = ""
+          PLUNK_REPLY_TO       = ""
         }
         key_vault_secrets = {
-          "DATABASE_URL"               = "database-url"
-          "BETTER_AUTH_URL"            = "better-auth-url"
-          "PUBLIC_BASE_URL"            = "public-base-url"
-          "SECURITY_TRUSTED_ORIGINS"   = "security-trusted-origins"
-          "PAYREXX_INSTANCE"           = "payrexx-instance"
-          "PAYREXX_API_SECRET"         = "payrexx-api-secret"
-          "PAYREXX_WEBHOOK_SECRET"     = "payrexx-webhook-secret"
-          "PLUNK_API_KEY"              = "plunk-api-key"
-          "AZURE_STORAGE_ACCOUNT_NAME" = "azure-storage-account-name"
-          "AZURE_STORAGE_ACCOUNT_KEY"  = "azure-storage-account-key"
+          "DATABASE_URL"             = "database-url"
+          "BETTER_AUTH_URL"          = "frontend-url"
+          "PUBLIC_BASE_URL"          = "frontend-url"
+          "SECURITY_TRUSTED_ORIGINS" = "security-trusted-origins"
+          "PAYREXX_INSTANCE"         = "payrexx-instance"
+          "PAYREXX_API_SECRET"       = "payrexx-api-secret"
+          "PAYREXX_WEBHOOK_SECRET"   = "payrexx-webhook-secret"
+          "PLUNK_API_KEY"            = "plunk-api-key"
         }
         http_scale_rule = {
           name                = "backend-http-scale"
