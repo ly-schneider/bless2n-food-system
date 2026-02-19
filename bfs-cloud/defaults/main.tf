@@ -59,32 +59,32 @@ variable "backend_memory" {
   default     = "0.5Gi"
 }
 
-variable "frontend_custom_domains" {
-  description = "Custom domains for the frontend app"
-  type        = list(string)
-  default     = []
-}
-
-variable "backend_custom_domains" {
-  description = "Custom domains for the backend app"
-  type        = list(string)
-  default     = []
-}
-
 variable "docs_digest" {
   description = "Docs image digest (optional, preferred over tag)"
   type        = string
   default     = ""
 }
 
-variable "docs_custom_domains" {
-  description = "Custom domains for the docs app"
-  type        = list(string)
-  default     = []
+variable "domain_prefix" {
+  description = "Subdomain prefix (empty for production apex)"
+  type        = string
+}
+
+variable "enable_dns" {
+  description = "Manage DNS records and custom domain bindings via Azure DNS"
+  type        = bool
+  default     = false
 }
 
 locals {
   project = "bfs"
+
+  base_domain     = "food.blessthun.ch"
+  frontend_domain = var.domain_prefix != "" ? "${var.domain_prefix}.${local.base_domain}" : local.base_domain
+  backend_domain  = var.domain_prefix != "" ? "api.${var.domain_prefix}.${local.base_domain}" : "api.${local.base_domain}"
+  docs_domain     = var.domain_prefix != "" ? "docs.${var.domain_prefix}.${local.base_domain}" : "docs.${local.base_domain}"
+  frontend_url    = "https://${local.frontend_domain}"
+  backend_url     = "https://${local.backend_domain}"
 
   registry_host   = "ghcr.io"
   registry_prefix = "ly-schneider/bless2n-food-system"
@@ -99,6 +99,19 @@ locals {
     username             = local.registry_user
     password_secret_name = "ghcr-token"
   }]
+}
+
+output "dns" {
+  value = {
+    enabled         = var.enable_dns
+    base_domain     = local.base_domain
+    domain_prefix   = var.domain_prefix
+    frontend_domain = local.frontend_domain
+    backend_domain  = local.backend_domain
+    docs_domain     = local.docs_domain
+    frontend_url    = local.frontend_url
+    backend_url     = local.backend_url
+  }
 }
 
 output "location" {
@@ -137,23 +150,21 @@ output "config" {
         revision_suffix                = var.revision_suffix
         registries                     = local.registries
         secrets                        = { ghcr-token = var.ghcr_token }
-        custom_domains                 = var.frontend_custom_domains
         environment_variables = {
           NODE_ENV                      = "production"
           LOG_LEVEL                     = "info"
           NEXT_PUBLIC_POS_PIN           = "0000"
           NEXT_PUBLIC_POS_IDLE_TIMEOUT  = "300000"
           NEXT_PUBLIC_GA_MEASUREMENT_ID = "G-9W8S03MJEM"
+          NEXT_PUBLIC_API_BASE_URL      = local.backend_url
+          NEXT_PUBLIC_APP_URL           = local.frontend_url
+          BETTER_AUTH_URL               = local.frontend_url
         }
         key_vault_secrets = {
-          "BACKEND_INTERNAL_URL"     = "backend-internal-url"
-          "NEXT_PUBLIC_API_BASE_URL" = "backend-public-url"
-          "NEXT_PUBLIC_APP_URL"      = "frontend-url"
-          "BETTER_AUTH_SECRET"       = "better-auth-secret"
-          "BETTER_AUTH_URL"          = "frontend-url"
-          "DATABASE_URL"             = "database-url"
-          "GOOGLE_CLIENT_ID"         = "google-client-id"
-          "GOOGLE_CLIENT_SECRET"     = "google-client-secret"
+          "BETTER_AUTH_SECRET"   = "better-auth-secret"
+          "DATABASE_URL"         = "database-url"
+          "GOOGLE_CLIENT_ID"     = "google-client-id"
+          "GOOGLE_CLIENT_SECRET" = "google-client-secret"
         }
         http_scale_rule = {
           name                = "frontend-http-scale"
@@ -179,7 +190,6 @@ output "config" {
         revision_suffix                = var.revision_suffix
         registries                     = local.registries
         secrets                        = { ghcr-token = var.ghcr_token }
-        custom_domains                 = var.docs_custom_domains
         environment_variables = {
           NODE_ENV = "production"
         }
@@ -204,28 +214,27 @@ output "config" {
         revision_suffix                = var.revision_suffix
         registries                     = local.registries
         secrets                        = { ghcr-token = var.ghcr_token }
-        custom_domains                 = var.backend_custom_domains
         environment_variables = {
-          APP_ENV              = var.env
-          APP_PORT             = "8080"
-          LOG_LEVEL            = "info"
-          LOG_DEVELOPMENT      = "false"
-          SECURITY_ENABLE_HSTS = "true"
-          SECURITY_ENABLE_CSP  = "true"
-          PLUNK_FROM_NAME      = "BlessThun Food"
-          PLUNK_FROM_EMAIL     = ""
-          PLUNK_REPLY_TO       = ""
+          APP_ENV                  = var.env
+          APP_PORT                 = "8080"
+          LOG_LEVEL                = "info"
+          LOG_DEVELOPMENT          = "false"
+          SECURITY_ENABLE_HSTS     = "true"
+          SECURITY_ENABLE_CSP      = "true"
+          PLUNK_FROM_NAME          = "BlessThun Food"
+          PLUNK_FROM_EMAIL         = ""
+          PLUNK_REPLY_TO           = ""
+          BETTER_AUTH_URL          = local.frontend_url
+          PUBLIC_BASE_URL          = local.frontend_url
+          SECURITY_TRUSTED_ORIGINS = local.frontend_url
         }
         key_vault_secrets = {
-          "DATABASE_URL"             = "database-url"
-          "BETTER_AUTH_URL"          = "frontend-url"
-          "PUBLIC_BASE_URL"          = "frontend-url"
-          "SECURITY_TRUSTED_ORIGINS" = "security-trusted-origins"
-          "PAYREXX_INSTANCE"         = "payrexx-instance"
-          "PAYREXX_API_SECRET"       = "payrexx-api-secret"
-          "PAYREXX_WEBHOOK_SECRET"   = "payrexx-webhook-secret"
-          "PLUNK_API_KEY"            = "plunk-api-key"
-          "ELVANTO_API_KEY"          = "elvanto-api-key"
+          "DATABASE_URL"           = "database-url"
+          "PAYREXX_INSTANCE"       = "payrexx-instance"
+          "PAYREXX_API_SECRET"     = "payrexx-api-secret"
+          "PAYREXX_WEBHOOK_SECRET" = "payrexx-webhook-secret"
+          "PLUNK_API_KEY"          = "plunk-api-key"
+          "ELVANTO_API_KEY"        = "elvanto-api-key"
         }
         http_scale_rule = {
           name                = "backend-http-scale"

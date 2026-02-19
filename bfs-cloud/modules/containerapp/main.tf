@@ -3,8 +3,6 @@ locals {
   _kv_identity_guard   = length(var.key_vault_secret_refs) == 0 || local.kv_secret_identity != null ? true : tomap({})["force_error"]
   max_suffix_length    = max(0, 54 - length(var.name) - 2)
   safe_revision_suffix = var.revision_suffix != null ? substr(replace(var.revision_suffix, "/[^a-z0-9-]/", ""), 0, local.max_suffix_length) : null
-  custom_domains       = var.custom_domains != null ? var.custom_domains : []
-  custom_domain_set    = var.enable_ingress ? toset(local.custom_domains) : toset([])
 }
 
 resource "azurerm_container_app" "this" {
@@ -185,21 +183,6 @@ resource "azurerm_container_app" "this" {
   identity {
     type         = var.enable_system_identity && length(var.user_assigned_identity_ids) == 0 ? "SystemAssigned" : length(var.user_assigned_identity_ids) > 0 ? "UserAssigned" : "None"
     identity_ids = length(var.user_assigned_identity_ids) > 0 ? var.user_assigned_identity_ids : null
-  }
-}
-
-resource "azurerm_container_app_custom_domain" "this" {
-  for_each = local.custom_domain_set
-
-  name                     = each.value
-  container_app_id         = azurerm_container_app.this.id
-  certificate_binding_type = "Auto"
-
-  lifecycle {
-    ignore_changes = [
-      certificate_binding_type,
-      container_app_environment_certificate_id
-    ]
   }
 }
 

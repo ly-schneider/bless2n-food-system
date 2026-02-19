@@ -7,11 +7,8 @@ module "config" {
   backend_digest  = var.backend_digest
   revision_suffix = var.revision_suffix
   ghcr_token      = var.ghcr_token
-
-  frontend_custom_domains = ["staging.food.blessthun.ch"]
-  backend_custom_domains  = ["api.staging.food.blessthun.ch"]
-  docs_digest             = var.docs_digest
-  docs_custom_domains     = ["docs.staging.food.blessthun.ch"]
+  docs_digest     = var.docs_digest
+  domain_prefix   = "staging"
 }
 
 module "bfs_infrastructure" {
@@ -21,4 +18,5 @@ module "bfs_infrastructure" {
   location    = module.config.location
   tags        = module.config.tags
   config      = module.config.config
+  dns         = module.config.dns
 }

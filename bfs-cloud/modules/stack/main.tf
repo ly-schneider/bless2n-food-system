@@ -14,6 +14,20 @@ variable "tags" {
   default     = {}
 }
 
+variable "dns" {
+  description = "DNS configuration from defaults module"
+  type = object({
+    enabled         = bool
+    base_domain     = string
+    domain_prefix   = string
+    frontend_domain = string
+    backend_domain  = string
+    docs_domain     = string
+    frontend_url    = string
+    backend_url     = string
+  })
+}
+
 variable "config" {
   description = "Environment-specific configuration"
   type = object({
@@ -35,7 +49,6 @@ variable "config" {
       revision_suffix                = optional(string)
       external_ingress               = optional(bool, true)
       allow_insecure_connections     = optional(bool, false)
-      custom_domains                 = optional(list(string), [])
       health_check_path              = optional(string)
       liveness_path                  = optional(string)
       liveness_interval_seconds      = optional(number)
@@ -149,7 +162,6 @@ module "apps_backend" {
   liveness_initial_delay_seconds = lookup(each.value, "liveness_initial_delay_seconds", 20)
   external_ingress               = try(each.value.external_ingress, true)
   allow_insecure_connections     = try(each.value.allow_insecure_connections, false)
-  custom_domains                 = try(each.value.custom_domains, [])
   cpu                            = each.value.cpu
   memory                         = each.value.memory
   min_replicas                   = each.value.min_replicas
@@ -204,7 +216,6 @@ module "apps_frontend" {
   liveness_initial_delay_seconds = lookup(each.value, "liveness_initial_delay_seconds", 20)
   external_ingress               = try(each.value.external_ingress, true)
   allow_insecure_connections     = try(each.value.allow_insecure_connections, false)
-  custom_domains                 = each.value.custom_domains
   cpu                            = each.value.cpu
   memory                         = each.value.memory
   min_replicas                   = each.value.min_replicas
@@ -214,7 +225,10 @@ module "apps_frontend" {
   log_analytics_workspace_id     = module.obs.log_analytics_id
   environment_variables = merge(
     local.environment_variables,
-    each.value.environment_variables
+    each.value.environment_variables,
+    {
+      BACKEND_INTERNAL_URL = "https://${module.apps_backend["backend-${var.environment}"].fqdn}"
+    }
   )
   secrets           = each.value.secrets
   key_vault_secrets = each.value.key_vault_secrets
@@ -233,6 +247,7 @@ module "apps_frontend" {
 
   depends_on = [
     module.security,
+    module.apps_backend,
     azurerm_user_assigned_identity.aca_uami,
   ]
 }
@@ -252,7 +267,6 @@ module "apps_docs" {
   liveness_initial_delay_seconds = lookup(each.value, "liveness_initial_delay_seconds", 20)
   external_ingress               = try(each.value.external_ingress, true)
   allow_insecure_connections     = try(each.value.allow_insecure_connections, false)
-  custom_domains                 = each.value.custom_domains
   cpu                            = each.value.cpu
   memory                         = each.value.memory
   min_replicas                   = each.value.min_replicas
@@ -310,4 +324,158 @@ module "security" {
   resource_group_name = module.rg.name
   key_vault_name      = local.key_vault_name
   tags                = var.tags
+}
+
+# --- DNS ---
+
+data "azurerm_dns_zone" "food" {
+  count               = var.dns.enabled ? 1 : 0
+  name                = var.dns.base_domain
+  resource_group_name = "bfs-dns-rg"
+}
+
+locals {
+  dns_enabled      = var.dns.enabled
+  is_apex          = var.dns.domain_prefix == ""
+  dns_zone_name    = local.dns_enabled ? data.azurerm_dns_zone.food[0].name : ""
+  dns_zone_rg      = local.dns_enabled ? data.azurerm_dns_zone.food[0].resource_group_name : ""
+  backend_record   = local.is_apex ? "api" : "api.${var.dns.domain_prefix}"
+  docs_record      = local.is_apex ? "docs" : "docs.${var.dns.domain_prefix}"
+  asuid_frontend   = local.is_apex ? "asuid" : "asuid.${var.dns.domain_prefix}"
+  asuid_backend    = local.is_apex ? "asuid.api" : "asuid.api.${var.dns.domain_prefix}"
+  asuid_docs       = local.is_apex ? "asuid.docs" : "asuid.docs.${var.dns.domain_prefix}"
+  verification_id  = module.aca_env.custom_domain_verification_id
+  frontend_app_key = "frontend-${var.environment}"
+  backend_app_key  = "backend-${var.environment}"
+  docs_app_key     = "docs-${var.environment}"
+}
+
+resource "azurerm_dns_a_record" "frontend" {
+  count               = local.dns_enabled && local.is_apex ? 1 : 0
+  name                = "@"
+  zone_name           = local.dns_zone_name
+  resource_group_name = local.dns_zone_rg
+  ttl                 = 300
+  records             = [module.aca_env.static_ip_address]
+}
+
+resource "azurerm_dns_cname_record" "frontend" {
+  count               = local.dns_enabled && !local.is_apex ? 1 : 0
+  name                = var.dns.domain_prefix
+  zone_name           = local.dns_zone_name
+  resource_group_name = local.dns_zone_rg
+  ttl                 = 300
+  record              = module.apps_frontend[local.frontend_app_key].fqdn
+}
+
+resource "azurerm_dns_cname_record" "backend" {
+  count               = local.dns_enabled ? 1 : 0
+  name                = local.backend_record
+  zone_name           = local.dns_zone_name
+  resource_group_name = local.dns_zone_rg
+  ttl                 = 300
+  record              = module.apps_backend[local.backend_app_key].fqdn
+}
+
+resource "azurerm_dns_cname_record" "docs" {
+  count               = local.dns_enabled ? 1 : 0
+  name                = local.docs_record
+  zone_name           = local.dns_zone_name
+  resource_group_name = local.dns_zone_rg
+  ttl                 = 300
+  record              = module.apps_docs[local.docs_app_key].fqdn
+}
+
+resource "azurerm_dns_txt_record" "asuid_frontend" {
+  count               = local.dns_enabled ? 1 : 0
+  name                = local.asuid_frontend
+  zone_name           = local.dns_zone_name
+  resource_group_name = local.dns_zone_rg
+  ttl                 = 300
+
+  record {
+    value = local.verification_id
+  }
+}
+
+resource "azurerm_dns_txt_record" "asuid_backend" {
+  count               = local.dns_enabled ? 1 : 0
+  name                = local.asuid_backend
+  zone_name           = local.dns_zone_name
+  resource_group_name = local.dns_zone_rg
+  ttl                 = 300
+
+  record {
+    value = local.verification_id
+  }
+}
+
+resource "azurerm_dns_txt_record" "asuid_docs" {
+  count               = local.dns_enabled ? 1 : 0
+  name                = local.asuid_docs
+  zone_name           = local.dns_zone_name
+  resource_group_name = local.dns_zone_rg
+  ttl                 = 300
+
+  record {
+    value = local.verification_id
+  }
+}
+
+resource "azurerm_container_app_custom_domain" "frontend" {
+  count                    = local.dns_enabled ? 1 : 0
+  name                     = var.dns.frontend_domain
+  container_app_id         = module.apps_frontend[local.frontend_app_key].id
+  certificate_binding_type = "Auto"
+
+  lifecycle {
+    ignore_changes = [
+      certificate_binding_type,
+      container_app_environment_certificate_id
+    ]
+  }
+
+  depends_on = [
+    azurerm_dns_a_record.frontend,
+    azurerm_dns_cname_record.frontend,
+    azurerm_dns_txt_record.asuid_frontend,
+  ]
+}
+
+resource "azurerm_container_app_custom_domain" "backend" {
+  count                    = local.dns_enabled ? 1 : 0
+  name                     = var.dns.backend_domain
+  container_app_id         = module.apps_backend[local.backend_app_key].id
+  certificate_binding_type = "Auto"
+
+  lifecycle {
+    ignore_changes = [
+      certificate_binding_type,
+      container_app_environment_certificate_id
+    ]
+  }
+
+  depends_on = [
+    azurerm_dns_cname_record.backend,
+    azurerm_dns_txt_record.asuid_backend,
+  ]
+}
+
+resource "azurerm_container_app_custom_domain" "docs" {
+  count                    = local.dns_enabled ? 1 : 0
+  name                     = var.dns.docs_domain
+  container_app_id         = module.apps_docs[local.docs_app_key].id
+  certificate_binding_type = "Auto"
+
+  lifecycle {
+    ignore_changes = [
+      certificate_binding_type,
+      container_app_environment_certificate_id
+    ]
+  }
+
+  depends_on = [
+    azurerm_dns_cname_record.docs,
+    azurerm_dns_txt_record.asuid_docs,
+  ]
 }

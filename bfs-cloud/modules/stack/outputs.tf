@@ -47,3 +47,13 @@ output "blob_storage_endpoint" {
   description = "Primary blob storage endpoint"
   value       = module.blob_storage.blob_endpoint
 }
+
+output "frontend_fqdns" {
+  description = "Stable FQDNs (ingress.fqdn) for frontend apps"
+  value       = jsonencode({ for k, m in module.apps_frontend : k => m.fqdn })
+}
+
+output "docs_fqdns" {
+  description = "Stable FQDNs (ingress.fqdn) for docs apps"
+  value       = jsonencode({ for k, m in module.apps_docs : k => m.fqdn })
+}
