@@ -206,7 +206,7 @@ jobs:
       - name: Apply Atlas migrations
         working-directory: bfs-backend
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_ATLAS_URL }}
         run: atlas migrate apply --env deploy
 
   deploy:

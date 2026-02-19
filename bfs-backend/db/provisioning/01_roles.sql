@@ -34,3 +34,5 @@ GRANT app_owner    TO app_admin;
 GRANT app_owner    TO CURRENT_USER;
 GRANT app_runtime  TO CURRENT_USER;
 GRANT app_readonly TO CURRENT_USER;
+
+GRANT CREATE, USAGE ON SCHEMA public TO app_owner;
