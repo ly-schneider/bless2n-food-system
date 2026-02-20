@@ -106,12 +106,6 @@ jobs:
           terraform init -upgrade -backend=false
           terraform validate
 
-      - name: Validate dns
-        working-directory: bfs-cloud/envs/dns
-        run: |
-          terraform init -upgrade -backend=false
-          terraform validate
-
   ci-gate:
     name: CI Success
     runs-on: ubuntu-latest

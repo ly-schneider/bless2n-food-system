@@ -4,14 +4,13 @@ export async function generateMetadata({ params }: { params: Promise<{ orderId: 
   const { orderId } = await params
   const canonical = `/food/orders/${encodeURIComponent(orderId)}`
   return {
-    title: "Abholungs QR-Code - BlessThun Food",
-    description: "QR-Code für die Abholung Ihrer Bestellung anzeigen.",
+    title: "Abholungs QR-Code",
+    description: "Zeige den QR-Code bei der Abholung deiner BlessThun Food Bestellung vor.",
     alternates: { canonical },
     openGraph: {
-      title: "Abholungs QR-Code | BlessThun Food",
-      description: "Zeigen Sie den QR-Code bei der Abholung vor.",
+      title: "Abholungs QR-Code",
+      description: "QR-Code bei der Abholung vorzeigen.",
       url: canonical,
-      type: "website",
     },
   }
 }

@@ -43,6 +43,11 @@ output "key_vault_secret_ids" {
   value       = jsonencode(module.security.key_vault_secret_ids)
 }
 
+output "custom_domain_verification_id" {
+  description = "Verification ID for custom domain ASUID TXT records"
+  value       = module.aca_env.custom_domain_verification_id
+}
+
 output "blob_storage_endpoint" {
   description = "Primary blob storage endpoint"
   value       = module.blob_storage.blob_endpoint

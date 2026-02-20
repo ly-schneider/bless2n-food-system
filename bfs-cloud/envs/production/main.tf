@@ -24,5 +24,4 @@ module "bfs_infrastructure" {
   location    = module.config.location
   tags        = module.config.tags
   config      = module.config.config
-  dns         = module.config.dns
 }

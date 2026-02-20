@@ -1,8 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
 import { VersionLabel } from "@/components/layout/version-label"
+import { usePathname } from "next/navigation"
 import { useCart } from "@/contexts/cart-context"
 
 export default function Footer({ version }: { version?: string }) {
@@ -24,15 +24,9 @@ export default function Footer({ version }: { version?: string }) {
       }`}
     >
       <div className="container mx-auto px-4">
-        <nav className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-          <Link href="/agb" className="hover:underline">
-            AGB
-          </Link>
-          <span className="text-gray-300">•</span>
-          <Link href="/datenschutz" className="hover:underline">
-            Datenschutzerklärung
-          </Link>
-          <span className="text-gray-300">•</span>
+        <nav className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+          <VersionLabel version={version} />
+          <span className="text-gray-300">&middot;</span>
           <Link
             href="https://github.com/ly-schneider/bless2n-food-system"
             className="hover:underline"
@@ -42,7 +36,6 @@ export default function Footer({ version }: { version?: string }) {
             GitHub
           </Link>
         </nav>
-        <VersionLabel className="mt-2 block text-center" version={version} />
       </div>
     </footer>
   )

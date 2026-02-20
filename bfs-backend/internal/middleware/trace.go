@@ -1,8 +1,10 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 
+	"github.com/getsentry/sentry-go"
 	chiMw "github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
 )
@@ -32,6 +34,15 @@ func LogServerErrors(next http.Handler) http.Handler {
 				zap.String("remote_ip", r.RemoteAddr),
 				zap.String("request_id", reqID),
 			)
+
+			if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
+				hub.WithScope(func(scope *sentry.Scope) {
+					scope.SetTag("status", fmt.Sprintf("%d", rec.status))
+					scope.SetTag("method", r.Method)
+					scope.SetTag("path", r.URL.Path)
+					hub.CaptureMessage(fmt.Sprintf("HTTP %d: %s %s", rec.status, r.Method, r.URL.Path))
+				})
+			}
 		}
 	})
 }

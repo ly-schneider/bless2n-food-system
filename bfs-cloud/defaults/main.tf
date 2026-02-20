@@ -70,12 +70,6 @@ variable "domain_prefix" {
   type        = string
 }
 
-variable "enable_dns" {
-  description = "Manage DNS records and custom domain bindings via Azure DNS"
-  type        = bool
-  default     = false
-}
-
 locals {
   project = "bfs"
 
@@ -99,19 +93,6 @@ locals {
     username             = local.registry_user
     password_secret_name = "ghcr-token"
   }]
-}
-
-output "dns" {
-  value = {
-    enabled         = var.enable_dns
-    base_domain     = local.base_domain
-    domain_prefix   = var.domain_prefix
-    frontend_domain = local.frontend_domain
-    backend_domain  = local.backend_domain
-    docs_domain     = local.docs_domain
-    frontend_url    = local.frontend_url
-    backend_url     = local.backend_url
-  }
 }
 
 output "location" {
@@ -154,6 +135,7 @@ output "config" {
           NODE_ENV                      = "production"
           LOG_LEVEL                     = "info"
           APP_VERSION                   = var.image_tag
+          NEXT_PUBLIC_APP_VERSION       = var.image_tag
           NEXT_PUBLIC_POS_PIN           = "0000"
           NEXT_PUBLIC_POS_IDLE_TIMEOUT  = "300000"
           NEXT_PUBLIC_GA_MEASUREMENT_ID = "G-9W8S03MJEM"
@@ -162,10 +144,11 @@ output "config" {
           BETTER_AUTH_URL               = local.frontend_url
         }
         key_vault_secrets = {
-          "BETTER_AUTH_SECRET"   = "better-auth-secret"
-          "DATABASE_URL"         = "database-url"
-          "GOOGLE_CLIENT_ID"     = "google-client-id"
-          "GOOGLE_CLIENT_SECRET" = "google-client-secret"
+          "BETTER_AUTH_SECRET"     = "better-auth-secret"
+          "DATABASE_URL"           = "database-url"
+          "GOOGLE_CLIENT_ID"       = "google-client-id"
+          "GOOGLE_CLIENT_SECRET"   = "google-client-secret"
+          "NEXT_PUBLIC_SENTRY_DSN" = "frontend-sentry-dsn"
         }
         http_scale_rule = {
           name                = "frontend-http-scale"
@@ -224,6 +207,7 @@ output "config" {
           LOG_DEVELOPMENT          = "false"
           SECURITY_ENABLE_HSTS     = "true"
           SECURITY_ENABLE_CSP      = "true"
+          SENTRY_ENVIRONMENT       = var.env
           PLUNK_FROM_NAME          = "BlessThun Food"
           PLUNK_FROM_EMAIL         = ""
           PLUNK_REPLY_TO           = ""
@@ -238,6 +222,7 @@ output "config" {
           "PAYREXX_WEBHOOK_SECRET" = "payrexx-webhook-secret"
           "PLUNK_API_KEY"          = "plunk-api-key"
           "ELVANTO_API_KEY"        = "elvanto-api-key"
+          "SENTRY_DSN"             = "backend-sentry-dsn"
         }
         http_scale_rule = {
           name                = "backend-http-scale"

@@ -3,8 +3,8 @@ import Image from "next/image"
 import { VersionLabel } from "@/components/layout/version-label"
 
 export const metadata: Metadata = {
-  title: "Station Portal - BlessThun Food",
-  description: "Station access and management portal",
+  title: "Station Portal",
+  description: "Stationsportal für das BlessThun Food Bestellsystem.",
 }
 
 export default function StationLayout({ children }: { children: React.ReactNode }) {

@@ -1,14 +1,13 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Bestellungen - BlessThun Food",
-  description: "Übersicht Ihrer Bestellungen und QR-Codes zur Abholung.",
+  title: "Bestellungen",
+  description: "Übersicht deiner Bestellungen und QR-Codes zur Abholung bei BlessThun Food.",
   alternates: { canonical: "/food/orders" },
   openGraph: {
-    title: "Bestellungen | BlessThun Food",
-    description: "Verwalten Sie Ihre Bestellungen und Abholungs-QR-Codes.",
+    title: "Bestellungen",
+    description: "Deine Bestellungen und Abholungs-QR-Codes verwalten.",
     url: "/food/orders",
-    type: "website",
   },
 }
 

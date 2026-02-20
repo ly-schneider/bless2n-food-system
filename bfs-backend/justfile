@@ -37,7 +37,7 @@ up *args:
 # Stop services (pass --volumes for DATA LOSS)
 [group('dev')]
 down *args:
-    docker compose --profile dev --profile observability down --remove-orphans {{args}}
+    docker compose --profile dev down --remove-orphans {{args}}
 
 # Clean build artifacts
 [group('dev')]

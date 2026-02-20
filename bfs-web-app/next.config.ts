@@ -1,4 +1,5 @@
 import withBundleAnalyzer from "@next/bundle-analyzer"
+import { withSentryConfig } from "@sentry/nextjs"
 import { type NextConfig } from "next"
 import { readFileSync } from "fs"
 import { resolve } from "path"
@@ -7,6 +8,10 @@ if (!process.env.APP_VERSION) {
   try {
     process.env.APP_VERSION = readFileSync(resolve(process.cwd(), "..", "VERSION"), "utf-8").trim()
   } catch {}
+}
+
+if (!process.env.NEXT_PUBLIC_APP_VERSION) {
+  process.env.NEXT_PUBLIC_APP_VERSION = process.env.APP_VERSION
 }
 
 const config: NextConfig = {
@@ -34,5 +39,13 @@ const config: NextConfig = {
   },
 }
 
+const sentryWrapped = withSentryConfig(config, {
+  sourcemaps: {
+    disable: !process.env.CI,
+  },
+  silent: !process.env.CI,
+  telemetry: false,
+})
+
 const analyze = process.env.ANALYZE === "true"
-export default analyze ? withBundleAnalyzer({ enabled: analyze })(config) : config
+export default analyze ? withBundleAnalyzer({ enabled: analyze })(sentryWrapped) : sentryWrapped

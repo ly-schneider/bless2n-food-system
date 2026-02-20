@@ -127,7 +127,6 @@ bfs-backend/
 │   ├── http/              # Chi router setup
 │   ├── middleware/        # Common HTTP middleware
 │   ├── model/             # Data models / entities
-│   ├── observability/     # OpenTelemetry setup
 │   ├── payrexx/           # Payrexx payment integration
 │   ├── postgres/          # PostgreSQL repositories (pgx / GORM)
 │   ├── response/          # HTTP response helpers

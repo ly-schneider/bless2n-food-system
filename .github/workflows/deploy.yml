@@ -95,6 +95,11 @@ jobs:
           image-tag: ${{ needs.resolve-context.outputs.image_tag }}
           env-tag: staging
           registry-password: ${{ secrets.GITHUB_TOKEN }}
+          build-args: |
+            SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
+            SENTRY_ORG=${{ vars.SENTRY_ORG }}
+            SENTRY_PROJECT=${{ vars.SENTRY_PROJECT_FRONTEND }}
+            CI=true
 
   build-backend:
     name: Build Backend Image
@@ -269,3 +274,25 @@ jobs:
           git add VERSION bfs-web-app/package.json
           git commit -m "chore: bump version to ${NEXT_VERSION} [skip cd]"
           git push origin main
+
+  sentry-release:
+    name: Create Sentry Release
+    runs-on: ubuntu-latest
+    needs: [resolve-context, build-frontend, build-backend, promote-images]
+    if: |
+      always() && !cancelled() &&
+      (needs.build-frontend.result == 'success' || needs.promote-images.result == 'success')
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          ref: ${{ needs.resolve-context.outputs.commit_sha }}
+          fetch-depth: 0
+
+      - uses: getsentry/action-release@v3
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+        with:
+          version: ${{ needs.resolve-context.outputs.image_tag }}
+          environment: ${{ needs.resolve-context.outputs.target_env }}
+          projects: ${{ vars.SENTRY_PROJECT_FRONTEND }} ${{ vars.SENTRY_PROJECT_BACKEND }}

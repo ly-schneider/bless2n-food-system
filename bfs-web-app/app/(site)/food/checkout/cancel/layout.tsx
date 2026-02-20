@@ -1,14 +1,13 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Bezahlung abgebrochen - BlessThun Food",
-  description: "Die Zahlung wurde abgebrochen. Versuchen Sie es erneut oder kehren Sie zum Warenkorb zurück.",
+  title: "Bezahlung abgebrochen",
+  description: "Die Zahlung wurde abgebrochen – versuche es erneut oder kehre zum Warenkorb zurück.",
   alternates: { canonical: "/food/checkout/cancel" },
   openGraph: {
-    title: "Bezahlung abgebrochen | BlessThun Food",
+    title: "Bezahlung abgebrochen",
     description: "Zahlung nicht abgeschlossen – zurück zum Warenkorb oder erneut versuchen.",
     url: "/food/checkout/cancel",
-    type: "website",
   },
 }
 

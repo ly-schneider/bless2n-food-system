@@ -59,7 +59,7 @@ func main() {
 		app.NewHandlers(),
 
 		fx.Invoke(
-			app.SetupObservability,
+			app.SetupSentry,
 			app.StartHTTPServer,
 		),
 	).Run()

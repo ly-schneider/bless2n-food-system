@@ -1,14 +1,13 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Zahlung - BlessThun Food",
-  description: "Mit TWINT bezahlen.",
+  title: "Zahlung",
+  description: "Bezahle deine Bestellung bequem mit TWINT bei BlessThun Food.",
   alternates: { canonical: "/food/checkout/payment" },
   openGraph: {
-    title: "Zahlung | BlessThun Food",
-    description: "TWINT Zahlung starten.",
+    title: "Zahlung",
+    description: "TWINT-Zahlung für deine BlessThun Food Bestellung starten.",
     url: "/food/checkout/payment",
-    type: "website",
   },
 }
 

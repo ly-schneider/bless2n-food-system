@@ -20,6 +20,13 @@ type Config struct {
 	Plunk       PlunkConfig
 	BlobStorage BlobStorageConfig
 	Elvanto     ElvantoConfig
+	Sentry      SentryConfig
+}
+
+type SentryConfig struct {
+	DSN         string
+	Environment string
+	Release     string
 }
 
 type ElvantoConfig struct {
@@ -132,6 +139,11 @@ func Load() Config {
 		Elvanto: ElvantoConfig{
 			APIKey:  getEnvOptional("ELVANTO_API_KEY"),
 			GroupID: getEnvWithDefault("ELVANTO_GROUP_ID", "fc939b75-cda0-4e37-b728-a61e943d66ad"),
+		},
+		Sentry: SentryConfig{
+			DSN:         getEnvOptional("SENTRY_DSN"),
+			Environment: getEnvOptional("SENTRY_ENVIRONMENT"),
+			Release:     getEnvOptional("APP_VERSION"),
 		},
 	}
 

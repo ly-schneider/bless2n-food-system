@@ -20,29 +20,6 @@ services:
       timeout: 5s
       retries: 5
 
-  jaeger:
-    image: jaegertracing/jaeger:2.14.1
-    environment:
-      COLLECTOR_OTLP_ENABLED: "true"
-    ports:
-      - "16686:16686"   # Jaeger UI only
-      # 4317/4318 handled by otel-collector
-    profiles:
-      - observability
-
-  otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.132.0
-    command: ["--config=/etc/otelcol/config.yaml"]
-    depends_on:
-      - jaeger
-    volumes:
-      - ${OTELCOL_CONFIG:-./otelcol.dev.yaml}:/etc/otelcol/config.yaml:ro
-    ports:
-      - "4317:4317"
-      - "4318:4318"
-    profiles:
-      - observability
-
   # Azurite for local Azure Blob Storage emulation
   azurite:
     image: mcr.microsoft.com/azure-storage/azurite:latest

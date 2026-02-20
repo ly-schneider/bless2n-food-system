@@ -28,6 +28,11 @@ RUN --mount=type=cache,target=/home/nodejs/.npm,uid=1001,gid=1001 \
 
 COPY --chown=nodejs:nodejs . .
 
+ARG SENTRY_AUTH_TOKEN
+ARG SENTRY_ORG
+ARG SENTRY_PROJECT
+ARG CI
+
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1
 

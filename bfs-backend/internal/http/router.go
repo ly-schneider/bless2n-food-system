@@ -7,8 +7,8 @@ import (
 	"backend/internal/auth"
 	"backend/internal/generated/api/generated"
 	"backend/internal/middleware"
-	"backend/internal/observability"
 
+	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi/v5"
 	chiMw "github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
@@ -29,7 +29,8 @@ func NewRouter(
 
 	// ── Main router with full middleware stack ────────────────────────
 	r := chi.NewRouter()
-	r.Use(observability.ChiMiddleware(nil))
+	sentryHandler := sentryhttp.New(sentryhttp.Options{Repanic: true})
+	r.Use(sentryHandler.Handle)
 	r.Use(securityMw.SecurityHeaders)
 	r.Use(securityMw.CacheControlForSensitive)
 	r.Use(securityMw.CORS)

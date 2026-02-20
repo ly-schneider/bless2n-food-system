@@ -20,6 +20,10 @@ inputs:
   registry-password:
     description: GHCR authentication token
     required: true
+  build-args:
+    description: Newline-separated list of build arguments
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -46,5 +50,6 @@ runs:
         tags: |
           ghcr.io/ly-schneider/bless2n-food-system/${{ inputs.image-name }}:${{ inputs.image-tag }}
           ghcr.io/ly-schneider/bless2n-food-system/${{ inputs.image-name }}:${{ inputs.env-tag }}
+        build-args: ${{ inputs.build-args }}
         cache-from: type=gha,scope=${{ inputs.image-name }}
         cache-to: type=gha,scope=${{ inputs.image-name }},mode=max

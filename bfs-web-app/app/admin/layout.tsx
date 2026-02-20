@@ -4,8 +4,8 @@ import { AdminMainHeader } from "@/components/admin/main-header"
 import { AdminShell } from "@/components/admin/sidebar-nav"
 
 export const metadata: Metadata = {
-  title: "Admin Portal - BlessThun Food",
-  description: "Admin portal",
+  title: "Admin Portal",
+  description: "Verwaltungsportal für das BlessThun Food Bestellsystem.",
 }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"runtime/debug"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/go-playground/validator/v10"
 	"go.uber.org/zap"
 )
@@ -52,6 +53,10 @@ func (e *ErrorMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 					zap.String("method", r.Method),
 					zap.String("path", r.URL.Path),
 				)
+
+				if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
+					hub.RecoverWithContext(r.Context(), err)
+				}
 
 				problem := response.NewProblem(
 					http.StatusInternalServerError,
@@ -113,12 +118,15 @@ func (e *ErrorMiddleware) HandleError(w http.ResponseWriter, r *http.Request, er
 			err.Error(),
 		)
 	default:
-		// Log unexpected errors with more details
 		e.logger.Error("Unexpected error",
 			zap.Error(err),
 			zap.String("method", r.Method),
 			zap.String("path", r.URL.Path),
 		)
+
+		if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
+			hub.CaptureException(err)
+		}
 
 		problem = response.NewProblem(
 			http.StatusInternalServerError,
