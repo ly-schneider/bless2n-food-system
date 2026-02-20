@@ -1,215 +1,166 @@
-# Bless2n Food System (BFS) — Azure Terraform
+# BFS Cloud
 
-## Architecture Overview
+Terraform infrastructure-as-code for the Bless2n Food System — deploys to Azure with Container Apps, auto-scaling, scale-to-zero, and environment isolation.
 
-This Terraform setup uses a single, concrete approach: deploy from `envs/<env>` (staging, production) as the root module. Shared building blocks live under `modules/`. No separate `common/` or `env-configs/` flow.
+## Architecture
 
-## What this deploys
+```
+┌─────────────────────────────────────────────────────┐
+│                  Azure Resource Group               │
+├─────────────────────────────────────────────────────┤
+│                                                     │
+│  ┌──────────────────────────────────────────────┐   │
+│  │         Container Apps Environment           │   │
+│  │              (VNet delegated)                │   │
+│  │                                              │   │
+│  │  ┌────────────────┐   ┌─────────────────┐    │   │
+│  │  │  Frontend      │   │  Backend        │    │   │
+│  │  │  0-20 replicas │   │  0-20 replicas  │    │   │
+│  │  │  (Next.js)     │   │  (Go)           │    │   │
+│  │  └────────────────┘   └─────────────────┘    │   │
+│  └──────────────────────────────────────────────┘   │
+│                                                     │
+│  ┌──────────┐  ┌───────────┐  ┌──────────────┐      │
+│  │   ACR    │  │ Key Vault │  │ Blob Storage │      │
+│  └──────────┘  └───────────┘  └──────────────┘      │
+│                                                     │
+│  ┌──────────────────┐  ┌──────────────────────┐     │
+│  │  Log Analytics   │  │  Diagnostic Settings │     │
+│  └──────────────────┘  └──────────────────────┘     │
+└─────────────────────────────────────────────────────┘
+```
 
-### Infrastructure Components
-- **Per-environment isolation**: Resource Groups, VNets, delegated Subnets, Container Apps Environment
-- **Container Apps**: Auto-scaling web applications with intelligent scaling rules
-  - HTTPS ingress enabled by default (no standalone IPs)
-  - Default `azurecontainerapps.io` FQDNs for each app
-- **Database**: External PostgreSQL (managed outside Terraform)
-- **Observability**: Log Analytics (both envs), Diagnostic Settings
-- **Monitoring**: Metric-based alerts and monitoring (configurable per environment)
+### Key Design Decisions
 
-### Auto-Scaling Configuration
-- **Scale-to-Zero**: Applications scale down to 0 replicas when idle (cost-efficient)
-- **Burst Scaling**: Can scale up to 20 replicas during traffic spikes
-- **Smart Triggers**: HTTP request-based, CPU percentage, and memory percentage scaling
-- **Environment-Specific**: Scaling thresholds for staging
+- **Scale-to-zero** — zero cost when applications are idle, auto-burst up to 20 replicas
+- **Immutable image promotion** — production uses the exact staging image digest (no rebuild)
+- **Environment isolation** — separate VNets, resource groups, and Terraform states per environment
+- **Three-phase CI/CD** — ACR infrastructure first, then image build, then Container Apps deployment
+- **Least-privilege RBAC** — minimal Azure roles for the Terraform Cloud service principal
 
-## Project Structure
+## Module Structure
 
 ```
 bfs-cloud/
 ├── envs/
-│   ├── staging/             # Staging root module
-│   │   ├── backend.tf
-│   │   ├── main.tf          # Calls modules/stack with env config
-│   │   ├── variables.tf     # Staging variables for CI/manual
+│   ├── staging/                Staging root module
+│   │   ├── main.tf             Calls modules/stack with staging config
+│   │   ├── backend.tf          State backend (Terraform Cloud)
+│   │   ├── variables.tf        Staging-specific variables
 │   │   └── outputs.tf
-│   └── production/                # Prod root module
+│   └── production/             Production root module
+│       ├── main.tf
 │       ├── backend.tf
-│       ├── main.tf          # Calls modules/stack with env config
 │       ├── variables.tf
 │       └── outputs.tf
-└── modules/                 # Reusable Terraform modules
-    ├── stack/               # Full infra composition (was common/)
-    ├── containerapp/
-    ├── containerapps_env/
-    ├── observability/
-    ├── diagnostic_setting/
-    ├── alerts/
-    ├── network/
-    ├── rg/
-    └── security/
+├── modules/
+│   ├── stack/                  Full infrastructure composition
+│   ├── containerapp/           Individual container app definition
+│   ├── containerapps_env/      Container Apps environment + VNet
+│   ├── observability/          Log Analytics workspace
+│   ├── diagnostic_setting/     Monitoring & diagnostics
+│   ├── alerts/                 Metric-based alerts
+│   ├── network/                VNets & subnets
+│   ├── blob_storage/           Azure Blob Storage
+│   ├── rg/                     Resource group
+│   ├── security/               Key Vault & RBAC
+│   └── rbac_tfc/               Terraform Cloud service principal roles
+├── defaults/                   Default variable values
+├── SETUP.md                    Prerequisites & troubleshooting
+└── README.md
 ```
 
-## Application Scaling Strategy
+## Auto-Scaling Configuration
 
-### Current Configuration
+Both environments support multi-signal scaling:
 
-**Production Apps:**
-- **Frontend**: Scales 0-20 replicas based on 30 concurrent requests + 70% CPU
-- **Backend**: Scales 0-20 replicas based on 50 concurrent requests + 80% CPU + 85% memory
-
-**Staging Apps:**
-- **Frontend**: Scales 0-20 replicas based on 20 concurrent requests + 75% CPU  
-- **Backend**: Scales 0-20 replicas based on 40 concurrent requests + 80% CPU
-
-### Scaling Benefits
-- **Cost Optimization**: Zero cost when applications are idle
-- **Performance**: Automatic scaling based on real demand
-- **Reliability**: Multiple scaling triggers prevent bottlenecks
-- **Environment-Appropriate**: Thresholds for staging
+| Environment | App | Replicas | HTTP Threshold | CPU | Memory |
+|-------------|-----|----------|---------------|-----|--------|
+| **Production** | Frontend | 0–20 | 30 concurrent | 70% | — |
+| **Production** | Backend | 0–20 | 50 concurrent | 80% | 85% |
+| **Staging** | Frontend | 0–20 | 20 concurrent | 75% | — |
+| **Staging** | Backend | 0–20 | 40 concurrent | 80% | — |
 
 ## Usage
 
-### Standard Deployment
+### Deploy
+
 ```bash
-# Deploy staging  
 cd envs/staging
 terraform init
+terraform plan
 terraform apply
 ```
 
+### CI/CD Three-Phase Deployment
+
+1. **Phase 1 — ACR Infrastructure**: Terraform creates Azure Container Registry
+2. **Phase 2 — Image Build**: GitHub Actions builds and pushes Docker images to ACR
+3. **Phase 3 — Container Apps**: Terraform deploys apps referencing the new images
+
+### Terraform Variables
+
+| Variable | Type | Purpose |
+|----------|------|---------|
+| `enable_acr` | bool | Create ACR and grant AcrPull to identities |
+| `acr_name` | string | ACR name (images resolve to `<name>.azurecr.io`) |
+| `image_tag` | string | Branch/version tag to deploy |
+| `frontend_digest` / `backend_digest` | string | Immutable image digest (preferred in CI) |
+| `revision_suffix` | string | Force new revision (e.g., commit SHA) |
+
 ### App URLs via Key Vault
-- Terraform provisions a Key Vault; apps reference the following secret names (not auto-created to avoid overwriting existing values):
-  - `backend-url`: public HTTPS URL for the backend (used by frontend `NEXT_PUBLIC_API_BASE_URL` and `BACKEND_INTERNAL_URL`).
-  - `frontend-url`: public HTTPS URL for the frontend (used by backend `SECURITY_TRUSTED_ORIGINS`, `PUBLIC_BASE_URL`).
-- Create or update these secrets in Azure Portal > Key Vaults > `<kv-name>` > Secrets, or via CI/CD.
-- The previous `shared_config` module and its separate env have been removed; no extra Terraform step is required.
 
-### Two-State Layout (Staging & Prod)
-- Use `envs/staging` and `envs/production` to maintain separate Terraform states and configurations.
-- Each env has its own `backend.tf` (local by default); switch to a remote backend for team usage.
+Terraform provisions a Key Vault with these secret names (values managed externally):
 
-Remote backend example (Terraform Cloud — recommended):
+- `backend-url` — public HTTPS URL for the backend
+- `frontend-url` — public HTTPS URL for the frontend
+
+### Remote Backend
+
+Terraform Cloud (recommended):
+
 ```hcl
 terraform {
   cloud {
-    organization = "leys-services"           # replace with your org
+    organization = "your-org"
     workspaces {
-      name = "bfs-staging"              # or bfs-production under envs/prod
+      name = "bfs-staging"    # or bfs-production
     }
   }
 }
 ```
 
-Remote backend example (AzureRM):
-```hcl
-terraform {
-  backend "azurerm" {
-    resource_group_name  = "bfs-tfstate-rg"
-    storage_account_name = "bfstfstorproduction"
-    container_name       = "tfstate"
-    key                  = "envs/staging/terraform.tfstate"
-  }
-}
-```
-Repeat with `key = "envs/production/terraform.tfstate"` for production.
+### RBAC for Terraform Cloud
 
-### CI/CD Deployment: Three-Phase Deployment with ACR
+The `modules/rbac_tfc` module grants minimal roles at the resource group scope:
 
-The deployment workflow is split into three phases to ensure proper dependency order:
+- **Network Contributor** — VNets, subnets, private endpoints
+- **Private DNS Zone Contributor** — DNS zones/links
+- **User Access Administrator** — RBAC assignments (Key Vault, ACR Pull)
+- **Managed Identity Contributor** — user-assigned identities for Container Apps
 
-1. **Deploy ACR Infrastructure**: Creates the Azure Container Registry first
-2. **Build & Push Images**: Builds and pushes images to the newly created ACR
-3. **Deploy Container Apps**: Deploys the application infrastructure that references the images
+### Adding a New Environment
 
-**Deployment Flow:**
-- **ACR Creation**: Terraform creates ACR using the `modules/acr` module on first run
-- **Image Build**: GitHub Actions builds and pushes images to ACR after ACR exists
-- **App Deployment**: Container Apps are deployed with references to ACR images
-
-**Terraform Variables per Environment:**
-- `enable_acr` (bool): when true, creates ACR and grants `AcrPull` to Container Apps identities
-- `acr_name` (string): ACR name; images resolve to `<acr_name>.azurecr.io/<repo>:<tag>`
-- `image_tag` (string): branch tag to deploy (e.g., `staging`, `production`).
-- `frontend_digest` / `backend_digest` (string, optional): when provided, deployment references images by immutable digest (`<repo>@sha256:...`) instead of mutable tags. Prefer digest-first in CI to guarantee exact images roll out (Buildx outputs digests; Actions exposes them as outputs).
-- `revision_suffix` (string, optional): unique value to force a new Container Apps revision (e.g., commit SHA). Keeps image references tag-based while ensuring rollout on each build.
-
-**For Development with GHCR:**
-If `enable_acr` is false, the env can use GHCR via:
-- `registry_server`, `registry_namespace`, `registry_username`, `registry_token`
-
-**Required GitHub Environment Configuration:**
-- `ACR_NAME`: the ACR resource name (e.g., "bfsstagingacr", "bfsprodacr")
-- Azure OIDC secrets: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
-
-**Terraform Cloud Configuration:**
-- Workspace variables: `enable_acr=true`, `acr_name=<your-acr-name>`
-- Provider credentials: `ARM_CLIENT_ID`, `ARM_CLIENT_SECRET`, `ARM_TENANT_ID`, `ARM_SUBSCRIPTION_ID`
-
-### Least-Privilege RBAC for Terraform Cloud
-
-The stack includes a module (`modules/rbac_tfc`) that grants the minimal roles your Terraform Cloud service principal needs at the environment Resource Group scope:
-- Network Contributor: manage VNets/subnets and Private Endpoints
-- Private DNS Zone Contributor: manage Private DNS zones/links (when enabled)
-- User Access Administrator: create RBAC role assignments (Key Vault access, ACR Pull, etc.)
-- Managed Identity Contributor: create user-assigned identities used by Container Apps
-
-By default, the module targets the current Terraform principal. If you want to target a different principal (e.g., bootstrap run), pass its client ID into the module via `principal_client_id` and ensure the AzureAD provider is configured.
-
-Verify effective assignments after apply:
-```
-az role assignment list --assignee-object-id $(az ad sp show --id $AZURE_CLIENT_ID --query id -o tsv) \
-  --scope $(az group show -n <rg-name> --query id -o tsv) --include-inherited -o table
-```
-
-### Providing App Secrets and Registries
-
-Provide secrets and registries via env variables or tfvars at the env root:
-- Use `TF_VAR_registry_*`, `TF_VAR_image_tag` (branch), and optionally `TF_VAR_frontend_digest` / `TF_VAR_backend_digest` (immutable digests) and `TF_VAR_revision_suffix` (commit SHA) in CI.
-These propagate to Azure Container Apps as `secret {}` and `registry {}` blocks.
-
-The previous `common/` + `env-configs/*.tfvars` path has been removed in favor of the simpler env roots.
-
-## Key Features
-
-### Unified State Management
-- **Single Source of Truth**: All infrastructure logic in `common/main.tf`
-- **Environment Consistency**: Same infrastructure behavior across environments
-- **Easy Maintenance**: Changes made once, applied everywhere
-- **Configuration-Driven**: Environment differences handled through variables
-
-### Auto-Scaling Capabilities
-- **HTTP Scale Rules**: Scale based on concurrent requests
-- **CPU Scale Rules**: Scale based on CPU percentage
-- **Memory Scale Rules**: Scale based on memory percentage  
-- **Azure Queue Scale Rules**: Scale based on queue length (configurable)
-- **Custom Scale Rules**: Extensible for custom metrics
-
-### Environment Isolation
-- **Network Isolation**: Separate VNets and subnets per environment
-- **Resource Isolation**: Dedicated resource groups per environment
-- **Configuration Flexibility**: Different scaling, monitoring, and resource settings
-
-## Customization
-
-### Adding New Environments
-1. Create new directory under `envs/`
-2. Copy configuration from existing environment
-3. Modify environment-specific variables
-4. Deploy using standard Terraform workflow
+1. Create `envs/<name>/`
+2. Copy from an existing environment
+3. Adjust variables (scaling thresholds, resource names)
+4. Configure Terraform state backend
+5. `terraform init && terraform apply`
 
 ### Modifying Scaling Rules
-Edit the `apps` configuration in environment main.tf files:
+
+Edit the `apps` block in the environment's `main.tf`:
 
 ```hcl
 apps = {
   frontend = {
-    # ... basic config ...
     http_scale_rule = {
-      name                = "custom-http-scale"
-      concurrent_requests = 25  # Adjust threshold
+      name                = "http-scale"
+      concurrent_requests = 25
     }
     cpu_scale_rule = {
-      name           = "custom-cpu-scale" 
-      cpu_percentage = 75  # Adjust threshold
+      name           = "cpu-scale"
+      cpu_percentage = 75
     }
   }
 }

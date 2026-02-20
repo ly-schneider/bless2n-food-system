@@ -1,44 +1,72 @@
-# bfs-docs
+# BFS Docs
 
-This is a Next.js application generated with
-[Create Fumadocs](https://github.com/fuma-nama/fumadocs).
+Documentation site for the Bless2n Food System — built with Fumadocs on Next.js, covering admin handbooks, developer guides, and infrastructure documentation.
 
-Run development server:
+## Architecture
 
-```bash
-npm run dev
-# or
-pnpm dev
-# or
-yarn dev
+Built on [Fumadocs](https://fumadocs.dev), a documentation framework for Next.js that supports MDX content with React components, full-text search, and static generation.
+
+### Content Sections
+
+| Section | Path | Audience |
+|---------|------|----------|
+| Admin-Handbuch | `content/admin-handbuch/` | System administrators (German) |
+| Developer Guide | `content/developer-guide/` | Developers |
+| Infrastruktur | `content/infrastruktur/` | DevOps / Infrastructure (German) |
+
+## Tech Stack
+
+| Category | Technology |
+|----------|-----------|
+| Framework | Next.js 16 |
+| Docs Engine | Fumadocs 16 (core + UI + MDX) |
+| UI | React 19, Tailwind CSS 4 |
+| Content | MDX with custom components |
+| Search | Built-in API route |
+| Icons | Lucide React |
+| Package Manager | pnpm |
+
+## Project Structure
+
+```
+bfs-docs/
+├── content/
+│   ├── admin-handbuch/       Admin user guide (German)
+│   ├── developer-guide/      Developer documentation
+│   └── infrastruktur/        Infrastructure docs (German)
+├── app/
+│   ├── page.tsx              Home page
+│   └── api/search/route.ts   Search endpoint
+├── lib/
+│   ├── source.ts             Content source adapter
+│   └── layout.shared.tsx     Shared layout options
+├── .source/                  Generated source cache
+├── source.config.ts          Fumadocs MDX configuration
+├── mdx-components.tsx        MDX component overrides
+├── next.config.mjs           Next.js configuration
+├── Dockerfile                Production build
+└── package.json
 ```
 
-Open http://localhost:3000 with your browser to see the result.
+## Development
 
-## Explore
+```bash
+pnpm install
+pnpm dev              # http://localhost:3000
+```
 
-In the project, you can see:
+## Commands
 
-- `lib/source.ts`: Code for content source adapter, [`loader()`](https://fumadocs.dev/docs/headless/source-api) provides the interface to access your content.
-- `lib/layout.shared.tsx`: Shared options for layouts, optional but preferred to keep.
+```bash
+pnpm dev              # Development server
+pnpm build            # Production build
+pnpm lint             # ESLint
+```
 
-| Route                     | Description                                            |
-| ------------------------- | ------------------------------------------------------ |
-| `app/`                | The documentation layout and pages.                    |
-| `app/api/search/route.ts` | The Route Handler for search.                          |
+## Adding Content
 
-### Fumadocs MDX
+1. Create an MDX file in the appropriate `content/` subdirectory
+2. Add frontmatter (title, description)
+3. The page is automatically picked up by Fumadocs and added to navigation
 
-A `source.config.ts` config file has been included, you can customise different options like frontmatter schema.
-
-Read the [Introduction](https://fumadocs.dev/docs/mdx) for further details.
-
-## Learn More
-
-To learn more about Next.js and Fumadocs, take a look at the following
-resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js
-  features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [Fumadocs](https://fumadocs.dev) - learn about Fumadocs
+Customize frontmatter schema in `source.config.ts`. See the [Fumadocs MDX docs](https://fumadocs.dev/docs/mdx) for advanced features.

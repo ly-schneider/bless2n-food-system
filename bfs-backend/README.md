@@ -1,161 +1,205 @@
-# Bless2n Food System Backend
+# BFS Backend
 
-A Go HTTP backend for the Bless2n Food System -- food ordering, inventory, POS, and device management.
+Go HTTP API powering the Bless2n Food System — food ordering, inventory management, payment processing, and device authentication for live event food stations.
 
-## Table of Contents
+## Architecture
 
-- [Architecture Overview](#architecture-overview)
-- [Prerequisites](#prerequisites)
-- [Development Setup](#development-setup)
-- [Available Commands](#available-commands)
-- [Project Structure](#project-structure)
-- [Testing](#testing)
-
-## Architecture Overview
-
-The backend follows **Clean Architecture** with clear layer separation:
+The backend follows **Clean Architecture** with strict layer separation and dependency injection via Uber FX:
 
 ```
-+------------------------------------------+
-|             HTTP Layer                    |
-|   (Chi Router, Middleware, Handlers)      |
-+------------------------------------------+
-|            Service Layer                  |
-|     (Business Logic, Email, Payments)     |
-+------------------------------------------+
-|           Postgres Layer                  |
-|         (Data Access, pgx/GORM)          |
-+------------------------------------------+
-|             Model Layer                   |
-|        (Entities, Value Objects)          |
-+------------------------------------------+
+┌──────────────────────────────────────────────┐
+│              HTTP Layer                      │
+│     Chi Router · Middleware · Handlers       │
+├──────────────────────────────────────────────┤
+│              Auth Layer                      │
+│    Better Auth JWKS · RBAC · Device Auth     │
+├──────────────────────────────────────────────┤
+│            Service Layer                     │
+│   Business Logic · Email · Payments · Orders │
+├──────────────────────────────────────────────┤
+│           Repository Layer                   │
+│        PostgreSQL via pgx · Ent ORM          │
+├──────────────────────────────────────────────┤
+│             Model Layer                      │
+│        Entities · Value Objects              │
+└──────────────────────────────────────────────┘
 ```
 
-### Key Architectural Decisions
+### Key Design Decisions
 
-- **Dependency Injection**: Uber FX manages all dependencies and lifecycle
-- **Repository Pattern**: Clean abstraction over PostgreSQL via pgx and GORM
-- **Model-Driven Design**: Typed models with clear separation from persistence
-- **Better Auth Integration**: Authentication delegated to the Next.js app via Better Auth; the backend validates sessions through JWKS
-- **Payrexx Payments**: Payment processing via Payrexx API with webhook verification
-- **Atlas Migrations**: Database schema managed with versioned SQL migrations via [Atlas](https://atlasgo.io/) with Ent integration
+- **Uber FX** for dependency injection — manages all wiring, lifecycle hooks, and graceful shutdown
+- **Ent ORM** with Atlas migrations — declarative Go schema generates versioned SQL migrations with CI linting
+- **Better Auth JWKS validation** — authentication lives in the Next.js app; the backend only validates tokens via JWKS discovery
+- **Payrexx integration** — TWINT payments with HMAC-signed webhook verification
+- **Device authentication** — dedicated middleware for IoT/station devices with separate auth flow
+- **OpenAPI-first** — API spec is the contract; types are generated via `oapi-codegen`
 
-## Prerequisites
+## Tech Stack
 
-### Required
-- **Go 1.25+**
-- **Docker & Docker Compose**: For running PostgreSQL and Mailpit
-- **Make**: For running development commands
-
-### Optional
-- **Air**: For live reload during development (installed automatically via `make tools`)
-- **psql**: For direct database access
-
-## Development Setup
-
-```bash
-# 1. Environment setup
-cp .env.example .env
-# Edit .env if needed (defaults work for local Docker PostgreSQL)
-
-# 2. Start supporting services (PostgreSQL + Mailpit)
-make docker-up
-
-# 3. Run database migrations
-make migrate-local
-
-# 4. Seed development data (optional)
-make seed
-
-# 5. Run backend with live reload
-make dev
-```
-
-### Service URLs
-
-When services are running:
-
-- **Backend API**: http://localhost:8080
-- **Mailpit UI** (email testing): http://localhost:8025
-- **PostgreSQL**: localhost:5432
-
-## Available Commands
-
-Run `make` or `make help` to see all available commands with descriptions.
-
-### Key Commands
-```bash
-# Development
-make dev                # Start with live-reload (via Air)
-make test               # Run unit tests
-make test-integration   # Run integration tests
-
-# Docker
-make docker-up          # Start PostgreSQL + Mailpit
-make docker-up-dev      # Start all dev services (+ pgAdmin)
-make docker-down        # Stop services (keep volumes)
-make docker-down-v      # Stop services and remove volumes (DATA LOSS)
-
-# Database
-just migrate            # Apply Atlas migrations against local PostgreSQL
-just migrate-status     # Show migration status
-just migrate-diff name  # Generate a new migration from Ent schema diff
-make seed               # Seed dev data (idempotent)
-make psql               # Open psql shell to local database
-
-# Code quality
-make lint               # Run linters
-make lint-fix           # Auto-fix linting issues
-make fmt                # Format code
-make tidy               # Tidy go modules
-```
+| Category | Technology |
+|----------|-----------|
+| Language | Go 1.25+ |
+| Router | Chi v5 |
+| Database | PostgreSQL 18 via pgx v5 |
+| ORM / Schema | Ent v0.14 |
+| Migrations | Atlas (versioned SQL) |
+| DI | Uber FX |
+| Auth | Better Auth JWKS, RBAC |
+| Payments | Payrexx API (TWINT) |
+| Email | Plunk |
+| Blob Storage | Azure Blob Storage |
+| Logging | Uber Zap (structured JSON) |
+| Error Tracking | Sentry |
+| Observability | OpenTelemetry |
+| API Docs | Swagger / OpenAPI |
+| Live Reload | Air |
+| Linting | golangci-lint v2 |
+| Container | Distroless (non-root) |
 
 ## Project Structure
 
 ```
 bfs-backend/
-├── cmd/backend/           # Application entry point
+├── cmd/backend/              Entry point
 ├── db/
-│   ├── migrations/        # Atlas versioned SQL migrations
-│   ├── provisioning/      # Database role/schema provisioning SQL
-│   └── seed/              # Development seed data SQL files
+│   ├── migrations/           Atlas versioned SQL migrations
+│   ├── provisioning/         Database role/schema setup
+│   └── seed/                 Development seed data
 ├── internal/
-│   ├── app/               # Application wiring & DI setup (Uber FX)
-│   ├── auth/              # Auth middleware (Better Auth JWKS, RBAC, device auth)
-│   ├── config/            # Configuration management
-│   ├── handler/           # HTTP handlers
-│   ├── http/              # Chi router setup
-│   ├── middleware/        # Common HTTP middleware
-│   ├── model/             # Data models / entities
-│   ├── payrexx/           # Payrexx payment integration
-│   ├── postgres/          # PostgreSQL repositories (pgx / GORM)
-│   ├── response/          # HTTP response helpers
-│   ├── service/           # Business logic
-│   └── utils/             # Utility functions
-├── test/                  # Integration and E2E tests
-├── .air.toml              # Live reload config
-├── .env.example           # Environment template
-├── docker-compose.yml     # Docker services (PostgreSQL, Mailpit, etc.)
-├── Dockerfile             # Container definition
-├── go.mod & go.sum        # Go dependencies
-├── Makefile               # Development commands
-└── README.md
+│   ├── app/                  Uber FX wiring & DI modules
+│   ├── api/                  Generated OpenAPI types
+│   ├── auth/                 JWKS validation, RBAC, device auth
+│   ├── blobstore/            Azure Blob Storage integration
+│   ├── config/               Configuration management
+│   ├── database/             Connection pooling & lifecycle
+│   ├── generated/            Generated code (Ent, OpenAPI)
+│   ├── handler/              HTTP handlers
+│   ├── http/                 Chi router setup
+│   ├── inventory/            Inventory management
+│   ├── middleware/           Common HTTP middleware
+│   ├── model/                Data models & entities
+│   ├── payrexx/              Payment gateway integration
+│   ├── repository/           Data access layer
+│   ├── response/             HTTP response helpers
+│   ├── schema/               Ent database schema definitions
+│   ├── service/              Business logic (orders, payments, email)
+│   ├── utils/                Utilities
+│   └── version/              Build version info
+├── openapi/                  OpenAPI specifications
+├── docs/                     Generated Swagger docs
+├── test/
+│   ├── integration/          Integration tests (requires PostgreSQL)
+│   └── fixtures/             Test data
+├── docker-compose.yml        PostgreSQL, Mailpit, Azurite
+├── Dockerfile                Multi-stage distroless build
+├── justfile                  Development commands (Just)
+├── Makefile                  Development commands (Make)
+├── atlas.hcl                 Atlas migration config
+└── .air.toml                 Live reload config
 ```
 
-## Testing
+## Prerequisites
 
-### Test Structure
+- **Go 1.25+**
+- **Docker & Docker Compose** — for PostgreSQL, Mailpit, and Azurite
+- **Make** or **Just** — for running development commands
 
-```
-bfs-backend/
-└── test/
-    ├── integration/       # Integration tests (requires PostgreSQL)
-    └── fixtures/          # Test data and fixtures
-```
-
-### Running Tests
+## Development Setup
 
 ```bash
-make test               # Unit tests: go test -v -race ./internal/...
-make test-integration   # Integration tests (requires POSTGRES_TEST_DSN)
+cp .env.example .env
+
+make docker-up          # Start PostgreSQL + Mailpit + Azurite
+make migrate-local      # Apply database migrations
+make seed               # Seed development data (idempotent)
+make dev                # Start with live reload via Air
 ```
+
+### Service URLs
+
+| Service | URL |
+|---------|-----|
+| Backend API | http://localhost:8080 |
+| Mailpit (email UI) | http://localhost:8025 |
+| PostgreSQL | localhost:5432 |
+| Azurite (blob storage) | http://localhost:10000 |
+
+## Commands
+
+### Development
+
+```bash
+make dev                    # Live reload via Air
+make test                   # Unit tests (go test -v -race)
+make test-integration       # Integration tests (requires POSTGRES_TEST_DSN)
+```
+
+### Docker
+
+```bash
+make docker-up              # Start services
+make docker-up-dev          # Start with extras (pgAdmin)
+make docker-down            # Stop (keep volumes)
+make docker-down-v          # Stop and remove volumes
+```
+
+### Database
+
+```bash
+just migrate                # Apply Atlas migrations
+just migrate-status         # Show migration status
+just migrate-diff <name>    # Generate migration from Ent schema diff
+make seed                   # Seed development data
+make psql                   # Open psql shell
+```
+
+### Code Quality
+
+```bash
+make lint                   # Run golangci-lint
+make lint-fix               # Auto-fix lint issues
+make fmt                    # Format code
+make tidy                   # Tidy go modules
+```
+
+### Code Generation
+
+```bash
+just generate               # Run all generators
+just generate-ent           # Ent ORM code
+just generate-api           # OpenAPI types
+just swag                   # Swagger docs
+```
+
+## Authentication & Authorization
+
+Authentication is managed by **Better Auth** in the Next.js web app. The backend validates requests by:
+
+1. Fetching JWKS from `BETTER_AUTH_URL/api/auth/jwks`
+2. Verifying Bearer tokens in the session middleware
+3. Enforcing role-based access control (admin vs. customer)
+4. Supporting device authentication for IoT/station devices via a separate middleware
+
+## Payment Processing
+
+Payrexx handles payment gateway creation for TWINT (Swiss mobile payment):
+
+- Payment gateways are created via the Payrexx API
+- Webhook notifications are verified using HMAC signatures
+- Payment status updates are processed asynchronously
+- Currency: CHF
+
+## Environment Variables
+
+Key configuration (see `.env.example` for full list):
+
+| Variable | Purpose |
+|----------|---------|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `BETTER_AUTH_URL` | Next.js app URL for JWKS discovery |
+| `PAYREXX_INSTANCE` | Payrexx instance name |
+| `PAYREXX_API_SECRET` | Payrexx request signing |
+| `PAYREXX_WEBHOOK_SECRET` | Webhook verification |
+| `PUBLIC_BASE_URL` | Frontend URL for redirects |
+| `PLUNK_API_KEY` | Transactional email service |
+| `SECURITY_TRUSTED_ORIGINS` | CORS allowed origins |
