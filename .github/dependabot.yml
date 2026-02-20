@@ -7,8 +7,6 @@ updates:
       cronjob: "0 2 * * fri%2"
       timezone: "Europe/Zurich"
     target-branch: "main"
-    commit-message:
-      prefix: "[skip cd]"
     labels:
       - "dependencies"
       - "area/web-app"
@@ -26,13 +24,11 @@ updates:
       cronjob: "0 2 * * fri%2"
       timezone: "Europe/Zurich"
     target-branch: "main"
-    commit-message:
-      prefix: "[skip cd]"
     labels:
       - "dependencies"
       - "documentation"
     groups:
-      web-minor-and-patch:
+      docs-minor-and-patch:
         patterns:
           - "*"
         update-types:
@@ -45,8 +41,6 @@ updates:
       cronjob: "0 2 * * fri%2"
       timezone: "Europe/Zurich"
     target-branch: "main"
-    commit-message:
-      prefix: "[skip cd]"
     labels:
       - "dependencies"
       - "area/backend"
@@ -64,8 +58,6 @@ updates:
       cronjob: "0 2 * * fri%2"
       timezone: "Europe/Zurich"
     target-branch: "main"
-    commit-message:
-      prefix: "[skip cd]"
     labels:
       - "dependencies"
       - "area/cloud"
@@ -80,8 +72,6 @@ updates:
       cronjob: "0 2 * * fri%2"
       timezone: "Europe/Zurich"
     target-branch: "main"
-    commit-message:
-      prefix: "[skip cd]"
     labels:
       - "dependencies"
       - "area/cloud"
@@ -96,8 +86,6 @@ updates:
       cronjob: "0 2 * * fri%2"
       timezone: "Europe/Zurich"
     target-branch: "main"
-    commit-message:
-      prefix: "[skip cd]"
     labels:
       - "dependencies"
       - "area/android-app"

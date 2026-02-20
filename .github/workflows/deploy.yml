@@ -278,6 +278,7 @@ jobs:
   sentry-release:
     name: Create Sentry Release
     runs-on: ubuntu-latest
+    environment: ${{ needs.resolve-context.outputs.target_env }}
     needs: [resolve-context, build-frontend, build-backend, promote-images]
     if: |
       always() && !cancelled() &&
