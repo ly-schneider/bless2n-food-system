@@ -3,6 +3,7 @@ package auth
 import (
 	"backend/internal/generated/ent/devicebinding"
 	"backend/internal/repository"
+	"backend/internal/trace"
 	"context"
 	"errors"
 	"net/http"
@@ -50,11 +51,21 @@ func (m *SessionMiddleware) SetCookieName(name string) {
 func (m *SessionMiddleware) RequireAuth() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ctx, err := m.validateAndRefresh(r)
+			spanCtx, finish := trace.StartSpan(r.Context(), "auth", "session.require")
+			ctx, err := m.validateAndRefresh(spanCtx, r)
 			if err != nil {
+				trace.Err(spanCtx, err)
+				finish()
 				m.handleAuthError(w, err)
 				return
 			}
+			if uid, ok := GetUserID(ctx); ok {
+				trace.Data(spanCtx, "user.id", uid)
+			}
+			if role, ok := GetUserRole(ctx); ok {
+				trace.Data(spanCtx, "user.role", role)
+			}
+			finish()
 			ctx = WithAuthType(ctx, AuthTypeUser)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
@@ -67,16 +78,24 @@ func (m *SessionMiddleware) RequireAuth() func(http.Handler) http.Handler {
 func (m *SessionMiddleware) OptionalAuth() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Check if this is a Bearer token that might be a device token
+			spanCtx, finish := trace.StartSpan(r.Context(), "auth", "session.optional")
+
 			if bearerToken, err := ExtractBearerToken(r); err == nil && m.bindingRepo != nil {
 				tokenHash := repository.HashToken(bearerToken)
-				if binding, bindErr := m.bindingRepo.GetByTokenHash(r.Context(), tokenHash); bindErr == nil {
-					// This is a device token - validate the underlying session and set device context
-					session, sessErr := m.sessionRepo.GetByToken(r.Context(), bearerToken)
+				if binding, bindErr := m.bindingRepo.GetByTokenHash(spanCtx, tokenHash); bindErr == nil {
+					session, sessErr := m.sessionRepo.GetByToken(spanCtx, bearerToken)
 					if sessErr != nil {
+						trace.Data(spanCtx, "auth.path", "device_invalid_session")
+						trace.Err(spanCtx, sessErr)
+						finish()
 						m.handleAuthError(w, ErrInvalidToken)
 						return
 					}
+
+					trace.Data(spanCtx, "auth.path", "device")
+					trace.Data(spanCtx, "user.id", session.UserID)
+					trace.Data(spanCtx, "device.type", string(binding.DeviceType))
+					finish()
 
 					ctx := r.Context()
 					ctx = WithAuthType(ctx, AuthTypeDevice)
@@ -96,22 +115,32 @@ func (m *SessionMiddleware) OptionalAuth() func(http.Handler) http.Handler {
 						ctx = WithUserRole(ctx, string(session.Role))
 					}
 
+					trace.IdentifyUser(ctx, session.UserID, "", "")
+
 					next.ServeHTTP(w, r.WithContext(ctx))
 					return
 				}
 			}
 
-			// Not a device token or no binding repo - try regular session auth
-			ctx, err := m.validateAndRefresh(r)
+			ctx, err := m.validateAndRefresh(spanCtx, r)
 			if err != nil {
 				if errors.Is(err, ErrMissingToken) {
-					// No session - continue without auth
+					trace.Data(spanCtx, "auth.path", "anonymous")
+					finish()
 					next.ServeHTTP(w, r)
 					return
 				}
+				trace.Data(spanCtx, "auth.path", "session_failed")
+				trace.Err(spanCtx, err)
+				finish()
 				m.handleAuthError(w, err)
 				return
 			}
+			if uid, ok := GetUserID(ctx); ok {
+				trace.Data(spanCtx, "user.id", uid)
+			}
+			trace.Data(spanCtx, "auth.path", "session")
+			finish()
 			ctx = WithAuthType(ctx, AuthTypeUser)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
@@ -139,10 +168,17 @@ func (m *SessionMiddleware) RequirePermission(perm Permission) func(http.Handler
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			userRole, ok := GetUserRole(r.Context())
 			if !ok {
+				trace.Breadcrumb(r.Context(), "auth.rbac", "no role found", map[string]any{
+					"permission": string(perm),
+				})
 				http.Error(w, "Forbidden: no role", http.StatusForbidden)
 				return
 			}
 			if !HasPermission(Role(userRole), perm) {
+				trace.Breadcrumb(r.Context(), "auth.rbac", "permission denied", map[string]any{
+					"role":       userRole,
+					"permission": string(perm),
+				})
 				m.logger.Debug("permission denied",
 					zap.String("role", userRole),
 					zap.String("permission", string(perm)),
@@ -150,6 +186,10 @@ func (m *SessionMiddleware) RequirePermission(perm Permission) func(http.Handler
 				http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)
 				return
 			}
+			trace.Breadcrumb(r.Context(), "auth.rbac", "permission granted", map[string]any{
+				"role":       userRole,
+				"permission": string(perm),
+			})
 			next.ServeHTTP(w, r)
 		})
 	}
@@ -202,13 +242,15 @@ func decodeCookieValue(v string) string {
 }
 
 // validateAndRefresh validates the session token and performs sliding refresh if needed.
-func (m *SessionMiddleware) validateAndRefresh(r *http.Request) (context.Context, error) {
+// traceCtx carries the current span so DB calls appear as children of the auth span.
+// The returned context is rooted in r.Context() (the transaction span) enriched with user data.
+func (m *SessionMiddleware) validateAndRefresh(traceCtx context.Context, r *http.Request) (context.Context, error) {
 	tokenString, err := m.extractSessionToken(r)
 	if err != nil {
 		return nil, err
 	}
 
-	session, err := m.sessionRepo.GetByToken(r.Context(), tokenString)
+	session, err := m.sessionRepo.GetByToken(traceCtx, tokenString)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return nil, ErrInvalidToken
@@ -217,10 +259,8 @@ func (m *SessionMiddleware) validateAndRefresh(r *http.Request) (context.Context
 		return nil, ErrInvalidToken
 	}
 
-	// Perform sliding session refresh if session.UpdatedAt is older than updateAge
 	if session.UpdatedAt.Add(sessionUpdateAge).Before(time.Now().UTC()) {
-		if refreshErr := m.sessionRepo.RefreshSession(r.Context(), tokenString, sessionExpiresIn); refreshErr != nil {
-			// Log but don't fail the request - the session is still valid
+		if refreshErr := m.sessionRepo.RefreshSession(traceCtx, tokenString, sessionExpiresIn); refreshErr != nil {
 			m.logger.Warn("failed to refresh session", zap.Error(refreshErr))
 		}
 	}
@@ -237,13 +277,15 @@ func (m *SessionMiddleware) validateAndRefresh(r *http.Request) (context.Context
 		ctx = WithUserName(ctx, session.Name)
 	}
 
+	trace.IdentifyUser(ctx, session.UserID, session.Email, session.Name)
+
 	return ctx, nil
 }
 
 // IsAdmin checks whether the request carries a valid admin session.
 // Returns false on any error or if the user is not an admin.
 func (m *SessionMiddleware) IsAdmin(r *http.Request) bool {
-	ctx, err := m.validateAndRefresh(r)
+	ctx, err := m.validateAndRefresh(r.Context(), r)
 	if err != nil {
 		return false
 	}

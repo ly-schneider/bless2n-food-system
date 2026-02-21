@@ -11,6 +11,7 @@ import (
 	"backend/internal/generated/ent/product"
 	"backend/internal/inventory"
 	"backend/internal/repository"
+	"backend/internal/trace"
 
 	"github.com/google/uuid"
 )
@@ -94,26 +95,39 @@ func (s *orderService) ListAdmin(ctx context.Context, params OrderListParams) ([
 }
 
 func (s *orderService) UpdateStatus(ctx context.Context, id uuid.UUID, status order.Status) error {
+	ctx, finish := trace.StartSpan(ctx, "service", "order.update_status")
+	defer finish()
+	trace.Data(ctx, "order.id", id.String())
+	trace.Data(ctx, "order.target_status", string(status))
+
 	ord, err := s.orderRepo.GetByID(ctx, id)
 	if err != nil {
+		trace.Err(ctx, err)
 		return err
 	}
 
+	trace.Data(ctx, "order.current_status", string(ord.Status))
+
 	if !isValidStatusTransition(ord.Status, status) {
-		return fmt.Errorf("invalid status transition from %s to %s", ord.Status, status)
+		err := fmt.Errorf("invalid status transition from %s to %s", ord.Status, status)
+		trace.Err(ctx, err)
+		return err
 	}
 
 	if err := s.orderRepo.UpdateStatus(ctx, id, status); err != nil {
+		trace.Err(ctx, err)
 		return err
 	}
 
 	switch status {
 	case order.StatusRefunded:
 		if err := s.restoreInventory(ctx, id, inventoryledger.ReasonRefund); err != nil {
+			trace.Err(ctx, fmt.Errorf("inventory restore failed: %w", err))
 			return fmt.Errorf("inventory restore failed: %w", err)
 		}
 	case order.StatusCancelled:
 		if err := s.restoreInventory(ctx, id, inventoryledger.ReasonCancellation); err != nil {
+			trace.Err(ctx, fmt.Errorf("inventory restore failed: %w", err))
 			return fmt.Errorf("inventory restore failed: %w", err)
 		}
 	}
@@ -122,8 +136,14 @@ func (s *orderService) UpdateStatus(ctx context.Context, id uuid.UUID, status or
 }
 
 func (s *orderService) restoreInventory(ctx context.Context, orderID uuid.UUID, reason inventoryledger.Reason) error {
+	ctx, finish := trace.StartSpan(ctx, "service", "order.restore_inventory")
+	defer finish()
+	trace.Data(ctx, "inventory.order_id", orderID.String())
+	trace.Data(ctx, "inventory.reason", string(reason))
+
 	lines, err := s.orderLineRepo.GetByOrderID(ctx, orderID)
 	if err != nil {
+		trace.Err(ctx, err)
 		return err
 	}
 

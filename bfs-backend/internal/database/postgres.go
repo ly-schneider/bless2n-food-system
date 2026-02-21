@@ -8,6 +8,7 @@ import (
 
 	"backend/internal/config"
 	"backend/internal/generated/ent"
+	"backend/internal/trace"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
@@ -90,6 +91,8 @@ func NewEntClient(cfg config.Config) (*ent.Client, *sql.DB, error) {
 
 	drv := entsql.OpenDB(dialect.Postgres, db)
 	client := ent.NewClient(ent.Driver(drv))
+	client.Intercept(trace.QueryInterceptor())
+	client.Use(trace.MutationHook())
 
 	zap.L().Info("successfully connected to PostgreSQL with Ent")
 

@@ -25,6 +25,7 @@ func SetupSentry(lc fx.Lifecycle, cfg config.Config, logger *zap.Logger) {
 				Release:          cfg.Sentry.Release,
 				TracesSampleRate: 0.2,
 				EnableTracing:    true,
+				EnableLogs:       true,
 			})
 			if err != nil {
 				logger.Warn("sentry init failed", zap.Error(err))

@@ -14,6 +14,7 @@ import (
 	"backend/internal/inventory"
 	"backend/internal/payrexx"
 	"backend/internal/repository"
+	"backend/internal/trace"
 
 	"github.com/google/uuid"
 )
@@ -105,7 +106,16 @@ func (s *paymentService) IsPayrexxEnabled() bool {
 }
 
 func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateCheckoutInput, userID *string, attemptID *string) (*CheckoutPreparation, error) {
+	ctx, finish := trace.StartSpan(ctx, "service", "payment.prepare_checkout")
+	defer finish()
+	trace.Data(ctx, "checkout.item_count", len(in.Items))
+	trace.Data(ctx, "checkout.origin", string(in.Origin))
+	if userID != nil {
+		trace.Data(ctx, "checkout.user_id", *userID)
+	}
+
 	if len(in.Items) == 0 {
+		trace.Err(ctx, fmt.Errorf("no items"))
 		return nil, fmt.Errorf("no items")
 	}
 
@@ -352,6 +362,10 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 		}
 	}
 
+	trace.Data(ctx, "checkout.order_id", ord.ID.String())
+	trace.Data(ctx, "checkout.total_cents", totalCents)
+	trace.Data(ctx, "checkout.line_count", len(orderLines))
+
 	return &CheckoutPreparation{
 		OrderID:       ord.ID,
 		TotalCents:    totalCents,
@@ -362,7 +376,13 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 }
 
 func (s *paymentService) CreatePayrexxGateway(ctx context.Context, prep *CheckoutPreparation, successURL, failedURL, cancelURL string) (*payrexx.Gateway, error) {
+	ctx, finish := trace.StartSpan(ctx, "service", "payment.create_gateway")
+	defer finish()
+	trace.Data(ctx, "gateway.order_id", prep.OrderID.String())
+	trace.Data(ctx, "gateway.amount_cents", prep.TotalCents)
+
 	if s.payrexxClient == nil {
+		trace.Err(ctx, fmt.Errorf("payrexx client not configured"))
 		return nil, fmt.Errorf("payrexx client not configured")
 	}
 
@@ -397,6 +417,12 @@ func (s *paymentService) CreatePayrexxGateway(ctx context.Context, prep *Checkou
 }
 
 func (s *paymentService) MarkOrderPaidByPayrexx(ctx context.Context, orderID uuid.UUID, gatewayID, transactionID int, contactEmail *string) error {
+	ctx, finish := trace.StartSpan(ctx, "service", "payment.mark_paid_payrexx")
+	defer finish()
+	trace.Data(ctx, "payment.order_id", orderID.String())
+	trace.Data(ctx, "payment.gateway_id", gatewayID)
+	trace.Data(ctx, "payment.transaction_id", transactionID)
+
 	ord, err := s.orderRepo.GetByID(ctx, orderID)
 	if err != nil {
 		return fmt.Errorf("order not found: %w", err)
@@ -437,12 +463,18 @@ func (s *paymentService) SetOrderAttemptID(ctx context.Context, orderID uuid.UUI
 }
 
 func (s *paymentService) CleanupPendingOrderByID(ctx context.Context, orderID uuid.UUID) error {
+	ctx, finish := trace.StartSpan(ctx, "service", "payment.cleanup_pending")
+	defer finish()
+	trace.Data(ctx, "cleanup.order_id", orderID.String())
+
 	ord, err := s.orderRepo.GetByID(ctx, orderID)
 	if err != nil {
+		trace.Err(ctx, err)
 		return err
 	}
 	if ord.Status != order.StatusPending {
-		return nil // Only cleanup pending orders
+		trace.Data(ctx, "cleanup.skipped", "not_pending")
+		return nil
 	}
 
 	// Load order lines to release inventory

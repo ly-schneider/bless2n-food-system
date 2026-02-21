@@ -7,6 +7,7 @@ import (
 
 	"backend/internal/generated/ent"
 	"backend/internal/repository"
+	"backend/internal/trace"
 
 	"go.uber.org/zap"
 )
@@ -42,26 +43,34 @@ func NewDeviceAuthMiddleware(
 func (m *DeviceAuthMiddleware) RequireDevice(deviceType DeviceType) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			spanCtx, finish := trace.StartSpan(r.Context(), "auth", "device.require")
+			trace.Data(spanCtx, "device.expected_type", string(deviceType))
+
 			tokenString, err := ExtractBearerToken(r)
 			if err != nil {
+				trace.Err(spanCtx, err)
+				finish()
 				w.Header().Set("WWW-Authenticate", `Bearer realm="api"`)
 				http.Error(w, "Unauthorized: missing token", http.StatusUnauthorized)
 				return
 			}
 
 			tokenHash := repository.HashToken(tokenString)
-			binding, err := m.bindingRepo.GetByTokenHash(r.Context(), tokenHash)
+			binding, err := m.bindingRepo.GetByTokenHash(spanCtx, tokenHash)
 			if err != nil {
+				trace.Err(spanCtx, err)
+				finish()
 				m.logger.Debug("device binding not found", zap.Error(err))
 				w.Header().Set("WWW-Authenticate", `Bearer realm="api"`)
 				http.Error(w, "Unauthorized: invalid device token", http.StatusUnauthorized)
 				return
 			}
 
-			// Check device type matches.
-			// The DB stores uppercase ("POS", "STATION") while context uses lowercase ("pos", "station").
 			expectedType := deviceTypeToDBValue(deviceType)
 			if string(binding.DeviceType) != expectedType {
+				trace.Tag(spanCtx, "error", "true")
+				trace.Data(spanCtx, "device.actual_type", string(binding.DeviceType))
+				finish()
 				m.logger.Debug("device type mismatch",
 					zap.String("expected", expectedType),
 					zap.String("actual", string(binding.DeviceType)),
@@ -70,9 +79,10 @@ func (m *DeviceAuthMiddleware) RequireDevice(deviceType DeviceType) func(http.Ha
 				return
 			}
 
-			// Validate the underlying Better Auth session
-			session, err := m.sessionRepo.GetByToken(r.Context(), tokenString)
+			session, err := m.sessionRepo.GetByToken(spanCtx, tokenString)
 			if err != nil {
+				trace.Err(spanCtx, err)
+				finish()
 				m.logger.Debug("device session invalid or expired",
 					zap.String("deviceID", binding.ID.String()),
 					zap.Error(err),
@@ -82,14 +92,16 @@ func (m *DeviceAuthMiddleware) RequireDevice(deviceType DeviceType) func(http.Ha
 				return
 			}
 
-			// Sliding session refresh
 			if session.UpdatedAt.Add(sessionUpdateAge).Before(time.Now().UTC()) {
-				if refreshErr := m.sessionRepo.RefreshSession(r.Context(), tokenString, sessionExpiresIn); refreshErr != nil {
+				if refreshErr := m.sessionRepo.RefreshSession(spanCtx, tokenString, sessionExpiresIn); refreshErr != nil {
 					m.logger.Warn("failed to refresh device session", zap.Error(refreshErr))
 				}
 			}
 
-			// Update last_seen_at (fire-and-forget, use background context)
+			trace.Data(spanCtx, "device.id", binding.ID.String())
+			trace.Data(spanCtx, "user.id", session.UserID)
+			finish()
+
 			go func(bindingID ent.DeviceBinding) {
 				bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 				defer cancel()
@@ -98,21 +110,20 @@ func (m *DeviceAuthMiddleware) RequireDevice(deviceType DeviceType) func(http.Ha
 				}
 			}(*binding)
 
-			// Set device context
 			ctx := r.Context()
 			ctx = WithAuthType(ctx, AuthTypeDevice)
-			// Use the actual device table ID (not the binding's own ID)
 			if binding.DeviceID != nil {
 				ctx = WithDeviceID(ctx, *binding.DeviceID)
 			} else {
 				ctx = WithDeviceID(ctx, binding.ID)
 			}
 			ctx = WithDeviceType(ctx, deviceType)
-			// Also set user context from the session
 			ctx = WithUserID(ctx, session.UserID)
 			if session.Role != "" {
 				ctx = WithUserRole(ctx, string(session.Role))
 			}
+
+			trace.IdentifyUser(ctx, session.UserID, "", "")
 
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})

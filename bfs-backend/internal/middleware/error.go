@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"backend/internal/response"
+	"backend/internal/trace"
 	"context"
 	"errors"
 	"fmt"
@@ -53,6 +54,10 @@ func (e *ErrorMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 					zap.String("method", r.Method),
 					zap.String("path", r.URL.Path),
 				)
+
+				trace.Tag(r.Context(), "error", "true")
+				trace.Data(r.Context(), "error.type", "panic")
+				trace.Data(r.Context(), "error.value", fmt.Sprintf("%v", err))
 
 				if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
 					hub.RecoverWithContext(r.Context(), err)
@@ -123,6 +128,10 @@ func (e *ErrorMiddleware) HandleError(w http.ResponseWriter, r *http.Request, er
 			zap.String("method", r.Method),
 			zap.String("path", r.URL.Path),
 		)
+
+		trace.Tag(r.Context(), "error", "true")
+		trace.Data(r.Context(), "error.type", "internal")
+		trace.Data(r.Context(), "error.message", err.Error())
 
 		if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
 			hub.CaptureException(err)

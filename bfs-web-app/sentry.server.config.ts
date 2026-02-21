@@ -10,5 +10,9 @@ if (dsn) {
     environment: appUrl.includes("staging") ? "staging" : "production",
     release: process.env.APP_VERSION,
     tracesSampleRate: 0.2,
+    enableLogs: true,
+    integrations: [
+      Sentry.consoleLoggingIntegration({ levels: ["warn", "error"] }),
+    ],
   })
 }
