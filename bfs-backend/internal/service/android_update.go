@@ -94,7 +94,7 @@ func (s *androidUpdateService) fetchLatestRelease(ctx context.Context) (*Android
 	if err != nil {
 		return nil, fmt.Errorf("android update: fetch releases: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("android update: GitHub API returned %d", resp.StatusCode)
@@ -158,7 +158,7 @@ func (s *androidUpdateService) fetchSHA256(ctx context.Context, url string) stri
 	if err != nil {
 		return ""
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return ""
