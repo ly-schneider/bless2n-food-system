@@ -2,6 +2,7 @@ import { Metadata } from "next"
 import { FloatingBottomNav } from "@/components/cart/floating-bottom-nav"
 import { MenuGridLive } from "@/components/menu/menu-grid-live"
 import { listProducts } from "@/lib/api/products"
+import { getSystemStatus } from "@/lib/api/system"
 import { ListResponse, ProductDTO } from "@/types"
 
 export const metadata: Metadata = {
@@ -17,6 +18,19 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic"
 
 export default async function HomePage() {
+  const { enabled } = await getSystemStatus()
+
+  if (!enabled) {
+    return (
+      <div className="bg-background flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-semibold">Aktuell geschlossen</h2>
+          <p className="text-muted-foreground mt-2">Das Bestellsystem ist momentan nicht verfügbar.</p>
+        </div>
+      </div>
+    )
+  }
+
   let products: ListResponse<ProductDTO>
   try {
     products = await listProducts()

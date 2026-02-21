@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
 import { getCSRFToken } from "@/lib/csrf"
 import type { Product } from "@/types"
@@ -14,6 +15,7 @@ import type { Product } from "@/types"
 type PosFulfillmentMode = "QR_CODE" | "JETON"
 
 type SettingsResponse = {
+  systemEnabled?: boolean
   posMode?: PosFulfillmentMode
   missingJetons?: number
   club100FreeProductIds?: string[]
@@ -23,6 +25,7 @@ type SettingsResponse = {
 export default function AdminSettingsPage() {
   const fetchAuth = useAuthorizedFetch()
 
+  const [systemEnabled, setSystemEnabled] = useState(true)
   const [posMode, setPosMode] = useState<PosFulfillmentMode>("QR_CODE")
   const [missingJetons, setMissingJetons] = useState(0)
   const [club100FreeProductIds, setClub100FreeProductIds] = useState<string[]>([])
@@ -41,6 +44,7 @@ export default function AdminSettingsPage() {
 
       if (settingsRes.ok) {
         const s = (await settingsRes.json()) as SettingsResponse
+        setSystemEnabled(s.systemEnabled ?? true)
         setPosMode(s.posMode ?? "QR_CODE")
         setMissingJetons(s.missingJetons ?? 0)
         setClub100FreeProductIds(s.club100FreeProductIds ?? [])
@@ -78,6 +82,7 @@ export default function AdminSettingsPage() {
         throw new Error(j.detail || j.message || `Error ${res.status}`)
       }
       const updated = (await res.json()) as SettingsResponse
+      setSystemEnabled(updated.systemEnabled ?? systemEnabled)
       setPosMode(updated.posMode ?? posMode)
       setMissingJetons(updated.missingJetons ?? 0)
       setClub100FreeProductIds(updated.club100FreeProductIds ?? club100FreeProductIds)
@@ -98,6 +103,27 @@ export default function AdminSettingsPage() {
           {error}
         </div>
       )}
+
+      <Card className="rounded-2xl">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Food System</CardTitle>
+              <p className="text-muted-foreground text-sm">
+                Aktiviere oder deaktiviere das gesamte System für Kunden, POS und Stationen.
+              </p>
+            </div>
+            <Switch
+              checked={systemEnabled}
+              onCheckedChange={(checked) => {
+                setSystemEnabled(checked)
+                updateSettings({ systemEnabled: checked })
+              }}
+              disabled={saving}
+            />
+          </div>
+        </CardHeader>
+      </Card>
 
       <Card className="rounded-2xl">
         <CardHeader>

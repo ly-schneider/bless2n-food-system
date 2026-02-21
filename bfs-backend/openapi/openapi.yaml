@@ -46,6 +46,8 @@ tags:
     description: Event/month aggregation for admin dashboard
   - name: Club100
     description: 100 Club member management and redemption tracking
+  - name: System
+    description: System status (enabled/disabled)
   - name: Settings
     description: Application settings (POS mode, Club100 configuration)
 
@@ -127,6 +129,9 @@ paths:
     $ref: 'paths/pos.yaml#/me'
   /pos/devices:
     $ref: 'paths/pos.yaml#/devices'
+
+  /system/status:
+    $ref: 'paths/system.yaml#/status'
 
   /settings:
     $ref: 'paths/settings.yaml#/collection'

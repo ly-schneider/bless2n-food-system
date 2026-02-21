@@ -15,6 +15,8 @@ type SettingsRepository interface {
 	GetWithProducts(ctx context.Context) (*ent.Settings, error)
 	Upsert(ctx context.Context, mode settings.PosMode) error
 	UpdateClub100Settings(ctx context.Context, freeProductIDs []uuid.UUID, maxRedemptions int) error
+	IsSystemEnabled(ctx context.Context) (bool, error)
+	SetSystemEnabled(ctx context.Context, enabled bool) error
 }
 
 type settingsRepo struct {
@@ -36,6 +38,7 @@ func (r *settingsRepo) Get(ctx context.Context) (*ent.Settings, error) {
 			return &ent.Settings{
 				ID:                    "default",
 				PosMode:               settings.PosModeQR_CODE,
+				SystemEnabled:         true,
 				Club100MaxRedemptions: 2,
 			}, nil
 		}
@@ -54,6 +57,7 @@ func (r *settingsRepo) GetWithProducts(ctx context.Context) (*ent.Settings, erro
 			return &ent.Settings{
 				ID:                    "default",
 				PosMode:               settings.PosModeQR_CODE,
+				SystemEnabled:         true,
 				Club100MaxRedemptions: 2,
 			}, nil
 		}
@@ -103,4 +107,22 @@ func (r *settingsRepo) UpdateClub100Settings(ctx context.Context, freeProductIDs
 	}
 
 	return nil
+}
+
+func (r *settingsRepo) IsSystemEnabled(ctx context.Context) (bool, error) {
+	s, err := r.Get(ctx)
+	if err != nil {
+		return true, err
+	}
+	return s.SystemEnabled, nil
+}
+
+func (r *settingsRepo) SetSystemEnabled(ctx context.Context, enabled bool) error {
+	err := r.ec(ctx).Settings.Create().
+		SetID("default").
+		SetSystemEnabled(enabled).
+		OnConflictColumns(settings.FieldID).
+		SetSystemEnabled(enabled).
+		Exec(ctx)
+	return translateError(err)
 }

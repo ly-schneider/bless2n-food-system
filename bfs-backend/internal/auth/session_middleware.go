@@ -240,6 +240,17 @@ func (m *SessionMiddleware) validateAndRefresh(r *http.Request) (context.Context
 	return ctx, nil
 }
 
+// IsAdmin checks whether the request carries a valid admin session.
+// Returns false on any error or if the user is not an admin.
+func (m *SessionMiddleware) IsAdmin(r *http.Request) bool {
+	ctx, err := m.validateAndRefresh(r)
+	if err != nil {
+		return false
+	}
+	role, ok := GetUserRole(ctx)
+	return ok && HasPermission(Role(role), PermAdminAccess)
+}
+
 func (m *SessionMiddleware) handleAuthError(w http.ResponseWriter, err error) {
 	w.Header().Set("WWW-Authenticate", `Bearer realm="api"`)
 

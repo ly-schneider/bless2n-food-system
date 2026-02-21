@@ -30,6 +30,8 @@ func (Settings) Fields() []ent.Field {
 			Values("QR_CODE", "JETON").
 			Default("QR_CODE").
 			StorageKey("pos_mode"),
+		field.Bool("system_enabled").
+			Default(true),
 		field.Int("club100_max_redemptions").
 			Default(2),
 		field.Time("updated_at").

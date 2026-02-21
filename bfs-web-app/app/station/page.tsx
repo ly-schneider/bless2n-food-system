@@ -25,6 +25,7 @@ export default function StationPage() {
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
   const [deviceId, setDeviceId] = useState<string>("")
   const [status, setStatus] = useState<StationStatus | null>(null)
+  const [systemDisabled, setSystemDisabled] = useState(false)
   const [error, setError] = useState<string | null>(null)
   type PublicOrderItem = {
     id: string
@@ -66,11 +67,17 @@ export default function StationPage() {
         const res = await fetch(`/api/v1/stations/me`, {
           headers: { Authorization: `Bearer ${sessionToken}` },
         })
+        if (res.status === 503) {
+          setSystemDisabled(true)
+          log("system disabled (503)")
+          return
+        }
         if (res.status === 401 || res.status === 403) {
           setStatus({ exists: false, approved: false })
           log("status auth failed; showing enrollment")
           return
         }
+        setSystemDisabled(false)
         const json = await res.json()
         setStatus(json as StationStatus)
         log("status", json)
@@ -290,6 +297,33 @@ export default function StationPage() {
       setError(e instanceof Error ? e.message : "Einlösen fehlgeschlagen")
       log("redeem error", e)
     }
+  }
+
+  useEffect(() => {
+    if (!systemDisabled) return
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/v1/system/status`)
+        if (!res.ok) return
+        const data = (await res.json()) as { enabled: boolean }
+        if (data.enabled) {
+          setSystemDisabled(false)
+          window.location.reload()
+        }
+      } catch {}
+    }, 30_000)
+    return () => clearInterval(interval)
+  }, [systemDisabled])
+
+  if (systemDisabled) {
+    return (
+      <div className="bg-background flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-semibold">System geschlossen</h2>
+          <p className="text-muted-foreground mt-2">Das System ist momentan nicht verfügbar.</p>
+        </div>
+      </div>
+    )
   }
 
   return (

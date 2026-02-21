@@ -42,6 +42,7 @@ type PosDeviceResponse = {
 function PosInner() {
   const [sessionToken] = useState<string | null>(() => getDeviceToken())
   const [status, setStatus] = useState<PosStatus | null>(null)
+  const [systemDisabled, setSystemDisabled] = useState(false)
   const [products, setProducts] = useState<ListResponse<ProductDTO>>({ items: [], count: 0 })
   const [configOpen, setConfigOpen] = useState(false)
   const [configProduct, setConfigProduct] = useState<ProductDTO | null>(null)
@@ -91,10 +92,15 @@ function PosInner() {
         const res = await fetch(`/api/v1/pos/me`, {
           headers: { Authorization: `Bearer ${sessionToken}` },
         })
+        if (res.status === 503) {
+          setSystemDisabled(true)
+          return
+        }
         if (res.status === 401 || res.status === 403) {
           setStatus({ exists: false, approved: false })
           return
         }
+        setSystemDisabled(false)
         const device = (await res.json()) as PosDeviceResponse
         setStatus({
           exists: true,
@@ -238,11 +244,38 @@ function PosInner() {
     return () => window.removeEventListener("admin:refresh", onRefresh)
   }, [sessionToken, applyStockToProducts])
 
+  useEffect(() => {
+    if (!systemDisabled) return
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/v1/system/status`)
+        if (!res.ok) return
+        const data = (await res.json()) as { enabled: boolean }
+        if (data.enabled) {
+          setSystemDisabled(false)
+          window.location.reload()
+        }
+      } catch {}
+    }, 30_000)
+    return () => clearInterval(interval)
+  }, [systemDisabled])
+
   const syncStatus = {
     isOnline,
     pendingCount,
     failedCount: failedOrders.length,
     onFailedClick: handleFailedClick,
+  }
+
+  if (systemDisabled) {
+    return (
+      <div className="bg-background flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-semibold">System geschlossen</h2>
+          <p className="text-muted-foreground mt-2">Das System ist momentan nicht verfügbar.</p>
+        </div>
+      </div>
+    )
   }
 
   if (!status?.approved) {

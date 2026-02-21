@@ -1,10 +1,14 @@
 Settings:
   type: object
-  required: [id, posMode, club100MaxRedemptions]
+  required: [id, systemEnabled, posMode, club100MaxRedemptions]
   properties:
     id:
       type: string
       default: default
+    systemEnabled:
+      type: boolean
+      default: true
+      description: Whether the food system is active for customers
     posMode:
       $ref: 'pos.yaml#/PosFulfillmentMode'
     missingJetons:
@@ -27,6 +31,8 @@ Settings:
 SettingsUpdate:
   type: object
   properties:
+    systemEnabled:
+      type: boolean
     posMode:
       $ref: 'pos.yaml#/PosFulfillmentMode'
     club100FreeProductIds:

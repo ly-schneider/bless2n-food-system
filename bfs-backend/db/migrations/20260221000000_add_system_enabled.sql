@@ -1,0 +1,1 @@
+ALTER TABLE settings ADD COLUMN system_enabled BOOLEAN NOT NULL DEFAULT true;

@@ -5,6 +5,7 @@ import (
 	"backend/internal/auth"
 	"backend/internal/config"
 	"backend/internal/middleware"
+	"backend/internal/service"
 
 	"go.uber.org/fx"
 )
@@ -13,10 +14,15 @@ func NewHandlers() fx.Option {
 	return fx.Options(
 		fx.Provide(
 			NewSecurityMiddleware,
+			NewSystemDisableMiddleware,
 			auth.NewDeviceAuthMiddleware,
 			api.NewHandlers,
 		),
 	)
+}
+
+func NewSystemDisableMiddleware(settings service.SettingsService, sessionMw *auth.SessionMiddleware) *middleware.SystemDisableMiddleware {
+	return middleware.NewSystemDisableMiddleware(settings, sessionMw)
 }
 
 func NewSecurityMiddleware(cfg config.Config) *middleware.SecurityMiddleware {

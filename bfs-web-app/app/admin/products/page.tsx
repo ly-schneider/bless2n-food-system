@@ -89,10 +89,10 @@ export default function AdminProductsPage() {
   useEffect(() => {
     ;(async () => {
       try {
-        const res = await fetchAuth(`/api/v1/pos/settings`)
+        const res = await fetchAuth(`/api/v1/settings`)
         if (res.ok) {
-          const j = (await res.json()) as { mode?: PosFulfillmentMode }
-          setPosMode((j.mode as PosFulfillmentMode) || "QR_CODE")
+          const j = (await res.json()) as { posMode?: PosFulfillmentMode }
+          setPosMode(j.posMode || "QR_CODE")
         }
       } catch {
         // ignore

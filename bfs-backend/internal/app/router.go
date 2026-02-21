@@ -17,6 +17,7 @@ func NewRouter(
 	betterAuthMw *auth.SessionMiddleware,
 	deviceAuthMw *auth.DeviceAuthMiddleware,
 	securityMw *middleware.SecurityMiddleware,
+	systemMw *middleware.SystemDisableMiddleware,
 	logger *zap.Logger,
 	cfg config.Config,
 ) http.Handler {
@@ -24,7 +25,7 @@ func NewRouter(
 
 	return httpRouter.NewRouter(
 		apiHandlers,
-		betterAuthMw, deviceAuthMw, securityMw,
+		betterAuthMw, deviceAuthMw, securityMw, systemMw,
 		logger, isDev,
 	)
 }

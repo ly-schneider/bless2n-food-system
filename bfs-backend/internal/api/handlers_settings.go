@@ -43,6 +43,13 @@ func (h *Handlers) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if body.SystemEnabled != nil {
+		if err := h.settings.SetSystemEnabled(ctx, *body.SystemEnabled); err != nil {
+			writeError(w, http.StatusInternalServerError, "update_failed", err.Error())
+			return
+		}
+	}
+
 	if body.PosMode != nil {
 		if err := h.settings.SetPosMode(ctx, settings.PosMode(*body.PosMode)); err != nil {
 			var missingErr service.MissingJetonForActiveProductsError
@@ -86,6 +93,7 @@ func (h *Handlers) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 func toAPISettings(e *ent.Settings, missingJetons int) generated.Settings {
 	s := generated.Settings{
 		Id:                    e.ID,
+		SystemEnabled:         e.SystemEnabled,
 		PosMode:               generated.PosFulfillmentMode(e.PosMode),
 		Club100MaxRedemptions: e.Club100MaxRedemptions,
 		UpdatedAt:             ptr(e.UpdatedAt),

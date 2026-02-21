@@ -39,6 +39,8 @@ type SettingsService interface {
 	GetSettingsWithProducts(ctx context.Context) (*ent.Settings, error)
 	SetPosMode(ctx context.Context, mode settings.PosMode) error
 	SetClub100Settings(ctx context.Context, freeProductIDs []uuid.UUID, maxRedemptions *int) error
+	IsSystemEnabled(ctx context.Context) (bool, error)
+	SetSystemEnabled(ctx context.Context, enabled bool) error
 	ListJetons(ctx context.Context) ([]*ent.Jeton, error)
 	CreateJeton(ctx context.Context, name, color string) (*ent.Jeton, error)
 	UpdateJeton(ctx context.Context, id uuid.UUID, name, color string) (*ent.Jeton, error)
@@ -98,6 +100,14 @@ func (s *settingsService) SetPosMode(ctx context.Context, mode settings.PosMode)
 		}
 	}
 	return s.settings.Upsert(ctx, mode)
+}
+
+func (s *settingsService) IsSystemEnabled(ctx context.Context) (bool, error) {
+	return s.settings.IsSystemEnabled(ctx)
+}
+
+func (s *settingsService) SetSystemEnabled(ctx context.Context, enabled bool) error {
+	return s.settings.SetSystemEnabled(ctx, enabled)
 }
 
 func (s *settingsService) SetClub100Settings(ctx context.Context, freeProductIDs []uuid.UUID, maxRedemptions *int) error {
