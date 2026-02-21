@@ -143,6 +143,8 @@ class WebPosActivity : ComponentActivity() {
         webView.addJavascriptInterface(PosBridge(), "PosBridge")
 
         webView.loadUrl(BuildConfig.POS_URL)
+
+        AppUpdateChecker(this).checkForUpdate()
     }
 
     override fun onDestroy() {

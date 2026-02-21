@@ -21,6 +21,7 @@ type Config struct {
 	BlobStorage BlobStorageConfig
 	Elvanto     ElvantoConfig
 	Sentry      SentryConfig
+	Android     AndroidConfig
 }
 
 type SentryConfig struct {
@@ -32,6 +33,10 @@ type SentryConfig struct {
 type ElvantoConfig struct {
 	APIKey  string
 	GroupID string
+}
+
+type AndroidConfig struct {
+	GitHubRepo string
 }
 
 type AppConfig struct {
@@ -144,6 +149,9 @@ func Load() Config {
 			DSN:         getEnvOptional("SENTRY_DSN"),
 			Environment: getEnvOptional("SENTRY_ENVIRONMENT"),
 			Release:     getEnvOptional("APP_VERSION"),
+		},
+		Android: AndroidConfig{
+			GitHubRepo: getEnvWithDefault("ANDROID_GITHUB_REPO", "ly-schneider/bless2n-food-system"),
 		},
 	}
 

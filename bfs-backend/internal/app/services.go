@@ -26,6 +26,7 @@ func NewServices() fx.Option {
 			inventory.NewHub,
 			service.NewElvantoService,
 			service.NewClub100Service,
+			service.NewAndroidUpdateService,
 		),
 	)
 }

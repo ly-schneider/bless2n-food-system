@@ -26,8 +26,9 @@ type Handlers struct {
 	email        service.EmailService
 	users        service.UserService
 	devices      service.DeviceService
-	club100      service.Club100Service
-	verification repository.VerificationRepository
+	club100        service.Club100Service
+	androidUpdate  service.AndroidUpdateService
+	verification   repository.VerificationRepository
 	idempotency  repository.IdempotencyRepository
 	blobStore    *blobstore.Client
 	inventoryHub *inventory.Hub
@@ -52,8 +53,9 @@ type HandlersDeps struct {
 	Email        service.EmailService
 	Users        service.UserService
 	Devices      service.DeviceService
-	Club100      service.Club100Service
-	Verification repository.VerificationRepository
+	Club100       service.Club100Service
+	AndroidUpdate service.AndroidUpdateService
+	Verification  repository.VerificationRepository
 	Idempotency  repository.IdempotencyRepository
 	BlobStore    *blobstore.Client `optional:"true"`
 	InventoryHub *inventory.Hub
@@ -74,8 +76,9 @@ func NewHandlers(deps HandlersDeps) *Handlers {
 		email:        deps.Email,
 		users:        deps.Users,
 		devices:      deps.Devices,
-		club100:      deps.Club100,
-		verification: deps.Verification,
+		club100:        deps.Club100,
+		androidUpdate:  deps.AndroidUpdate,
+		verification:   deps.Verification,
 		idempotency:  deps.Idempotency,
 		blobStore:    deps.BlobStore,
 		inventoryHub: deps.InventoryHub,

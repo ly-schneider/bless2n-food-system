@@ -39,7 +39,7 @@ done
 
 # Construct tag and APK name
 TAG="android-${ENVIRONMENT}-v${VERSION}"
-APK_NAME="bfs-pos-${ENVIRONMENT}-v${VERSION}.apk"
+APK_NAME="bfs-pos.apk"
 
 echo ""
 echo "Configuration:"

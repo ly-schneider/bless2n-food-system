@@ -54,6 +54,9 @@ func NewRouter(
 	// ── Health check ──────────────────────────────────────────────────
 	r.Get("/health", apiHandlers.HealthCheck)
 
+	// ── Android update check (public, no auth) ──────────────────────
+	r.Get("/v1/android/latest", apiHandlers.GetAndroidLatestVersion)
+
 	// ── API documentation (Scalar) ───────────────────────────────────
 	r.Get("/docs", DocsScalarHandler())
 	r.Get("/docs/openapi.json", DocsOpenAPIHandler())

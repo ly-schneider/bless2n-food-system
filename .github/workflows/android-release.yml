@@ -111,6 +111,7 @@ jobs:
           BFS_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           BFS_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           BFS_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}
+          UPDATE_CHECK_URL: ${{ secrets.UPDATE_CHECK_URL }}
         run: |
           # Build the appropriate variant based on environment
           if [ "${{ inputs.environment }}" == "staging" ]; then
@@ -129,8 +130,9 @@ jobs:
           fi
 
           for apk in *.apk; do
-            mv "$apk" "bfs-pos-${{ inputs.environment }}-v${{ inputs.version }}.apk"
+            mv "$apk" "bfs-pos.apk"
           done
+          sha256sum bfs-pos.apk > bfs-pos.apk.sha256
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090
@@ -152,8 +154,10 @@ jobs:
           draft: false
           prerelease: ${{ inputs.environment == 'staging' }}
           files: |
-            bfs-android-app/app/build/outputs/apk/staging/*.apk
-            bfs-android-app/app/build/outputs/apk/release/*.apk
+            bfs-android-app/app/build/outputs/apk/staging/bfs-pos.apk
+            bfs-android-app/app/build/outputs/apk/staging/bfs-pos.apk.sha256
+            bfs-android-app/app/build/outputs/apk/release/bfs-pos.apk
+            bfs-android-app/app/build/outputs/apk/release/bfs-pos.apk.sha256
 
       - name: Build summary
         run: |
@@ -162,7 +166,7 @@ jobs:
           echo "- **Environment:** ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Version:** ${{ inputs.version }} (build ${{ steps.version.version_code }})" >> $GITHUB_STEP_SUMMARY
           echo "- **Tag:** android-${{ inputs.environment }}-v${{ inputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **APK:** bfs-pos-${{ inputs.environment }}-v${{ inputs.version }}.apk" >> $GITHUB_STEP_SUMMARY
+          echo "- **APK:** bfs-pos.apk" >> $GITHUB_STEP_SUMMARY
           echo "- **Prerelease:** ${{ inputs.environment == 'staging' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "APK is available in the [Releases](https://github.com/${{ github.repository }}/releases) page." >> $GITHUB_STEP_SUMMARY

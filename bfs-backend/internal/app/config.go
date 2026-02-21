@@ -11,3 +11,7 @@ func NewConfig() config.Config {
 func ProvideAppConfig(cfg config.Config) config.AppConfig {
 	return cfg.App
 }
+
+func ProvideAndroidConfig(cfg config.Config) config.AndroidConfig {
+	return cfg.Android
+}

@@ -5,6 +5,7 @@
         <map>
           <entry key="POS_URL" value="http://localhost:3000/pos" />
           <entry key="SUMUP_AFFILIATE_KEY" value="sup_afk_7lFr7hXW1inT9pue3Xr5Vo3KUfeMc1gX" />
+          <entry key="UPDATE_CHECK_URL" value="http://localhost:3000/v1/android/latest" />
         </map>
       </option>
       <option name="executionName" />

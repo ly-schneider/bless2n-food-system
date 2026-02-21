@@ -44,6 +44,7 @@ func main() {
 		fx.Provide(
 			app.NewConfig,
 			app.ProvideAppConfig,
+			app.ProvideAndroidConfig,
 			app.NewLogger,
 			app.NewEntClient,
 			app.NewSessionMiddleware,

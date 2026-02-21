@@ -51,6 +51,7 @@ android {
 
         buildConfigField("String", "POS_URL", "\"http://localhost:3000/pos\"")
         buildConfigField("boolean", "DEV_BUILD", "true")
+        buildConfigField("String", "UPDATE_CHECK_URL", "\"\"")
     }
 
     buildFeatures {
@@ -106,6 +107,9 @@ android {
             buildConfigField("String", "POS_URL", "\"$posUrlRelease\"")
             buildConfigField("boolean", "DEV_BUILD", "false")
 
+            val updateCheckUrl = (project.findProperty("updateCheckUrl") as String?) ?: System.getenv("UPDATE_CHECK_URL") ?: ""
+            buildConfigField("String", "UPDATE_CHECK_URL", "\"$updateCheckUrl\"")
+
             // App name for Play/production builds
             resValue("string", "app_name", "BlessThun Food")
         }
@@ -140,6 +144,9 @@ android {
                 ?: "http://localhost:3000/pos"
             buildConfigField("String", "POS_URL", "\"$posUrl\"")
             buildConfigField("boolean", "DEV_BUILD", "false")
+
+            val updateCheckUrl = (project.findProperty("updateCheckUrl") as String?) ?: System.getenv("UPDATE_CHECK_URL") ?: ""
+            buildConfigField("String", "UPDATE_CHECK_URL", "\"$updateCheckUrl\"")
 
             // App name for staging builds
             resValue("string", "app_name", "BlessThun Food (Staging)")
