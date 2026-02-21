@@ -22,6 +22,7 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       docs: ${{ steps.filter.outputs.docs }}
       terraform: ${{ steps.filter.outputs.terraform }}
+      deployable: ${{ steps.filter.outputs.deployable }}
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
@@ -47,6 +48,9 @@ jobs:
             terraform:
               - 'bfs-cloud/**'
               - '*.tf'
+            deployable:
+              - '**'
+              - '!.github/**'
 
   ci-web:
     needs: detect-changes
@@ -140,12 +144,7 @@ jobs:
         needs.ci-gate.result == 'success' &&
         github.event_name == 'push' &&
         github.ref == 'refs/heads/main' &&
-        (
-          needs.detect-changes.outputs.web == 'true' ||
-          needs.detect-changes.outputs.backend == 'true' ||
-          needs.detect-changes.outputs.docs == 'true' ||
-          needs.detect-changes.outputs.terraform == 'true'
-        )
+        needs.detect-changes.outputs.deployable == 'true'
       }}
     permissions:
       contents: read
