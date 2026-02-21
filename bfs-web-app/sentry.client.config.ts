@@ -11,9 +11,6 @@ if (dsn) {
     release: process.env.NEXT_PUBLIC_APP_VERSION,
     tracesSampleRate: 0.2,
     enableLogs: true,
-    integrations: [
-      Sentry.browserTracingIntegration(),
-      Sentry.consoleLoggingIntegration({ levels: ["warn", "error"] }),
-    ],
+    integrations: [Sentry.browserTracingIntegration(), Sentry.consoleLoggingIntegration({ levels: ["warn", "error"] })],
   })
 }
