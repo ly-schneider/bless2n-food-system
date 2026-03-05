@@ -20,7 +20,7 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
 DO $$ BEGIN
-  CREATE ROLE app_admin LOGIN NOINHERIT;
+  CREATE ROLE app_admin LOGIN INHERIT;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 

@@ -10,6 +10,7 @@ import (
 	"backend/internal/generated/ent/inventoryledger"
 	"backend/internal/generated/ent/order"
 	"backend/internal/generated/ent/orderline"
+	"backend/internal/generated/ent/orderpayment"
 	"backend/internal/generated/ent/product"
 	"backend/internal/inventory"
 	"backend/internal/payrexx"
@@ -66,20 +67,22 @@ type CheckoutPreparation struct {
 }
 
 type paymentService struct {
-	cfg           config.Config
-	payrexxClient *payrexx.Client
-	orderRepo     repository.OrderRepository
-	orderLineRepo repository.OrderLineRepository
-	productRepo   *repository.ProductRepository
-	menuSlotRepo  repository.MenuSlotRepository
-	inventoryRepo repository.InventoryLedgerRepository
-	inventoryHub  *inventory.Hub
+	cfg              config.Config
+	payrexxClient    *payrexx.Client
+	orderRepo        repository.OrderRepository
+	orderLineRepo    repository.OrderLineRepository
+	orderPaymentRepo repository.OrderPaymentRepository
+	productRepo      *repository.ProductRepository
+	menuSlotRepo     repository.MenuSlotRepository
+	inventoryRepo    repository.InventoryLedgerRepository
+	inventoryHub     *inventory.Hub
 }
 
 func NewPaymentService(
 	cfg config.Config,
 	orderRepo repository.OrderRepository,
 	orderLineRepo repository.OrderLineRepository,
+	orderPaymentRepo repository.OrderPaymentRepository,
 	productRepo *repository.ProductRepository,
 	menuSlotRepo repository.MenuSlotRepository,
 	inventoryRepo repository.InventoryLedgerRepository,
@@ -90,14 +93,15 @@ func NewPaymentService(
 		client = payrexx.NewClient(cfg.Payrexx.InstanceName, cfg.Payrexx.APISecret)
 	}
 	return &paymentService{
-		cfg:           cfg,
-		payrexxClient: client,
-		orderRepo:     orderRepo,
-		orderLineRepo: orderLineRepo,
-		productRepo:   productRepo,
-		menuSlotRepo:  menuSlotRepo,
-		inventoryRepo: inventoryRepo,
-		inventoryHub:  inventoryHub,
+		cfg:              cfg,
+		payrexxClient:    client,
+		orderRepo:        orderRepo,
+		orderLineRepo:    orderLineRepo,
+		orderPaymentRepo: orderPaymentRepo,
+		productRepo:      productRepo,
+		menuSlotRepo:     menuSlotRepo,
+		inventoryRepo:    inventoryRepo,
+		inventoryHub:     inventoryHub,
 	}
 }
 
@@ -428,10 +432,15 @@ func (s *paymentService) MarkOrderPaidByPayrexx(ctx context.Context, orderID uui
 		return fmt.Errorf("order not found: %w", err)
 	}
 
-	// Merge contact email: use provided one if non-empty, otherwise keep existing
 	ce := ord.ContactEmail
 	if contactEmail != nil && *contactEmail != "" {
 		ce = contactEmail
+	}
+
+	now := time.Now()
+
+	if _, err := s.orderPaymentRepo.Create(ctx, ord.ID, orderpayment.MethodTWINT, ord.TotalCents, now, nil); err != nil {
+		return fmt.Errorf("create order payment: %w", err)
 	}
 
 	_, err = s.orderRepo.Update(ctx, ord.ID, ord.TotalCents, order.StatusPaid, ord.Origin, ord.CustomerID, ce, ord.PaymentAttemptID, &gatewayID, &transactionID)
