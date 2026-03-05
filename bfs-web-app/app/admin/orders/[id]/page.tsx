@@ -284,7 +284,7 @@ export default function AdminOrderDetailPage() {
             <h2 className="mb-3 text-base font-semibold">Zahlung</h2>
             <div className="space-y-1 text-sm">
               <div>
-                <span className="text-muted-foreground">POS-Methode:</span>{" "}
+                <span className="text-muted-foreground">Methode:</span>{" "}
                 <span className="uppercase">{posMethod || "–"}</span>
               </div>
               <div>

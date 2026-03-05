@@ -89,7 +89,7 @@ export default function AdminOrdersPage() {
                   <TableHead className="whitespace-nowrap">Preis</TableHead>
                   <TableHead className="whitespace-nowrap">Kontakt E-Mail</TableHead>
                   <TableHead className="whitespace-nowrap">Benutzer</TableHead>
-                  <TableHead className="whitespace-nowrap">POS-Methode</TableHead>
+                  <TableHead className="whitespace-nowrap">Methode</TableHead>
                   <TableHead className="whitespace-nowrap">Payrexx Gateway</TableHead>
                   <TableHead className="whitespace-nowrap">Payrexx Txn</TableHead>
                   <TableHead className="whitespace-nowrap">Payment Attempt</TableHead>

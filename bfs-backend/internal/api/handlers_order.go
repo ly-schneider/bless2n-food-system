@@ -238,18 +238,9 @@ func (h *Handlers) GetOrderPayment(w http.ResponseWriter, r *http.Request, order
 		return
 	}
 
-	gw, err := h.payments.GetPayrexxGateway(ctx, *o.PayrexxGatewayID)
-	if err != nil {
-		writeError(w, http.StatusBadGateway, "gateway_error", "Could not fetch payment details")
-		return
-	}
-
 	response.WriteJSON(w, http.StatusOK, map[string]any{
-		"orderId":     o.ID.String(),
-		"gatewayId":   gw.ID,
-		"status":      gw.Status,
-		"link":        gw.Link,
-		"referenceId": gw.ReferenceID,
+		"orderId": o.ID.String(),
+		"status":  string(o.Status),
 	})
 }
 
