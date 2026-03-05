@@ -129,6 +129,7 @@ type Repositories struct {
 	MenuSlotOption    pgRepo.MenuSlotOptionRepository
 	Order             pgRepo.OrderRepository
 	OrderLine         pgRepo.OrderLineRepository
+	OrderPayment      pgRepo.OrderPaymentRepository
 	OrderRedemption   pgRepo.OrderLineRedemptionRepository
 	Club100Redemption pgRepo.Club100RedemptionRepository
 	Inventory         pgRepo.InventoryLedgerRepository
@@ -148,6 +149,7 @@ func NewRepositories(client *ent.Client) *Repositories {
 		MenuSlotOption:    pgRepo.NewMenuSlotOptionRepository(client),
 		Order:             pgRepo.NewOrderRepository(client),
 		OrderLine:         pgRepo.NewOrderLineRepository(client),
+		OrderPayment:      pgRepo.NewOrderPaymentRepository(client),
 		OrderRedemption:   pgRepo.NewOrderLineRedemptionRepository(client),
 		Club100Redemption: pgRepo.NewClub100RedemptionRepository(client),
 		Inventory:         pgRepo.NewInventoryLedgerRepository(client),
