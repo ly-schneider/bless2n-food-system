@@ -32,7 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="de" className={golosText.variable}>
       <body>
         <AuthProvider>{children}</AuthProvider>
-        <AnalyticsWrapper gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
+        <AnalyticsWrapper />
       </body>
     </html>
   )

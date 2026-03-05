@@ -1,6 +1,6 @@
 {
   "name": "bless2n-food-system-web",
-  "version": "2.5.7",
+  "version": "2.6.0",
   "private": true,
   "description": "Production-ready food ordering system with public ordering, admin dashboard, and POS terminal",
   "scripts": {
@@ -28,7 +28,6 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
     "@next/bundle-analyzer": "^16.1.1",
-    "@next/third-parties": "^16.1.1",
     "@radix-ui/react-accordion": "^1.2.2",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-aspect-ratio": "^1.1.8",
@@ -72,7 +71,6 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
-    "google": "link:@next/third-parties/google",
     "html5-qrcode": "^2.3.8",
     "input-otp": "^1.4.2",
     "jose": "^6.1.3",

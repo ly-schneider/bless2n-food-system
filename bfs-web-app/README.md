@@ -28,26 +28,26 @@ app/
 
 ## Tech Stack
 
-| Category | Technology |
-|----------|-----------|
-| Framework | Next.js 16 (App Router) |
-| UI | React 19, Server Components |
-| Language | TypeScript 5.8 (strict) |
-| Styling | Tailwind CSS 4 |
-| Components | Radix UI |
-| Forms | React Hook Form + Zod 4 |
-| Auth | Better Auth (sessions, Google OAuth) |
-| Charts | Recharts |
-| QR Codes | html5-qrcode, qrcode |
-| Notifications | Sonner |
-| Dates | date-fns |
-| WebSocket | ws |
-| Caching | Redis |
-| Error Tracking | Sentry |
-| Testing | Vitest, React Testing Library, Playwright |
-| Component Dev | Storybook 9 |
-| Package Manager | pnpm 10 |
-| Container | Distroless Node.js (non-root) |
+| Category        | Technology                                |
+| --------------- | ----------------------------------------- |
+| Framework       | Next.js 16 (App Router)                   |
+| UI              | React 19, Server Components               |
+| Language        | TypeScript 5.8 (strict)                   |
+| Styling         | Tailwind CSS 4                            |
+| Components      | Radix UI                                  |
+| Forms           | React Hook Form + Zod 4                   |
+| Auth            | Better Auth (sessions, Google OAuth)      |
+| Charts          | Recharts                                  |
+| QR Codes        | html5-qrcode, qrcode                      |
+| Notifications   | Sonner                                    |
+| Dates           | date-fns                                  |
+| WebSocket       | ws                                        |
+| Caching         | Redis                                     |
+| Error Tracking  | Sentry                                    |
+| Testing         | Vitest, React Testing Library, Playwright |
+| Component Dev   | Storybook 9                               |
+| Package Manager | pnpm 10                                   |
+| Container       | Distroless Node.js (non-root)             |
 
 ## Project Structure
 
@@ -82,12 +82,12 @@ pnpm dev                # http://localhost:3000
 
 ### Application Interfaces
 
-| Interface | URL | Description |
-|-----------|-----|-------------|
-| Public Ordering | http://localhost:3000 | Customer-facing menu and checkout |
-| Admin Dashboard | http://localhost:3000/admin | Order management, inventory, analytics |
-| POS Terminal | http://localhost:3000/pos | Cashier SumUp payment interface |
-| Station Display | http://localhost:3000/station | Kitchen preparation queue |
+| Interface       | URL                           | Description                            |
+| --------------- | ----------------------------- | -------------------------------------- |
+| Public Ordering | http://localhost:3000         | Customer-facing menu and checkout      |
+| Admin Dashboard | http://localhost:3000/admin   | Order management, inventory, analytics |
+| POS Terminal    | http://localhost:3000/pos     | Cashier SumUp payment interface        |
+| Station Display | http://localhost:3000/station | Kitchen preparation queue              |
 
 ## Commands
 
@@ -148,12 +148,12 @@ The backend never handles auth directly — it validates tokens by fetching the 
 
 Key configuration (see `.env.example` for full list):
 
-| Variable | Purpose |
-|----------|---------|
-| `NEXT_PUBLIC_API_BASE_URL` | Backend API URL (client-side) |
-| `BACKEND_INTERNAL_URL` | Backend URL (server-side, bypasses public network) |
-| `BETTER_AUTH_SECRET` | Session signing secret |
-| `DATABASE_URL` | PostgreSQL for Better Auth |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
-| `SENTRY_AUTH_TOKEN` | Sentry source map uploads |
+| Variable                   | Purpose                                            |
+| -------------------------- | -------------------------------------------------- |
+| `NEXT_PUBLIC_API_BASE_URL` | Backend API URL (client-side)                      |
+| `BACKEND_INTERNAL_URL`     | Backend URL (server-side, bypasses public network) |
+| `BETTER_AUTH_SECRET`       | Session signing secret                             |
+| `DATABASE_URL`             | PostgreSQL for Better Auth                         |
+| `GOOGLE_CLIENT_ID`         | Google OAuth client ID                             |
+| `GOOGLE_CLIENT_SECRET`     | Google OAuth client secret                         |
+| `SENTRY_AUTH_TOKEN`        | Sentry source map uploads                          |

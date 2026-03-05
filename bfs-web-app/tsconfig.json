@@ -3,11 +3,7 @@
   "display": "Next.js",
   "compilerOptions": {
     "target": "es5",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -23,15 +19,9 @@
     "incremental": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "*"
-      ]
+      "@/*": ["*"]
     },
-    "types": [
-      "node",
-      "vitest/globals",
-      "@testing-library/jest-dom"
-    ],
+    "types": ["node", "vitest/globals", "@testing-library/jest-dom"],
     "plugins": [
       {
         "name": "next"
@@ -48,7 +38,5 @@
     "eslint.config.mjs",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }
