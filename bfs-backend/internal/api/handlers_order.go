@@ -390,6 +390,11 @@ func (h *Handlers) CreateOrderPayment(w http.ResponseWriter, r *http.Request, or
 		}
 		gw, err := h.payments.CreatePayrexxGateway(ctx, prep, returnURL, returnURL, returnURL)
 		if err != nil {
+			h.logger.Error("payrexx gateway creation failed",
+				zap.Error(err),
+				zap.String("orderId", id.String()),
+				zap.Int64("totalCents", prep.TotalCents),
+			)
 			writeError(w, http.StatusBadGateway, "gateway_error", err.Error())
 			return
 		}
