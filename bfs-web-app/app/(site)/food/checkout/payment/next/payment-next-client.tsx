@@ -6,18 +6,22 @@ import { useCart } from "@/contexts/cart-context"
 import { getPaymentStatus } from "@/lib/api/payments"
 import { addOrder } from "@/lib/orders-storage"
 
+const MAX_POLLS = 10
+const POLL_INTERVAL_MS = 2000
+
 export default function PaymentNextClient() {
   const sp = useSearchParams()
   const router = useRouter()
   const { clearCart } = useCart()
   const clearedRef = useRef(false)
+  const pollingRef = useRef(false)
 
   useEffect(() => {
     const resolve = async () => {
       const orderIdParam = sp.get("order_id")
 
       if (orderIdParam) {
-        await handleOrder(orderIdParam)
+        await pollOrder(orderIdParam)
         return
       }
 
@@ -26,7 +30,7 @@ export default function PaymentNextClient() {
         if (raw) {
           const parsed = JSON.parse(raw) as { orderId?: string }
           if (parsed?.orderId) {
-            await handleOrder(parsed.orderId)
+            await pollOrder(parsed.orderId)
             return
           }
         }
@@ -35,27 +39,47 @@ export default function PaymentNextClient() {
       router.replace("/food/checkout")
     }
 
-    const handleOrder = async (orderId: string) => {
-      try {
-        const status = await getPaymentStatus(orderId)
-        if (status.status === "paid" || status.status === "pending") {
-          if (!clearedRef.current) {
-            clearedRef.current = true
-            addOrder(orderId)
-            clearCart()
+    const pollOrder = async (orderId: string) => {
+      if (pollingRef.current) return
+      pollingRef.current = true
+
+      for (let attempt = 0; attempt < MAX_POLLS; attempt++) {
+        try {
+          const res = await getPaymentStatus(orderId)
+
+          if (res.status === "paid") {
+            if (!clearedRef.current) {
+              clearedRef.current = true
+              addOrder(orderId)
+              clearCart()
+            }
+            try {
+              sessionStorage.removeItem("bfs.pending_order")
+            } catch {}
+            router.replace(`/food/checkout/success?order_id=${encodeURIComponent(orderId)}`)
+            return
           }
-          try {
-            sessionStorage.removeItem("bfs.pending_order")
-          } catch {}
-          router.replace(`/food/checkout/success?order_id=${encodeURIComponent(orderId)}`)
-        } else if (status.status === "cancelled") {
-          router.replace("/food/checkout/cancel")
-        } else {
+
+          if (res.status === "cancelled") {
+            router.replace("/food/checkout/cancel")
+            return
+          }
+
+          if (res.status !== "pending") {
+            router.replace("/food/checkout/error")
+            return
+          }
+        } catch {
           router.replace("/food/checkout/error")
+          return
         }
-      } catch {
-        router.replace("/food/checkout/error")
+
+        if (attempt < MAX_POLLS - 1) {
+          await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS))
+        }
       }
+
+      router.replace("/food/checkout/error")
     }
 
     void resolve()

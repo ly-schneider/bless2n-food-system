@@ -29,6 +29,17 @@ PaymentStatus:
     - cancelled
     - refunded
 
+OrderPaymentStatus:
+  type: object
+  required: [orderId, status]
+  properties:
+    orderId:
+      type: string
+      format: uuid
+    status:
+      type: string
+      enum: [pending, paid, cancelled, refunded]
+
 PaymentCreate:
   type: object
   required: [method]

@@ -9,7 +9,7 @@ order-payment:
 
   get:
     tags: [Payments]
-    summary: Get order payment
+    summary: Get order payment status
     operationId: getOrderPayment
     security:
       - sessionAuth: []
@@ -17,11 +17,11 @@ order-payment:
       - {}
     responses:
       "200":
-        description: Payment details
+        description: Order payment status
         content:
           application/json:
             schema:
-              $ref: "../schemas/payments.yaml#/Payment"
+              $ref: "../schemas/payments.yaml#/OrderPaymentStatus"
       "404":
         description: Resource not found
         content:

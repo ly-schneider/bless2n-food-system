@@ -365,11 +365,7 @@ func (h *Handlers) CreateOrderPayment(w http.ResponseWriter, r *http.Request, or
 				writeError(w, http.StatusInternalServerError, "dev_pay_failed", err.Error())
 				return
 			}
-			redirectURL := returnURL
-			if redirectURL != "" {
-				redirectURL += "?order_id=" + id.String()
-			}
-			resp := map[string]any{"orderId": id.String(), "method": "twint", "redirectUrl": redirectURL}
+			resp := map[string]any{"orderId": id.String(), "method": "twint", "redirectUrl": returnURL}
 			cachePaymentResponse(resp)
 			response.WriteJSON(w, http.StatusCreated, resp)
 			return
