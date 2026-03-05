@@ -15,14 +15,6 @@ import (
 
 const plunkSendEndpoint = "https://api.useplunk.com/v1/send"
 
-// safePrefix returns the first n characters of s, or the whole string if shorter
-func safePrefix(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n]
-}
-
 type PlunkSendRequest struct {
 	To         string            `json:"to"`
 	Subject    string            `json:"subject"`
