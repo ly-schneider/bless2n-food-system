@@ -8,12 +8,12 @@ collection:
       - {}
       - sessionAuth: []
     responses:
-      '200':
+      "200":
         description: Category list
         content:
           application/json:
             schema:
-              $ref: '../schemas/categories.yaml#/CategoryList'
+              $ref: "../schemas/categories.yaml#/CategoryList"
 
   post:
     tags: [Categories]
@@ -27,29 +27,29 @@ collection:
       content:
         application/json:
           schema:
-            $ref: '../schemas/categories.yaml#/CategoryCreate'
+            $ref: "../schemas/categories.yaml#/CategoryCreate"
           example:
             name: "Getranke"
             position: 2
     responses:
-      '201':
+      "201":
         description: Category created
         content:
           application/json:
             schema:
-              $ref: '../schemas/categories.yaml#/Category'
-      '401':
+              $ref: "../schemas/categories.yaml#/Category"
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
 item:
   parameters:
@@ -68,18 +68,18 @@ item:
       - {}
       - sessionAuth: []
     responses:
-      '200':
+      "200":
         description: Category details
         content:
           application/json:
             schema:
-              $ref: '../schemas/categories.yaml#/Category'
-      '404':
+              $ref: "../schemas/categories.yaml#/Category"
+      "404":
         description: Resource not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
   patch:
     tags: [Categories]
@@ -93,7 +93,7 @@ item:
       content:
         application/json:
           schema:
-            $ref: '../schemas/categories.yaml#/CategoryUpdate'
+            $ref: "../schemas/categories.yaml#/CategoryUpdate"
           examples:
             rename:
               summary: Rename category
@@ -108,30 +108,30 @@ item:
               value:
                 isActive: false
     responses:
-      '200':
+      "200":
         description: Category updated
         content:
           application/json:
             schema:
-              $ref: '../schemas/categories.yaml#/Category'
-      '401':
+              $ref: "../schemas/categories.yaml#/Category"
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '404':
+              $ref: "../schemas/common.yaml#/Error"
+      "404":
         description: Resource not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
   delete:
     tags: [Categories]
@@ -144,29 +144,29 @@ item:
       - sessionAuth: []
     x-required-permissions: [categories:write]
     responses:
-      '204':
+      "204":
         description: Category deleted
-      '401':
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '404':
+              $ref: "../schemas/common.yaml#/Error"
+      "404":
         description: Resource not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '409':
+              $ref: "../schemas/common.yaml#/Error"
+      "409":
         description: Category has assigned products
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"

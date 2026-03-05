@@ -7,6 +7,7 @@ This guide covers the prerequisites and setup steps for deploying the BFS infras
 ### 1. Azure Subscription Requirements
 
 Your Azure subscription must support:
+
 - Standard resources (VNet, Storage, etc.)
 - ❌ Cost Management API (requires EA, Web Direct, or MCA offer types)
   - **Note:** Azure Sponsorship subscriptions (MS-AZR-0036P) do not support budget APIs
@@ -61,12 +62,14 @@ az role assignment create \
 ### Issue 1: Microsoft.App Provider Not Registered
 
 **Error:**
+
 ```
 Error: creating Managed Environment: unexpected status 409 (409 Conflict) with error:
 MissingSubscriptionRegistration: The subscription is not registered to use namespace 'Microsoft.App'
 ```
 
 **Solution:**
+
 ```bash
 az provider register --namespace Microsoft.App
 # Wait 5-10 minutes, then verify:
@@ -76,6 +79,7 @@ az provider show --namespace Microsoft.App --query "registrationState"
 ### Issue 2: Budget API Not Supported
 
 **Error:**
+
 ```
 Error: Cost Management supports only Enterprise Agreement, Web direct and Microsoft Customer Agreement offer types.
 ```

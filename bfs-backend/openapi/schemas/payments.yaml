@@ -1,6 +1,7 @@
 PaymentMethod:
   type: string
-  enum: [cash, card, twint, gratis_guest, gratis_vip, gratis_staff, gratis_100club]
+  enum:
+    [cash, card, twint, gratis_guest, gratis_vip, gratis_staff, gratis_100club]
   description: |
     Payment methods (lowercase in API, stored uppercase in DB):
     - `cash`: Cash payment (POS only)
@@ -33,9 +34,9 @@ PaymentCreate:
   required: [method]
   properties:
     method:
-      $ref: '#/PaymentMethod'
+      $ref: "#/PaymentMethod"
     channel:
-      $ref: '#/PaymentChannel'
+      $ref: "#/PaymentChannel"
       description: Inferred from auth context if not provided
     returnUrl:
       type: string
@@ -47,7 +48,7 @@ PaymentCreate:
         External transaction reference.
         Required for POS card payments (SumUp transaction ID).
     club100:
-      $ref: '../schemas/club100.yaml#/Club100PaymentInfo'
+      $ref: "../schemas/club100.yaml#/Club100PaymentInfo"
       description: Required for gratis_100club payments. Contains Elvanto person info and quantity.
 Payment:
   type: object
@@ -60,11 +61,11 @@ Payment:
       type: string
       format: uuid
     method:
-      $ref: '#/PaymentMethod'
+      $ref: "#/PaymentMethod"
     channel:
-      $ref: '#/PaymentChannel'
+      $ref: "#/PaymentChannel"
     status:
-      $ref: '#/PaymentStatus'
+      $ref: "#/PaymentStatus"
     amountCents:
       type: integer
       format: int64

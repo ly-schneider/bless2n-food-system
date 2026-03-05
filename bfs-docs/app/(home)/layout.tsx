@@ -1,16 +1,18 @@
-import { source } from '@/lib/source';
-import { DocsLayout } from 'fumadocs-ui/layouts/docs';
-import { baseOptions } from '@/lib/layout.shared';
+import { source } from "@/lib/source";
+import { DocsLayout } from "fumadocs-ui/layouts/docs";
+import { baseOptions } from "@/lib/layout.shared";
 
 const version = process.env.APP_VERSION;
 
-export default function Layout({ children }: LayoutProps<'/'>) {
+export default function Layout({ children }: LayoutProps<"/">) {
   return (
     <DocsLayout
       tree={source.pageTree}
       {...baseOptions()}
       sidebar={{
-        footer: version ? <span className="text-xs text-gray-400 text-center">v{version}</span> : null,
+        footer: version ? (
+          <span className="text-xs text-gray-400 text-center">v{version}</span>
+        ) : null,
       }}
     >
       {children}

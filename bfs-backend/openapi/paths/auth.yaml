@@ -11,7 +11,7 @@ otp-email:
       content:
         application/json:
           schema:
-            $ref: '../schemas/auth.yaml#/OtpEmailRequest'
+            $ref: "../schemas/auth.yaml#/OtpEmailRequest"
           examples:
             sign_in:
               summary: Sign-in OTP
@@ -29,17 +29,17 @@ otp-email:
                 email: "user@example.com"
                 type: forget-password
     responses:
-      '201':
+      "201":
         description: OTP email sent
         content:
           application/json:
             schema:
-              $ref: '../schemas/auth.yaml#/OtpEmailResponse'
+              $ref: "../schemas/auth.yaml#/OtpEmailResponse"
             example:
               expiresAt: "2025-01-30T14:35:00Z"
-      '429':
+      "429":
         description: Rate limit exceeded
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"

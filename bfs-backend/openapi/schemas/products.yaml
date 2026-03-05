@@ -16,7 +16,7 @@ Product:
       type: string
       format: uuid
     type:
-      $ref: '#/ProductType'
+      $ref: "#/ProductType"
     name:
       type: string
       maxLength: 20
@@ -49,14 +49,14 @@ Product:
       x-admin-only: true
     # Embedded relations (included in list responses)
     category:
-      $ref: 'categories.yaml#/CategorySummary'
+      $ref: "categories.yaml#/CategorySummary"
     jeton:
-      $ref: 'jetons.yaml#/JetonSummary'
+      $ref: "jetons.yaml#/JetonSummary"
       nullable: true
     menuSlots:
       type: array
       items:
-        $ref: 'menus.yaml#/MenuSlotSummary'
+        $ref: "menus.yaml#/MenuSlotSummary"
       description: Only present for menu-type products
 
 ProductCreate:
@@ -67,7 +67,7 @@ ProductCreate:
       type: string
       format: uuid
     type:
-      $ref: '#/ProductType'
+      $ref: "#/ProductType"
       default: simple
     name:
       type: string
@@ -119,7 +119,7 @@ ProductList:
     items:
       type: array
       items:
-        $ref: '#/Product'
+        $ref: "#/Product"
 
 Inventory:
   type: object
@@ -142,7 +142,7 @@ InventoryAdjustment:
       type: integer
       description: Positive to add, negative to remove
     reason:
-      $ref: '#/InventoryReason'
+      $ref: "#/InventoryReason"
 
 InventoryReason:
   type: string
@@ -161,7 +161,7 @@ InventoryLedgerEntry:
     delta:
       type: integer
     reason:
-      $ref: '#/InventoryReason'
+      $ref: "#/InventoryReason"
     createdAt:
       type: string
       format: date-time
@@ -188,4 +188,4 @@ InventoryLedgerList:
     items:
       type: array
       items:
-        $ref: '#/InventoryLedgerEntry'
+        $ref: "#/InventoryLedgerEntry"

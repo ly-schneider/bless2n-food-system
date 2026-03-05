@@ -22,12 +22,12 @@ POSDevice:
       type: string
       nullable: true
     status:
-      $ref: 'devices.yaml#/DeviceStatus'
+      $ref: "devices.yaml#/DeviceStatus"
     createdAt:
       type: string
       format: date-time
     settings:
-      $ref: 'settings.yaml#/Settings'
+      $ref: "settings.yaml#/Settings"
 
 POSDeviceList:
   type: object
@@ -36,4 +36,4 @@ POSDeviceList:
     items:
       type: array
       items:
-        $ref: '#/POSDevice'
+        $ref: "#/POSDevice"

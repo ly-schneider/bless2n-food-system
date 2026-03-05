@@ -31,7 +31,7 @@ Menu:
     slots:
       type: array
       items:
-        $ref: '#/MenuSlot'
+        $ref: "#/MenuSlot"
 
 MenuCreate:
   type: object
@@ -74,7 +74,7 @@ MenuList:
     items:
       type: array
       items:
-        $ref: '#/Menu'
+        $ref: "#/Menu"
 
 MenuSlot:
   type: object
@@ -95,7 +95,7 @@ MenuSlot:
     options:
       type: array
       items:
-        $ref: '#/MenuSlotOption'
+        $ref: "#/MenuSlotOption"
 
 MenuSlotSummary:
   type: object
@@ -124,7 +124,7 @@ MenuSlotSummary:
             type: string
             nullable: true
           jeton:
-            $ref: 'jetons.yaml#/JetonSummary'
+            $ref: "jetons.yaml#/JetonSummary"
             nullable: true
 
 MenuSlotCreate:
@@ -162,7 +162,7 @@ MenuSlotList:
     items:
       type: array
       items:
-        $ref: '#/MenuSlot'
+        $ref: "#/MenuSlot"
 
 MenuSlotOption:
   type: object

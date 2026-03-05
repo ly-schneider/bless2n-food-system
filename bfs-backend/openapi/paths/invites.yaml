@@ -10,31 +10,31 @@ collection:
       - name: status
         in: query
         schema:
-          $ref: '../schemas/invites.yaml#/InviteStatus'
+          $ref: "../schemas/invites.yaml#/InviteStatus"
       - name: email
         in: query
         description: Filter by invitee email
         schema:
           type: string
     responses:
-      '200':
+      "200":
         description: Invite list
         content:
           application/json:
             schema:
-              $ref: '../schemas/invites.yaml#/InviteList'
-      '401':
+              $ref: "../schemas/invites.yaml#/InviteList"
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
   post:
     tags: [Invites]
@@ -51,16 +51,16 @@ collection:
       content:
         application/json:
           schema:
-            $ref: '../schemas/invites.yaml#/InviteCreate'
+            $ref: "../schemas/invites.yaml#/InviteCreate"
           example:
             email: "newadmin@example.com"
     responses:
-      '201':
+      "201":
         description: Invite created and email sent
         content:
           application/json:
             schema:
-              $ref: '../schemas/invites.yaml#/Invite'
+              $ref: "../schemas/invites.yaml#/Invite"
             example:
               id: "019412ab-0000-7000-8000-000000000300"
               inviteeEmail: "newadmin@example.com"
@@ -68,18 +68,18 @@ collection:
               expiresAt: "2025-02-06T14:30:00Z"
               invitedByUserId: "ba_user_abc123"
               createdAt: "2025-01-30T14:30:00Z"
-      '401':
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
 item:
   parameters:
@@ -100,18 +100,18 @@ item:
     security:
       - {}
     responses:
-      '200':
+      "200":
         description: Invite details (public view)
         content:
           application/json:
             schema:
-              $ref: '../schemas/invites.yaml#/InvitePublic'
-      '404':
+              $ref: "../schemas/invites.yaml#/InvitePublic"
+      "404":
         description: Resource not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
   delete:
     tags: [Invites]
@@ -121,26 +121,26 @@ item:
       - sessionAuth: []
     x-required-permissions: [invites:manage]
     responses:
-      '204':
+      "204":
         description: Invite revoked
-      '401':
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '404':
+              $ref: "../schemas/common.yaml#/Error"
+      "404":
         description: Resource not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
 verify:
   post:
@@ -157,22 +157,22 @@ verify:
       content:
         application/json:
           schema:
-            $ref: '../schemas/invites.yaml#/InviteTokenRequest'
+            $ref: "../schemas/invites.yaml#/InviteTokenRequest"
           example:
             token: "base64url-encoded-token-string"
     responses:
-      '200':
+      "200":
         description: Token is valid
         content:
           application/json:
             schema:
-              $ref: '../schemas/invites.yaml#/InvitePublic'
-      '400':
+              $ref: "../schemas/invites.yaml#/InvitePublic"
+      "400":
         description: Token is invalid or expired
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
 accept:
   post:
@@ -190,21 +190,21 @@ accept:
       content:
         application/json:
           schema:
-            $ref: '../schemas/invites.yaml#/InviteAccept'
+            $ref: "../schemas/invites.yaml#/InviteAccept"
           example:
             token: "base64url-encoded-token-string"
             firstName: "Jane"
             lastName: "Doe"
     responses:
-      '200':
+      "200":
         description: Invite accepted, user created/upgraded
         content:
           application/json:
             schema:
-              $ref: '../schemas/invites.yaml#/InvitePublic'
-      '400':
+              $ref: "../schemas/invites.yaml#/InvitePublic"
+      "400":
         description: Token invalid, expired, or already used
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"

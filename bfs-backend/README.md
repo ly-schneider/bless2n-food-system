@@ -36,25 +36,25 @@ The backend follows **Clean Architecture** with strict layer separation and depe
 
 ## Tech Stack
 
-| Category | Technology |
-|----------|-----------|
-| Language | Go 1.25+ |
-| Router | Chi v5 |
-| Database | PostgreSQL 18 via pgx v5 |
-| ORM / Schema | Ent v0.14 |
-| Migrations | Atlas (versioned SQL) |
-| DI | Uber FX |
-| Auth | Better Auth JWKS, RBAC |
-| Payments | Payrexx API (TWINT) |
-| Email | Plunk |
-| Blob Storage | Azure Blob Storage |
-| Logging | Uber Zap (structured JSON) |
-| Error Tracking | Sentry |
-| Observability | OpenTelemetry |
-| API Docs | Swagger / OpenAPI |
-| Live Reload | Air |
-| Linting | golangci-lint v2 |
-| Container | Distroless (non-root) |
+| Category       | Technology                 |
+| -------------- | -------------------------- |
+| Language       | Go 1.25+                   |
+| Router         | Chi v5                     |
+| Database       | PostgreSQL 18 via pgx v5   |
+| ORM / Schema   | Ent v0.14                  |
+| Migrations     | Atlas (versioned SQL)      |
+| DI             | Uber FX                    |
+| Auth           | Better Auth JWKS, RBAC     |
+| Payments       | Payrexx API (TWINT)        |
+| Email          | Plunk                      |
+| Blob Storage   | Azure Blob Storage         |
+| Logging        | Uber Zap (structured JSON) |
+| Error Tracking | Sentry                     |
+| Observability  | OpenTelemetry              |
+| API Docs       | Swagger / OpenAPI          |
+| Live Reload    | Air                        |
+| Linting        | golangci-lint v2           |
+| Container      | Distroless (non-root)      |
 
 ## Project Structure
 
@@ -117,11 +117,11 @@ make dev                # Start with live reload via Air
 
 ### Service URLs
 
-| Service | URL |
-|---------|-----|
-| Backend API | http://localhost:8080 |
-| Mailpit (email UI) | http://localhost:8025 |
-| PostgreSQL | localhost:5432 |
+| Service                | URL                    |
+| ---------------------- | ---------------------- |
+| Backend API            | http://localhost:8080  |
+| Mailpit (email UI)     | http://localhost:8025  |
+| PostgreSQL             | localhost:5432         |
 | Azurite (blob storage) | http://localhost:10000 |
 
 ## Commands
@@ -193,13 +193,13 @@ Payrexx handles payment gateway creation for TWINT (Swiss mobile payment):
 
 Key configuration (see `.env.example` for full list):
 
-| Variable | Purpose |
-|----------|---------|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `BETTER_AUTH_URL` | Next.js app URL for JWKS discovery |
-| `PAYREXX_INSTANCE` | Payrexx instance name |
-| `PAYREXX_API_SECRET` | Payrexx request signing |
-| `PAYREXX_WEBHOOK_SECRET` | Webhook verification |
-| `PUBLIC_BASE_URL` | Frontend URL for redirects |
-| `PLUNK_API_KEY` | Transactional email service |
-| `SECURITY_TRUSTED_ORIGINS` | CORS allowed origins |
+| Variable                   | Purpose                            |
+| -------------------------- | ---------------------------------- |
+| `DATABASE_URL`             | PostgreSQL connection string       |
+| `BETTER_AUTH_URL`          | Next.js app URL for JWKS discovery |
+| `PAYREXX_INSTANCE`         | Payrexx instance name              |
+| `PAYREXX_API_SECRET`       | Payrexx request signing            |
+| `PAYREXX_WEBHOOK_SECRET`   | Webhook verification               |
+| `PUBLIC_BASE_URL`          | Frontend URL for redirects         |
+| `PLUNK_API_KEY`            | Transactional email service        |
+| `SECURITY_TRUSTED_ORIGINS` | CORS allowed origins               |

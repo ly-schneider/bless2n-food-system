@@ -53,110 +53,110 @@ tags:
 
 paths:
   /auth/otp-email:
-    $ref: 'paths/auth.yaml#/otp-email'
+    $ref: "paths/auth.yaml#/otp-email"
 
   /products:
-    $ref: 'paths/products.yaml#/collection'
+    $ref: "paths/products.yaml#/collection"
   /products/{productId}:
-    $ref: 'paths/products.yaml#/item'
+    $ref: "paths/products.yaml#/item"
   /products/{productId}/image:
-    $ref: 'paths/products.yaml#/image'
+    $ref: "paths/products.yaml#/image"
   /products/{productId}/inventory:
-    $ref: 'paths/products.yaml#/inventory'
+    $ref: "paths/products.yaml#/inventory"
   /products/{productId}/inventory/history:
-    $ref: 'paths/products.yaml#/inventory-history'
+    $ref: "paths/products.yaml#/inventory-history"
 
   /categories:
-    $ref: 'paths/categories.yaml#/collection'
+    $ref: "paths/categories.yaml#/collection"
   /categories/{categoryId}:
-    $ref: 'paths/categories.yaml#/item'
+    $ref: "paths/categories.yaml#/item"
 
   /menus:
-    $ref: 'paths/menus.yaml#/collection'
+    $ref: "paths/menus.yaml#/collection"
   /menus/{menuId}:
-    $ref: 'paths/menus.yaml#/item'
+    $ref: "paths/menus.yaml#/item"
   /menus/{menuId}/slots:
-    $ref: 'paths/menus.yaml#/slots'
+    $ref: "paths/menus.yaml#/slots"
   /menus/{menuId}/slots/reorder:
-    $ref: 'paths/menus.yaml#/slots-reorder'
+    $ref: "paths/menus.yaml#/slots-reorder"
   /menus/{menuId}/slots/{slotId}:
-    $ref: 'paths/menus.yaml#/slot-item'
+    $ref: "paths/menus.yaml#/slot-item"
   /menus/{menuId}/slots/{slotId}/options:
-    $ref: 'paths/menus.yaml#/options'
+    $ref: "paths/menus.yaml#/options"
   /menus/{menuId}/slots/{slotId}/options/{optionProductId}:
-    $ref: 'paths/menus.yaml#/option-item'
+    $ref: "paths/menus.yaml#/option-item"
 
   /orders:
-    $ref: 'paths/orders.yaml#/collection'
+    $ref: "paths/orders.yaml#/collection"
   /orders/{orderId}:
-    $ref: 'paths/orders.yaml#/item'
+    $ref: "paths/orders.yaml#/item"
 
   /orders/{orderId}/payment:
-    $ref: 'paths/payments.yaml#/order-payment'
+    $ref: "paths/payments.yaml#/order-payment"
   /payments/{paymentId}:
-    $ref: 'paths/payments.yaml#/item'
+    $ref: "paths/payments.yaml#/item"
   /payments/webhooks/payrexx:
-    $ref: 'paths/payments.yaml#/payrexx-webhook'
+    $ref: "paths/payments.yaml#/payrexx-webhook"
 
   /users:
-    $ref: 'paths/users.yaml#/collection'
+    $ref: "paths/users.yaml#/collection"
   /users/{userId}:
-    $ref: 'paths/users.yaml#/item'
+    $ref: "paths/users.yaml#/item"
 
   /invites:
-    $ref: 'paths/invites.yaml#/collection'
+    $ref: "paths/invites.yaml#/collection"
   /invites/{inviteId}:
-    $ref: 'paths/invites.yaml#/item'
+    $ref: "paths/invites.yaml#/item"
   /invites/verify:
-    $ref: 'paths/invites.yaml#/verify'
+    $ref: "paths/invites.yaml#/verify"
   /invites/accept:
-    $ref: 'paths/invites.yaml#/accept'
+    $ref: "paths/invites.yaml#/accept"
 
   /stations:
-    $ref: 'paths/stations.yaml#/collection'
+    $ref: "paths/stations.yaml#/collection"
   /stations/me:
-    $ref: 'paths/stations.yaml#/me'
+    $ref: "paths/stations.yaml#/me"
   /stations/redeem:
-    $ref: 'paths/stations.yaml#/redeem'
+    $ref: "paths/stations.yaml#/redeem"
   /stations/{stationId}:
-    $ref: 'paths/stations.yaml#/item'
+    $ref: "paths/stations.yaml#/item"
   /stations/{stationId}/products:
-    $ref: 'paths/stations.yaml#/products'
+    $ref: "paths/stations.yaml#/products"
   /stations/{stationId}/products/{productId}:
-    $ref: 'paths/stations.yaml#/product-item'
+    $ref: "paths/stations.yaml#/product-item"
 
   /pos/me:
-    $ref: 'paths/pos.yaml#/me'
+    $ref: "paths/pos.yaml#/me"
   /pos/devices:
-    $ref: 'paths/pos.yaml#/devices'
+    $ref: "paths/pos.yaml#/devices"
 
   /system/status:
-    $ref: 'paths/system.yaml#/status'
+    $ref: "paths/system.yaml#/status"
 
   /settings:
-    $ref: 'paths/settings.yaml#/collection'
+    $ref: "paths/settings.yaml#/collection"
 
   /devices:
-    $ref: 'paths/devices.yaml#/collection'
+    $ref: "paths/devices.yaml#/collection"
   /devices/{deviceId}:
-    $ref: 'paths/devices.yaml#/item'
+    $ref: "paths/devices.yaml#/item"
   /devices/pairings:
-    $ref: 'paths/devices.yaml#/pairings'
+    $ref: "paths/devices.yaml#/pairings"
   /devices/pairings/{code}:
-    $ref: 'paths/devices.yaml#/pairing-item'
+    $ref: "paths/devices.yaml#/pairing-item"
 
   /jetons:
-    $ref: 'paths/jetons.yaml#/collection'
+    $ref: "paths/jetons.yaml#/collection"
   /jetons/{jetonId}:
-    $ref: 'paths/jetons.yaml#/item'
+    $ref: "paths/jetons.yaml#/item"
 
   /events:
-    $ref: 'paths/events.yaml#/collection'
+    $ref: "paths/events.yaml#/collection"
 
   /club100/people:
-    $ref: 'paths/club100.yaml#/collection'
+    $ref: "paths/club100.yaml#/collection"
   /club100/remaining/{elvantoPersonId}:
-    $ref: 'paths/club100.yaml#/remaining'
+    $ref: "paths/club100.yaml#/remaining"
 
 components:
   securitySchemes:

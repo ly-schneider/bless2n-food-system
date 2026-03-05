@@ -1,10 +1,10 @@
 package api
 
 import (
-	"encoding/json"
+	"io"
 	"net/http"
-	"strconv"
 
+	"backend/internal/payrexx"
 	"backend/internal/response"
 
 	"github.com/google/uuid"
@@ -12,60 +12,51 @@ import (
 	"go.uber.org/zap"
 )
 
-// HandlePayrexxWebhook handles incoming Payrexx payment webhooks.
-// (POST /payments/webhooks/payrexx)
 func (h *Handlers) HandlePayrexxWebhook(w http.ResponseWriter, r *http.Request) {
-	var body map[string]interface{}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_body", "Failed to read webhook payload")
+		return
+	}
+
+	event, err := payrexx.ParseWebhookEvent(body)
+	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_body", "Invalid webhook payload")
 		return
 	}
 
 	ctx := r.Context()
+	txn := &event.Transaction
 
-	// Extract transaction data from webhook.
-	transaction, _ := body["transaction"].(map[string]interface{})
-	if transaction == nil {
-		h.logger.Warn("payrexx webhook: missing transaction object")
-		writeError(w, http.StatusBadRequest, "invalid_payload", "Missing transaction data")
-		return
-	}
-
-	status, _ := transaction["status"].(string)
-	if status != "confirmed" {
-		// Acknowledge but ignore non-confirmed statuses.
+	if !txn.IsSuccessStatus() {
 		response.WriteJSON(w, http.StatusOK, map[string]string{"status": "ignored"})
 		return
 	}
 
-	// Extract reference ID (order UUID).
-	referenceID, _ := transaction["referenceId"].(string)
-	if referenceID == "" {
+	if txn.ReferenceID == "" {
 		h.logger.Warn("payrexx webhook: missing referenceId")
 		writeError(w, http.StatusBadRequest, "invalid_payload", "Missing referenceId")
 		return
 	}
 
-	orderID, err := uuid.Parse(referenceID)
+	orderID, err := uuid.Parse(txn.ReferenceID)
 	if err != nil {
-		h.logger.Warn("payrexx webhook: invalid referenceId", zap.String("referenceId", referenceID))
+		h.logger.Warn("payrexx webhook: invalid referenceId", zap.String("referenceId", txn.ReferenceID))
 		writeError(w, http.StatusBadRequest, "invalid_payload", "Invalid referenceId")
 		return
 	}
 
-	// Extract IDs for record keeping.
-	gatewayID := extractInt(body, "id")
-	transactionID := extractInt(transaction, "id")
-
-	// Extract contact email if present.
-	var contactEmail *string
-	if contact, ok := transaction["contact"].(map[string]interface{}); ok {
-		if email, ok := contact["email"].(string); ok && email != "" {
-			contactEmail = &email
-		}
+	gatewayID := 0
+	if txn.Invoice.PaymentRequestID != nil {
+		gatewayID = *txn.Invoice.PaymentRequestID
 	}
 
-	if err := h.payments.MarkOrderPaidByPayrexx(ctx, orderID, gatewayID, transactionID, contactEmail); err != nil {
+	var contactEmail *string
+	if txn.Contact.Email != "" {
+		contactEmail = &txn.Contact.Email
+	}
+
+	if err := h.payments.MarkOrderPaidByPayrexx(ctx, orderID, gatewayID, txn.ID, contactEmail); err != nil {
 		h.logger.Error("payrexx webhook: failed to mark order paid",
 			zap.Error(err),
 			zap.String("orderId", orderID.String()),
@@ -77,7 +68,7 @@ func (h *Handlers) HandlePayrexxWebhook(w http.ResponseWriter, r *http.Request) 
 	h.logger.Info("payrexx webhook: order marked as paid",
 		zap.String("orderId", orderID.String()),
 		zap.Int("gatewayId", gatewayID),
-		zap.Int("transactionId", transactionID),
+		zap.Int("transactionId", txn.ID),
 	)
 
 	response.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -98,17 +89,3 @@ func (h *Handlers) GetPayment(w http.ResponseWriter, r *http.Request, paymentId 
 	writeError(w, http.StatusNotImplemented, "not_implemented", "Payment lookup by ID will be available after service refactoring")
 }
 
-// extractInt attempts to extract an integer from a map value (handles float64 from JSON).
-func extractInt(m map[string]interface{}, key string) int {
-	switch v := m[key].(type) {
-	case float64:
-		return int(v)
-	case int:
-		return v
-	case string:
-		i, _ := strconv.Atoi(v)
-		return i
-	default:
-		return 0
-	}
-}

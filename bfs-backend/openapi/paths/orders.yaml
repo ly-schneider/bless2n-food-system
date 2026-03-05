@@ -24,11 +24,11 @@ collection:
       - name: status
         in: query
         schema:
-          $ref: '../schemas/orders.yaml#/OrderStatus'
+          $ref: "../schemas/orders.yaml#/OrderStatus"
       - name: origin
         in: query
         schema:
-          $ref: '../schemas/orders.yaml#/OrderOrigin'
+          $ref: "../schemas/orders.yaml#/OrderOrigin"
       - name: date_from
         in: query
         schema:
@@ -40,18 +40,18 @@ collection:
           type: string
           format: date-time
     responses:
-      '200':
+      "200":
         description: Order list
         content:
           application/json:
             schema:
-              $ref: '../schemas/orders.yaml#/OrderList'
-      '401':
+              $ref: "../schemas/orders.yaml#/OrderList"
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
   post:
     tags: [Orders]
@@ -85,7 +85,7 @@ collection:
       content:
         application/json:
           schema:
-            $ref: '../schemas/orders.yaml#/OrderCreate'
+            $ref: "../schemas/orders.yaml#/OrderCreate"
           examples:
             simple_items:
               summary: Simple product order
@@ -108,24 +108,24 @@ collection:
                       - slotId: "019412ab-0000-7000-8000-000000000021"
                         productId: "019412ab-0000-7000-8000-000000000006"
     responses:
-      '201':
+      "201":
         description: Order created
         content:
           application/json:
             schema:
-              $ref: '../schemas/orders.yaml#/Order'
+              $ref: "../schemas/orders.yaml#/Order"
             example:
               id: "019412ab-0000-7000-8000-000000000100"
               totalCents: 1950
               status: pending
               origin: shop
               createdAt: "2025-01-30T14:30:00Z"
-      '400':
+      "400":
         description: Validation error (invalid items, insufficient stock)
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
 item:
   parameters:
@@ -148,18 +148,18 @@ item:
       - sessionAuth: []
       - {}
     responses:
-      '200':
+      "200":
         description: Order details
         content:
           application/json:
             schema:
-              $ref: '../schemas/orders.yaml#/Order'
-      '404':
+              $ref: "../schemas/orders.yaml#/Order"
+      "404":
         description: Resource not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
   patch:
     tags: [Orders]
@@ -173,7 +173,7 @@ item:
       content:
         application/json:
           schema:
-            $ref: '../schemas/orders.yaml#/OrderStatusUpdate'
+            $ref: "../schemas/orders.yaml#/OrderStatusUpdate"
           examples:
             cancel:
               summary: Cancel order
@@ -184,33 +184,33 @@ item:
               value:
                 status: refunded
     responses:
-      '200':
+      "200":
         description: Order updated
         content:
           application/json:
             schema:
-              $ref: '../schemas/orders.yaml#/Order'
-      '400':
+              $ref: "../schemas/orders.yaml#/Order"
+      "400":
         description: Invalid status transition
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '401':
+              $ref: "../schemas/common.yaml#/Error"
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '404':
+              $ref: "../schemas/common.yaml#/Error"
+      "404":
         description: Resource not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"

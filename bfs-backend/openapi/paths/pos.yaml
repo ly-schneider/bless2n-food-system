@@ -8,18 +8,18 @@ me:
       - deviceAuth: []
     x-device-types: [POS]
     responses:
-      '200':
+      "200":
         description: POS device details
         content:
           application/json:
             schema:
-              $ref: '../schemas/pos.yaml#/POSDevice'
-      '401':
+              $ref: "../schemas/pos.yaml#/POSDevice"
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
 devices:
   get:
@@ -30,21 +30,21 @@ devices:
       - sessionAuth: []
     x-required-permissions: [pos:manage]
     responses:
-      '200':
+      "200":
         description: POS device list
         content:
           application/json:
             schema:
-              $ref: '../schemas/pos.yaml#/POSDeviceList'
-      '401':
+              $ref: "../schemas/pos.yaml#/POSDeviceList"
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"

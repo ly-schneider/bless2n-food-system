@@ -31,8 +31,8 @@ To re-provision from scratch: `just down --volumes && just up`.
 
 ## Scripts
 
-| Script | Purpose | When to run |
-|---|---|---|
-| `provision.sh` | Roles, grants, default privileges | Automatic in CD; manual for new environments |
-| `set-passwords.sh` | Generate and set random passwords | Manual, once per environment |
-| `docker-init.sql` | Combined init for local Docker | Automatic on `docker compose up` (fresh volume) |
+| Script             | Purpose                           | When to run                                     |
+| ------------------ | --------------------------------- | ----------------------------------------------- |
+| `provision.sh`     | Roles, grants, default privileges | Automatic in CD; manual for new environments    |
+| `set-passwords.sh` | Generate and set random passwords | Manual, once per environment                    |
+| `docker-init.sql`  | Combined init for local Docker    | Automatic on `docker compose up` (fresh volume) |

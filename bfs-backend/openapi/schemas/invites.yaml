@@ -14,7 +14,7 @@ Invite:
       type: string
       format: email
     status:
-      $ref: '#/InviteStatus'
+      $ref: "#/InviteStatus"
     expiresAt:
       type: string
       format: date-time
@@ -22,7 +22,7 @@ Invite:
       type: string
       description: Better Auth user ID of the inviter
     inviter:
-      $ref: 'users.yaml#/UserSummary'
+      $ref: "users.yaml#/UserSummary"
     usedAt:
       type: string
       format: date-time
@@ -46,7 +46,7 @@ InvitePublic:
       type: string
       format: email
     status:
-      $ref: '#/InviteStatus'
+      $ref: "#/InviteStatus"
     expiresAt:
       type: string
       format: date-time
@@ -86,4 +86,4 @@ InviteList:
     items:
       type: array
       items:
-        $ref: '#/Invite'
+        $ref: "#/Invite"

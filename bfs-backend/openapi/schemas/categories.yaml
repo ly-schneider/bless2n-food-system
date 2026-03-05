@@ -61,4 +61,4 @@ CategoryList:
     items:
       type: array
       items:
-        $ref: '#/Category'
+        $ref: "#/Category"

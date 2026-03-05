@@ -23,7 +23,7 @@ Club100PersonList:
     items:
       type: array
       items:
-        $ref: '#/Club100Person'
+        $ref: "#/Club100Person"
 
 Club100Remaining:
   type: object

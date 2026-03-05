@@ -21,7 +21,7 @@ User:
       type: string
       nullable: true
     role:
-      $ref: '#/UserRole'
+      $ref: "#/UserRole"
     isAnonymous:
       type: boolean
     banned:
@@ -44,7 +44,7 @@ UserUpdate:
   type: object
   properties:
     role:
-      $ref: '#/UserRole'
+      $ref: "#/UserRole"
     name:
       type: string
 
@@ -66,4 +66,4 @@ UserList:
     items:
       type: array
       items:
-        $ref: '#/User'
+        $ref: "#/User"

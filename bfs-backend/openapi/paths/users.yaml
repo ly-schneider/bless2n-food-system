@@ -11,26 +11,26 @@ collection:
         in: query
         description: Filter by role
         schema:
-          $ref: '../schemas/users.yaml#/UserRole'
+          $ref: "../schemas/users.yaml#/UserRole"
     responses:
-      '200':
+      "200":
         description: User list
         content:
           application/json:
             schema:
-              $ref: '../schemas/users.yaml#/UserList'
-      '401':
+              $ref: "../schemas/users.yaml#/UserList"
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
 item:
   parameters:
@@ -49,18 +49,18 @@ item:
       - sessionAuth: []
     x-required-permissions: [users:read]
     responses:
-      '200':
+      "200":
         description: User details
         content:
           application/json:
             schema:
-              $ref: '../schemas/users.yaml#/User'
-      '404':
+              $ref: "../schemas/users.yaml#/User"
+      "404":
         description: Resource not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
   patch:
     tags: [Users]
@@ -75,7 +75,7 @@ item:
       content:
         application/json:
           schema:
-            $ref: '../schemas/users.yaml#/UserUpdate'
+            $ref: "../schemas/users.yaml#/UserUpdate"
           examples:
             promote_to_admin:
               summary: Promote to admin
@@ -86,30 +86,30 @@ item:
               value:
                 role: customer
     responses:
-      '200':
+      "200":
         description: User updated
         content:
           application/json:
             schema:
-              $ref: '../schemas/users.yaml#/User'
-      '401':
+              $ref: "../schemas/users.yaml#/User"
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '404':
+              $ref: "../schemas/common.yaml#/Error"
+      "404":
         description: Resource not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
   delete:
     tags: [Users]
@@ -123,23 +123,23 @@ item:
       - sessionAuth: []
     x-required-permissions: [users:role-set]
     responses:
-      '204':
+      "204":
         description: User deleted
-      '401':
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '404':
+              $ref: "../schemas/common.yaml#/Error"
+      "404":
         description: Resource not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"

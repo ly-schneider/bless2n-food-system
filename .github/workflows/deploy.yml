@@ -178,7 +178,14 @@ jobs:
     name: Run Migrations
     runs-on: ubuntu-latest
     environment: ${{ needs.resolve-context.outputs.target_env }}
-    needs: [resolve-context, build-frontend, build-backend, build-docs, promote-images]
+    needs:
+      [
+        resolve-context,
+        build-frontend,
+        build-backend,
+        build-docs,
+        promote-images,
+      ]
     if: |
       always() && !cancelled() &&
       (needs.build-frontend.result == 'success' || needs.build-frontend.result == 'skipped') &&

@@ -8,12 +8,12 @@ collection:
       - sessionAuth: []
     x-required-permissions: [pos:manage]
     responses:
-      '200':
+      "200":
         description: Jeton list
         content:
           application/json:
             schema:
-              $ref: '../schemas/jetons.yaml#/JetonList'
+              $ref: "../schemas/jetons.yaml#/JetonList"
             example:
               items:
                 - id: "019412ab-0000-7000-8000-000000000501"
@@ -26,18 +26,18 @@ collection:
                   color: "#3B82F6"
                   createdAt: "2025-01-15T10:00:00Z"
                   updatedAt: "2025-01-15T10:00:00Z"
-      '401':
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
   post:
     tags: [Jetons]
@@ -51,7 +51,7 @@ collection:
       content:
         application/json:
           schema:
-            $ref: '../schemas/jetons.yaml#/JetonCreate'
+            $ref: "../schemas/jetons.yaml#/JetonCreate"
           examples:
             with_color:
               summary: Custom hex color
@@ -59,24 +59,24 @@ collection:
                 name: "Special"
                 color: "#FF5733"
     responses:
-      '201':
+      "201":
         description: Jeton created
         content:
           application/json:
             schema:
-              $ref: '../schemas/jetons.yaml#/Jeton'
-      '401':
+              $ref: "../schemas/jetons.yaml#/Jeton"
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
 item:
   parameters:
@@ -99,7 +99,7 @@ item:
       content:
         application/json:
           schema:
-            $ref: '../schemas/jetons.yaml#/JetonUpdate'
+            $ref: "../schemas/jetons.yaml#/JetonUpdate"
           examples:
             rename:
               summary: Rename jeton
@@ -110,30 +110,30 @@ item:
               value:
                 color: "#22C55E"
     responses:
-      '200':
+      "200":
         description: Jeton updated
         content:
           application/json:
             schema:
-              $ref: '../schemas/jetons.yaml#/Jeton'
-      '401':
+              $ref: "../schemas/jetons.yaml#/Jeton"
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '404':
+              $ref: "../schemas/common.yaml#/Error"
+      "404":
         description: Resource not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
   delete:
     tags: [Jetons]
@@ -146,29 +146,29 @@ item:
       - sessionAuth: []
     x-required-permissions: [pos:manage]
     responses:
-      '204':
+      "204":
         description: Jeton deleted
-      '401':
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '404':
+              $ref: "../schemas/common.yaml#/Error"
+      "404":
         description: Resource not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '409':
+              $ref: "../schemas/common.yaml#/Error"
+      "409":
         description: Jeton is still assigned to products
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"

@@ -74,12 +74,12 @@ bfs-cloud/
 
 Both environments support multi-signal scaling:
 
-| Environment | App | Replicas | HTTP Threshold | CPU | Memory |
-|-------------|-----|----------|---------------|-----|--------|
-| **Production** | Frontend | 0–20 | 30 concurrent | 70% | — |
-| **Production** | Backend | 0–20 | 50 concurrent | 80% | 85% |
-| **Staging** | Frontend | 0–20 | 20 concurrent | 75% | — |
-| **Staging** | Backend | 0–20 | 40 concurrent | 80% | — |
+| Environment    | App      | Replicas | HTTP Threshold | CPU | Memory |
+| -------------- | -------- | -------- | -------------- | --- | ------ |
+| **Production** | Frontend | 0–20     | 30 concurrent  | 70% | —      |
+| **Production** | Backend  | 0–20     | 50 concurrent  | 80% | 85%    |
+| **Staging**    | Frontend | 0–20     | 20 concurrent  | 75% | —      |
+| **Staging**    | Backend  | 0–20     | 40 concurrent  | 80% | —      |
 
 ## Usage
 
@@ -100,13 +100,13 @@ terraform apply
 
 ### Terraform Variables
 
-| Variable | Type | Purpose |
-|----------|------|---------|
-| `enable_acr` | bool | Create ACR and grant AcrPull to identities |
-| `acr_name` | string | ACR name (images resolve to `<name>.azurecr.io`) |
-| `image_tag` | string | Branch/version tag to deploy |
-| `frontend_digest` / `backend_digest` | string | Immutable image digest (preferred in CI) |
-| `revision_suffix` | string | Force new revision (e.g., commit SHA) |
+| Variable                             | Type   | Purpose                                          |
+| ------------------------------------ | ------ | ------------------------------------------------ |
+| `enable_acr`                         | bool   | Create ACR and grant AcrPull to identities       |
+| `acr_name`                           | string | ACR name (images resolve to `<name>.azurecr.io`) |
+| `image_tag`                          | string | Branch/version tag to deploy                     |
+| `frontend_digest` / `backend_digest` | string | Immutable image digest (preferred in CI)         |
+| `revision_suffix`                    | string | Force new revision (e.g., commit SHA)            |
 
 ### App URLs via Key Vault
 

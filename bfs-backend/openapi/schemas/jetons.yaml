@@ -62,4 +62,4 @@ JetonList:
     items:
       type: array
       items:
-        $ref: '#/Jeton'
+        $ref: "#/Jeton"

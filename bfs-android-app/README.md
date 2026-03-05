@@ -16,17 +16,17 @@ The app is a **Kotlin + Jetpack Compose** application that wraps the web-based P
 
 ## Tech Stack
 
-| Category | Technology |
-|----------|-----------|
-| Language | Kotlin |
-| UI | Jetpack Compose (Material 3) |
-| Payments | SumUp Merchant SDK 6.0 |
+| Category     | Technology                            |
+| ------------ | ------------------------------------- |
+| Language     | Kotlin                                |
+| UI           | Jetpack Compose (Material 3)          |
+| Payments     | SumUp Merchant SDK 6.0                |
 | QR / Barcode | ZXing Core 3.5 + Android Embedded 4.3 |
-| Printing | ESCPOS-ThermalPrinter-Android 3.4 |
-| WebView | AndroidX WebKit 1.15 |
-| Min SDK | 26 (Android 8.0) |
-| Target SDK | 35 |
-| Compile SDK | 36 |
+| Printing     | ESCPOS-ThermalPrinter-Android 3.4     |
+| WebView      | AndroidX WebKit 1.15                  |
+| Min SDK      | 26 (Android 8.0)                      |
+| Target SDK   | 35                                    |
+| Compile SDK  | 36                                    |
 
 ## Project Structure
 
@@ -51,12 +51,12 @@ bfs-android-app/
 
 ## Build Variants
 
-| Variant | App Name | POS URL | Debuggable |
-|---------|----------|---------|------------|
-| **debug** | BlessThun Food (Debug) | http://localhost:3000/pos | Yes |
-| **dev** | BlessThun Food (Dev) | http://localhost:3000/pos | Yes |
-| **staging** | BlessThun Food (Staging) | Configured via build | No |
-| **release** | BlessThun Food | Configured via `POS_URL` | No |
+| Variant     | App Name                 | POS URL                   | Debuggable |
+| ----------- | ------------------------ | ------------------------- | ---------- |
+| **debug**   | BlessThun Food (Debug)   | http://localhost:3000/pos | Yes        |
+| **dev**     | BlessThun Food (Dev)     | http://localhost:3000/pos | Yes        |
+| **staging** | BlessThun Food (Staging) | Configured via build      | No         |
+| **release** | BlessThun Food           | Configured via `POS_URL`  | No         |
 
 ## Prerequisites
 
@@ -98,14 +98,14 @@ Version Code: 20102  (major×10000 + minor×100 + patch)
 
 Release builds require a PKCS12 keystore configured via environment variables:
 
-| Variable | Purpose |
-|----------|---------|
-| `BFS_UPLOAD_STORE_FILE` | Path to keystore file |
-| `BFS_UPLOAD_STORE_PASSWORD` | Keystore password |
-| `BFS_UPLOAD_KEY_ALIAS` | Key alias |
-| `BFS_UPLOAD_KEY_PASSWORD` | Key password |
-| `SUMUP_AFFILIATE_KEY` | SumUp affiliate key (required for release) |
-| `POS_URL` | Production POS URL (required for release) |
+| Variable                    | Purpose                                    |
+| --------------------------- | ------------------------------------------ |
+| `BFS_UPLOAD_STORE_FILE`     | Path to keystore file                      |
+| `BFS_UPLOAD_STORE_PASSWORD` | Keystore password                          |
+| `BFS_UPLOAD_KEY_ALIAS`      | Key alias                                  |
+| `BFS_UPLOAD_KEY_PASSWORD`   | Key password                               |
+| `SUMUP_AFFILIATE_KEY`       | SumUp affiliate key (required for release) |
+| `POS_URL`                   | Production POS URL (required for release)  |
 
 ### Generating a Keystore
 

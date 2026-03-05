@@ -16,18 +16,18 @@ order-payment:
       - deviceAuth: []
       - {}
     responses:
-      '200':
+      "200":
         description: Payment details
         content:
           application/json:
             schema:
-              $ref: '../schemas/payments.yaml#/Payment'
-      '404':
+              $ref: "../schemas/payments.yaml#/Payment"
+      "404":
         description: Resource not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
   post:
     tags: [Payments]
@@ -62,7 +62,7 @@ order-payment:
       content:
         application/json:
           schema:
-            $ref: '../schemas/payments.yaml#/PaymentCreate'
+            $ref: "../schemas/payments.yaml#/PaymentCreate"
           examples:
             pos_cash:
               summary: POS cash payment
@@ -91,12 +91,12 @@ order-payment:
                 channel: web
                 returnUrl: "https://shop.example.com/order/123/complete"
     responses:
-      '201':
+      "201":
         description: Payment created/completed
         content:
           application/json:
             schema:
-              $ref: '../schemas/payments.yaml#/Payment'
+              $ref: "../schemas/payments.yaml#/Payment"
             examples:
               pos_cash_result:
                 summary: Immediate completion (POS cash)
@@ -134,18 +134,18 @@ order-payment:
                   amountCents: 1250
                   gatewayId: "12345"
                   redirectUrl: "https://payrexx.com/pay/abc123"
-      '400':
+      "400":
         description: Invalid payment request
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '409':
+              $ref: "../schemas/common.yaml#/Error"
+      "409":
         description: Payment already exists for this order
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
 item:
   parameters:
@@ -164,18 +164,18 @@ item:
       - sessionAuth: []
       - {}
     responses:
-      '200':
+      "200":
         description: Payment details
         content:
           application/json:
             schema:
-              $ref: '../schemas/payments.yaml#/Payment'
-      '404':
+              $ref: "../schemas/payments.yaml#/Payment"
+      "404":
         description: Resource not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
 payrexx-webhook:
   post:
@@ -197,7 +197,7 @@ payrexx-webhook:
             type: object
             description: Payrexx webhook payload (proprietary format)
     responses:
-      '200':
+      "200":
         description: Webhook processed
-      '400':
+      "400":
         description: Invalid signature or payload

@@ -36,9 +36,9 @@ Device:
       description: Unique device fingerprint
       x-admin-only: true
     type:
-      $ref: '#/DeviceType'
+      $ref: "#/DeviceType"
     status:
-      $ref: '#/DeviceStatus'
+      $ref: "#/DeviceStatus"
     decidedBy:
       type: string
       nullable: true
@@ -65,7 +65,7 @@ DeviceList:
     items:
       type: array
       items:
-        $ref: '#/Device'
+        $ref: "#/Device"
 
 DevicePairingCreate:
   type: object
@@ -85,7 +85,7 @@ DevicePairingCreate:
       maxLength: 100
       description: Unique device fingerprint for deduplication
     type:
-      $ref: '#/DeviceType'
+      $ref: "#/DeviceType"
 
 DevicePairing:
   type: object
@@ -109,7 +109,7 @@ DevicePairingStatus:
       type: string
       description: Device binding token (only present when status=completed)
     device:
-      $ref: '#/Device'
+      $ref: "#/Device"
       description: Device details (only present when status=completed)
 
 DevicePairingComplete:

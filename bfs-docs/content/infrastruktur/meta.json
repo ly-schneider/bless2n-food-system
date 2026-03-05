@@ -1,9 +1,4 @@
 {
   "title": "Infrastruktur",
-  "pages": [
-    "azure-ressourcen",
-    "kostenmanagement",
-    "sicherheit",
-    "runbooks"
-  ]
+  "pages": ["azure-ressourcen", "kostenmanagement", "sicherheit", "runbooks"]
 }

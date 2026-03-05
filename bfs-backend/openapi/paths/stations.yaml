@@ -11,26 +11,26 @@ collection:
       - name: status
         in: query
         schema:
-          $ref: '../schemas/devices.yaml#/DeviceStatus'
+          $ref: "../schemas/devices.yaml#/DeviceStatus"
     responses:
-      '200':
+      "200":
         description: Station list
         content:
           application/json:
             schema:
-              $ref: '../schemas/stations.yaml#/StationList'
-      '401':
+              $ref: "../schemas/stations.yaml#/StationList"
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
 me:
   get:
@@ -42,18 +42,18 @@ me:
       - deviceAuth: []
     x-device-types: [STATION]
     responses:
-      '200':
+      "200":
         description: Station details with assigned products
         content:
           application/json:
             schema:
-              $ref: '../schemas/stations.yaml#/Station'
-      '401':
+              $ref: "../schemas/stations.yaml#/Station"
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
 redeem:
   post:
@@ -72,16 +72,16 @@ redeem:
       content:
         application/json:
           schema:
-            $ref: '../schemas/stations.yaml#/RedemptionCreate'
+            $ref: "../schemas/stations.yaml#/RedemptionCreate"
           example:
             orderId: "019412ab-0000-7000-8000-000000000002"
     responses:
-      '201':
+      "201":
         description: Items redeemed
         content:
           application/json:
             schema:
-              $ref: '../schemas/stations.yaml#/RedemptionResult'
+              $ref: "../schemas/stations.yaml#/RedemptionResult"
             example:
               matched: 3
               redeemed: 3
@@ -94,13 +94,13 @@ redeem:
                   title: "Pommes"
                   quantity: 1
                   redeemedAt: "2025-01-30T14:35:00Z"
-      '400':
+      "400":
         description: Invalid QR code or already fully redeemed
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '429':
+              $ref: "../schemas/common.yaml#/Error"
+      "429":
         description: Rate limit exceeded
         headers:
           Retry-After:
@@ -109,7 +109,7 @@ redeem:
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
 item:
   parameters:
@@ -128,18 +128,18 @@ item:
       - sessionAuth: []
     x-required-permissions: [stations:manage]
     responses:
-      '200':
+      "200":
         description: Station details
         content:
           application/json:
             schema:
-              $ref: '../schemas/stations.yaml#/Station'
-      '404':
+              $ref: "../schemas/stations.yaml#/Station"
+      "404":
         description: Resource not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
   delete:
     tags: [Stations]
@@ -150,26 +150,26 @@ item:
       - sessionAuth: []
     x-required-permissions: [stations:manage]
     responses:
-      '204':
+      "204":
         description: Station revoked
-      '401':
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '404':
+              $ref: "../schemas/common.yaml#/Error"
+      "404":
         description: Resource not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
 products:
   parameters:
@@ -189,18 +189,18 @@ products:
       - sessionAuth: []
     x-required-permissions: [stations:manage]
     responses:
-      '200':
+      "200":
         description: Product assignments
         content:
           application/json:
             schema:
-              $ref: '../schemas/stations.yaml#/StationProductList'
-      '404':
+              $ref: "../schemas/stations.yaml#/StationProductList"
+      "404":
         description: Resource not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
   put:
     tags: [Stations]
@@ -215,37 +215,37 @@ products:
       content:
         application/json:
           schema:
-            $ref: '../schemas/stations.yaml#/StationProductAssignment'
+            $ref: "../schemas/stations.yaml#/StationProductAssignment"
           example:
             productIds:
               - "019412ab-0000-7000-8000-000000000001"
               - "019412ab-0000-7000-8000-000000000002"
               - "019412ab-0000-7000-8000-000000000003"
     responses:
-      '200':
+      "200":
         description: Products assigned
         content:
           application/json:
             schema:
-              $ref: '../schemas/stations.yaml#/StationProductList'
-      '401':
+              $ref: "../schemas/stations.yaml#/StationProductList"
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '404':
+              $ref: "../schemas/common.yaml#/Error"
+      "404":
         description: Resource not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
 product-item:
   parameters:
@@ -270,23 +270,23 @@ product-item:
       - sessionAuth: []
     x-required-permissions: [stations:manage]
     responses:
-      '204':
+      "204":
         description: Product removed
-      '401':
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '404':
+              $ref: "../schemas/common.yaml#/Error"
+      "404":
         description: Resource not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"

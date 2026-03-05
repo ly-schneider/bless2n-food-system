@@ -11,10 +11,10 @@ Die Bereitstellung des Bless2n Food Systems erfolgt automatisch über GitHub Act
 
 # Umgebungen
 
-| Umgebung | URL | Branch |
-|---|---|---|
-| Staging | `staging.food.blessthun.ch` | `staging` |
-| Production | `food.blessthun.ch` | `production` |
+| Umgebung   | URL                         | Branch       |
+| ---------- | --------------------------- | ------------ |
+| Staging    | `staging.food.blessthun.ch` | `staging`    |
+| Production | `food.blessthun.ch`         | `production` |
 
 Staging dient zum Testen neuer Funktionen. Production ist die Live-Umgebung für Endbenutzer.
 
@@ -42,6 +42,7 @@ Flyway führt ausstehende Schema-Migrationen gegen die Zieldatenbank aus.
 ### Terraform-Deployment
 
 Terraform aktualisiert die Container Apps mit den neuen Image-Versionen.
+
 </Steps>
 
 ---
@@ -55,10 +56,10 @@ Terraform aktualisiert die Container Apps mit den neuen Image-Versionen.
 
 # Bei Problemen
 
-| Situation | Massnahme |
-|---|---|
-| Seite nicht erreichbar | Prüfen, ob Container Apps laufen (Azure Portal oder Logs). |
+| Situation              | Massnahme                                                                       |
+| ---------------------- | ------------------------------------------------------------------------------- |
+| Seite nicht erreichbar | Prüfen, ob Container Apps laufen (Azure Portal oder Logs).                      |
 | Fehler nach Deployment | Letzten Commit prüfen. Ggf. Rollback durch Redeployment einer früheren Version. |
-| Datenbank-Fehler | Flyway-Migrationen prüfen. Verbindung zur Datenbank sicherstellen. |
+| Datenbank-Fehler       | Flyway-Migrationen prüfen. Verbindung zur Datenbank sicherstellen.              |
 
 Für detaillierte Anleitungen siehe die [Runbooks](/infrastruktur/runbooks).

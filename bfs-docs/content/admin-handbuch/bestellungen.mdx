@@ -13,15 +13,15 @@ Unter Bestellungen werden alle Bestellungen im System aufgelistet, unabhängig d
 
 Die Tabelle zeigt:
 
-| Spalte | Beschreibung |
-|---|---|
-| ID | Eindeutige Bestell-ID |
-| Status | `pending`, `paid`, `cancelled`, `refunded` |
-| Herkunft | `shop` (Online), `pos` (Point of Sale), `station` |
-| Betrag | Gesamtbetrag in CHF |
-| Kontakt | E-Mail des Kunden (falls vorhanden) |
-| Zahlungsmethode | Payrexx, Bargeld, Karte |
-| Erstellt am | Zeitpunkt der Bestellung |
+| Spalte          | Beschreibung                                      |
+| --------------- | ------------------------------------------------- |
+| ID              | Eindeutige Bestell-ID                             |
+| Status          | `pending`, `paid`, `cancelled`, `refunded`        |
+| Herkunft        | `shop` (Online), `pos` (Point of Sale), `station` |
+| Betrag          | Gesamtbetrag in CHF                               |
+| Kontakt         | E-Mail des Kunden (falls vorhanden)               |
+| Zahlungsmethode | Payrexx, Bargeld, Karte                           |
+| Erstellt am     | Zeitpunkt der Bestellung                          |
 
 ---
 
@@ -38,11 +38,11 @@ Ein Klick auf eine Bestellung öffnet die Detailansicht:
 
 # Statusverlauf
 
-| Status | Bedeutung |
-|---|---|
-| `pending` | Bestellung erstellt, Zahlung steht aus |
-| `paid` | Zahlung erfolgreich, Bestellung bereit zur Ausgabe |
-| `cancelled` | Bestellung wurde storniert |
-| `refunded` | Betrag wurde zurückerstattet |
+| Status      | Bedeutung                                          |
+| ----------- | -------------------------------------------------- |
+| `pending`   | Bestellung erstellt, Zahlung steht aus             |
+| `paid`      | Zahlung erfolgreich, Bestellung bereit zur Ausgabe |
+| `cancelled` | Bestellung wurde storniert                         |
+| `refunded`  | Betrag wurde zurückerstattet                       |
 
 Statusänderungen werden über die Admin-API gesteuert.

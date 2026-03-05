@@ -21,12 +21,12 @@ collection:
           type: string
           format: uuid
     responses:
-      '200':
+      "200":
         description: Product list
         content:
           application/json:
             schema:
-              $ref: '../schemas/products.yaml#/ProductList'
+              $ref: "../schemas/products.yaml#/ProductList"
 
   post:
     tags: [Products]
@@ -40,7 +40,7 @@ collection:
       content:
         application/json:
           schema:
-            $ref: '../schemas/products.yaml#/ProductCreate'
+            $ref: "../schemas/products.yaml#/ProductCreate"
           examples:
             simple:
               summary: Simple product
@@ -57,24 +57,24 @@ collection:
                 name: "Lunch Menu"
                 priceCents: 1200
     responses:
-      '201':
+      "201":
         description: Product created
         content:
           application/json:
             schema:
-              $ref: '../schemas/products.yaml#/Product'
-      '401':
+              $ref: "../schemas/products.yaml#/Product"
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
 item:
   parameters:
@@ -93,18 +93,18 @@ item:
       - {}
       - sessionAuth: []
     responses:
-      '200':
+      "200":
         description: Product details
         content:
           application/json:
             schema:
-              $ref: '../schemas/products.yaml#/Product'
-      '404':
+              $ref: "../schemas/products.yaml#/Product"
+      "404":
         description: Resource not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
   patch:
     tags: [Products]
@@ -118,7 +118,7 @@ item:
       content:
         application/json:
           schema:
-            $ref: '../schemas/products.yaml#/ProductUpdate'
+            $ref: "../schemas/products.yaml#/ProductUpdate"
           examples:
             update_price:
               summary: Update price
@@ -133,30 +133,30 @@ item:
               value:
                 jetonId: "019412ab-0000-7000-8000-000000000099"
     responses:
-      '200':
+      "200":
         description: Product updated
         content:
           application/json:
             schema:
-              $ref: '../schemas/products.yaml#/Product'
-      '401':
+              $ref: "../schemas/products.yaml#/Product"
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '404':
+              $ref: "../schemas/common.yaml#/Error"
+      "404":
         description: Resource not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
   delete:
     tags: [Products]
@@ -166,26 +166,26 @@ item:
       - sessionAuth: []
     x-required-permissions: [products:write]
     responses:
-      '204':
+      "204":
         description: Product deleted
-      '401':
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '404':
+              $ref: "../schemas/common.yaml#/Error"
+      "404":
         description: Resource not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
 image:
   parameters:
@@ -215,24 +215,24 @@ image:
                 type: string
                 format: binary
     responses:
-      '200':
+      "200":
         description: Image uploaded
         content:
           application/json:
             schema:
-              $ref: '../schemas/products.yaml#/ProductImageResponse'
-      '400':
+              $ref: "../schemas/products.yaml#/ProductImageResponse"
+      "400":
         description: Invalid file
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '404':
+              $ref: "../schemas/common.yaml#/Error"
+      "404":
         description: Product not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
   delete:
     tags: [Products]
@@ -242,14 +242,14 @@ image:
       - sessionAuth: []
     x-required-permissions: [products:write]
     responses:
-      '204':
+      "204":
         description: Image deleted
-      '404':
+      "404":
         description: Product not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
 inventory-history:
   parameters:
@@ -280,30 +280,30 @@ inventory-history:
           type: integer
           default: 0
     responses:
-      '200':
+      "200":
         description: Inventory ledger entries
         content:
           application/json:
             schema:
-              $ref: '../schemas/products.yaml#/InventoryLedgerList'
-      '401':
+              $ref: "../schemas/products.yaml#/InventoryLedgerList"
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '404':
+              $ref: "../schemas/common.yaml#/Error"
+      "404":
         description: Product not found
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
 inventory:
   parameters:
@@ -322,28 +322,28 @@ inventory:
       - sessionAuth: []
     x-required-permissions: [products:write]
     responses:
-      '200':
+      "200":
         description: Current inventory level
         content:
           application/json:
             schema:
-              $ref: '../schemas/products.yaml#/Inventory'
+              $ref: "../schemas/products.yaml#/Inventory"
             example:
               productId: "019412ab-0000-7000-8000-000000000001"
               quantity: 42
               updatedAt: "2025-01-30T10:00:00Z"
-      '401':
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
   patch:
     tags: [Products]
@@ -358,7 +358,7 @@ inventory:
       content:
         application/json:
           schema:
-            $ref: '../schemas/products.yaml#/InventoryAdjustment'
+            $ref: "../schemas/products.yaml#/InventoryAdjustment"
           examples:
             restock:
               summary: Restock 50 units
@@ -371,21 +371,21 @@ inventory:
                 delta: -5
                 reason: correction
     responses:
-      '200':
+      "200":
         description: Inventory adjusted
         content:
           application/json:
             schema:
-              $ref: '../schemas/products.yaml#/Inventory'
-      '401':
+              $ref: "../schemas/products.yaml#/Inventory"
+      "401":
         description: Authentication required
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
-      '403':
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
         description: Insufficient permissions
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"

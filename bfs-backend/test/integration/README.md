@@ -52,9 +52,10 @@ The integration tests are organized by service:
 ## Test Database Setup
 
 Tests automatically:
+
 1. Create the `app` schema if it doesn't exist
 2. Run Ent auto-migration (creates tables, enums, indexes)
-4. Truncate tables between test runs
+3. Truncate tables between test runs
 
 Each test file uses `tdb.Cleanup(t)` to ensure a clean state.
 

@@ -23,6 +23,7 @@ Im Payrexx-Dashboard unter Integrationen > API ein API-Secret erstellen.
 ### Webhook-Secret generieren
 
 Unter Integrationen > Webhooks ein Webhook-Secret erstellen und die Webhook-URL hinterlegen: `https://<deine-domain>/api/v1/payments/webhooks/payrexx`.
+
 </Steps>
 
 ---
@@ -31,10 +32,10 @@ Unter Integrationen > Webhooks ein Webhook-Secret erstellen und die Webhook-URL 
 
 Drei Umgebungsvariablen müssen im Backend gesetzt werden:
 
-| Variable | Beschreibung |
-|---|---|
-| `PAYREXX_INSTANCE` | Instanzname des Payrexx-Kontos |
-| `PAYREXX_API_SECRET` | API-Secret für die Gateway-Erstellung |
+| Variable                 | Beschreibung                                       |
+| ------------------------ | -------------------------------------------------- |
+| `PAYREXX_INSTANCE`       | Instanzname des Payrexx-Kontos                     |
+| `PAYREXX_API_SECRET`     | API-Secret für die Gateway-Erstellung              |
 | `PAYREXX_WEBHOOK_SECRET` | Geheimnis zur Verifizierung von Webhook-Signaturen |
 
 In der Cloud-Umgebung werden diese Werte im Key Vault hinterlegt und als Secret Refs an die Container Apps übergeben.
@@ -59,6 +60,7 @@ Bei TWINT scannt der Kunde den angezeigten QR-Code mit der TWINT-App und bestät
 ### Bestätigung
 
 Payrexx sendet einen Webhook an das Backend. Die Bestellung wird auf `paid` gesetzt. Der Kunde wird zur Bestätigungsseite weitergeleitet.
+
 </Steps>
 
 ---
@@ -74,9 +76,9 @@ Payrexx sendet einen Webhook an das Backend. Die Bestellung wird auf `paid` gese
 
 # Fehlerbehebung
 
-| Problem | Lösung |
-|---|---|
-| Webhook kommt nicht an | Webhook-URL korrekt? HTTPS erforderlich. `PAYREXX_WEBHOOK_SECRET` stimmt mit Payrexx-Dashboard überein? |
-| Signatur-Fehler | `PAYREXX_WEBHOOK_SECRET` prüfen, muss exakt übereinstimmen. |
-| Gateway-Erstellung schlägt fehl | `PAYREXX_INSTANCE` und `PAYREXX_API_SECRET` prüfen. |
-| Zahlung erfolgreich, aber Bestellung noch `pending` | Webhook-Zustellung prüfen. Der Status wird erst nach Webhook-Empfang aktualisiert. |
+| Problem                                             | Lösung                                                                                                  |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Webhook kommt nicht an                              | Webhook-URL korrekt? HTTPS erforderlich. `PAYREXX_WEBHOOK_SECRET` stimmt mit Payrexx-Dashboard überein? |
+| Signatur-Fehler                                     | `PAYREXX_WEBHOOK_SECRET` prüfen, muss exakt übereinstimmen.                                             |
+| Gateway-Erstellung schlägt fehl                     | `PAYREXX_INSTANCE` und `PAYREXX_API_SECRET` prüfen.                                                     |
+| Zahlung erfolgreich, aber Bestellung noch `pending` | Webhook-Zustellung prüfen. Der Status wird erst nach Webhook-Empfang aktualisiert.                      |

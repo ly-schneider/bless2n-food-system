@@ -15,7 +15,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./db/provisioning/docker-init.sql:/docker-entrypoint-initdb.d/01-provision.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-bless2n_food_system}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-bless2n_food_system}",
+        ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -35,8 +39,8 @@ services:
     image: axllent/mailpit:latest
     restart: unless-stopped
     ports:
-      - "8025:8025"   # Web UI
-      - "1025:1025"   # SMTP
+      - "8025:8025" # Web UI
+      - "1025:1025" # SMTP
 
 volumes:
   postgres_data:

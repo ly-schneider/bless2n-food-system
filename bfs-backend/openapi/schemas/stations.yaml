@@ -16,7 +16,7 @@ Station:
       type: string
       nullable: true
     status:
-      $ref: 'devices.yaml#/DeviceStatus'
+      $ref: "devices.yaml#/DeviceStatus"
     decidedBy:
       type: string
       nullable: true
@@ -33,7 +33,7 @@ Station:
     products:
       type: array
       items:
-        $ref: '#/StationProduct'
+        $ref: "#/StationProduct"
 
 StationProduct:
   type: object
@@ -57,7 +57,7 @@ StationList:
     items:
       type: array
       items:
-        $ref: '#/Station'
+        $ref: "#/Station"
 
 StationProductList:
   type: object
@@ -66,7 +66,7 @@ StationProductList:
     items:
       type: array
       items:
-        $ref: '#/StationProduct'
+        $ref: "#/StationProduct"
 
 StationProductAssignment:
   type: object

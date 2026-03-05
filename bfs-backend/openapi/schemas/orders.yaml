@@ -43,9 +43,9 @@ Order:
       format: int64
       description: Total in cents (CHF)
     status:
-      $ref: '#/OrderStatus'
+      $ref: "#/OrderStatus"
     origin:
-      $ref: '#/OrderOrigin'
+      $ref: "#/OrderOrigin"
     createdAt:
       type: string
       format: date-time
@@ -69,11 +69,11 @@ Order:
     lines:
       type: array
       items:
-        $ref: '#/OrderLine'
+        $ref: "#/OrderLine"
     payments:
       type: array
       items:
-        $ref: '#/OrderPaymentSummary'
+        $ref: "#/OrderPaymentSummary"
 
 OrderLine:
   type: object
@@ -86,7 +86,7 @@ OrderLine:
       type: string
       format: uuid
     lineType:
-      $ref: '#/OrderItemType'
+      $ref: "#/OrderItemType"
     productId:
       type: string
       format: uuid
@@ -120,10 +120,10 @@ OrderLine:
     childLines:
       type: array
       items:
-        $ref: '#/OrderLine'
+        $ref: "#/OrderLine"
       description: Component lines (for bundle lines)
     redemption:
-      $ref: '#/OrderLineRedemption'
+      $ref: "#/OrderLineRedemption"
       nullable: true
 
 OrderLineRedemption:
@@ -197,7 +197,7 @@ OrderStatusUpdate:
   required: [status]
   properties:
     status:
-      $ref: '#/OrderStatus'
+      $ref: "#/OrderStatus"
 
 OrderList:
   type: object
@@ -206,7 +206,7 @@ OrderList:
     items:
       type: array
       items:
-        $ref: '#/Order'
+        $ref: "#/Order"
 
 PickupQR:
   type: object

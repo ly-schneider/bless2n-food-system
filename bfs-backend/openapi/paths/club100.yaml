@@ -8,18 +8,18 @@ collection:
       - deviceAuth: []
       - sessionAuth: []
     responses:
-      '200':
+      "200":
         description: List of 100 Club members
         content:
           application/json:
             schema:
-              $ref: '../schemas/club100.yaml#/Club100PersonList'
-      '500':
+              $ref: "../schemas/club100.yaml#/Club100PersonList"
+      "500":
         description: Server error
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"
 
 remaining:
   parameters:
@@ -38,15 +38,15 @@ remaining:
       - deviceAuth: []
       - sessionAuth: []
     responses:
-      '200':
+      "200":
         description: Remaining redemptions
         content:
           application/json:
             schema:
-              $ref: '../schemas/club100.yaml#/Club100Remaining'
-      '500':
+              $ref: "../schemas/club100.yaml#/Club100Remaining"
+      "500":
         description: Server error
         content:
           application/json:
             schema:
-              $ref: '../schemas/common.yaml#/Error'
+              $ref: "../schemas/common.yaml#/Error"

@@ -4,14 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment to build for'
+        description: "Environment to build for"
         required: true
         type: choice
         options:
           - staging
           - production
       version:
-        description: 'Version to release (e.g., 1.0.0)'
+        description: "Version to release (e.g., 1.0.0)"
         required: true
         type: string
 

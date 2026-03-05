@@ -10,7 +10,7 @@ Settings:
       default: true
       description: Whether the food system is active for customers
     posMode:
-      $ref: 'pos.yaml#/PosFulfillmentMode'
+      $ref: "pos.yaml#/PosFulfillmentMode"
     missingJetons:
       type: integer
       description: Count of active products without jeton (when mode is JETON)
@@ -34,7 +34,7 @@ SettingsUpdate:
     systemEnabled:
       type: boolean
     posMode:
-      $ref: 'pos.yaml#/PosFulfillmentMode'
+      $ref: "pos.yaml#/PosFulfillmentMode"
     club100FreeProductIds:
       type: array
       items:

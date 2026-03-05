@@ -8,23 +8,23 @@ Built on [Fumadocs](https://fumadocs.dev), a documentation framework for Next.js
 
 ### Content Sections
 
-| Section | Path | Audience |
-|---------|------|----------|
-| Admin-Handbuch | `content/admin-handbuch/` | System administrators (German) |
-| Developer Guide | `content/developer-guide/` | Developers |
-| Infrastruktur | `content/infrastruktur/` | DevOps / Infrastructure (German) |
+| Section         | Path                       | Audience                         |
+| --------------- | -------------------------- | -------------------------------- |
+| Admin-Handbuch  | `content/admin-handbuch/`  | System administrators (German)   |
+| Developer Guide | `content/developer-guide/` | Developers                       |
+| Infrastruktur   | `content/infrastruktur/`   | DevOps / Infrastructure (German) |
 
 ## Tech Stack
 
-| Category | Technology |
-|----------|-----------|
-| Framework | Next.js 16 |
-| Docs Engine | Fumadocs 16 (core + UI + MDX) |
-| UI | React 19, Tailwind CSS 4 |
-| Content | MDX with custom components |
-| Search | Built-in API route |
-| Icons | Lucide React |
-| Package Manager | pnpm |
+| Category        | Technology                    |
+| --------------- | ----------------------------- |
+| Framework       | Next.js 16                    |
+| Docs Engine     | Fumadocs 16 (core + UI + MDX) |
+| UI              | React 19, Tailwind CSS 4      |
+| Content         | MDX with custom components    |
+| Search          | Built-in API route            |
+| Icons           | Lucide React                  |
+| Package Manager | pnpm                          |
 
 ## Project Structure
 
