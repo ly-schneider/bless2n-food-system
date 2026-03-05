@@ -252,7 +252,7 @@ jobs:
     name: Bump to next version
     runs-on: ubuntu-latest
     needs: [deploy, resolve-context]
-    if: ${{ !cancelled() && needs.deploy.result == 'success' && needs.resolve-context.outputs.is_production == 'true' }}
+    if: ${{ !cancelled() && needs.deploy.result == 'success' && needs.resolve-context.outputs.is_production != 'true' }}
     permissions:
       contents: write
     steps:
@@ -263,9 +263,9 @@ jobs:
 
       - name: Bump patch version
         env:
-          RELEASED_TAG: ${{ needs.resolve-context.outputs.image_tag }}
+          DEPLOYED_TAG: ${{ needs.resolve-context.outputs.image_tag }}
         run: |
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$RELEASED_TAG"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$DEPLOYED_TAG"
           NEXT_PATCH=$((PATCH + 1))
           NEXT_VERSION="${MAJOR}.${MINOR}.${NEXT_PATCH}"
 
@@ -279,7 +279,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add VERSION bfs-web-app/package.json
-          git commit -m "chore: bump version to ${NEXT_VERSION}"
+          git commit -m "chore: bump version to ${NEXT_VERSION} [skip ci]"
           git push origin main
 
   sentry-release:

@@ -22,7 +22,6 @@ DO $$ BEGIN
   CREATE ROLE app_admin LOGIN INHERIT;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
-ALTER ROLE app_admin INHERIT;
 
 DO $$ BEGIN
   CREATE ROLE app_backend LOGIN;
@@ -32,6 +31,7 @@ END $$;
 GRANT app_runtime  TO app_backend;
 GRANT app_owner    TO atlas;
 GRANT app_owner    TO app_admin;
+GRANT app_runtime  TO app_admin;
 GRANT app_owner    TO CURRENT_USER;
 GRANT app_runtime  TO CURRENT_USER;
 GRANT app_readonly TO CURRENT_USER;

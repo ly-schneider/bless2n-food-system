@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"backend/internal/auth"
@@ -375,7 +376,17 @@ func (h *Handlers) CreateOrderPayment(w http.ResponseWriter, r *http.Request, or
 			OrderID:    o.ID,
 			TotalCents: o.TotalCents,
 		}
-		gw, err := h.payments.CreatePayrexxGateway(ctx, prep, returnURL, returnURL, returnURL)
+		failedURL := returnURL
+		cancelURL := returnURL
+		if returnURL != "" {
+			sep := "?"
+			if strings.Contains(returnURL, "?") {
+				sep = "&"
+			}
+			failedURL = returnURL + sep + "result=failed"
+			cancelURL = returnURL + sep + "result=cancel"
+		}
+		gw, err := h.payments.CreatePayrexxGateway(ctx, prep, returnURL, failedURL, cancelURL)
 		if err != nil {
 			h.logger.Error("payrexx gateway creation failed",
 				zap.Error(err),

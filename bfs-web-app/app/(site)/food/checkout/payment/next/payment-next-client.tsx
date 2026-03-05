@@ -6,8 +6,8 @@ import { useCart } from "@/contexts/cart-context"
 import { getPaymentStatus } from "@/lib/api/payments"
 import { addOrder } from "@/lib/orders-storage"
 
-const MAX_POLLS = 10
-const POLL_INTERVAL_MS = 2000
+const MAX_POLLS = 8
+const POLL_INTERVAL_MS = 1500
 
 export default function PaymentNextClient() {
   const sp = useSearchParams()
@@ -17,9 +17,19 @@ export default function PaymentNextClient() {
   const pollingRef = useRef(false)
 
   useEffect(() => {
-    const resolve = async () => {
-      const orderIdParam = sp.get("order_id")
+    const result = sp.get("result")
+    const orderIdParam = sp.get("order_id")
 
+    if (result === "cancel") {
+      router.replace("/food/checkout/cancel")
+      return
+    }
+    if (result === "failed") {
+      router.replace("/food/checkout/error")
+      return
+    }
+
+    const resolve = async () => {
       if (orderIdParam) {
         await pollOrder(orderIdParam)
         return
