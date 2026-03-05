@@ -37,6 +37,7 @@ type PlunkSendRequest struct {
 type EmailService interface {
 	SendInviteEmail(ctx context.Context, to string, inviteURL string, expiresAt time.Time) error
 	SendOTPEmail(ctx context.Context, to string, otp string, otpType OTPType) error
+	SendReceiptEmail(ctx context.Context, to string, data ReceiptEmailData) error
 }
 
 type emailService struct {
@@ -116,13 +117,6 @@ func (s *emailService) SendInviteEmail(ctx context.Context, to string, inviteURL
 }
 
 func (s *emailService) SendOTPEmail(ctx context.Context, to string, otp string, otpType OTPType) error {
-	// DEBUG: Log API key info (remove after debugging)
-	s.logger.Info("DEBUG: Plunk config",
-		zap.Int("api_key_len", len(s.cfg.APIKey)),
-		zap.String("api_key_prefix", safePrefix(s.cfg.APIKey, 10)),
-	)
-
-	// Check if Plunk is configured
 	if s.cfg.APIKey == "" {
 		s.logger.Warn("Plunk API key not configured, skipping OTP email",
 			zap.String("to", to),
@@ -191,6 +185,62 @@ func (s *emailService) SendOTPEmail(ctx context.Context, to string, otp string, 
 	s.logger.Info("sent OTP email",
 		zap.String("to", to),
 		zap.String("type", string(otpType)),
+	)
+
+	return nil
+}
+
+func (s *emailService) SendReceiptEmail(ctx context.Context, to string, data ReceiptEmailData) error {
+	if s.cfg.APIKey == "" {
+		s.logger.Warn("Plunk API key not configured, skipping receipt email",
+			zap.String("to", to),
+			zap.String("orderId", data.OrderID),
+		)
+		return nil
+	}
+
+	htmlBody := renderReceiptHTML(data)
+	textBody := renderReceiptText(data)
+
+	payload := PlunkSendRequest{
+		To:         to,
+		Subject:    "Deine Quittung — " + data.Brand,
+		Body:       htmlBody,
+		Subscribed: false,
+		Name:       s.cfg.FromName,
+		From:       s.cfg.FromEmail,
+		Reply:      s.cfg.ReplyTo,
+		Headers: map[string]string{
+			"X-Text-Version": textBody,
+		},
+	}
+
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal receipt email payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, plunkSendEndpoint, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+s.cfg.APIKey)
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send receipt email: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("plunk returned status %d", resp.StatusCode)
+	}
+
+	s.logger.Info("sent receipt email",
+		zap.String("to", to),
+		zap.String("orderId", data.OrderID),
 	)
 
 	return nil

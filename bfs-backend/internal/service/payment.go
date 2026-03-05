@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"backend/internal/config"
@@ -18,6 +19,7 @@ import (
 	"backend/internal/trace"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 type PaymentService interface {
@@ -76,6 +78,8 @@ type paymentService struct {
 	menuSlotRepo     repository.MenuSlotRepository
 	inventoryRepo    repository.InventoryLedgerRepository
 	inventoryHub     *inventory.Hub
+	emailService     EmailService
+	logger           *zap.Logger
 }
 
 func NewPaymentService(
@@ -87,6 +91,8 @@ func NewPaymentService(
 	menuSlotRepo repository.MenuSlotRepository,
 	inventoryRepo repository.InventoryLedgerRepository,
 	inventoryHub *inventory.Hub,
+	emailService EmailService,
+	logger *zap.Logger,
 ) PaymentService {
 	var client *payrexx.Client
 	if cfg.Payrexx.InstanceName != "" && cfg.Payrexx.APISecret != "" {
@@ -102,6 +108,8 @@ func NewPaymentService(
 		menuSlotRepo:     menuSlotRepo,
 		inventoryRepo:    inventoryRepo,
 		inventoryHub:     inventoryHub,
+		emailService:     emailService,
+		logger:           logger,
 	}
 }
 
@@ -443,8 +451,27 @@ func (s *paymentService) MarkOrderPaidByPayrexx(ctx context.Context, orderID uui
 		return fmt.Errorf("create order payment: %w", err)
 	}
 
-	_, err = s.orderRepo.Update(ctx, ord.ID, ord.TotalCents, order.StatusPaid, ord.Origin, ord.CustomerID, ce, ord.PaymentAttemptID, &gatewayID, &transactionID)
-	return err
+	if _, err = s.orderRepo.Update(ctx, ord.ID, ord.TotalCents, order.StatusPaid, ord.Origin, ord.CustomerID, ce, ord.PaymentAttemptID, &gatewayID, &transactionID); err != nil {
+		return err
+	}
+
+	email := ""
+	if ce != nil {
+		email = *ce
+	}
+	if email != "" {
+		s.logger.Info("scheduling receipt email",
+			zap.String("orderId", ord.ID.String()),
+			zap.String("to", email),
+		)
+		go s.sendReceipt(ord.ID, email, ord.TotalCents, now, "TWINT")
+	} else {
+		s.logger.Info("no contact email, skipping receipt",
+			zap.String("orderId", ord.ID.String()),
+		)
+	}
+
+	return nil
 }
 
 func (s *paymentService) MarkOrderPaidDev(ctx context.Context, orderID uuid.UUID) error {
@@ -457,7 +484,23 @@ func (s *paymentService) MarkOrderPaidDev(ctx context.Context, orderID uuid.UUID
 		return fmt.Errorf("order is not pending")
 	}
 
-	return s.orderRepo.UpdateStatus(ctx, orderID, order.StatusPaid)
+	if err := s.orderRepo.UpdateStatus(ctx, orderID, order.StatusPaid); err != nil {
+		return err
+	}
+
+	email := ""
+	if ord.ContactEmail != nil {
+		email = *ord.ContactEmail
+	}
+	if email != "" {
+		s.logger.Info("scheduling receipt email (dev)",
+			zap.String("orderId", ord.ID.String()),
+			zap.String("to", email),
+		)
+		go s.sendReceipt(ord.ID, email, ord.TotalCents, time.Now(), "TWINT (Dev)")
+	}
+
+	return nil
 }
 
 func (s *paymentService) FindPendingOrderByAttemptID(ctx context.Context, attemptID string) (*ent.Order, error) {
@@ -526,6 +569,58 @@ func (s *paymentService) GetPayrexxGateway(ctx context.Context, gatewayID int) (
 		return nil, fmt.Errorf("payrexx client not configured")
 	}
 	return s.payrexxClient.GetGateway(gatewayID)
+}
+
+func (s *paymentService) sendReceipt(orderID uuid.UUID, to string, totalCents int64, paidAt time.Time, method string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	lines, err := s.orderLineRepo.GetByOrderID(ctx, orderID)
+	if err != nil {
+		s.logger.Error("receipt: failed to load order lines", zap.Error(err), zap.String("orderId", orderID.String()))
+		return
+	}
+
+	childrenByParent := make(map[uuid.UUID][]ReceiptLineItem)
+	var roots []*ent.OrderLine
+	for _, l := range lines {
+		if l.ParentLineID != nil {
+			childrenByParent[*l.ParentLineID] = append(childrenByParent[*l.ParentLineID], ReceiptLineItem{
+				Title:    l.Title,
+				Quantity: l.Quantity,
+				Cents:    l.UnitPriceCents,
+			})
+		} else {
+			roots = append(roots, l)
+		}
+	}
+
+	items := make([]ReceiptLineItem, 0, len(roots))
+	for _, r := range roots {
+		items = append(items, ReceiptLineItem{
+			Title:    r.Title,
+			Quantity: r.Quantity,
+			Cents:    r.UnitPriceCents,
+			Children: childrenByParent[r.ID],
+		})
+	}
+
+	baseURL := strings.TrimRight(s.cfg.App.PublicBaseURL, "/")
+	orderURL := baseURL + "/food/orders/" + orderID.String()
+
+	data := ReceiptEmailData{
+		Brand:      "BlessThun Food",
+		OrderID:    orderID.String(),
+		OrderURL:   orderURL,
+		OrderDate:  formatOrderDate(paidAt),
+		Items:      items,
+		TotalCents: totalCents,
+		Method:     method,
+	}
+
+	if err := s.emailService.SendReceiptEmail(ctx, to, data); err != nil {
+		s.logger.Error("receipt: failed to send", zap.Error(err), zap.String("orderId", orderID.String()), zap.String("to", to))
+	}
 }
 
 func safeStr(p *string) string {

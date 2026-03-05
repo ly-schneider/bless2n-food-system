@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestPOSService_GetDeviceByToken(t *testing.T) {
@@ -33,6 +34,8 @@ func TestPOSService_GetDeviceByToken(t *testing.T) {
 		repos.MenuSlot,
 		repos.Inventory,
 		nil,
+		nil,
+		zap.NewNop(),
 	)
 
 	club100Svc := service.NewClub100Service(&MockElvantoService{}, repos.Club100Redemption, repos.Settings, repos.OrderLine)
@@ -81,6 +84,8 @@ func TestPOSService_CreateOrder(t *testing.T) {
 		repos.MenuSlot,
 		repos.Inventory,
 		nil,
+		nil,
+		zap.NewNop(),
 	)
 
 	club100Svc := service.NewClub100Service(&MockElvantoService{}, repos.Club100Redemption, repos.Settings, repos.OrderLine)
@@ -164,6 +169,8 @@ func TestPOSService_PayCash(t *testing.T) {
 		repos.MenuSlot,
 		repos.Inventory,
 		nil,
+		nil,
+		zap.NewNop(),
 	)
 
 	club100Svc := service.NewClub100Service(&MockElvantoService{}, repos.Club100Redemption, repos.Settings, repos.OrderLine)
@@ -219,6 +226,8 @@ func TestPOSService_PayCard(t *testing.T) {
 		repos.MenuSlot,
 		repos.Inventory,
 		nil,
+		nil,
+		zap.NewNop(),
 	)
 
 	club100Svc := service.NewClub100Service(&MockElvantoService{}, repos.Club100Redemption, repos.Settings, repos.OrderLine)
@@ -267,6 +276,8 @@ func TestPOSService_PayTwint(t *testing.T) {
 		repos.MenuSlot,
 		repos.Inventory,
 		nil,
+		nil,
+		zap.NewNop(),
 	)
 
 	club100Svc := service.NewClub100Service(&MockElvantoService{}, repos.Club100Redemption, repos.Settings, repos.OrderLine)

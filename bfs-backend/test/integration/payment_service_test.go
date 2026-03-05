@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestPaymentService_PrepareAndCreateOrder(t *testing.T) {
@@ -32,6 +33,8 @@ func TestPaymentService_PrepareAndCreateOrder(t *testing.T) {
 		repos.MenuSlot,
 		repos.Inventory,
 		nil,
+		nil,
+		zap.NewNop(),
 	)
 	ctx := context.Background()
 
@@ -171,6 +174,8 @@ func TestPaymentService_MenuCheckout(t *testing.T) {
 		repos.MenuSlot,
 		repos.Inventory,
 		nil,
+		nil,
+		zap.NewNop(),
 	)
 	ctx := context.Background()
 
@@ -288,6 +293,8 @@ func TestPaymentService_FindPendingOrderByAttemptID(t *testing.T) {
 		repos.MenuSlot,
 		repos.Inventory,
 		nil,
+		nil,
+		zap.NewNop(),
 	)
 	ctx := context.Background()
 
@@ -342,6 +349,8 @@ func TestPaymentService_MarkOrderPaidByPayrexx(t *testing.T) {
 		repos.MenuSlot,
 		repos.Inventory,
 		nil,
+		nil,
+		zap.NewNop(),
 	)
 	ctx := context.Background()
 
@@ -389,6 +398,8 @@ func TestPaymentService_CleanupPendingOrderByID(t *testing.T) {
 		repos.MenuSlot,
 		repos.Inventory,
 		nil,
+		nil,
+		zap.NewNop(),
 	)
 	ctx := context.Background()
 
@@ -456,6 +467,8 @@ func TestPaymentService_TWINTLimits(t *testing.T) {
 		repos.MenuSlot,
 		repos.Inventory,
 		nil,
+		nil,
+		zap.NewNop(),
 	)
 	ctx := context.Background()
 
