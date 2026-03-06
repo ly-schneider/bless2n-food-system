@@ -1,0 +1,6 @@
+[[repos]]
+repo = "local"
+hooks = [
+  { id = "prettier", name = "prettier", language = "system", entry = "pnpm exec prettier --write", types_or = ["javascript", "jsx", "ts", "tsx"] },
+  { id = "eslint", name = "eslint", language = "system", entry = "pnpm exec eslint --no-warn-ignored --fix", types_or = ["javascript", "jsx", "ts", "tsx"], exclude = "(postcss|prettier)\\.config\\." },
+]

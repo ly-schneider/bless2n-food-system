@@ -1,0 +1,5 @@
+[[repos]]
+repo = "local"
+hooks = [
+  { id = "terraform-fmt", name = "terraform fmt", language = "system", entry = "terraform fmt -write=true", types = ["terraform"] },
+]
