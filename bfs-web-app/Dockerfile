@@ -41,24 +41,23 @@ RUN --mount=type=cache,target=/home/nodejs/.next/cache,uid=1001,gid=1001 \
     elif [ -f yarn.lock ]; then yarn run build; \
     else npm run build; fi
 
-FROM gcr.io/distroless/nodejs24-debian12:nonroot AS runtime
+FROM node:24-alpine AS runtime
+
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nodejs
 
 ENV NODE_ENV=production \
-    NODE_OPTIONS="--max-old-space-size=2048 --no-deprecation --trace-warnings --trace-uncaught --unhandled-rejections=strict" \
+    NODE_OPTIONS="--max-old-space-size=384 --no-deprecation" \
     NEXT_TELEMETRY_DISABLED=1 \
+    HOSTNAME=0.0.0.0 \
     PORT=3000
 
 WORKDIR /app
 
-COPY --from=builder --chown=nonroot:nonroot /app/.next/standalone ./
-COPY --from=builder --chown=nonroot:nonroot /app/.next/static ./.next/static
-COPY --from=builder --chown=nonroot:nonroot /app/public ./public
+COPY --from=builder --chown=nodejs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nodejs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nodejs:nodejs /app/public ./public
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
-    CMD ["node", "--eval", "require('http').get('http://localhost:3000/api/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
-
-USER nonroot:nonroot
-
+USER nodejs
 EXPOSE 3000
-
-CMD ["server.js"]
+CMD ["node", "server.js"]
