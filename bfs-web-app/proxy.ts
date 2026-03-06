@@ -46,16 +46,16 @@ export async function proxy(request: NextRequest) {
   response.headers.set("X-Content-Type-Options", "nosniff")
   response.headers.set("Referrer-Policy", "origin-when-cross-origin")
 
-  const googleTagManager = "https://www.googletagmanager.com"
-  const googleAnalytics = "https://region1.google-analytics.com"
+  const umamiScript = "https://cloud.umami.is"
+  const umamiApi = "https://api-gateway.umami.dev"
 
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${googleTagManager}`,
+    `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${umamiScript}`,
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: https:${process.env.NODE_ENV !== "production" ? " http://localhost:* http://127.0.0.1:*" : ""}`,
     "font-src 'self' data:",
-    `connect-src 'self' ws: wss: ${googleAnalytics}`,
+    `connect-src 'self' ws: wss: ${umamiApi}`,
     "frame-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",

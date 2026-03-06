@@ -1,4 +1,3 @@
-
 // https://github.com/francoismassart/eslint-plugin-tailwindcss/pull/381
 // import eslintPluginTailwindcss from "eslint-plugin-tailwindcss"
 import eslintPluginNext from "@next/eslint-plugin-next"

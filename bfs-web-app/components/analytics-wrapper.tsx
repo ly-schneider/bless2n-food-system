@@ -1,23 +1,17 @@
 "use client"
 
+import Script from "next/script"
 import { usePathname } from "next/navigation"
-import CookieBanner from "@/components/cookie-banner"
-import AnalyticsConsentGate from "@/components/google-analytics"
 
 const EXCLUDED_PATHS = ["/pos", "/station"]
 
-export default function AnalyticsWrapper({ gaId }: { gaId?: string }) {
+export default function AnalyticsWrapper() {
   const pathname = usePathname()
+  const websiteId = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID
 
-  const isExcluded = EXCLUDED_PATHS.some((path) => pathname.startsWith(path))
-  if (isExcluded) {
+  if (!websiteId || EXCLUDED_PATHS.some((path) => pathname.startsWith(path))) {
     return null
   }
 
-  return (
-    <>
-      <AnalyticsConsentGate gaId={gaId} />
-      <CookieBanner />
-    </>
-  )
+  return <Script defer src="https://cloud.umami.is/script.js" data-website-id={websiteId} />
 }
