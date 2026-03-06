@@ -32,10 +32,10 @@ type androidUpdateService struct {
 	repoName  string
 	logger    *zap.Logger
 
-	mu        sync.Mutex
-	cached    *AndroidRelease
-	cachedAt  time.Time
-	cacheTTL  time.Duration
+	mu       sync.Mutex
+	cached   *AndroidRelease
+	cachedAt time.Time
+	cacheTTL time.Duration
 }
 
 func NewAndroidUpdateService(cfg config.AndroidConfig, logger *zap.Logger) AndroidUpdateService {

@@ -88,4 +88,3 @@ func (h *Handlers) GetPayment(w http.ResponseWriter, r *http.Request, paymentId 
 	_ = ctx
 	writeError(w, http.StatusNotImplemented, "not_implemented", "Payment lookup by ID will be available after service refactoring")
 }
-
