@@ -1,0 +1,6 @@
+[[repos]]
+repo = "local"
+hooks = [
+  { id = "go-fmt", name = "go fmt", language = "system", entry = "gofmt -l -w", types = ["go"] },
+  { id = "go-mod-tidy", name = "go mod tidy", language = "system", entry = "go mod tidy", pass_filenames = false, types = ["go"] },
+]
