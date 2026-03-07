@@ -22,7 +22,7 @@ const config: NextConfig = {
     "/**": [
       "node_modules/@swc/core/**",
       "node_modules/webpack/**",
-      "node_modules/@babel/**",
+      "node_modules/@babel/core/**",
       "node_modules/typescript/**",
       "node_modules/esbuild/**",
       "node_modules/@esbuild/**",

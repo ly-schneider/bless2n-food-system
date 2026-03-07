@@ -260,7 +260,7 @@ output "config" {
         health_check_path              = "/health"
         liveness_path                  = "/ping"
         liveness_interval_seconds      = 60
-        liveness_initial_delay_seconds = 5
+        liveness_initial_delay_seconds = var.backend_min_replicas == 0 ? 30 : 5
         image                          = local.backend_image
         revision_suffix                = var.revision_suffix
         registries                     = local.registries

@@ -39,7 +39,7 @@ RUN addgroup -S -g 1001 nodejs && \
     adduser -S -D -u 1001 -G nodejs nodejs
 
 ENV NODE_ENV=production \
-    NODE_OPTIONS="--max-old-space-size=384 --no-deprecation" \
+    NODE_OPTIONS="--max-old-space-size=384 --no-deprecation --unhandled-rejections=strict" \
     NEXT_TELEMETRY_DISABLED=1 \
     HOSTNAME=0.0.0.0 \
     PORT=3000
