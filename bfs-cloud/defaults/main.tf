@@ -60,43 +60,51 @@ variable "backend_memory" {
 }
 
 variable "frontend_min_replicas" {
-  type    = number
-  default = 0
+  description = "Minimum number of frontend replicas"
+  type        = number
+  default     = 0
 }
 
 variable "frontend_max_replicas" {
-  type    = number
-  default = 10
+  description = "Maximum number of frontend replicas"
+  type        = number
+  default     = 10
 }
 
 variable "backend_min_replicas" {
-  type    = number
-  default = 0
+  description = "Minimum number of backend replicas"
+  type        = number
+  default     = 0
 }
 
 variable "backend_max_replicas" {
-  type    = number
-  default = 10
+  description = "Maximum number of backend replicas"
+  type        = number
+  default     = 10
 }
 
 variable "docs_cpu" {
-  type    = number
-  default = 0.25
+  description = "vCPU for the docs app"
+  type        = number
+  default     = 0.25
 }
 
 variable "docs_memory" {
-  type    = string
-  default = "0.5Gi"
+  description = "Memory for the docs app"
+  type        = string
+  default     = "0.5Gi"
 }
 
 variable "docs_min_replicas" {
-  type    = number
-  default = 0
+  description = "Minimum number of docs replicas"
+  type        = number
+  default     = 0
 }
 
 variable "docs_max_replicas" {
-  type    = number
-  default = 3
+  description = "Maximum number of docs replicas"
+  type        = number
+  default     = 3
 }
 
 variable "docs_digest" {

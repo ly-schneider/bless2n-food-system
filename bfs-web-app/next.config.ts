@@ -20,7 +20,7 @@ const config: NextConfig = {
   output: "standalone",
   outputFileTracingExcludes: {
     "/**": [
-      "node_modules/@swc/**",
+      "node_modules/@swc/core/**",
       "node_modules/webpack/**",
       "node_modules/@babel/**",
       "node_modules/typescript/**",

@@ -1,15 +1,12 @@
 # syntax=docker/dockerfile:1
 
-FROM node:24-bookworm-slim AS builder
+FROM node:24-alpine AS builder
 
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends ca-certificates && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+RUN apk update && apk upgrade && \
+    apk add --no-cache ca-certificates
 
-RUN groupadd --gid 1001 --system nodejs && \
-    useradd --uid 1001 --system --gid nodejs --create-home nodejs
+RUN addgroup -S -g 1001 nodejs && \
+    adduser -S -D -u 1001 -G nodejs -h /home/nodejs nodejs
 
 WORKDIR /app
 RUN chown nodejs:nodejs /app
@@ -38,8 +35,8 @@ RUN --mount=type=cache,target=/home/nodejs/.next/cache,uid=1001,gid=1001 \
 
 FROM node:24-alpine AS runtime
 
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nodejs
+RUN addgroup -S -g 1001 nodejs && \
+    adduser -S -D -u 1001 -G nodejs nodejs
 
 ENV NODE_ENV=production \
     NODE_OPTIONS="--max-old-space-size=384 --no-deprecation" \
