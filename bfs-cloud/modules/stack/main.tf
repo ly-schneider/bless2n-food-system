@@ -39,6 +39,7 @@ variable "config" {
       liveness_path                  = optional(string)
       liveness_interval_seconds      = optional(number)
       liveness_initial_delay_seconds = optional(number)
+      startup_probe_path             = optional(string)
       environment_variables          = optional(map(string), {})
       secrets                        = optional(map(string), {})
       key_vault_secrets              = optional(map(string), {})
@@ -146,6 +147,7 @@ module "apps_backend" {
   liveness_path                  = lookup(each.value, "liveness_path", "/health")
   liveness_interval_seconds      = lookup(each.value, "liveness_interval_seconds", 60)
   liveness_initial_delay_seconds = lookup(each.value, "liveness_initial_delay_seconds", 20)
+  startup_probe_path             = try(each.value.startup_probe_path, null)
   external_ingress               = try(each.value.external_ingress, true)
   allow_insecure_connections     = try(each.value.allow_insecure_connections, false)
   cpu                            = each.value.cpu
@@ -200,6 +202,7 @@ module "apps_frontend" {
   liveness_path                  = lookup(each.value, "liveness_path", "/api/health")
   liveness_interval_seconds      = lookup(each.value, "liveness_interval_seconds", 30)
   liveness_initial_delay_seconds = lookup(each.value, "liveness_initial_delay_seconds", 20)
+  startup_probe_path             = try(each.value.startup_probe_path, null)
   external_ingress               = try(each.value.external_ingress, true)
   allow_insecure_connections     = try(each.value.allow_insecure_connections, false)
   cpu                            = each.value.cpu
@@ -251,6 +254,7 @@ module "apps_docs" {
   liveness_path                  = lookup(each.value, "liveness_path", "/api/health")
   liveness_interval_seconds      = lookup(each.value, "liveness_interval_seconds", 30)
   liveness_initial_delay_seconds = lookup(each.value, "liveness_initial_delay_seconds", 20)
+  startup_probe_path             = try(each.value.startup_probe_path, null)
   external_ingress               = try(each.value.external_ingress, true)
   allow_insecure_connections     = try(each.value.allow_insecure_connections, false)
   cpu                            = each.value.cpu

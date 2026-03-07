@@ -169,6 +169,24 @@ variable "liveness_initial_delay_seconds" {
   default     = 20
 }
 
+variable "startup_probe_path" {
+  type        = string
+  description = "HTTP path for startup probe (delays liveness/readiness until app is started)"
+  default     = null
+}
+
+variable "startup_probe_interval_seconds" {
+  type        = number
+  description = "Interval in seconds between startup probe checks"
+  default     = 2
+}
+
+variable "startup_probe_failure_threshold" {
+  type        = number
+  description = "Number of consecutive failures before container is restarted"
+  default     = 30
+}
+
 variable "read_only_filesystem" {
   type        = bool
   description = "Use read-only root filesystem for security"

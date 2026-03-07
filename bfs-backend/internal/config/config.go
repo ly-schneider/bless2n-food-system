@@ -110,10 +110,10 @@ func Load() Config {
 		},
 		Postgres: PostgresConfig{
 			DSN:             getEnvOptional("DATABASE_URL"),
-			MaxConns:        25,
-			MinConns:        5,
+			MaxConns:        10,
+			MinConns:        0,
 			MaxConnLifetime: 1 * time.Hour,
-			MaxConnIdleTime: 30 * time.Minute,
+			MaxConnIdleTime: 5 * time.Minute,
 		},
 		Logger: LoggerConfig{
 			Level:       getEnv("LOG_LEVEL"),

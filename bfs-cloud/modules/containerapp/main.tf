@@ -84,6 +84,17 @@ resource "azurerm_container_app" "this" {
       }
 
 
+      dynamic "startup_probe" {
+        for_each = var.startup_probe_path != null ? [1] : []
+        content {
+          path                    = var.startup_probe_path
+          port                    = var.target_port
+          transport               = "HTTP"
+          interval_seconds        = var.startup_probe_interval_seconds
+          failure_count_threshold = var.startup_probe_failure_threshold
+        }
+      }
+
       liveness_probe {
         path             = var.liveness_path
         port             = var.target_port

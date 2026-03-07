@@ -179,7 +179,8 @@ output "config" {
         health_check_path              = "/health"
         liveness_path                  = "/health"
         liveness_interval_seconds      = 30
-        liveness_initial_delay_seconds = 10
+        liveness_initial_delay_seconds = 0
+        startup_probe_path             = "/health"
         image                          = local.frontend_image
         revision_suffix                = var.revision_suffix
         registries                     = local.registries
@@ -235,7 +236,8 @@ output "config" {
         health_check_path              = "/api/health"
         liveness_path                  = "/api/health"
         liveness_interval_seconds      = 30
-        liveness_initial_delay_seconds = 10
+        liveness_initial_delay_seconds = 0
+        startup_probe_path             = "/api/health"
         image                          = local.docs_image
         revision_suffix                = var.revision_suffix
         registries                     = local.registries
@@ -260,7 +262,8 @@ output "config" {
         health_check_path              = "/health"
         liveness_path                  = "/ping"
         liveness_interval_seconds      = 60
-        liveness_initial_delay_seconds = var.backend_min_replicas == 0 ? 30 : 5
+        liveness_initial_delay_seconds = 0
+        startup_probe_path             = "/ping"
         image                          = local.backend_image
         revision_suffix                = var.revision_suffix
         registries                     = local.registries
