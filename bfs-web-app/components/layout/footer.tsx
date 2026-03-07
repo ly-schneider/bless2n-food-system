@@ -1,8 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { VersionLabel } from "@/components/layout/version-label"
 import { usePathname } from "next/navigation"
+import { VersionLabel } from "@/components/layout/version-label"
 import { useCart } from "@/contexts/cart-context"
 
 export default function Footer({ version }: { version?: string }) {

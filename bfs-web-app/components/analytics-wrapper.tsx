@@ -1,7 +1,7 @@
 "use client"
 
-import Script from "next/script"
 import { usePathname } from "next/navigation"
+import Script from "next/script"
 
 const EXCLUDED_PATHS = ["/pos", "/station"]
 
