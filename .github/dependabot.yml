@@ -10,6 +10,9 @@ updates:
     labels:
       - "dependencies"
       - "area/web-app"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     groups:
       web-minor-and-patch:
         patterns:
@@ -27,6 +30,9 @@ updates:
     labels:
       - "dependencies"
       - "documentation"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     groups:
       docs-minor-and-patch:
         patterns:
@@ -44,6 +50,9 @@ updates:
     labels:
       - "dependencies"
       - "area/backend"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     groups:
       go-minor-and-patch:
         patterns:
@@ -61,6 +70,9 @@ updates:
     labels:
       - "dependencies"
       - "area/cloud"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     groups:
       terraform-all:
         patterns:
@@ -75,6 +87,9 @@ updates:
     labels:
       - "dependencies"
       - "area/cloud"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     groups:
       terraform-all:
         patterns:
@@ -89,6 +104,9 @@ updates:
     labels:
       - "dependencies"
       - "area/android-app"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
     groups:
       android-minor-and-patch:
         patterns:
