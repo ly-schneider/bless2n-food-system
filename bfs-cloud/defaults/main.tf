@@ -59,6 +59,54 @@ variable "backend_memory" {
   default     = "0.5Gi"
 }
 
+variable "frontend_min_replicas" {
+  description = "Minimum number of frontend replicas"
+  type        = number
+  default     = 0
+}
+
+variable "frontend_max_replicas" {
+  description = "Maximum number of frontend replicas"
+  type        = number
+  default     = 10
+}
+
+variable "backend_min_replicas" {
+  description = "Minimum number of backend replicas"
+  type        = number
+  default     = 0
+}
+
+variable "backend_max_replicas" {
+  description = "Maximum number of backend replicas"
+  type        = number
+  default     = 10
+}
+
+variable "docs_cpu" {
+  description = "vCPU for the docs app"
+  type        = number
+  default     = 0.25
+}
+
+variable "docs_memory" {
+  description = "Memory for the docs app"
+  type        = string
+  default     = "0.5Gi"
+}
+
+variable "docs_min_replicas" {
+  description = "Minimum number of docs replicas"
+  type        = number
+  default     = 0
+}
+
+variable "docs_max_replicas" {
+  description = "Maximum number of docs replicas"
+  type        = number
+  default     = 3
+}
+
 variable "docs_digest" {
   description = "Docs image digest (optional, preferred over tag)"
   type        = string
@@ -126,12 +174,12 @@ output "config" {
         port                           = 3000
         cpu                            = var.frontend_cpu
         memory                         = var.frontend_memory
-        min_replicas                   = 1
-        max_replicas                   = 10
+        min_replicas                   = var.frontend_min_replicas
+        max_replicas                   = var.frontend_max_replicas
         health_check_path              = "/health"
         liveness_path                  = "/health"
         liveness_interval_seconds      = 30
-        liveness_initial_delay_seconds = 20
+        liveness_initial_delay_seconds = 10
         image                          = local.frontend_image
         revision_suffix                = var.revision_suffix
         registries                     = local.registries
@@ -163,18 +211,31 @@ output "config" {
           name           = "frontend-cpu-scale"
           cpu_percentage = 75
         }
+        custom_scale_rules = var.env == "production" ? [
+          {
+            name             = "frontend-cron-sunday"
+            custom_rule_type = "cron"
+            metadata = {
+              timezone        = "Europe/Zurich"
+              start           = "0 17 * * 0"
+              end             = "0 0 * * 1"
+              desiredReplicas = "1"
+            }
+            authentication = null
+          }
+        ] : []
       }
 
       "docs-${var.env}" = {
         port                           = 3000
-        cpu                            = 0.25
-        memory                         = "0.5Gi"
-        min_replicas                   = 0
-        max_replicas                   = 3
+        cpu                            = var.docs_cpu
+        memory                         = var.docs_memory
+        min_replicas                   = var.docs_min_replicas
+        max_replicas                   = var.docs_max_replicas
         health_check_path              = "/api/health"
         liveness_path                  = "/api/health"
         liveness_interval_seconds      = 30
-        liveness_initial_delay_seconds = 20
+        liveness_initial_delay_seconds = 10
         image                          = local.docs_image
         revision_suffix                = var.revision_suffix
         registries                     = local.registries
@@ -194,12 +255,12 @@ output "config" {
         port                           = 8080
         cpu                            = var.backend_cpu
         memory                         = var.backend_memory
-        min_replicas                   = 1
-        max_replicas                   = 10
+        min_replicas                   = var.backend_min_replicas
+        max_replicas                   = var.backend_max_replicas
         health_check_path              = "/health"
         liveness_path                  = "/ping"
         liveness_interval_seconds      = 60
-        liveness_initial_delay_seconds = 30
+        liveness_initial_delay_seconds = var.backend_min_replicas == 0 ? 30 : 5
         image                          = local.backend_image
         revision_suffix                = var.revision_suffix
         registries                     = local.registries
@@ -237,6 +298,19 @@ output "config" {
           name           = "backend-cpu-scale"
           cpu_percentage = 80
         }
+        custom_scale_rules = var.env == "production" ? [
+          {
+            name             = "backend-cron-sunday"
+            custom_rule_type = "cron"
+            metadata = {
+              timezone        = "Europe/Zurich"
+              start           = "0 17 * * 0"
+              end             = "0 0 * * 1"
+              desiredReplicas = "1"
+            }
+            authentication = null
+          }
+        ] : []
       }
     }
   }

@@ -1,15 +1,12 @@
 # syntax=docker/dockerfile:1
 
-FROM node:24-bookworm-slim AS builder
+FROM node:24-alpine AS builder
 
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends ca-certificates && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+RUN apk update && apk upgrade && \
+    apk add --no-cache ca-certificates
 
-RUN groupadd --gid 1001 --system nodejs && \
-    useradd --uid 1001 --system --gid nodejs --create-home nodejs
+RUN addgroup -S -g 1001 nodejs && \
+    adduser -S -D -u 1001 -G nodejs -h /home/nodejs nodejs
 
 WORKDIR /app
 RUN chown nodejs:nodejs /app
@@ -41,24 +38,23 @@ RUN --mount=type=cache,target=/home/nodejs/.next/cache,uid=1001,gid=1001 \
     elif [ -f yarn.lock ]; then yarn run build; \
     else npm run build; fi
 
-FROM gcr.io/distroless/nodejs24-debian12:nonroot AS runtime
+FROM node:24-alpine AS runtime
+
+RUN addgroup -S -g 1001 nodejs && \
+    adduser -S -D -u 1001 -G nodejs nodejs
 
 ENV NODE_ENV=production \
-    NODE_OPTIONS="--max-old-space-size=2048 --no-deprecation --trace-warnings --trace-uncaught --unhandled-rejections=strict" \
+    NODE_OPTIONS="--max-old-space-size=384 --no-deprecation --unhandled-rejections=strict" \
     NEXT_TELEMETRY_DISABLED=1 \
+    HOSTNAME=0.0.0.0 \
     PORT=3000
 
 WORKDIR /app
 
-COPY --from=builder --chown=nonroot:nonroot /app/.next/standalone ./
-COPY --from=builder --chown=nonroot:nonroot /app/.next/static ./.next/static
-COPY --from=builder --chown=nonroot:nonroot /app/public ./public
+COPY --from=builder --chown=nodejs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nodejs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nodejs:nodejs /app/public ./public
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
-    CMD ["node", "--eval", "require('http').get('http://localhost:3000/api/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
-
-USER nonroot:nonroot
-
+USER nodejs
 EXPOSE 3000
-
-CMD ["server.js"]
+CMD ["node", "server.js"]

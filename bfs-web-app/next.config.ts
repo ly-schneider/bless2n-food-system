@@ -18,6 +18,16 @@ const config: NextConfig = {
   devIndicators: false,
   reactStrictMode: true,
   output: "standalone",
+  outputFileTracingExcludes: {
+    "/**": [
+      "node_modules/@swc/core/**",
+      "node_modules/webpack/**",
+      "node_modules/@babel/core/**",
+      "node_modules/typescript/**",
+      "node_modules/esbuild/**",
+      "node_modules/@esbuild/**",
+    ],
+  },
   logging: {
     fetches: {
       fullUrl: true,
