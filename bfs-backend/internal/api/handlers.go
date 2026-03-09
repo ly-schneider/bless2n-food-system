@@ -2,6 +2,7 @@ package api
 
 import (
 	"backend/internal/blobstore"
+	"backend/internal/config"
 	"backend/internal/generated/api/generated"
 	"backend/internal/inventory"
 	"backend/internal/repository"
@@ -33,7 +34,8 @@ type Handlers struct {
 	blobStore     *blobstore.Client
 	inventoryHub  *inventory.Hub
 
-	logger *zap.Logger
+	payrexxWebhookSecret string
+	logger               *zap.Logger
 }
 
 // Compile-time check that Handlers implements ServerInterface.
@@ -42,6 +44,7 @@ var _ generated.ServerInterface = (*Handlers)(nil)
 type HandlersDeps struct {
 	fx.In
 
+	Config        config.Config
 	Categories    service.CategoryService
 	Products      service.ProductService
 	Orders        service.OrderService
@@ -65,23 +68,24 @@ type HandlersDeps struct {
 // NewHandlers creates a new Handlers with all required service dependencies.
 func NewHandlers(deps HandlersDeps) *Handlers {
 	return &Handlers{
-		categories:    deps.Categories,
-		products:      deps.Products,
-		orders:        deps.Orders,
-		payments:      deps.Payments,
-		pos:           deps.POS,
-		settings:      deps.Settings,
-		stations:      deps.Stations,
-		invites:       deps.Invites,
-		email:         deps.Email,
-		users:         deps.Users,
-		devices:       deps.Devices,
-		club100:       deps.Club100,
-		androidUpdate: deps.AndroidUpdate,
-		verification:  deps.Verification,
-		idempotency:   deps.Idempotency,
-		blobStore:     deps.BlobStore,
-		inventoryHub:  deps.InventoryHub,
-		logger:        deps.Logger,
+		categories:           deps.Categories,
+		products:             deps.Products,
+		orders:               deps.Orders,
+		payments:             deps.Payments,
+		pos:                  deps.POS,
+		settings:             deps.Settings,
+		stations:             deps.Stations,
+		invites:              deps.Invites,
+		email:                deps.Email,
+		users:                deps.Users,
+		devices:              deps.Devices,
+		club100:              deps.Club100,
+		androidUpdate:        deps.AndroidUpdate,
+		verification:         deps.Verification,
+		idempotency:          deps.Idempotency,
+		blobStore:            deps.BlobStore,
+		inventoryHub:         deps.InventoryHub,
+		payrexxWebhookSecret: deps.Config.Payrexx.WebhookSecret,
+		logger:               deps.Logger,
 	}
 }

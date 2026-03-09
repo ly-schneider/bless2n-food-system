@@ -1,6 +1,9 @@
 package payrexx
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 )
@@ -44,6 +47,13 @@ type WebhookInvoice struct {
 
 type WebhookContact struct {
 	Email string `json:"email,omitempty"`
+}
+
+func VerifyWebhookSignature(body []byte, signature, secret string) bool {
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write(body)
+	expected := hex.EncodeToString(mac.Sum(nil))
+	return hmac.Equal([]byte(expected), []byte(signature))
 }
 
 func ParseWebhookEvent(body []byte) (*WebhookEvent, error) {

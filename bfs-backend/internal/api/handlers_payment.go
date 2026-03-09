@@ -19,6 +19,15 @@ func (h *Handlers) HandlePayrexxWebhook(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	if h.payrexxWebhookSecret != "" {
+		signature := r.Header.Get("X-Webhook-Signature")
+		if !payrexx.VerifyWebhookSignature(body, signature, h.payrexxWebhookSecret) {
+			h.logger.Warn("payrexx webhook: invalid signature")
+			writeError(w, http.StatusUnauthorized, "invalid_signature", "Invalid webhook signature")
+			return
+		}
+	}
+
 	event, err := payrexx.ParseWebhookEvent(body)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_body", "Invalid webhook payload")
