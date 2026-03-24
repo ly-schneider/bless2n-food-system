@@ -240,8 +240,8 @@ export default function StationPage() {
           log("order lookup failed", msg)
           throw new Error(msg)
         }
-        const orderData = (await orderRes.json()) as { order: { id: string; items: PublicOrderItem[] } }
-        const data: VerifyResult = { orderId: orderData.order.id, items: orderData.order.items }
+        const orderData = (await orderRes.json()) as { id: string; items: PublicOrderItem[] }
+        const data: VerifyResult = { orderId: orderData.id, items: orderData.items }
         setResult(data)
         setScanned(orderId)
         setDrawerOpen(true)
