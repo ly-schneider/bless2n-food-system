@@ -89,7 +89,7 @@ export default function StationPage() {
   }, [sessionToken])
 
   useEffect(() => {
-    if (!status?.status === "approved") {
+    if (status?.status !== "approved") {
       setCameraPermission("idle")
       setScannerActive(false)
       setDevices([])
@@ -117,7 +117,7 @@ export default function StationPage() {
   }, [log])
 
   useEffect(() => {
-    if (!status?.status === "approved") return
+    if (status?.status !== "approved") return
     let cancelled = false
     let permissionStatus: PermissionStatus | null = null
 
