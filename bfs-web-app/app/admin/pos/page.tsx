@@ -105,7 +105,12 @@ export default function AdminPOSPage() {
               <div className="flex shrink-0 items-center gap-2">
                 <StatusBadge status={d.status} />
                 {d.status === "approved" && (
-                  <Button variant="destructive" onClick={() => revoke(d.id)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => revoke(d.id)}
+                  >
                     Entfernen
                   </Button>
                 )}
@@ -135,9 +140,7 @@ function StatusBadge({ status }: { status: string }) {
         : status === "revoked"
           ? "bg-slate-200 text-slate-700"
           : "bg-amber-100 text-amber-800"
-  return (
-    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${tone}`}>{label}</span>
-  )
+  return <span className={`inline-flex h-8 items-center rounded-md px-2.5 text-xs font-medium ${tone}`}>{label}</span>
 }
 
 function statusOrder(status: string) {

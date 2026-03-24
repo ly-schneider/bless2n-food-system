@@ -13,7 +13,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <AdminGuard>
       <AdminMainHeader />
       <AdminShell version={process.env.APP_VERSION}>
-        <div className="mx-auto w-full min-w-0 pb-10">{children}</div>
+        <div className="w-full max-w-7xl min-w-0 pb-10">{children}</div>
       </AdminShell>
     </AdminGuard>
   )
