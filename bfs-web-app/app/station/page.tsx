@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import { getDeviceToken } from "@/lib/device-auth"
 
-type StationStatus = { exists: boolean; approved: boolean; name?: string }
+type StationStatus = { id: string; status: "pending" | "approved" | "rejected" | "revoked"; name?: string }
 
 export default function StationPage() {
   const log = useCallback((...args: unknown[]) => console.log("[Station]", ...args), [])
@@ -57,7 +57,7 @@ export default function StationPage() {
 
   useEffect(() => {
     if (!sessionToken) {
-      setStatus({ exists: false, approved: false })
+      setStatus(null)
       log("no session token; showing enrollment")
       return
     }
@@ -73,7 +73,7 @@ export default function StationPage() {
           return
         }
         if (res.status === 401 || res.status === 403) {
-          setStatus({ exists: false, approved: false })
+          setStatus(null)
           log("status auth failed; showing enrollment")
           return
         }
@@ -82,20 +82,20 @@ export default function StationPage() {
         setStatus(json as StationStatus)
         log("status", json)
       } catch {
-        setStatus({ exists: false, approved: false })
+        setStatus(null)
         log("status fetch failed")
       }
     })()
   }, [sessionToken])
 
   useEffect(() => {
-    if (!status?.approved) {
+    if (!status?.status === "approved") {
       setCameraPermission("idle")
       setScannerActive(false)
       setDevices([])
       setDeviceId("")
     }
-  }, [status?.approved])
+  }, [status?.status === "approved"])
 
   const loadDevices = useCallback(async () => {
     try {
@@ -117,7 +117,7 @@ export default function StationPage() {
   }, [log])
 
   useEffect(() => {
-    if (!status?.approved) return
+    if (!status?.status === "approved") return
     let cancelled = false
     let permissionStatus: PermissionStatus | null = null
 
@@ -160,7 +160,7 @@ export default function StationPage() {
       cancelled = true
       permissionStatus?.removeEventListener("change", handleChange)
     }
-  }, [loadDevices, status?.approved])
+  }, [loadDevices, status?.status === "approved"])
 
   const requestCameraAccess = useCallback(async () => {
     setError(null)
@@ -327,21 +327,23 @@ export default function StationPage() {
   }
 
   return (
-    <div className="bg-background text-foreground flex min-h-screen flex-col items-center gap-2 pt-6 sm:p-6">
+    <div className="bg-background text-foreground flex flex-1 flex-col items-center gap-2 pt-6 sm:p-6">
       <h1 className="font-primary text-3xl">Abholungsstation</h1>
-      <p className="text-muted-foreground mb-4 max-w-md text-center">Scanne Abhol-QR-Codes hier</p>
+      <p className="text-muted-foreground max-w-md text-center">Scanne Abhol-QR-Codes hier</p>
 
-      {status && !status.approved && <PairingCodeDisplay deviceType="STATION" />}
+      {(!status || status.status !== "approved") && (
+        <div className="flex w-full flex-1 items-center justify-center">
+          <PairingCodeDisplay deviceType="STATION" />
+        </div>
+      )}
 
-      {status?.approved && (
-        <div className="flex w-full flex-col gap-4 sm:max-w-xl">
+      {status?.status === "approved" && (
+        <div className="mt-8 flex w-full flex-col gap-4 sm:max-w-xl">
           {!scannerActive && (
             <div className="bg-background rounded-xl border p-5 shadow-sm">
-              <div className="flex flex-col gap-2">
-                <h2 className="text-xl font-semibold">Scanner starten</h2>
-              </div>
+              <h2 className="text-center text-xl font-semibold">Scanner starten</h2>
 
-              <div className="mt-2 grid gap-3">
+              <div className="mt-3 grid justify-items-center gap-3">
                 <div className="flex flex-wrap gap-2">
                   {cameraPermission !== "granted" && (
                     <Button onClick={requestCameraAccess} disabled={cameraPermission === "pending"}>
@@ -478,7 +480,7 @@ export default function StationPage() {
             <Button
               onClick={async () => {
                 const count = result?.items?.filter((i) => !i.isRedeemed).length || 0
-                if (status?.approved && count > 0) {
+                if (status?.status === "approved" && count > 0) {
                   try {
                     await redeem()
                   } catch {}

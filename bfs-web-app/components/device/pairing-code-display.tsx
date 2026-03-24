@@ -136,7 +136,7 @@ export function PairingCodeDisplay({ deviceType, defaultName }: PairingCodeDispl
   const title = deviceType === "POS" ? "POS-Zugang anfordern" : "Station registrieren"
 
   return (
-    <div className="grid min-h-[calc(100dvh-8rem)] place-items-center p-4">
+    <div className="w-full p-2">
       <div className="bg-background w-full max-w-md rounded-xl border p-5 shadow-sm">
         <h1 className="mb-2 text-2xl font-semibold">{title}</h1>
         <p className="text-muted-foreground mb-4 text-sm">Dieses Gerät muss von einem Admin gekoppelt werden.</p>

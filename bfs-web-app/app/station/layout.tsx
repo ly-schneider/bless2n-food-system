@@ -9,15 +9,15 @@ export const metadata: Metadata = {
 
 export default function StationLayout({ children }: { children: React.ReactNode }) {
   return (
-    <main className="container mx-auto mt-6 px-4">
-      <div className="mx-auto flex items-center justify-center">
+    <main className="flex min-h-screen flex-col px-2">
+      <div className="flex items-center justify-center pt-6">
         <div className="inline-flex items-center gap-3">
           <Image src="/assets/images/blessthun.png" alt="BlessThun Logo" width={40} height={40} className="h-10 w-10" />
           <span className="text-lg font-semibold tracking-tight">BlessThun Food</span>
         </div>
       </div>
-      <div>{children}</div>
-      <VersionLabel className="mt-4 block text-center" version={process.env.APP_VERSION} />
+      <div className="flex flex-1 flex-col">{children}</div>
+      <VersionLabel className="pb-6 text-center text-sm" version={process.env.APP_VERSION} />
     </main>
   )
 }
