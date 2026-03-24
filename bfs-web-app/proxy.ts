@@ -47,7 +47,8 @@ export async function proxy(request: NextRequest) {
   response.headers.set("Referrer-Policy", "origin-when-cross-origin")
 
   const umamiScript = "https://cloud.umami.is"
-  const umamiApi = "https://api-gateway.umami.dev"
+  const umamiConnect =
+    "https://api-gateway.umami.dev https://api-gateway-eu.umami.dev https://gateway.umami.is https://eu.umami.is"
 
   const csp = [
     "default-src 'self'",
@@ -55,7 +56,7 @@ export async function proxy(request: NextRequest) {
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: https:${process.env.NODE_ENV !== "production" ? " http://localhost:* http://127.0.0.1:*" : ""}`,
     "font-src 'self' data:",
-    `connect-src 'self' ws: wss: ${umamiApi}`,
+    `connect-src 'self' ws: wss: ${umamiConnect}`,
     "frame-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
