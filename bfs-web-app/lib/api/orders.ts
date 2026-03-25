@@ -20,6 +20,12 @@ export async function listMyOrders(accessToken?: string) {
   })
 }
 
+export interface OrderLineRedemptionDTO {
+  id: string
+  orderLineId: string
+  redeemedAt: string
+}
+
 export interface OrderLineDTO {
   id: string
   orderId: string
@@ -33,6 +39,7 @@ export interface OrderLineDTO {
   menuSlotName?: string | null
   productImage?: string | null
   childLines?: OrderLineDTO[] | null
+  redemption?: OrderLineRedemptionDTO | null
 }
 
 export interface PublicOrderDetailsDTO {

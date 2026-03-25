@@ -18,7 +18,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import { getDeviceToken } from "@/lib/device-auth"
 
-type StationStatus = { id: string; status: "pending" | "approved" | "rejected" | "revoked"; name?: string }
+type StationProduct = { productId: string; name?: string }
+type StationStatus = {
+  id: string
+  status: "pending" | "approved" | "rejected" | "revoked"
+  name?: string
+  products?: StationProduct[]
+}
 
 export default function StationPage() {
   const log = useCallback((...args: unknown[]) => console.log("[Station]", ...args), [])
@@ -27,20 +33,21 @@ export default function StationPage() {
   const [status, setStatus] = useState<StationStatus | null>(null)
   const [systemDisabled, setSystemDisabled] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  type PublicOrderItem = {
+  type OrderLine = {
     id: string
     orderId: string
     productId: string
     title: string
     quantity: number
-    pricePerUnitCents?: number
+    unitPriceCents: number
     productImage?: string | null
-    isRedeemed?: boolean
-    parentItemId?: string | null
+    redemption?: { id: string; redeemedAt: string } | null
+    parentLineId?: string | null
     menuSlotId?: string | null
     menuSlotName?: string | null
+    childLines?: OrderLine[]
   }
-  type VerifyResult = { orderId: string; items: PublicOrderItem[] }
+  type VerifyResult = { orderId: string; lines: OrderLine[] }
   const [result, setResult] = useState<VerifyResult | null>(null)
   const [scanned, setScanned] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -240,19 +247,22 @@ export default function StationPage() {
           log("order lookup failed", msg)
           throw new Error(msg)
         }
-        const orderData = (await orderRes.json()) as { id: string; items: PublicOrderItem[] }
-        const data: VerifyResult = { orderId: orderData.id, items: orderData.items }
+        const orderData = (await orderRes.json()) as { id: string; lines?: OrderLine[] }
+        const allLines = orderData.lines || []
+        const assignedProductIds = new Set((status?.products || []).map((p) => p.productId))
+        const stationLines = allLines.filter((l) => assignedProductIds.has(l.productId))
+        const data: VerifyResult = { orderId: orderData.id, lines: stationLines }
         setResult(data)
         setScanned(orderId)
         setDrawerOpen(true)
-        log("order lookup ok", { orderId: data.orderId, items: data.items?.length })
+        log("order lookup ok", { orderId: data.orderId, lines: data.lines?.length })
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "Scan fehlgeschlagen")
         resumeScanning()
         log("order lookup error; resume scanning", e)
       }
     },
-    [resumeScanning, bearerToken, log]
+    [resumeScanning, bearerToken, log, status]
   )
 
   const handleDecoded = useCallback(
@@ -270,7 +280,7 @@ export default function StationPage() {
 
   async function redeem() {
     if (!result) return
-    const count = result.items?.filter((i) => !i.isRedeemed).length || 0
+    const count = result.lines?.filter((i) => !i.redemption).length || 0
     if (count === 0) return
     setError(null)
     log("redeem start", { count })
@@ -436,8 +446,8 @@ export default function StationPage() {
           <div className="mt-2">
             {result && (
               <div className="flex flex-col gap-3">
-                {result.items
-                  ?.filter((it) => !it.isRedeemed)
+                {result.lines
+                  ?.filter((it) => !it.redemption)
                   .map((it) => (
                     <div key={it.id} className="bg-card/50 rounded-xl border p-3">
                       <div className="flex items-center gap-3">
@@ -470,7 +480,7 @@ export default function StationPage() {
                       </div>
                     </div>
                   ))}
-                {(result.items?.filter((it) => !it.isRedeemed).length || 0) === 0 && (
+                {(result.lines?.filter((it) => !it.redemption).length || 0) === 0 && (
                   <div className="text-muted-foreground text-sm">Keine Artikel zum Einlösen.</div>
                 )}
               </div>
@@ -479,7 +489,7 @@ export default function StationPage() {
           <ModalFooter>
             <Button
               onClick={async () => {
-                const count = result?.items?.filter((i) => !i.isRedeemed).length || 0
+                const count = result?.lines?.filter((i) => !i.redemption).length || 0
                 if (status?.status === "approved" && count > 0) {
                   try {
                     await redeem()

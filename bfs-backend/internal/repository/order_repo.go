@@ -104,7 +104,9 @@ func (r *orderRepo) GetByIDWithRelations(ctx context.Context, id uuid.UUID) (*en
 		WithPayments().
 		WithLines(func(q *ent.OrderLineQuery) {
 			q.WithProduct().
-				WithChildLines().
+				WithChildLines(func(cq *ent.OrderLineQuery) {
+					cq.WithProduct().WithRedemption()
+				}).
 				WithRedemption()
 		}).
 		Only(ctx)

@@ -1,6 +1,6 @@
 "use client"
 
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Check } from "lucide-react"
 import Image from "next/image"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useMemo, useRef, useState } from "react"
@@ -35,8 +35,10 @@ export default function OrderPageClient() {
     let cancelled = false
     async function load() {
       if (!orderId) return
-      setQrReady(false)
-      setLoading(true)
+      if (!serverOrder) {
+        setQrReady(false)
+        setLoading(true)
+      }
       setApiError(null)
       try {
         const res = await getOrderPublicById(orderId)
@@ -51,8 +53,10 @@ export default function OrderPageClient() {
       }
     }
     void load()
+    const interval = setInterval(load, 10_000)
     return () => {
       cancelled = true
+      clearInterval(interval)
     }
   }, [orderId])
 
@@ -154,47 +158,57 @@ export default function OrderPageClient() {
         <div className="mt-8">
           <h2 className="mb-3 text-lg font-semibold">Bestellte Artikel</h2>
           <div className="flex flex-col gap-3">
-            {groupedItems.map(({ parent, children }) => (
-              <div key={parent.id} className="rounded-xl border p-3">
-                <div className="flex items-center gap-3">
-                  {parent.productImage && (
-                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[11px] bg-[#cec9c6]">
-                      <Image
-                        src={parent.productImage}
-                        alt={"Produktbild von " + parent.title}
-                        fill
-                        sizes="128px"
-                        quality={90}
-                        className="h-full w-full rounded-[11px] object-cover"
-                      />
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">{parent.title}</p>
-                        {children.length > 0 && (
-                          <div className="mt-1 flex flex-row flex-wrap gap-1.5">
-                            {children.map((c) => (
-                              <span
-                                key={c.id}
-                                className="text-muted-foreground border-border rounded-lg border px-2 py-0.5 text-xs"
-                              >
-                                {c.menuSlotName ?? "Option"}: {c.title}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+            {groupedItems.map(({ parent, children }) => {
+              const isRedeemed =
+                parent.redemption != null || (children.length > 0 && children.every((c) => c.redemption != null))
+              return (
+                <div key={parent.id} className="rounded-xl border p-3">
+                  <div className="flex items-center gap-3">
+                    {parent.productImage && (
+                      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[11px] bg-[#cec9c6]">
+                        <Image
+                          src={parent.productImage}
+                          alt={"Produktbild von " + parent.title}
+                          fill
+                          sizes="128px"
+                          quality={90}
+                          className="h-full w-full rounded-[11px] object-cover"
+                        />
                       </div>
-                      <div className="shrink-0 text-right">
-                        <p className="text-muted-foreground text-sm">x{parent.quantity}</p>
-                        <p className="font-medium">{formatChf(parent.unitPriceCents * parent.quantity)}</p>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{parent.title}</p>
+                          {children.length > 0 && (
+                            <div className="mt-1 flex flex-row flex-wrap gap-1.5">
+                              {children.map((c) => (
+                                <span
+                                  key={c.id}
+                                  className="text-muted-foreground border-border rounded-lg border px-2 py-0.5 text-xs"
+                                >
+                                  {c.menuSlotName ?? "Option"}: {c.title}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-muted-foreground text-sm">x{parent.quantity}</p>
+                          <p className="font-medium">{formatChf(parent.unitPriceCents * parent.quantity)}</p>
+                        </div>
                       </div>
+                      {isRedeemed && (
+                        <div className="mt-2 inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
+                          <Check className="size-3" />
+                          Abgeholt
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
           {typeof serverOrder.totalCents === "number" && (
             <div className="mt-4 flex items-center justify-between">
