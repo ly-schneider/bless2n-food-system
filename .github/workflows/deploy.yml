@@ -100,6 +100,7 @@ jobs:
             SENTRY_ORG=${{ vars.SENTRY_ORG }}
             SENTRY_PROJECT=${{ vars.SENTRY_PROJECT_FRONTEND }}
             CI=true
+            APP_VERSION=${{ needs.resolve-context.outputs.image_tag }}
 
   build-backend:
     name: Build Backend Image
