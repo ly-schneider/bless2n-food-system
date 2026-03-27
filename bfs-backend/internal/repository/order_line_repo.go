@@ -19,6 +19,7 @@ type OrderLineRepository interface {
 	GetUnredeemed(ctx context.Context, orderID uuid.UUID) ([]*ent.OrderLine, error)
 	Update(ctx context.Context, id, orderID uuid.UUID, lineType orderline.LineType, productID uuid.UUID, title string, quantity int, unitPriceCents int64, parentLineID, menuSlotID *uuid.UUID, menuSlotName *string) (*ent.OrderLine, error)
 	GetByOrderAndProductIDs(ctx context.Context, orderID uuid.UUID, productIDs []uuid.UUID) ([]*ent.OrderLine, error)
+	GetByParentLineIDs(ctx context.Context, parentIDs []uuid.UUID) ([]*ent.OrderLine, error)
 }
 
 // OrderLineCreateParams holds the parameters needed to create an order line in a batch.
@@ -183,6 +184,21 @@ func (r *orderLineRepo) GetByOrderAndProductIDs(ctx context.Context, orderID uui
 			orderline.OrderIDEQ(orderID),
 			orderline.ProductIDIn(productIDs...),
 		).
+		WithProduct().
+		WithRedemption().
+		All(ctx)
+	if err != nil {
+		return nil, translateError(err)
+	}
+	return rows, nil
+}
+
+func (r *orderLineRepo) GetByParentLineIDs(ctx context.Context, parentIDs []uuid.UUID) ([]*ent.OrderLine, error) {
+	if len(parentIDs) == 0 {
+		return []*ent.OrderLine{}, nil
+	}
+	rows, err := r.ec(ctx).OrderLine.Query().
+		Where(orderline.ParentLineIDIn(parentIDs...)).
 		WithProduct().
 		WithRedemption().
 		All(ctx)

@@ -93,7 +93,6 @@ func (s *stationService) RemoveStationProduct(ctx context.Context, stationID uui
 }
 
 func (s *stationService) AssignedItemsForOrder(ctx context.Context, stationID, orderID uuid.UUID) ([]*ent.OrderLine, error) {
-	// Get product IDs assigned to this station
 	pids, err := s.devices.ListProductIDsByDevice(ctx, stationID)
 	if err != nil {
 		return nil, err
@@ -101,7 +100,30 @@ func (s *stationService) AssignedItemsForOrder(ctx context.Context, stationID, o
 	if len(pids) == 0 {
 		return []*ent.OrderLine{}, nil
 	}
-	return s.orderLineRepo.GetByOrderAndProductIDs(ctx, orderID, pids)
+	lines, err := s.orderLineRepo.GetByOrderAndProductIDs(ctx, orderID, pids)
+	if err != nil {
+		return nil, err
+	}
+
+	// Bundle lines are not redeemable — expand them to their component children.
+	var bundleIDs []uuid.UUID
+	var result []*ent.OrderLine
+	for _, line := range lines {
+		if line.LineType == orderline.LineTypeBundle {
+			bundleIDs = append(bundleIDs, line.ID)
+		} else {
+			result = append(result, line)
+		}
+	}
+	if len(bundleIDs) > 0 {
+		children, err := s.orderLineRepo.GetByParentLineIDs(ctx, bundleIDs)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, children...)
+	}
+
+	return result, nil
 }
 
 func (s *stationService) RedeemAssigned(ctx context.Context, stationID, orderID uuid.UUID, idemKey string) (map[string]any, error) {

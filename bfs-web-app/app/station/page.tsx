@@ -37,6 +37,7 @@ export default function StationPage() {
     id: string
     orderId: string
     productId: string
+    lineType?: string
     title: string
     quantity: number
     unitPriceCents: number
@@ -250,7 +251,14 @@ export default function StationPage() {
         const orderData = (await orderRes.json()) as { id: string; lines?: OrderLine[] }
         const allLines = orderData.lines || []
         const assignedProductIds = new Set((status?.products || []).map((p) => p.productId))
-        const stationLines = allLines.filter((l) => assignedProductIds.has(l.productId))
+        const matchedBundleIds = new Set(
+          allLines.filter((l) => assignedProductIds.has(l.productId) && l.lineType === "bundle").map((l) => l.id)
+        )
+        const stationLines = allLines.filter(
+          (l) =>
+            (assignedProductIds.has(l.productId) && l.lineType !== "bundle") ||
+            (l.parentLineId != null && matchedBundleIds.has(l.parentLineId))
+        )
         const data: VerifyResult = { orderId: orderData.id, lines: stationLines }
         setResult(data)
         setScanned(orderId)

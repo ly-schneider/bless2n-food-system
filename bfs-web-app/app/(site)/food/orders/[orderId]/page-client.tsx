@@ -25,6 +25,7 @@ export default function OrderPageClient() {
   const [loading, setLoading] = useState<boolean>(false)
   const [apiError, setApiError] = useState<string | null>(null)
   const [qrReady, setQrReady] = useState<boolean>(false)
+  const initialLoadDone = useRef(false)
 
   useEffect(() => {
     if (orderId) addOrder(orderId)
@@ -35,7 +36,7 @@ export default function OrderPageClient() {
     let cancelled = false
     async function load() {
       if (!orderId) return
-      if (!serverOrder) {
+      if (!initialLoadDone.current) {
         setQrReady(false)
         setLoading(true)
       }
@@ -48,8 +49,11 @@ export default function OrderPageClient() {
           typeof e === "object" && e && "message" in e ? String((e as { message?: unknown }).message ?? "") : undefined
         if (!cancelled) setApiError(msg || "Fehler beim Laden der Bestellung")
       } finally {
-        if (!cancelled) setQrReady(true)
-        if (!cancelled) setLoading(false)
+        if (!cancelled) {
+          initialLoadDone.current = true
+          setQrReady(true)
+          setLoading(false)
+        }
       }
     }
     void load()
@@ -177,7 +181,7 @@ export default function OrderPageClient() {
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-3">
+                      <div className={`flex justify-between gap-3 ${isRedeemed ? "items-start" : "items-center"}`}>
                         <div className="min-w-0">
                           <p className="truncate font-medium">{parent.title}</p>
                           {children.length > 0 && (
@@ -192,18 +196,18 @@ export default function OrderPageClient() {
                               ))}
                             </div>
                           )}
+                          {isRedeemed && (
+                            <div className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
+                              <Check className="size-3" />
+                              Abgeholt
+                            </div>
+                          )}
                         </div>
                         <div className="shrink-0 text-right">
                           <p className="text-muted-foreground text-sm">x{parent.quantity}</p>
                           <p className="font-medium">{formatChf(parent.unitPriceCents * parent.quantity)}</p>
                         </div>
                       </div>
-                      {isRedeemed && (
-                        <div className="mt-2 inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
-                          <Check className="size-3" />
-                          Abgeholt
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
