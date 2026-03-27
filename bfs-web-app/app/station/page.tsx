@@ -27,7 +27,6 @@ type StationStatus = {
 }
 
 export default function StationPage() {
-  const log = useCallback((...args: unknown[]) => console.log("[Station]", ...args), [])
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
   const [deviceId, setDeviceId] = useState<string>("")
   const [status, setStatus] = useState<StationStatus | null>(null)
@@ -52,6 +51,7 @@ export default function StationPage() {
   const [result, setResult] = useState<VerifyResult | null>(null)
   const [scanned, setScanned] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [dialogLoading, setDialogLoading] = useState(false)
   const [cameraPermission, setCameraPermission] = useState<"idle" | "pending" | "granted" | "denied">("idle")
   const [scannerActive, setScannerActive] = useState(false)
   const [scannerKey, setScannerKey] = useState(0)
@@ -66,32 +66,26 @@ export default function StationPage() {
   useEffect(() => {
     if (!sessionToken) {
       setStatus(null)
-      log("no session token; showing enrollment")
       return
     }
     ;(async () => {
       try {
-        log("GET /v1/stations/me")
         const res = await fetch(`/api/v1/stations/me`, {
           headers: { Authorization: `Bearer ${sessionToken}` },
         })
         if (res.status === 503) {
           setSystemDisabled(true)
-          log("system disabled (503)")
           return
         }
         if (res.status === 401 || res.status === 403) {
           setStatus(null)
-          log("status auth failed; showing enrollment")
           return
         }
         setSystemDisabled(false)
         const json = await res.json()
         setStatus(json as StationStatus)
-        log("status", json)
       } catch {
         setStatus(null)
-        log("status fetch failed")
       }
     })()
   }, [sessionToken])
@@ -110,19 +104,14 @@ export default function StationPage() {
       const ds = await navigator.mediaDevices.enumerateDevices()
       const vids = ds.filter((d) => d.kind === "videoinput")
       setDevices(vids)
-      log(
-        "Cameras",
-        vids.map((v) => ({ id: v.deviceId, label: v.label }))
-      )
       const preferred = vids[0]?.deviceId || ""
       setDeviceId((prev) => prev || preferred)
       return vids
-    } catch (e) {
+    } catch {
       setError("Kameras konnten nicht geladen werden.")
-      log("enumerateDevices failed", e)
       return []
     }
-  }, [log])
+  }, [])
 
   useEffect(() => {
     if (status?.status !== "approved") return
@@ -176,32 +165,24 @@ export default function StationPage() {
     setScannerKey((k) => k + 1)
     setCameraPermission("pending")
     try {
-      log("Requesting camera permission")
       const stream = await navigator.mediaDevices.getUserMedia({ video: true })
       await loadDevices()
       setCameraPermission("granted")
       stream.getTracks().forEach((t) => t.stop())
-      log("Camera permission granted")
-    } catch (e) {
+    } catch {
       setCameraPermission("denied")
       setError("Kamerazugriff verweigert oder nicht verfügbar.")
-      log("Camera permission failed", e)
     }
-  }, [loadDevices, log])
+  }, [loadDevices])
 
-  const handleScannerStartError = useCallback((err: unknown) => {
+  const handleScannerStartError = useCallback(() => {
     setError("Scanner konnte nicht gestartet werden.")
     setScannerActive(false)
-    console.error("html5-qrcode start failed", err)
   }, [])
 
-  const handleScannerReady = useCallback(
-    (scanner: Html5Qrcode) => {
-      scannerRef.current = scanner
-      log("html5-qrcode ready")
-    },
-    [log]
-  )
+  const handleScannerReady = useCallback((scanner: Html5Qrcode) => {
+    scannerRef.current = scanner
+  }, [])
 
   const handleScannerStop = useCallback(() => {
     scannerRef.current = null
@@ -226,27 +207,29 @@ export default function StationPage() {
     } catch {}
   }, [])
 
-  // Remove old enrollment / polling logic — replaced by PairingCodeDisplay
-
   const handleScanned = useCallback(
     async (code: string) => {
       setError(null)
-      try {
-        // Client-side: extract orderId from scanned QR (raw orderId string)
-        const orderId = code.trim()
-        if (!orderId) throw new Error("Ungültiger QR-Code")
-        log("order lookup start", { orderId })
+      const orderId = code.trim()
+      if (!orderId) {
+        setError("Ungültiger QR-Code")
+        resumeScanning()
+        return
+      }
 
-        // Fetch order details to display items
+      setScanned(orderId)
+      setResult(null)
+      setDialogLoading(true)
+      setDrawerOpen(true)
+
+      try {
         const orderRes = await fetch(`/api/v1/orders/${encodeURIComponent(orderId)}`, {
           headers: { Authorization: `Bearer ${bearerToken}` },
         })
         type Problem = { detail?: string }
         if (!orderRes.ok) {
           const j = (await orderRes.json().catch(() => ({}))) as Problem
-          const msg = j.detail || `Fehler ${orderRes.status}`
-          log("order lookup failed", msg)
-          throw new Error(msg)
+          throw new Error(j.detail || `Fehler ${orderRes.status}`)
         }
         const orderData = (await orderRes.json()) as { id: string; lines?: OrderLine[] }
         const allLines = orderData.lines || []
@@ -259,18 +242,16 @@ export default function StationPage() {
             (assignedProductIds.has(l.productId) && l.lineType !== "bundle") ||
             (l.parentLineId != null && matchedBundleIds.has(l.parentLineId))
         )
-        const data: VerifyResult = { orderId: orderData.id, lines: stationLines }
-        setResult(data)
-        setScanned(orderId)
-        setDrawerOpen(true)
-        log("order lookup ok", { orderId: data.orderId, lines: data.lines?.length })
+        setResult({ orderId: orderData.id, lines: stationLines })
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "Scan fehlgeschlagen")
+        setDrawerOpen(false)
         resumeScanning()
-        log("order lookup error; resume scanning", e)
+      } finally {
+        setDialogLoading(false)
       }
     },
-    [resumeScanning, bearerToken, log, status]
+    [resumeScanning, bearerToken, status]
   )
 
   const handleDecoded = useCallback(
@@ -286,36 +267,21 @@ export default function StationPage() {
     [handleScanned]
   )
 
-  async function redeem() {
-    if (!result) return
-    const count = result.lines?.filter((i) => !i.redemption).length || 0
-    if (count === 0) return
-    setError(null)
-    log("redeem start", { count })
-    try {
+  const fireRedeem = useCallback(
+    (orderId: string) => {
       const idem = `idem_${Date.now()}_${Math.random().toString(36).slice(2)}`
-      const res = await fetch(`/api/v1/stations/redeem`, {
+      fetch(`/api/v1/stations/redeem`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${bearerToken}`,
           "Idempotency-Key": idem,
         },
-        body: JSON.stringify({ orderId: scanned }),
-      })
-      const json = (await res.json().catch(() => ({}))) as { detail?: string; message?: string }
-      if (!res.ok) {
-        const msg = json.detail || json.message || `Fehler ${res.status}`
-        // Ignore specific backend message when nothing to redeem
-        if (/no items to redeem/i.test(msg)) return
-        throw new Error(msg)
-      }
-      log("redeem ok")
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Einlösen fehlgeschlagen")
-      log("redeem error", e)
-    }
-  }
+        body: JSON.stringify({ orderId }),
+      }).catch(() => {})
+    },
+    [bearerToken]
+  )
 
   useEffect(() => {
     if (!systemDisabled) return
@@ -436,14 +402,14 @@ export default function StationPage() {
       )}
 
       <Dialog
-        open={drawerOpen && !!result}
+        open={drawerOpen}
         onOpenChange={(open) => {
-          setDrawerOpen(open)
           if (!open) {
+            setDrawerOpen(false)
             setResult(null)
             setScanned(null)
+            setDialogLoading(false)
             resumeScanning()
-            log("Dialog closed; resume scanning")
           }
         }}
       >
@@ -452,7 +418,22 @@ export default function StationPage() {
             <ModalTitle>Zu verteilende Artikel</ModalTitle>
           </ModalHeader>
           <div className="mt-2">
-            {result && (
+            {dialogLoading && (
+              <div className="flex flex-col gap-3">
+                {[0, 1].map((i) => (
+                  <div key={i} className="rounded-xl border p-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-16 w-16 shrink-0 animate-pulse rounded-[11px] bg-gray-200" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 w-3/4 animate-pulse rounded bg-gray-200" />
+                        <div className="h-3 w-1/2 animate-pulse rounded bg-gray-200" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {!dialogLoading && result && (
               <div className="flex flex-col gap-3">
                 {result.lines
                   ?.filter((it) => !it.redemption)
@@ -496,19 +477,19 @@ export default function StationPage() {
           </div>
           <ModalFooter>
             <Button
-              onClick={async () => {
-                const count = result?.lines?.filter((i) => !i.redemption).length || 0
-                if (status?.status === "approved" && count > 0) {
-                  try {
-                    await redeem()
-                  } catch {}
-                }
-                // Ensure scanning resumes even when closing programmatically
+              disabled={dialogLoading}
+              onClick={() => {
+                const currentOrderId = scanned
+                const hasItems = (result?.lines?.filter((i) => !i.redemption).length || 0) > 0
+
                 setDrawerOpen(false)
                 setResult(null)
                 setScanned(null)
                 resumeScanning()
-                log("Dialog closed; resume scanning")
+
+                if (status?.status === "approved" && hasItems && currentOrderId) {
+                  fireRedeem(currentOrderId)
+                }
               }}
             >
               Abschliessen
