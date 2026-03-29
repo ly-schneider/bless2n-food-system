@@ -51,3 +51,14 @@ jobs:
       - name: Validate migration integrity
         working-directory: bfs-backend
         run: atlas migrate validate --dir "file://db/migrations"
+
+      - name: Lint new migrations with squawk
+        run: |
+          git fetch origin main --depth=1
+          NEW_MIGRATIONS=$(git diff --name-only --diff-filter=A origin/main -- bfs-backend/db/migrations/ | grep '\.sql$' || true)
+          if [ -z "$NEW_MIGRATIONS" ]; then
+            echo "No new migration files to lint"
+            exit 0
+          fi
+          npm install -g squawk-cli
+          echo "$NEW_MIGRATIONS" | xargs squawk

@@ -211,7 +211,6 @@ jobs:
         uses: ariga/setup-atlas@v0
         with:
           version: v0.38.0
-          cloud-token: ${{ secrets.ATLAS_CLOUD_TOKEN }}
 
       - name: Apply Atlas migrations
         working-directory: bfs-backend
