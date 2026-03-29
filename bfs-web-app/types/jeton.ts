@@ -1,4 +1,4 @@
-export type PosFulfillmentMode = "QR_CODE" | "JETON"
+export type PosFulfillmentMode = "QR_CODE" | "JETON" | "HYBRID"
 
 export interface Jeton {
   id: string

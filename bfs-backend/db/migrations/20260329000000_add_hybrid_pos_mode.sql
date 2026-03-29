@@ -1,0 +1,1 @@
+ALTER TYPE pos_fulfillment_mode ADD VALUE IF NOT EXISTS 'HYBRID';

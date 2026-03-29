@@ -392,7 +392,7 @@ function ProductCardEditable({
   const parsedDelta = deltaInput.trim() === "" ? 0 : parseInt(deltaInput, 10)
   const deltaValid = deltaInput.trim() === "" || !isNaN(parsedDelta)
   const newStock = currentStockValue + (deltaValid ? parsedDelta : 0)
-  const jetonRequired = product.type === "simple" && posMode === "JETON" && isActive && !jetonId
+  const jetonRequired = product.type === "simple" && posMode !== "QR_CODE" && isActive && !jetonId
 
   const priceDirty = parsedPrice != null ? parsedPrice !== product.priceCents : priceInput !== initialPrice
   const deltaDirty = deltaInput.trim() !== "" && parsedDelta !== 0
@@ -440,7 +440,7 @@ function ProductCardEditable({
       if (categoryId !== (product.category?.id ?? "")) updates.push(moveCategory(product.id, categoryId))
       if (jetonId !== (product.jeton?.id ?? "")) updates.push(updateJeton(product.id, jetonId || null))
       if (isActive !== product.isActive) {
-        if (product.type === "simple" && posMode === "JETON" && isActive && !jetonId) {
+        if (product.type === "simple" && posMode !== "QR_CODE" && isActive && !jetonId) {
           throw new Error("Im Jeton-Modus benötigen aktive Produkte einen Jeton.")
         }
         updates.push(setActive(product.id, isActive))
@@ -771,7 +771,7 @@ function CreateProductCard({
 
   const parsedPrice = parsePrice(priceInput)
   const trimmedName = name.trim()
-  const jetonRequired = type === "simple" && posMode === "JETON" && isActive && !jetonId
+  const jetonRequired = type === "simple" && posMode !== "QR_CODE" && isActive && !jetonId
   const stockValid = initialStock >= 0
   const valid =
     trimmedName.length > 0 &&
@@ -837,7 +837,7 @@ function CreateProductCard({
         } catch {
           // ignore jeton assignment error for now; surfaced via onError already
         }
-      } else if (!jetonId && res?.id && posMode === "JETON" && isActive && type === "simple") {
+      } else if (!jetonId && res?.id && posMode !== "QR_CODE" && isActive && type === "simple") {
         setError("Im Jeton-Modus benötigen aktive Produkte einen Jeton.")
       }
       onCreated(created)

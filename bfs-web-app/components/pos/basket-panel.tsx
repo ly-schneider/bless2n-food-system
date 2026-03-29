@@ -116,6 +116,7 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
     items: JetonTotal[]
     orderId?: string
     payment?: PosPaymentMethod
+    receiptPayload?: Receipt & { orderTimestamp?: number }
   } | null>(null)
   const [showGratisDialog, setShowGratisDialog] = useState(false)
   const [showClub100Picker, setShowClub100Picker] = useState(false)
@@ -130,7 +131,8 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
   const scrollRef = useRef<HTMLDivElement>(null)
   const prevItemCount = useRef(cart.items.length)
   const cartIsEmpty = cart.items.length === 0
-  const jetonMode = mode === "JETON"
+  const jetonMode = mode === "JETON" || mode === "HYBRID"
+  const shouldPrint = mode !== "JETON"
   const resolveMenuSelections = useCallback((item: CartItem) => {
     if (item.product.type !== "menu" || !item.configuration) return []
     const slots = item.product.menu?.slots || []
@@ -345,22 +347,21 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
           )
           emitInventoryDecrement(cart.items)
 
-          if (jetonMode) {
-            setCardProcessing(false)
-            setCardSuccess(true)
-            setShowCard(false)
-            setJetonSummary({ items: jetons, orderId: localOrderId, payment: "card" })
-            clearCart()
-            clearClub100Discount()
-            return
-          }
-
           setCardProcessing(false)
           setCardSuccess(true)
-          setCardPrintInProgress(true)
-          try {
-            if (canPrint) getBridge()?.print?.(JSON.stringify(nextReceipt))
-          } catch {}
+
+          if (shouldPrint) {
+            setCardPrintInProgress(true)
+            try {
+              if (canPrint) getBridge()?.print?.(JSON.stringify(nextReceipt))
+            } catch {}
+          }
+
+          if (jetonMode) {
+            setShowCard(false)
+            setJetonSummary({ items: jetons, orderId: localOrderId, payment: "card", receiptPayload: nextReceipt })
+          }
+
           clearCart()
           clearClub100Discount()
         } else {
@@ -384,6 +385,7 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
     clearCart,
     clearClub100Discount,
     jetonMode,
+    shouldPrint,
     computeJetonTotals,
     buildPrintItems,
     generatePickupQr,
@@ -476,12 +478,13 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
     submitOrder(items, originalTotal, "cash", { items: printItems, pickupQr }, selectedGratisInfo ?? undefined)
     emitInventoryDecrement(cart.items)
 
-    if (jetonMode) {
-      setJetonSummary({ items: jetons, orderId: localOrderId, payment: "cash" })
-    } else {
+    if (shouldPrint) {
       try {
         if (canPrint) getBridge()?.print?.(JSON.stringify(receiptPayload))
       } catch {}
+    }
+    if (jetonMode) {
+      setJetonSummary({ items: jetons, orderId: localOrderId, payment: "cash", receiptPayload })
     }
 
     clearCart()
@@ -496,6 +499,7 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
     total,
     canPrint,
     jetonMode,
+    shouldPrint,
     hasMissingJeton,
     computeJetonTotals,
     clearCart,
@@ -537,12 +541,13 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
     submitOrder(items, originalTotal, "twint", { items: printItems, pickupQr }, selectedGratisInfo ?? undefined)
     emitInventoryDecrement(cart.items)
 
-    if (jetonMode) {
-      setJetonSummary({ items: jetons, orderId: localOrderId, payment: "twint" })
-    } else {
+    if (shouldPrint) {
       try {
         if (canPrint) getBridge()?.print?.(JSON.stringify(receiptPayload))
       } catch {}
+    }
+    if (jetonMode) {
+      setJetonSummary({ items: jetons, orderId: localOrderId, payment: "twint", receiptPayload })
     }
 
     clearCart()
@@ -553,6 +558,7 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
   }, [
     busy,
     jetonMode,
+    shouldPrint,
     hasMissingJeton,
     cart.items,
     computeJetonTotals,
@@ -660,11 +666,24 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
       const localOrderId = `local_${Date.now()}`
       const pickupQr = generatePickupQr(localOrderId)
 
+      const receiptPayload: Receipt & { orderTimestamp?: number } = {
+        method: paymentMethod,
+        totalCents: total,
+        items: printItems,
+        pickupQr: pickupQr || undefined,
+        orderTimestamp: Date.now(),
+      }
+
       submitOrder(items, total, paymentMethod, { items: printItems, pickupQr }, gratisInfo)
       emitInventoryDecrement(cart.items)
 
+      if (shouldPrint) {
+        try {
+          if (canPrint) getBridge()?.print?.(JSON.stringify(receiptPayload))
+        } catch {}
+      }
       if (jetonMode) {
-        setJetonSummary({ items: jetons, orderId: localOrderId, payment: paymentMethod })
+        setJetonSummary({ items: jetons, orderId: localOrderId, payment: paymentMethod, receiptPayload })
       }
 
       clearCart()
@@ -675,6 +694,8 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
       cart.items,
       total,
       jetonMode,
+      shouldPrint,
+      canPrint,
       hasMissingJeton,
       computeJetonTotals,
       buildPrintItems,
@@ -1054,7 +1075,7 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
                 Mit Karte bezahlen
               </Button>
               {!canPayWithCard &&
-                (jetonMode ? (
+                (mode === "JETON" ? (
                   <div className="text-muted-foreground text-xs">
                     Kartenzahlung ohne Terminal ist im Jeton-Modus deaktiviert.
                   </div>
@@ -1227,6 +1248,21 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
             </div>
           )}
           <DialogFooter className="w-full">
+            {shouldPrint && jetonSummary?.receiptPayload && (
+              <Button
+                variant="outline"
+                className="h-12 w-full rounded-xl text-base"
+                onClick={() => {
+                  try {
+                    if (canPrint) getBridge()?.print?.(JSON.stringify(jetonSummary.receiptPayload))
+                  } catch {}
+                }}
+                disabled={!canPrint}
+              >
+                <Printer className="mr-2 size-4" />
+                Beleg erneut drucken
+              </Button>
+            )}
             <Button className="h-12 w-full rounded-xl text-base" onClick={() => setJetonSummary(null)}>
               Fertig
             </Button>

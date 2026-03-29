@@ -27,7 +27,7 @@ func (Settings) Fields() []ent.Field {
 			Default("default").
 			Immutable(),
 		field.Enum("pos_mode").
-			Values("QR_CODE", "JETON").
+			Values("QR_CODE", "JETON", "HYBRID").
 			Default("QR_CODE").
 			StorageKey("pos_mode"),
 		field.Bool("system_enabled").

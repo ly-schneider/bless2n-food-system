@@ -89,10 +89,10 @@ func (s *settingsService) GetSettingsWithProducts(ctx context.Context) (*ent.Set
 }
 
 func (s *settingsService) SetPosMode(ctx context.Context, mode settings.PosMode) error {
-	if mode != settings.PosModeQR_CODE && mode != settings.PosModeJETON {
+	if mode != settings.PosModeQR_CODE && mode != settings.PosModeJETON && mode != settings.PosModeHYBRID {
 		return fmt.Errorf("invalid_mode")
 	}
-	if mode == settings.PosModeJETON {
+	if mode == settings.PosModeJETON || mode == settings.PosModeHYBRID {
 		if missing, err := s.products.CountActiveWithoutJeton(ctx); err == nil && missing > 0 {
 			return MissingJetonForActiveProductsError{Count: missing}
 		} else if err != nil {
@@ -212,7 +212,7 @@ func (s *settingsService) SetProductJeton(ctx context.Context, productID uuid.UU
 	if err != nil {
 		return err
 	}
-	if settingsData != nil && settingsData.PosMode == settings.PosModeJETON && p.IsActive && jetonID == nil {
+	if settingsData != nil && (settingsData.PosMode == settings.PosModeJETON || settingsData.PosMode == settings.PosModeHYBRID) && p.IsActive && jetonID == nil {
 		if p.Type == "simple" {
 			return ErrJetonRequired
 		}

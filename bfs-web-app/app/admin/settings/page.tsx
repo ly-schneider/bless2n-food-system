@@ -12,7 +12,7 @@ import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
 import { getCSRFToken } from "@/lib/csrf"
 import type { Product } from "@/types"
 
-type PosFulfillmentMode = "QR_CODE" | "JETON"
+type PosFulfillmentMode = "QR_CODE" | "JETON" | "HYBRID"
 
 type SettingsResponse = {
   systemEnabled?: boolean
@@ -129,11 +129,11 @@ export default function AdminSettingsPage() {
         <CardHeader>
           <CardTitle>POS Modus</CardTitle>
           <p className="text-muted-foreground text-sm">
-            Bestimme, ob das POS Belege mit QR-Code druckt oder Jetons zum Ausgeben berechnet.
+            Bestimme, ob das POS Belege mit QR-Code druckt, Jetons zum Ausgeben berechnet, oder beides kombiniert.
           </p>
         </CardHeader>
         <CardContent className="max-w-lg space-y-3">
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-3">
             <Button
               variant={posMode === "QR_CODE" ? "default" : "outline"}
               className="h-12 justify-start rounded-xl"
@@ -149,6 +149,14 @@ export default function AdminSettingsPage() {
               disabled={saving}
             >
               Jetons
+            </Button>
+            <Button
+              variant={posMode === "HYBRID" ? "default" : "outline"}
+              className="h-12 justify-start rounded-xl"
+              onClick={() => updateSettings({ posMode: "HYBRID" })}
+              disabled={saving}
+            >
+              Hybrid
             </Button>
           </div>
           {missingJetons > 0 && (

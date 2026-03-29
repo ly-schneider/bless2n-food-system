@@ -36,8 +36,6 @@ export function POSHeader({ mode, syncStatus }: POSHeaderProps) {
   const animationFrameRef = useRef<number | null>(null)
   const idleTimerRef = useRef<number | null>(null)
   const [mounted, setMounted] = useState(false)
-  const jetonMode = mode === "JETON"
-
   function lock() {
     setLocked(true)
     try {
@@ -186,7 +184,7 @@ export function POSHeader({ mode, syncStatus }: POSHeaderProps) {
                 onFailedClick={syncStatus.onFailedClick}
               />
             )}
-            {!jetonMode && <PrinterSelector />}
+            {mode !== "JETON" && <PrinterSelector />}
             <Button
               variant="outline"
               size="sm"

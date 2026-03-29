@@ -1,9 +1,10 @@
 PosFulfillmentMode:
   type: string
-  enum: [QR_CODE, JETON]
+  enum: [QR_CODE, JETON, HYBRID]
   description: |
     - `QR_CODE`: Station-based pickup using signed QR codes
     - `JETON`: Color-coded fulfillment using jeton tags
+    - `HYBRID`: Combines jeton display with QR code receipt printing
 
 POSDevice:
   type: object
