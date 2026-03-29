@@ -40,9 +40,4 @@ env "deploy" {
     exec_order       = LINEAR
     revisions_schema = "public"
   }
-  pre "migrate_apply" {
-    exec {
-      src = "file://db/scripts/set-role.sql"
-    }
-  }
 }
