@@ -35,18 +35,22 @@ func TraceRoute(next http.Handler) http.Handler {
 	})
 }
 
-func LogServerErrors(next http.Handler) http.Handler {
+func LogHTTPErrors(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
 
+		if rec.status < 400 {
+			return
+		}
+
+		reqID := chiMw.GetReqID(r.Context())
+		trace.Tag(r.Context(), "http.status_code", fmt.Sprintf("%d", rec.status))
+
 		if rec.status >= 500 {
 			trace.Tag(r.Context(), "error", "true")
-			trace.Tag(r.Context(), "http.status_code", fmt.Sprintf("%d", rec.status))
 
-			reqID := chiMw.GetReqID(r.Context())
-			logger := zap.L()
-			logger.Error("http 5xx",
+			zap.L().Error("http 5xx",
 				zap.Int("status", rec.status),
 				zap.String("method", r.Method),
 				zap.String("path", r.URL.Path),
@@ -64,6 +68,21 @@ func LogServerErrors(next http.Handler) http.Handler {
 			}
 
 			SentryLogger(r.Context()).Error().
+				Int("status", rec.status).
+				String("method", r.Method).
+				String("path", r.URL.Path).
+				String("request_id", reqID).
+				Emitf("HTTP %d: %s %s", rec.status, r.Method, r.URL.Path)
+		} else {
+			zap.L().Warn("http 4xx",
+				zap.Int("status", rec.status),
+				zap.String("method", r.Method),
+				zap.String("path", r.URL.Path),
+				zap.String("remote_ip", r.RemoteAddr),
+				zap.String("request_id", reqID),
+			)
+
+			SentryLogger(r.Context()).Warn().
 				Int("status", rec.status).
 				String("method", r.Method).
 				String("path", r.URL.Path).

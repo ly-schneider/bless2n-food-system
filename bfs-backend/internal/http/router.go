@@ -44,7 +44,7 @@ func NewRouter(
 	r.Use(chiMw.RequestID)
 	r.Use(chiMw.RealIP)
 	r.Use(chiMw.Heartbeat("/ping"))
-	r.Use(middleware.LogServerErrors)
+	r.Use(middleware.LogHTTPErrors)
 
 	// ── Create the generated wrapper ──────────────────────────────────
 	wrapper := generated.ServerInterfaceWrapper{
