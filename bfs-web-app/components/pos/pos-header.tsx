@@ -197,7 +197,7 @@ export function POSHeader({ mode, syncStatus }: POSHeaderProps) {
               className="rounded-[11px] border-0"
             >
               <RefreshCw className="size-4" />
-              <span>Aktualisieren</span>
+              <span className="hidden sm:inline">Aktualisieren</span>
             </Button>
             <Button
               variant="outline"

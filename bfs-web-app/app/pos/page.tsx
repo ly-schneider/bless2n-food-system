@@ -2,7 +2,7 @@
 
 import "./bridge.client"
 
-import { Banknote, CreditCard, QrCode } from "lucide-react"
+import { Banknote, CreditCard, QrCode, ShoppingCart, UtensilsCrossed } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ProductConfigurationModal } from "@/components/cart/product-configuration-modal"
 import { PairingCodeDisplay } from "@/components/device/pairing-code-display"
@@ -12,12 +12,13 @@ import { ProductGrid } from "@/components/pos/product-grid"
 import { StuckOrdersDialog } from "@/components/pos/stuck-orders-dialog"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { CartProvider } from "@/contexts/cart-context"
+import { CartProvider, useCart } from "@/contexts/cart-context"
 import { useInventoryStream } from "@/hooks/use-inventory-stream"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { useOrderQueue } from "@/hooks/use-order-queue"
 import { listProducts } from "@/lib/api/products"
 import { getDeviceToken } from "@/lib/device-auth"
-import { formatChf } from "@/lib/utils"
+import { cn, formatChf } from "@/lib/utils"
 import type { ListResponse, ProductDTO } from "@/types"
 import type { PosFulfillmentMode } from "@/types/jeton"
 import type { PosPaymentMethod } from "@/types/order-queue"
@@ -37,6 +38,47 @@ type PosDeviceResponse = {
   model?: string
   os?: string
   settings?: { posMode?: PosFulfillmentMode }
+}
+
+function MobileTabBar({
+  activeView,
+  onViewChange,
+}: {
+  activeView: "products" | "cart"
+  onViewChange: (view: "products" | "cart") => void
+}) {
+  const { cart } = useCart()
+  return (
+    <div className="bg-card border-border fixed right-0 bottom-0 left-0 z-40 flex h-14 items-center border-t md:hidden landscape:hidden">
+      <button
+        className={cn(
+          "flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-xs font-medium transition-colors",
+          activeView === "products" ? "text-foreground" : "text-muted-foreground"
+        )}
+        onClick={() => onViewChange("products")}
+      >
+        <UtensilsCrossed className="size-5" />
+        <span>Menu</span>
+      </button>
+      <button
+        className={cn(
+          "relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-xs font-medium transition-colors",
+          activeView === "cart" ? "text-foreground" : "text-muted-foreground"
+        )}
+        onClick={() => onViewChange("cart")}
+      >
+        <div className="relative">
+          <ShoppingCart className="size-5" />
+          {cart.items.length > 0 && (
+            <span className="bg-primary absolute -top-1.5 -right-2.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white">
+              {cart.items.length}
+            </span>
+          )}
+        </div>
+        <span>Warenkorb</span>
+      </button>
+    </div>
+  )
 }
 
 function PosInner() {
@@ -267,6 +309,20 @@ function PosInner() {
     onFailedClick: handleFailedClick,
   }
 
+  const isMobile = useIsMobile()
+  const [isLandscape, setIsLandscape] = useState(false)
+  const [mobileView, setMobileView] = useState<"products" | "cart">("products")
+
+  useEffect(() => {
+    const mql = window.matchMedia("(orientation: landscape)")
+    const onChange = () => setIsLandscape(mql.matches)
+    onChange()
+    mql.addEventListener("change", onChange)
+    return () => mql.removeEventListener("change", onChange)
+  }, [])
+
+  const showBothPanels = !isMobile || isLandscape
+
   if (systemDisabled) {
     return (
       <div className="bg-background flex min-h-screen items-center justify-center">
@@ -290,8 +346,17 @@ function PosInner() {
   return (
     <>
       <POSHeader mode={status?.mode} syncStatus={syncStatus} />
-      <div className="grid h-[calc(100dvh-4rem)] grid-cols-1 overflow-hidden md:grid-cols-[1fr_450px]">
-        <div className="min-h-0 overflow-hidden">
+      <div
+        className={cn(
+          "grid overflow-hidden",
+          showBothPanels
+            ? isMobile
+              ? "h-[calc(100dvh-3.5rem)] grid-cols-[1fr_280px]"
+              : "h-[calc(100dvh-4rem)] grid-cols-[1fr_450px]"
+            : "h-[calc(100dvh-7rem)] grid-cols-1"
+        )}
+      >
+        <div className={cn("min-h-0 overflow-hidden", !showBothPanels && mobileView !== "products" && "hidden")}>
           <ProductGrid
             products={products}
             onConfigure={(p) => {
@@ -300,12 +365,14 @@ function PosInner() {
             }}
           />
         </div>
-        <BasketPanel
-          token={sessionToken || ""}
-          mode={status?.mode}
-          submitOrder={submitOrder}
-          stockMap={stockSnapshotRef.current}
-        />
+        <div className={cn("min-h-0 overflow-hidden", !showBothPanels && mobileView !== "cart" && "hidden")}>
+          <BasketPanel
+            token={sessionToken || ""}
+            mode={status?.mode}
+            submitOrder={submitOrder}
+            stockMap={stockSnapshotRef.current}
+          />
+        </div>
 
         {configProduct && (
           <ProductConfigurationModal
@@ -318,6 +385,8 @@ function PosInner() {
           />
         )}
       </div>
+
+      {!showBothPanels && <MobileTabBar activeView={mobileView} onViewChange={setMobileView} />}
 
       <StuckOrdersDialog
         open={showStuckOrders}
@@ -350,7 +419,7 @@ function PosInner() {
                 <div className="font-semibold">{formatChf(paymentErrorOrder.order.totalCents)}</div>
               </div>
             )}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <Button
                 className="flex h-24 flex-col items-center justify-center gap-2 rounded-xl"
                 variant="outline"

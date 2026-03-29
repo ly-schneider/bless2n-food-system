@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useCart } from "@/contexts/cart-context"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 import type { Club100Person } from "@/lib/api/club100"
 import { formatChf } from "@/lib/utils"
@@ -81,6 +82,7 @@ interface BasketPanelProps {
 
 export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: BasketPanelProps) {
   const { cart, updateQuantity, removeFromCart, clearCart } = useCart()
+  const isMobile = useIsMobile()
 
   const getMaxQuantity = useCallback(
     (item: CartItem): number | null => {
@@ -760,7 +762,7 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
 
   return (
     <>
-      <aside className="bg-card top-0 mr-3 flex h-[calc(100dvh-5rem)] min-h-0 flex-col rounded-2xl md:sticky md:mr-4">
+      <aside className="bg-card top-0 mx-3 flex h-full min-h-0 flex-col rounded-2xl md:sticky md:mr-4 md:ml-0">
         <div className="px-4 py-4">
           <h3 className="text-lg font-semibold">Warenkorb</h3>
         </div>
@@ -933,7 +935,7 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
           {tender === null && (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <Button
-                className="flex h-36 flex-col items-center justify-center gap-2 rounded-xl"
+                className="flex h-24 flex-col items-center justify-center gap-2 rounded-xl sm:h-36"
                 variant="outline"
                 onClick={() => {
                   setError(null)
@@ -942,27 +944,29 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
                 }}
                 aria-label="Bar bezahlen"
               >
-                <Banknote className="size-12" />
+                <Banknote className="size-8 sm:size-12" />
                 <span className="text-base font-medium">Bar</span>
               </Button>
+              {!isMobile && (
+                <Button
+                  className="flex h-24 flex-col items-center justify-center gap-2 rounded-xl sm:h-36"
+                  variant="outline"
+                  onClick={() => {
+                    setError(null)
+                    if (canPayWithCard) {
+                      startCardPayment()
+                    } else {
+                      setTender("card")
+                    }
+                  }}
+                  aria-label="Mit Karte bezahlen"
+                >
+                  <CreditCard className="size-8 sm:size-12" />
+                  <span className="text-base font-medium">Karte</span>
+                </Button>
+              )}
               <Button
-                className="flex h-36 flex-col items-center justify-center gap-2 rounded-xl"
-                variant="outline"
-                onClick={() => {
-                  setError(null)
-                  if (canPayWithCard) {
-                    startCardPayment()
-                  } else {
-                    setTender("card")
-                  }
-                }}
-                aria-label="Mit Karte bezahlen"
-              >
-                <CreditCard className="size-12" />
-                <span className="text-base font-medium">Karte</span>
-              </Button>
-              <Button
-                className="flex h-36 flex-col items-center justify-center gap-2 rounded-xl"
+                className="flex h-24 flex-col items-center justify-center gap-2 rounded-xl sm:h-36"
                 variant="outline"
                 onClick={() => {
                   setError(null)
@@ -970,7 +974,7 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
                 }}
                 aria-label="Mit TWINT bezahlen"
               >
-                <QrCode className="size-12" />
+                <QrCode className="size-8 sm:size-12" />
                 <span className="text-base font-medium">TWINT</span>
               </Button>
             </div>
@@ -1013,18 +1017,22 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
                       key={d}
                       variant="outline"
                       onClick={() => setReceived((v) => (v || "") + d)}
-                      className="h-16 text-lg"
+                      className="h-12 text-base sm:h-16 sm:text-lg"
                     >
                       {d}
                     </Button>
                   ))}
-                  <Button variant="outline" onClick={() => setReceived("")} className="h-16 text-lg">
+                  <Button
+                    variant="outline"
+                    onClick={() => setReceived("")}
+                    className="h-12 text-base sm:h-16 sm:text-lg"
+                  >
                     C
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => setReceived((v) => (v || "") + "0")}
-                    className="h-16 text-lg"
+                    className="h-12 text-base sm:h-16 sm:text-lg"
                   >
                     0
                   </Button>
@@ -1037,7 +1045,7 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
                         return cur + "."
                       })
                     }
-                    className="h-16 text-lg"
+                    className="h-12 text-base sm:h-16 sm:text-lg"
                   >
                     .
                   </Button>
@@ -1130,12 +1138,12 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
           <div className="space-y-4">
             {cardProcessing && (
               <div className="flex flex-col items-center justify-center gap-6 py-4">
-                <div className="relative h-72 w-72">
+                <div className="relative h-48 w-48 sm:h-72 sm:w-72">
                   <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-200/60 to-blue-400/40 blur-sm" />
-                  <div className="absolute inset-8 rounded-full border-8 border-blue-300/60" />
-                  <div className="absolute inset-16 rounded-full border-8 border-blue-400/50" />
-                  <div className="absolute inset-24 flex items-center justify-center rounded-full bg-blue-500/80">
-                    <CreditCard className="h-14 w-14 text-white" />
+                  <div className="absolute inset-5 rounded-full border-8 border-blue-300/60 sm:inset-8" />
+                  <div className="absolute inset-10 rounded-full border-8 border-blue-400/50 sm:inset-16" />
+                  <div className="absolute inset-16 flex items-center justify-center rounded-full bg-blue-500/80 sm:inset-24">
+                    <CreditCard className="h-10 w-10 text-white sm:h-14 sm:w-14" />
                   </div>
                 </div>
                 <div className="text-xl font-semibold">Kartenzahlung läuft</div>
@@ -1143,12 +1151,12 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
             )}
             {cardSuccess && (
               <div className="flex flex-col items-center justify-center gap-6 py-4">
-                <div className="relative h-72 w-72">
+                <div className="relative h-48 w-48 sm:h-72 sm:w-72">
                   <div className="absolute inset-0 rounded-full bg-gradient-to-br from-green-200/60 to-green-400/40 blur-sm" />
-                  <div className="absolute inset-8 rounded-full border-8 border-green-300/60" />
-                  <div className="absolute inset-16 rounded-full border-8 border-green-400/50" />
-                  <div className="absolute inset-24 flex items-center justify-center rounded-full bg-green-500/80">
-                    <Check className="h-14 w-14 text-white" />
+                  <div className="absolute inset-5 rounded-full border-8 border-green-300/60 sm:inset-8" />
+                  <div className="absolute inset-10 rounded-full border-8 border-green-400/50 sm:inset-16" />
+                  <div className="absolute inset-16 flex items-center justify-center rounded-full bg-green-500/80 sm:inset-24">
+                    <Check className="h-10 w-10 text-white sm:h-14 sm:w-14" />
                   </div>
                 </div>
                 <div className="text-xl font-semibold">Kartenzahlung erfolgreich</div>
@@ -1160,12 +1168,12 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
             )}
             {!cardProcessing && cardError && (
               <div className="flex flex-col items-center justify-center gap-6 py-4">
-                <div className="relative h-72 w-72">
+                <div className="relative h-48 w-48 sm:h-72 sm:w-72">
                   <div className="absolute inset-0 rounded-full bg-gradient-to-br from-red-200/60 to-red-400/40 blur-sm" />
-                  <div className="absolute inset-8 rounded-full border-8 border-red-300/60" />
-                  <div className="absolute inset-16 rounded-full border-8 border-red-400/50" />
-                  <div className="absolute inset-24 flex items-center justify-center rounded-full bg-red-500/80">
-                    <XCircle className="h-14 w-14 text-white" />
+                  <div className="absolute inset-5 rounded-full border-8 border-red-300/60 sm:inset-8" />
+                  <div className="absolute inset-10 rounded-full border-8 border-red-400/50 sm:inset-16" />
+                  <div className="absolute inset-16 flex items-center justify-center rounded-full bg-red-500/80 sm:inset-24">
+                    <XCircle className="h-10 w-10 text-white sm:h-14 sm:w-14" />
                   </div>
                 </div>
                 <div className="text-xl font-semibold">Kartenzahlung fehlgeschlagen</div>
@@ -1287,12 +1295,12 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
           <div className="space-y-4">
             {printing && (
               <div className="flex flex-col items-center justify-center gap-6 py-4">
-                <div className="relative h-72 w-72">
+                <div className="relative h-48 w-48 sm:h-72 sm:w-72">
                   <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-200/60 to-blue-400/40 blur-sm" />
-                  <div className="absolute inset-8 rounded-full border-8 border-blue-300/60" />
-                  <div className="absolute inset-16 rounded-full border-8 border-blue-400/50" />
-                  <div className="absolute inset-24 flex items-center justify-center rounded-full bg-blue-500/80">
-                    <Printer className="h-14 w-14 text-white" />
+                  <div className="absolute inset-5 rounded-full border-8 border-blue-300/60 sm:inset-8" />
+                  <div className="absolute inset-10 rounded-full border-8 border-blue-400/50 sm:inset-16" />
+                  <div className="absolute inset-16 flex items-center justify-center rounded-full bg-blue-500/80 sm:inset-24">
+                    <Printer className="h-10 w-10 text-white sm:h-14 sm:w-14" />
                   </div>
                 </div>
                 <div className="text-xl font-semibold">Beleg wird gedruckt</div>
@@ -1312,12 +1320,12 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
             )}
             {printed && (
               <div className="flex flex-col items-center justify-center gap-6 py-4">
-                <div className="relative h-72 w-72">
+                <div className="relative h-48 w-48 sm:h-72 sm:w-72">
                   <div className="absolute inset-0 rounded-full bg-gradient-to-br from-green-200/60 to-green-400/40 blur-sm" />
-                  <div className="absolute inset-8 rounded-full border-8 border-green-300/60" />
-                  <div className="absolute inset-16 rounded-full border-8 border-green-400/50" />
-                  <div className="absolute inset-24 flex items-center justify-center rounded-full bg-green-500/80">
-                    <Check className="h-14 w-14 text-white" />
+                  <div className="absolute inset-5 rounded-full border-8 border-green-300/60 sm:inset-8" />
+                  <div className="absolute inset-10 rounded-full border-8 border-green-400/50 sm:inset-16" />
+                  <div className="absolute inset-16 flex items-center justify-center rounded-full bg-green-500/80 sm:inset-24">
+                    <Check className="h-10 w-10 text-white sm:h-14 sm:w-14" />
                   </div>
                 </div>
                 <div className="text-xl font-semibold">Beleg gedruckt</div>
