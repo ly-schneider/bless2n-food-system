@@ -1,8 +1,8 @@
 collection:
   get:
     tags: [Events]
-    summary: List months with order activity
-    description: Returns a list of year/month pairs that have at least one paid order.
+    summary: List days with order activity
+    description: Returns a list of year/month/day entries that have at least one paid order.
     operationId: listEvents
     security:
       - sessionAuth: []

@@ -1,6 +1,6 @@
 Event:
   type: object
-  required: [year, month, orderCount]
+  required: [year, month, day, orderCount]
   properties:
     year:
       type: integer
@@ -8,6 +8,10 @@ Event:
       type: integer
       minimum: 1
       maximum: 12
+    day:
+      type: integer
+      minimum: 1
+      maximum: 31
     orderCount:
       type: integer
 

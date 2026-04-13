@@ -16,11 +16,12 @@ interface POSHeaderProps {
     failedCount: number
     onFailedClick?: () => void
   }
+  tabSlot?: React.ReactNode
 }
 
 const HOLD_DURATION_MS = 1000
 
-export function POSHeader({ mode, syncStatus }: POSHeaderProps) {
+export function POSHeader({ mode, syncStatus, tabSlot }: POSHeaderProps) {
   const LOCK_KEY = "bfs.pos.locked"
   const IDLE_MS = Number(process.env.NEXT_PUBLIC_POS_IDLE_TIMEOUT) || 300000
   const [locked, setLocked] = useState<boolean>(() => {
@@ -174,6 +175,7 @@ export function POSHeader({ mode, syncStatus }: POSHeaderProps) {
               <Image src="/assets/images/blessthun.png" alt="BlessThun" width={36} height={36} />
             </div>
             <span className="text-sm font-semibold">BlessThun</span>
+            <div className="ml-3">{tabSlot}</div>
           </div>
           <div className="flex items-center gap-1.5">
             {syncStatus && (

@@ -1,6 +1,6 @@
 # BFS Web App
 
-Next.js web application serving four distinct interfaces for the Bless2n Food System — public ordering, admin dashboard, POS terminal, and station display.
+Next.js web application serving four distinct interfaces for the BlessThun Food System — public ordering, admin dashboard, POS terminal, and station display.
 
 ## Architecture
 

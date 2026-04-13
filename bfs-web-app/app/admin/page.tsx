@@ -37,9 +37,10 @@ type ProductWithStock = {
   stock?: number | null
 }
 
-type EventMonth = {
+type EventDay = {
   year: number
   month: number
+  day: number
   orderCount: number
 }
 
@@ -53,7 +54,7 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<OrderItem[]>([])
   const [products, setProducts] = useState<ProductWithStock[]>([])
 
-  const [events, setEvents] = useState<EventMonth[]>([])
+  const [events, setEvents] = useState<EventDay[]>([])
   const [currentEventIndex, setCurrentEventIndex] = useState(0)
   const [eventsLoading, setEventsLoading] = useState(true)
 
@@ -64,7 +65,7 @@ export default function AdminDashboard() {
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Failed to load events"))))
       .then((data) => {
         if (!cancelled) {
-          const typedData = data as { items?: EventMonth[] }
+          const typedData = data as { items?: EventDay[] }
           setEvents(typedData.items || [])
           setEventsLoading(false)
         }
@@ -93,8 +94,8 @@ export default function AdminDashboard() {
     setLoading(true)
     ;(async () => {
       try {
-        const from = new Date(event.year, event.month - 1, 1)
-        const to = new Date(event.year, event.month, 1)
+        const from = new Date(event.year, event.month - 1, event.day)
+        const to = new Date(event.year, event.month - 1, event.day + 1)
 
         const [ordersRes, productsRes] = await Promise.all([
           fetchAuth(
@@ -182,11 +183,12 @@ export default function AdminDashboard() {
     unbekannt: "Unbekannt",
   }
 
-  const currentMonthLabel = useMemo(() => {
+  const currentEventLabel = useMemo(() => {
     if (events.length === 0) return "–"
     const event = events[currentEventIndex]
     if (!event) return "–"
-    return new Date(event.year, event.month - 1).toLocaleDateString("de-CH", {
+    return new Date(event.year, event.month - 1, event.day).toLocaleDateString("de-CH", {
+      day: "numeric",
       month: "long",
       year: "numeric",
     })
@@ -208,7 +210,7 @@ export default function AdminDashboard() {
           >
             <ChevronLeft className="size-4" />
           </Button>
-          <span className="min-w-[160px] text-center font-medium">{currentMonthLabel}</span>
+          <span className="min-w-[160px] text-center font-medium">{currentEventLabel}</span>
           <Button
             variant="outline"
             size="icon"

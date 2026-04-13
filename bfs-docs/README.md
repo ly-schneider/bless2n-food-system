@@ -1,6 +1,6 @@
 # BFS Docs
 
-Documentation site for the Bless2n Food System — built with Fumadocs on Next.js, covering admin handbooks, developer guides, and infrastructure documentation.
+Documentation site for the BlessThun Food System — built with Fumadocs on Next.js, covering admin handbooks, developer guides, and infrastructure documentation.
 
 ## Architecture
 

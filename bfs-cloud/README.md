@@ -1,6 +1,6 @@
 # BFS Cloud
 
-Terraform infrastructure-as-code for the Bless2n Food System — deploys to Azure with Container Apps, auto-scaling, scale-to-zero, and environment isolation.
+Terraform infrastructure-as-code for the BlessThun Food System — deploys to Azure with Container Apps, auto-scaling, scale-to-zero, and environment isolation.
 
 ## Architecture
 

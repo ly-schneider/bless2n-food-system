@@ -184,7 +184,7 @@ func renderReceiptHTML(data ReceiptEmailData) string {
                   <tr>
                     <td align="center" bgcolor="#000000" style="border-radius:11px;">
                       <a href="%s" target="_blank" style="display:block;padding:16px 28px;font:600 16px/1 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#FFFFFF;text-decoration:none;text-align:center;">
-                        Bestellung anzeigen &amp; QR-Code
+                        Bestellung &amp; QR-Code anzeigen
                       </a>
                     </td>
                   </tr>
@@ -197,10 +197,8 @@ func renderReceiptHTML(data ReceiptEmailData) string {
                 <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 0 0;">
                   <tr>
                     <td style="font:12px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#7B7B7B;">
-                      <strong style="color:#000000;">BlessThun</strong><br>
-                      Verein BlessThun<br>
-                      Postfach, 3602 Thun<br>
-                      info@blessthun.ch
+                      <strong style="color:#000000;">BlessThun Food</strong><br>
+                      Industriestrasse 5, 3600 Thun
                     </td>
                   </tr>
                 </table>
@@ -251,14 +249,12 @@ Artikel:
 Total: %s
 Alle Preise in CHF inkl. MwSt.
 
-Bestellung anzeigen & QR-Code:
+Bestellung & QR-Code anzeigen:
 %s
 
 ---
-BlessThun
-Verein BlessThun
-Postfach, 3602 Thun
-info@blessthun.ch
+BlessThun Food
+Industriestrasse 5, 3600 Thun
 
 Dies ist eine automatisch generierte Quittung.
 Bitte bewahre diese E-Mail als Zahlungsbeleg auf.

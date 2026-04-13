@@ -1,4 +1,4 @@
-# Bless2n Food System
+# BlessThun Food System
 
 A full-stack food ordering platform built for live event food stations in Thun, Switzerland. Handles the complete lifecycle from customer ordering and TWINT payment processing to kitchen fulfillment, inventory tracking, and POS terminal operations.
 

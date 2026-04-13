@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"backend/internal/generated/ent"
 	"backend/internal/generated/ent/club100redemption"
@@ -41,8 +42,17 @@ func (r *club100RedemptionRepo) Create(ctx context.Context, elvantoPersonID, elv
 }
 
 func (r *club100RedemptionRepo) GetTotalRedemptions(ctx context.Context, elvantoPersonID string) (int, error) {
+	loc, _ := time.LoadLocation("Europe/Zurich")
+	now := time.Now().In(loc)
+	dayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+	dayEnd := dayStart.AddDate(0, 0, 1)
+
 	rows, err := r.ec(ctx).Club100Redemption.Query().
-		Where(club100redemption.ElvantoPersonIDEQ(elvantoPersonID)).
+		Where(
+			club100redemption.ElvantoPersonIDEQ(elvantoPersonID),
+			club100redemption.CreatedAtGTE(dayStart),
+			club100redemption.CreatedAtLT(dayEnd),
+		).
 		All(ctx)
 	if err != nil {
 		return 0, translateError(err)

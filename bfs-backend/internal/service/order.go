@@ -27,8 +27,8 @@ type OrderService interface {
 	ListAdmin(ctx context.Context, params OrderListParams) ([]*ent.Order, int64, error)
 	// UpdateStatus updates an order's status.
 	UpdateStatus(ctx context.Context, id uuid.UUID, status order.Status) error
-	// ListEvents returns months with paid orders for dashboard navigation.
-	ListEvents(ctx context.Context) ([]repository.EventMonth, error)
+	// ListEvents returns days with paid orders for dashboard navigation.
+	ListEvents(ctx context.Context) ([]repository.EventDay, error)
 }
 
 type OrderListParams struct {
@@ -230,6 +230,6 @@ func isValidStatusTransition(from, to order.Status) bool {
 	return false
 }
 
-func (s *orderService) ListEvents(ctx context.Context) ([]repository.EventMonth, error) {
-	return s.orderRepo.GetEventMonths(ctx)
+func (s *orderService) ListEvents(ctx context.Context) ([]repository.EventDay, error) {
+	return s.orderRepo.GetEventDays(ctx)
 }

@@ -1,6 +1,6 @@
 # BFS Backend
 
-Go HTTP API powering the Bless2n Food System — food ordering, inventory management, payment processing, and device authentication for live event food stations.
+Go HTTP API powering the BlessThun Food System — food ordering, inventory management, payment processing, and device authentication for live event food stations.
 
 ## Architecture
 

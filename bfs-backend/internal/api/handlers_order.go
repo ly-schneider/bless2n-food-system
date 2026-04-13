@@ -465,7 +465,7 @@ func (h *Handlers) CreateOrderPayment(w http.ResponseWriter, r *http.Request, or
 	}
 }
 
-// ListEvents returns months with paid orders for admin dashboard navigation.
+// ListEvents returns days with paid orders for admin dashboard navigation.
 // (GET /events)
 func (h *Handlers) ListEvents(w http.ResponseWriter, r *http.Request) {
 	events, err := h.orders.ListEvents(r.Context())
@@ -479,6 +479,7 @@ func (h *Handlers) ListEvents(w http.ResponseWriter, r *http.Request) {
 		items = append(items, generated.Event{
 			Year:       e.Year,
 			Month:      e.Month,
+			Day:        e.Day,
 			OrderCount: e.OrderCount,
 		})
 	}

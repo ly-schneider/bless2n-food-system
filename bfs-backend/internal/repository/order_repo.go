@@ -42,12 +42,13 @@ type OrderRepository interface {
 	DeletePendingByAttemptIDExcept(ctx context.Context, attemptID string, except uuid.UUID) (int64, error)
 
 	// Aggregation
-	GetEventMonths(ctx context.Context) ([]EventMonth, error)
+	GetEventDays(ctx context.Context) ([]EventDay, error)
 }
 
-type EventMonth struct {
+type EventDay struct {
 	Year       int `json:"year" sql:"year"`
 	Month      int `json:"month" sql:"month"`
+	Day        int `json:"day" sql:"day"`
 	OrderCount int `json:"order_count" sql:"order_count"`
 }
 
@@ -402,20 +403,23 @@ func (r *orderRepo) DeletePendingByAttemptIDExcept(ctx context.Context, attemptI
 	return int64(n), nil
 }
 
-func (r *orderRepo) GetEventMonths(ctx context.Context) ([]EventMonth, error) {
-	var result []EventMonth
+func (r *orderRepo) GetEventDays(ctx context.Context) ([]EventDay, error) {
+	var result []EventDay
 	err := r.ec(ctx).Order.Query().
 		Where(order.StatusEQ(order.StatusPaid)).
 		Modify(func(s *sql.Selector) {
-			yearExpr := "EXTRACT(YEAR FROM created_at)::int"
-			monthExpr := "EXTRACT(MONTH FROM created_at)::int"
+			zurich := "created_at AT TIME ZONE 'Europe/Zurich'"
+			yearExpr := "EXTRACT(YEAR FROM " + zurich + ")::int"
+			monthExpr := "EXTRACT(MONTH FROM " + zurich + ")::int"
+			dayExpr := "EXTRACT(DAY FROM " + zurich + ")::int"
 			s.Select(
 				sql.As(yearExpr, "year"),
 				sql.As(monthExpr, "month"),
+				sql.As(dayExpr, "day"),
 				sql.As("COUNT(*)", "order_count"),
 			)
-			s.GroupBy(yearExpr, monthExpr)
-			s.OrderBy(sql.Desc("year"), sql.Desc("month"))
+			s.GroupBy(yearExpr, monthExpr, dayExpr)
+			s.OrderBy(sql.Desc("year"), sql.Desc("month"), sql.Desc("day"))
 		}).
 		Scan(ctx, &result)
 	if err != nil {

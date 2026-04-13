@@ -27,6 +27,14 @@ export default function Footer({ version }: { version?: string }) {
         <nav className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
           <VersionLabel version={version} />
           <span className="text-gray-300">&middot;</span>
+          <Link href="/datenschutz" className="hover:underline">
+            Datenschutz
+          </Link>
+          <span className="text-gray-300">&middot;</span>
+          <Link href="/nutzungsbedingungen" className="hover:underline">
+            Nutzungsbedingungen
+          </Link>
+          <span className="text-gray-300">&middot;</span>
           <Link
             href="https://github.com/ly-schneider/bless2n-food-system"
             className="hover:underline"

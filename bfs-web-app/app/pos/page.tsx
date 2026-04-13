@@ -7,11 +7,13 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { ProductConfigurationModal } from "@/components/cart/product-configuration-modal"
 import { PairingCodeDisplay } from "@/components/device/pairing-code-display"
 import { BasketPanel } from "@/components/pos/basket-panel"
+import { InventoryManagement } from "@/components/pos/inventory-management"
 import { POSHeader } from "@/components/pos/pos-header"
 import { ProductGrid } from "@/components/pos/product-grid"
 import { StuckOrdersDialog } from "@/components/pos/stuck-orders-dialog"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CartProvider, useCart } from "@/contexts/cart-context"
 import { useInventoryStream } from "@/hooks/use-inventory-stream"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -309,6 +311,24 @@ function PosInner() {
     onFailedClick: handleFailedClick,
   }
 
+  const [activeTab, setActiveTab] = useState<string>("kasse")
+
+  const handleInventoryStockUpdated = useCallback((productId: string, newStock: number) => {
+    stockSnapshotRef.current.set(productId, newStock)
+    setProducts((prev) => ({
+      ...prev,
+      items: prev.items.map((p) => {
+        if (p.id !== productId) return p
+        return {
+          ...p,
+          availableQuantity: newStock,
+          isAvailable: newStock > 0,
+          isLowStock: newStock > 0 && newStock <= 5,
+        }
+      }),
+    }))
+  }, [])
+
   const isMobile = useIsMobile()
   const [isLandscape, setIsLandscape] = useState(false)
   const [mobileView, setMobileView] = useState<"products" | "cart">("products")
@@ -345,48 +365,70 @@ function PosInner() {
 
   return (
     <>
-      <POSHeader mode={status?.mode} syncStatus={syncStatus} />
-      <div
-        className={cn(
-          "grid overflow-hidden",
-          showBothPanels
-            ? isMobile
-              ? "h-[calc(100dvh-3.5rem)] grid-cols-[1fr_280px]"
-              : "h-[calc(100dvh-4rem)] grid-cols-[1fr_450px]"
-            : "h-[calc(100dvh-7rem)] grid-cols-1"
-        )}
-      >
-        <div className={cn("min-h-0 overflow-hidden", !showBothPanels && mobileView !== "products" && "hidden")}>
-          <ProductGrid
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex h-dvh flex-col">
+        <POSHeader
+          mode={status?.mode}
+          syncStatus={syncStatus}
+          tabSlot={
+            <TabsList className="rounded-xl">
+              <TabsTrigger value="kasse" className="rounded-[10px]">
+                Kasse
+              </TabsTrigger>
+              <TabsTrigger value="verwalten" className="rounded-[10px]">
+                Verwalten
+              </TabsTrigger>
+            </TabsList>
+          }
+        />
+        <TabsContent value="kasse" className="mt-0 min-h-0 flex-1">
+          <div
+            className={cn(
+              "grid h-full overflow-hidden",
+              showBothPanels ? (isMobile ? "grid-cols-[1fr_280px]" : "grid-cols-[1fr_450px]") : "grid-cols-1"
+            )}
+          >
+            <div className={cn("min-h-0 overflow-hidden", !showBothPanels && mobileView !== "products" && "hidden")}>
+              <ProductGrid
+                products={products}
+                onConfigure={(p) => {
+                  setConfigProduct(p)
+                  setConfigOpen(true)
+                }}
+              />
+            </div>
+            <div className={cn("min-h-0 overflow-hidden", !showBothPanels && mobileView !== "cart" && "hidden")}>
+              <BasketPanel
+                token={sessionToken || ""}
+                mode={status?.mode}
+                submitOrder={submitOrder}
+                stockMap={stockSnapshotRef.current}
+              />
+            </div>
+
+            {configProduct && (
+              <ProductConfigurationModal
+                product={configProduct}
+                isOpen={configOpen}
+                onClose={() => {
+                  setConfigOpen(false)
+                  setConfigProduct(null)
+                }}
+              />
+            )}
+          </div>
+        </TabsContent>
+        <TabsContent value="verwalten" className="mt-0 min-h-0 flex-1 overflow-hidden">
+          <InventoryManagement
             products={products}
-            onConfigure={(p) => {
-              setConfigProduct(p)
-              setConfigOpen(true)
-            }}
-          />
-        </div>
-        <div className={cn("min-h-0 overflow-hidden", !showBothPanels && mobileView !== "cart" && "hidden")}>
-          <BasketPanel
             token={sessionToken || ""}
-            mode={status?.mode}
-            submitOrder={submitOrder}
-            stockMap={stockSnapshotRef.current}
+            onStockUpdated={handleInventoryStockUpdated}
           />
-        </div>
+        </TabsContent>
+      </Tabs>
 
-        {configProduct && (
-          <ProductConfigurationModal
-            product={configProduct}
-            isOpen={configOpen}
-            onClose={() => {
-              setConfigOpen(false)
-              setConfigProduct(null)
-            }}
-          />
-        )}
-      </div>
-
-      {!showBothPanels && <MobileTabBar activeView={mobileView} onViewChange={setMobileView} />}
+      {!showBothPanels && activeTab === "kasse" && (
+        <MobileTabBar activeView={mobileView} onViewChange={setMobileView} />
+      )}
 
       <StuckOrdersDialog
         open={showStuckOrders}
@@ -396,7 +438,6 @@ function PosInner() {
         onDelete={deleteOrder}
       />
 
-      {/* Payment error dialog - shown when Club100 payment fails due to ineligible products */}
       <Dialog
         open={!!paymentErrorOrder}
         onOpenChange={(open) => {
