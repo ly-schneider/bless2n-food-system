@@ -148,6 +148,7 @@
     "typed-query-selector": "^2.12.1",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.58.2",
+    "vite": "^7.3.2",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.4",
     "webpack": "5.106.2"
