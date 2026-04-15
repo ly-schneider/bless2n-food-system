@@ -83,7 +83,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           ref: ${{ needs.resolve-context.outputs.commit_sha }}
 
@@ -111,7 +111,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           ref: ${{ needs.resolve-context.outputs.commit_sha }}
 
@@ -136,7 +136,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           ref: ${{ needs.resolve-context.outputs.commit_sha }}
 
@@ -159,13 +159,13 @@ jobs:
       packages: write
     steps:
       - name: Log in to GHCR
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Install crane
-        uses: imjasonh/setup-crane@31b88efe9de28ae0ffa220711af4b60be9435f6e
+        uses: imjasonh/setup-crane@6da1ae018866400525525ce74ff892880c099987
       - name: Promote images
         env:
           IMAGE_TAG: ${{ needs.resolve-context.outputs.image_tag }}
@@ -194,7 +194,7 @@ jobs:
       (needs.build-docs.result == 'success' || needs.build-docs.result == 'skipped') &&
       (needs.promote-images.result == 'success' || needs.promote-images.result == 'skipped')
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           ref: ${{ needs.resolve-context.outputs.commit_sha }}
 
@@ -230,7 +230,7 @@ jobs:
       contents: read
       actions: read
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0
           ref: ${{ needs.resolve-context.outputs.commit_sha }}
@@ -256,7 +256,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           ref: main
           fetch-depth: 0
@@ -291,7 +291,7 @@ jobs:
       always() && !cancelled() &&
       (needs.build-frontend.result == 'success' || needs.promote-images.result == 'success')
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           ref: ${{ needs.resolve-context.outputs.commit_sha }}
           fetch-depth: 0
