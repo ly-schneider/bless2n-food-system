@@ -114,3 +114,20 @@ updates:
         update-types:
           - "minor"
           - "patch"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "cron"
+      cronjob: "0 2 * * fri%2"
+      timezone: "Europe/Zurich"
+    target-branch: "main"
+    labels:
+      - "dependencies"
+      - "area/ci"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      actions-all:
+        patterns:
+          - "*"
