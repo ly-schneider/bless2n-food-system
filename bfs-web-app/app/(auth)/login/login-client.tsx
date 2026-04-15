@@ -222,12 +222,12 @@ export default function LoginClient() {
 
           <p className="text-muted-foreground mt-4 text-xs">
             Mit der Anmeldung oder Registrierung akzeptierst du automatisch unsere{" "}
-            <a className="underline" href="/agb" target="_blank" rel="noopener noreferrer">
-              AGB
+            <a className="underline" href="/nutzungsbedingungen" target="_blank" rel="noopener noreferrer">
+              Nutzungsbedingungen
             </a>{" "}
             und die{" "}
             <a className="underline" href="/datenschutz" target="_blank" rel="noopener noreferrer">
-              Datenschutzerklaerung
+              Datenschutzerklärung
             </a>
             .
           </p>
