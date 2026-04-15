@@ -5,17 +5,17 @@ go 1.25.0
 require (
 	entgo.io/ent v0.14.6
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.4
-	github.com/getsentry/sentry-go v0.44.1
+	github.com/getsentry/sentry-go v0.45.1
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/go-playground/validator/v10 v10.30.2
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.1
 	github.com/joho/godotenv v1.5.1
-	github.com/oapi-codegen/runtime v1.3.1
+	github.com/oapi-codegen/runtime v1.4.0
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/fx v1.24.0
 	go.uber.org/zap v1.27.1
-	golang.org/x/crypto v0.49.0
+	golang.org/x/crypto v0.50.0
 )
 
 require (
@@ -246,8 +246,8 @@ require (
 	golang.org/x/mod v0.34.0 // indirect
 	golang.org/x/net v0.52.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/text v0.35.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/text v0.36.0 // indirect
 	golang.org/x/tools v0.43.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
