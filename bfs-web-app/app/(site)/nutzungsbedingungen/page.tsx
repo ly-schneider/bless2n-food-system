@@ -25,7 +25,7 @@ export default function NutzungsbedingungenPage() {
         <section>
           <h2 className="mb-3 text-lg font-semibold">2. Betreiber</h2>
           <p>
-            BlessThun Food
+            BlessThun
             <br />
             Industriestrasse 5
             <br />
@@ -33,7 +33,7 @@ export default function NutzungsbedingungenPage() {
             <br />
             Schweiz
           </p>
-          <p className="mt-2">E-Mail: [levyn.schneider@leys.ch]</p>
+          <p className="mt-2">E-Mail: levyn.schneider@leys.ch</p>
         </section>
 
         <section>

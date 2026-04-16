@@ -25,7 +25,7 @@ export default function PrivacyPolicyPage() {
           <h2 className="mb-3 text-lg font-semibold">1. Verantwortliche Stelle</h2>
           <p>Verantwortlich für die Datenbearbeitung ist:</p>
           <p className="mt-2">
-            BlessThun Food
+            BlessThun
             <br />
             Industriestrasse 5
             <br />
@@ -33,7 +33,7 @@ export default function PrivacyPolicyPage() {
             <br />
             Schweiz
           </p>
-          <p className="mt-2">E-Mail: levy.schneider@leys.ch</p>
+          <p className="mt-2">E-Mail: levyn.schneider@leys.ch</p>
         </section>
 
         <section>
@@ -108,7 +108,7 @@ export default function PrivacyPolicyPage() {
           </p>
           <ul className="mt-2 list-disc space-y-1 pl-5">
             <li>
-              <strong>USA</strong> (Google, ggf. Plunk) — Die Übermittlung erfolgt auf Grundlage von
+              <strong>USA</strong> (Google, Plunk (Amazon SES)) — Die Übermittlung erfolgt auf Grundlage von
               Standarddatenschutzklauseln (Standard Contractual Clauses, SCC) oder anderer geeigneter Garantien gemäss
               Art. 16–17 nDSG.
             </li>
