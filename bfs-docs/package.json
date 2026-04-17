@@ -11,10 +11,10 @@
   },
   "dependencies": {
     "fumadocs-core": "16.7.16",
-    "fumadocs-mdx": "14.2.14",
+    "fumadocs-mdx": "14.3.0",
     "fumadocs-ui": "16.7.16",
     "lucide-react": "^1.8.0",
-    "next": "16.2.3",
+    "next": "16.2.4",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },
@@ -33,8 +33,8 @@
     "@types/react-dom": "^19.2.3",
     "postcss": "^8.5.10",
     "tailwindcss": "^4.2.2",
-    "typescript": "^6.0.2",
-    "eslint-config-next": "16.2.3",
+    "typescript": "^6.0.3",
+    "eslint-config-next": "16.2.4",
     "eslint": "^9.39.2"
   },
   "packageManager": "pnpm@10.19.0"
