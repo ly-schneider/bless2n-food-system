@@ -20,6 +20,17 @@ variable "azure_subscription_id" {
   type        = string
 }
 
+variable "grafana_azure_client_id" {
+  description = "Client ID (appId) of the pre-created sp-grafana-cloud-reader service principal"
+  type        = string
+}
+
+variable "grafana_azure_client_secret" {
+  description = "Client secret of sp-grafana-cloud-reader"
+  type        = string
+  sensitive   = true
+}
+
 variable "sentry_organization_slug" {
   description = "Sentry organization slug"
   type        = string

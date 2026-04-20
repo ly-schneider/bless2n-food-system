@@ -1,122 +1,146 @@
 # Grafana Cloud — IaC
 
-Terraform that manages the Grafana Cloud stack at https://leysservices.grafana.net, its Azure Monitor + Sentry data sources, and the consolidated observability dashboard for both staging and production.
+Terraform that manages a Grafana Cloud stack, its Azure Monitor + Sentry data sources, and a consolidated observability dashboard for staging and production environments.
 
 ## Layout
 
 ```
 grafana/
-├── versions.tf          # providers + TF Cloud backend (workspace: bfs-grafana)
-├── variables.tf         # inputs (see "Variables" below)
+├── versions.tf          # providers + Terraform Cloud backend
+├── variables.tf         # inputs
 ├── main.tf              # remote state, folder, data sources, dashboard
-├── azure_sp.tf          # sp-grafana-cloud-reader + RG role assignments
 ├── outputs.tf
 └── dashboards/
     └── bfs-overview.json
 ```
 
-## One-time manual setup
+## Prerequisites
 
-### 1. Grafana Cloud access policy + token
+- A Grafana Cloud stack (free tier is enough)
+- An Azure subscription with one resource group per environment, each containing:
+  - A Log Analytics workspace
+  - Container Apps emitting diagnostic logs/metrics to that workspace
+- Existing Terraform Cloud workspaces for each env (`staging`, `production`) that publish `log_analytics_workspace_id` + `resource_group_name` outputs
+- A Sentry org (optional — data source can be skipped)
 
-1. Log in to https://leysservices.grafana.net.
-2. **Administration → Users and access → Cloud access policies → Create access policy**.
-3. Name: `terraform-admin`. Scopes:
-   - `stacks:read`
-   - `dashboards:write`
-   - `folders:write`
-   - `datasources:write`
-   - `alerts:write`
-4. Add a token under the policy. Copy it — this is `grafana_cloud_token`.
+## One-time setup
 
-### 2. Sentry internal integration token (optional, wires the Errors row)
+### 1. Grafana service account + token
 
-1. https://sentry.io → **Settings → Developer Settings → New Internal Integration**.
-2. Name: `grafana-cloud-reader`. Permissions:
-   - Organization: Read
-   - Project: Read
-   - Event: Read
-   - Issue & Event: Read
-3. Copy the token — this is `sentry_auth_token`.
+Dashboards, folders, and data sources live inside the stack — manage them with a stack service account (not a cloud access policy).
 
-### 3. Create the TF Cloud workspace `bfs-grafana`
+1. In the Grafana stack UI → **Administration → Users and access → Service accounts → Add service account**
+2. Role: `Admin`. Create.
+3. **Add service account token** → copy it.
 
-- Organization: `leys-services`
-- VCS-backed on this repo; **working directory**: `bfs-cloud/grafana`
-- Execution mode: Remote
-- Variables (set all as **Terraform variables**, not env):
+### 2. Azure service principal
 
-| Name                    | Kind   | Sensitive | Notes                                           |
-| ----------------------- | ------ | --------- | ----------------------------------------------- |
-| `grafana_cloud_token`   | string | ✅        | From step 1                                     |
-| `sentry_auth_token`     | string | ✅        | From step 2 (or empty string to skip)           |
-| `azure_tenant_id`       | string | —         | Same tenant as `bfs-staging` / `bfs-production` |
-| `azure_subscription_id` | string | —         | Subscription containing both env RGs            |
+Create the SP once, outside Terraform (the TF execution identity usually lacks AAD write rights):
 
-Defaults in `variables.tf` cover `grafana_stack_url`, Sentry org slug, and the remote state workspace names — override only if they diverge.
+```bash
+az ad sp create-for-rbac \
+  --name sp-grafana-cloud-reader \
+  --role "Monitoring Reader" \
+  --scopes /subscriptions/<SUB_ID>/resourceGroups/<STAGING_RG> \
+           /subscriptions/<SUB_ID>/resourceGroups/<PRODUCTION_RG>
 
-### 4. Grant the workspace access to remote state
+OBJECT_ID=$(az ad sp list --display-name sp-grafana-cloud-reader --query '[0].id' -o tsv)
+for RG in <STAGING_RG> <PRODUCTION_RG>; do
+  az role assignment create \
+    --assignee-object-id "$OBJECT_ID" \
+    --assignee-principal-type ServicePrincipal \
+    --role "Log Analytics Reader" \
+    --scope "/subscriptions/<SUB_ID>/resourceGroups/$RG"
+done
+```
 
-In the `bfs-staging` and `bfs-production` workspaces → **Settings → General → Remote state sharing** → add `bfs-grafana` to the allow list. This lets it read `log_analytics_workspace_id` and `resource_group_name` outputs.
+Keep `appId`, `password`, and `tenant` from the first command's output.
 
-### 5. First apply
+If no password is printed:
+
+```bash
+az ad app credential reset \
+  --id $(az ad app list --display-name sp-grafana-cloud-reader --query '[0].appId' -o tsv) \
+  --years 1
+```
+
+### 3. Sentry token (optional)
+
+1. Sentry → **Settings → Developer Settings → New Internal Integration**
+2. Permissions: Organization Read, Project Read, Issue & Event Read
+3. Copy the token (leave empty to skip Sentry wiring).
+
+### 4. Terraform Cloud workspace
+
+Create a workspace backed by this repo, working directory `bfs-cloud/grafana`.
+
+Terraform variables:
+
+| Name                          | Sensitive | Source                                |
+| ----------------------------- | --------- | ------------------------------------- |
+| `grafana_cloud_token`         | ✅        | Step 1                                |
+| `grafana_azure_client_id`     | —         | Step 2 (`appId`)                      |
+| `grafana_azure_client_secret` | ✅        | Step 2 (`password`)                   |
+| `azure_tenant_id`             | —         | Step 2 (`tenant`)                     |
+| `azure_subscription_id`       | —         | Your subscription holding the env RGs |
+| `sentry_auth_token`           | ✅        | Step 3 (or `""` to skip)              |
+
+Defaults in `variables.tf` cover `grafana_stack_url`, Sentry org slug, and the remote state workspace names — override as needed.
+
+### 5. Grant remote state access
+
+In each env workspace (`staging`, `production`) → **Settings → Remote state sharing** → allow this workspace.
+
+### 6. Apply
 
 ```
-cd bfs-cloud/grafana
 terraform init
 terraform plan
 terraform apply
 ```
 
-Expected resources on first apply:
+Expected resources:
 
-- 1 `azuread_application` (`sp-grafana-cloud-reader`)
-- 1 `azuread_service_principal`
-- 1 `azuread_service_principal_password` (1y lifetime)
-- 4 `azurerm_role_assignment` (Monitoring Reader + Log Analytics Reader × 2 envs)
-- 2 `grafana_data_source` (Azure Monitor staging + production)
-- 0–1 `grafana_data_source` (Sentry, if token provided)
+- 2 `grafana_data_source` (Azure Monitor, one per env)
+- 0–1 `grafana_data_source` (Sentry)
 - 1 `grafana_folder`
 - 1 `grafana_dashboard`
 
 ## Updating the dashboard
 
-Two workflows depending on how far you're iterating:
+**Small tweaks:** edit `dashboards/bfs-overview.json` directly and apply. `overwrite = true` lets the provider replace UI edits.
 
-**Small tweaks (query, panel title, threshold):** edit `dashboards/bfs-overview.json` directly, `terraform apply`. The `overwrite = true` flag means Grafana accepts the new version even if the UI was edited in the meantime.
+**Larger changes:**
 
-**Larger changes (add panels, restructure):**
-
-1. In the Grafana UI, edit the dashboard.
-2. **Share → Export → "Export for sharing externally"** → copy JSON.
-3. Paste into `dashboards/bfs-overview.json`.
-4. Sanity-check: datasource refs should use `"uid": "${datasource}"` and `"uid": "sentry"` (the exporter templates them automatically).
-5. Commit + `terraform apply`.
+1. Edit in the Grafana UI
+2. **Share → Export → "Export for sharing externally"**
+3. Paste the JSON into `dashboards/bfs-overview.json`
+4. Confirm datasource refs use `"uid": "${datasource}"` and `"uid": "sentry"`
+5. Commit and apply
 
 ## Dashboard variables
 
-| Variable                           | Used by                  | Behavior                                                      |
-| ---------------------------------- | ------------------------ | ------------------------------------------------------------- |
-| `$datasource`                      | all Azure Monitor panels | Dropdown listing both Azure Monitor data sources; selects env |
-| `$env`                             | Sentry panels            | `staging` / `production`, filters Sentry environments         |
-| `$subscription` / `$resourceGroup` | metric panels            | Auto-populated from the selected data source                  |
-| `$app`                             | metric panels            | Multi-select over Container Apps in the selected RG           |
+| Variable                           | Used by              | Behavior                                            |
+| ---------------------------------- | -------------------- | --------------------------------------------------- |
+| `$datasource`                      | Azure Monitor panels | Dropdown listing both env data sources              |
+| `$env`                             | Sentry panels        | Staging / production filter                         |
+| `$subscription` / `$resourceGroup` | metric panels        | Auto-populated from the selected data source        |
+| `$app`                             | metric panels        | Multi-select over Container Apps in the selected RG |
 
-Toggling `$datasource` between `Azure Monitor - staging` and `Azure Monitor - production` switches the entire dashboard. For Sentry to follow, also switch `$env`.
+Switch `$datasource` to toggle the whole dashboard between envs. For Sentry panels to follow, also switch `$env`.
 
-## Known gaps / follow-ups
+## Known gaps
 
-- **Latency panel** parses a `latency_ms` JSON field from `bfs-backend` Zap logs. If that field name differs, update the KQL in panel id `6`. If the backend doesn't emit request latency yet, the panel stays empty — add a Zap middleware field (`zap.Duration("latency_ms", ...)`).
-- **Status codes panel** similarly parses a `status` field from JSON logs. Same caveat.
-- **Alert rules** are not yet defined — add `grafana_rule_group` resources once thresholds are calibrated.
-- **Synthetic monitoring** for true external SLA (public ordering URL) can be added via `grafana_synthetic_monitor_check`.
+- **Latency / status-code panels** parse JSON fields (`latency_ms`, `status`) from structured backend logs via `ContainerAppConsoleLogs_CL`. Adjust the KQL if your log shape differs.
+- **Alert rules** are not yet defined.
+- **Synthetic monitoring** for external SLA is not yet wired up.
 
 ## Secret rotation
 
-The Azure SP password expires 1 year after creation. Rotate:
-
+```bash
+az ad app credential reset \
+  --id $(az ad app list --display-name sp-grafana-cloud-reader --query '[0].appId' -o tsv) \
+  --years 1
 ```
-terraform apply -replace=azuread_service_principal_password.grafana
-```
 
-The Azure Monitor data sources will re-apply with the new secret automatically.
+Paste the new `password` into `grafana_azure_client_secret` and queue a new apply.

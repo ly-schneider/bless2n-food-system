@@ -19,15 +19,9 @@ data "terraform_remote_state" "production" {
 }
 
 locals {
-  env_workspaces = {
-    staging = {
-      law_id              = data.terraform_remote_state.staging.outputs.log_analytics_workspace_id
-      resource_group_name = data.terraform_remote_state.staging.outputs.resource_group_name
-    }
-    production = {
-      law_id              = data.terraform_remote_state.production.outputs.log_analytics_workspace_id
-      resource_group_name = data.terraform_remote_state.production.outputs.resource_group_name
-    }
+  env_law_ids = {
+    staging    = data.terraform_remote_state.staging.outputs.log_analytics_workspace_id
+    production = data.terraform_remote_state.production.outputs.log_analytics_workspace_id
   }
 
   sentry_enabled = length(var.sentry_auth_token) > 0
@@ -38,7 +32,7 @@ resource "grafana_folder" "bfs" {
 }
 
 resource "grafana_data_source" "azure_monitor" {
-  for_each = local.env_workspaces
+  for_each = local.env_law_ids
 
   type = "grafana-azure-monitor-datasource"
   name = "Azure Monitor - ${each.key}"
@@ -48,13 +42,13 @@ resource "grafana_data_source" "azure_monitor" {
     azureAuthType                = "clientsecret"
     cloudName                    = "azuremonitor"
     tenantId                     = var.azure_tenant_id
-    clientId                     = azuread_application.grafana.client_id
+    clientId                     = var.grafana_azure_client_id
     subscriptionId               = var.azure_subscription_id
-    logAnalyticsDefaultWorkspace = each.value.law_id
+    logAnalyticsDefaultWorkspace = each.value
   })
 
   secure_json_data_encoded = jsonencode({
-    clientSecret = azuread_service_principal_password.grafana.value
+    clientSecret = var.grafana_azure_client_secret
   })
 }
 

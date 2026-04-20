@@ -10,3 +10,7 @@ CLAUDE.md
 .claude/
 .agents/
 .codex/
+
+# Personal / internal notes (never commit)
+NOTES.local.md
+**/NOTES.local.md
