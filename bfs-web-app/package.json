@@ -1,6 +1,6 @@
 {
   "name": "bless2n-food-system-web",
-  "version": "2.7.6",
+  "version": "2.7.7",
   "private": true,
   "description": "Production-ready food ordering system with public ordering, admin dashboard, and POS terminal",
   "scripts": {
