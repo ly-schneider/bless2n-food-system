@@ -238,6 +238,7 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ vars.SENTRY_ORG }}
         with:
-          version: ${{ needs.release.outputs.image_tag }}
+          release: ${{ needs.release.outputs.image_tag }}
           environment: staging
           projects: ${{ vars.SENTRY_PROJECT_FRONTEND }} ${{ vars.SENTRY_PROJECT_BACKEND }}
+          ignore_missing: true
