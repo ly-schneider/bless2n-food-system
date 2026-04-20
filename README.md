@@ -85,20 +85,20 @@ pnpm dev              # App at http://localhost:3000
 
 ## Deployment
 
-The project uses a **trunk-based, immutable-tag release pipeline**:
+The project uses a **semantic-release, immutable-tag release pipeline** driven by [Conventional Commits](https://www.conventionalcommits.org/):
 
-1. **Push to `main`** triggers staging deployment — Docker images are built, migrations run, infrastructure updated via Terraform Cloud
-2. **Create a GitHub Release** (`vX.Y.Z`) triggers production — the exact staging image is promoted via `crane tag` (no rebuild, byte-for-byte identical)
-3. After production deploy, the `VERSION` file is auto-bumped and committed with `[skip cd]`
+1. **Push to `main`** runs CI. On success, `semantic-release` analyses commits since the last tag, computes the next semver, creates a git tag (`vX.Y.Z`) + GitHub release, then staging is built and deployed — Docker images are tagged with that version, migrations run, infrastructure updated via Terraform Cloud
+2. **Manually dispatch `Deploy Prod`** with a tag (`vX.Y.Z`) to promote the exact staging image to production via `crane tag` (no rebuild, byte-for-byte identical)
+3. **Rollback** = dispatch `Deploy Prod` with any previous tag — images are immutable in GHCR
 
-A single `VERSION` file is the source of truth across all projects, image tags, and git tags.
+Versions come from commit messages: `feat:` → minor, `fix:` → patch, `feat!:` / `BREAKING CHANGE:` → major. Commits that don't match produce no release; force a staging build by dispatching `Deploy Staging` with `force=true`.
 
 ### Environments
 
 | Environment | Trigger | Scaling |
 |-------------|---------|---------|
-| **Staging** | Push to `main` | 0-20 replicas, lower thresholds |
-| **Production** | GitHub Release `vX.Y.Z` | 0-20 replicas, tuned thresholds |
+| **Staging** | Push to `main` with releasable commits | 0-20 replicas, lower thresholds |
+| **Production** | Manual `Deploy Prod` dispatch with `vX.Y.Z` | 0-20 replicas, tuned thresholds |
 
 Both environments support **scale-to-zero** for cost efficiency.
 

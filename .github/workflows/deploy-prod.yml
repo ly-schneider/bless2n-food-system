@@ -1,0 +1,179 @@
+name: Deploy Prod
+
+# Manual promotion of an existing staging-built tag to production.
+# Rollback = dispatch this workflow with a previous tag (images are immutable
+# in GHCR, so any past v*.*.* tag can be redeployed instantly).
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Tag to promote to prod (e.g. v1.3.2). Use a past tag to roll back."
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io/ly-schneider/bless2n-food-system
+
+jobs:
+  validate:
+    name: Validate Tag + Images
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      image_tag: ${{ steps.resolve.outputs.image_tag }}
+      git_ref: ${{ steps.resolve.outputs.git_ref }}
+      revision_suffix: ${{ steps.resolve.outputs.revision_suffix }}
+    steps:
+      - name: Validate semver and resolve tag
+        id: resolve
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          TAG="$INPUT_VERSION"
+          if [[ ! "$TAG" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag '$TAG' is not valid semver (expected v*.*.* or *.*.*)"
+            exit 1
+          fi
+
+          VERSION="${TAG#v}"
+          GIT_REF="v${VERSION}"
+          SAFE_TAG=$(echo "$VERSION" | tr '.' '-')
+          REVISION_SUFFIX="${SAFE_TAG}-${COMMIT_SHA:0:8}"
+
+          echo "image_tag=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "git_ref=$GIT_REF" >> "$GITHUB_OUTPUT"
+          echo "revision_suffix=$REVISION_SUFFIX" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install crane
+        uses: imjasonh/setup-crane@6da1ae018866400525525ce74ff892880c099987 # v0.5
+
+      - name: Verify images exist
+        env:
+          IMAGE_TAG: ${{ steps.resolve.outputs.image_tag }}
+        run: |
+          set -euo pipefail
+          for img in frontend backend docs; do
+            echo "Checking ${REGISTRY}/${img}:${IMAGE_TAG}"
+            crane manifest "${REGISTRY}/${img}:${IMAGE_TAG}" > /dev/null
+          done
+
+  migrate:
+    name: Run Migrations
+    runs-on: ubuntu-latest
+    environment: production
+    needs: [validate]
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.validate.outputs.git_ref }}
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Provision database roles
+        working-directory: bfs-backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_ADMIN_URL }}
+        run: ./db/provisioning/provision.sh
+
+      - name: Install Atlas CLI
+        uses: ariga/setup-atlas@2f3c785c89a15e1c0d07bcae3900fb5feb969eea # v0.3
+        with:
+          version: v0.38.0
+
+      - name: Apply Atlas migrations
+        working-directory: bfs-backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_ATLAS_URL }}
+        run: atlas migrate apply --env deploy
+
+  promote-images:
+    name: Promote Staging Images to Production
+    runs-on: ubuntu-latest
+    needs: [validate]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install crane
+        uses: imjasonh/setup-crane@6da1ae018866400525525ce74ff892880c099987 # v0.5
+
+      - name: Promote images
+        env:
+          IMAGE_TAG: ${{ needs.validate.outputs.image_tag }}
+        run: |
+          set -euo pipefail
+          for img in frontend backend docs; do
+            crane tag "${REGISTRY}/${img}:${IMAGE_TAG}" "production"
+          done
+
+  deploy:
+    name: Deploy Production
+    runs-on: ubuntu-latest
+    environment: production
+    needs: [validate, migrate, promote-images]
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.validate.outputs.git_ref }}
+
+      - name: Terraform Cloud apply
+        uses: kvrhdn/tfe-run@4953a73eaf2b24b7fc7c2a98bc8d112eea1b34c7 # v1.0.9
+        with:
+          token: ${{ secrets.TF_API_TOKEN }}
+          organization: ${{ vars.TF_ORG_NAME }}
+          workspace: ${{ vars.TF_WORKSPACE }}
+          message: "Deploy | env=production | v${{ needs.validate.outputs.image_tag }}"
+          wait-for-completion: false
+          tf-vars: |
+            image_tag       = "${{ needs.validate.outputs.image_tag }}"
+            revision_suffix = "${{ needs.validate.outputs.revision_suffix }}"
+            ghcr_token      = "${{ secrets.GHCR_TOKEN }}"
+
+  sentry-release:
+    name: Create Sentry Release
+    runs-on: ubuntu-latest
+    environment: production
+    needs: [validate, promote-images]
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.validate.outputs.git_ref }}
+          fetch-depth: 0
+
+      - uses: getsentry/action-release@5657c9e888b4e2cc85f4d29143ea4131fde4a73a # v3.6.0
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+        with:
+          version: ${{ needs.validate.outputs.image_tag }}
+          environment: production
+          projects: ${{ vars.SENTRY_PROJECT_FRONTEND }} ${{ vars.SENTRY_PROJECT_BACKEND }}

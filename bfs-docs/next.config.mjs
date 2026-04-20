@@ -1,14 +1,7 @@
-import { readFileSync } from "fs";
 import { createMDX } from "fumadocs-mdx/next";
-import { resolve } from "path";
 
 if (!process.env.APP_VERSION) {
-  try {
-    process.env.APP_VERSION = readFileSync(
-      resolve(process.cwd(), "..", "VERSION"),
-      "utf-8",
-    ).trim();
-  } catch {}
+  process.env.APP_VERSION = "dev";
 }
 
 const withMDX = createMDX();

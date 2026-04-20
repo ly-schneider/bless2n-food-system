@@ -1,13 +1,9 @@
 import withBundleAnalyzer from "@next/bundle-analyzer"
 import { withSentryConfig } from "@sentry/nextjs"
 import { type NextConfig } from "next"
-import { readFileSync } from "fs"
-import { resolve } from "path"
 
 if (!process.env.APP_VERSION) {
-  try {
-    process.env.APP_VERSION = readFileSync(resolve(process.cwd(), "..", "VERSION"), "utf-8").trim()
-  } catch {}
+  process.env.APP_VERSION = "dev"
 }
 
 if (!process.env.NEXT_PUBLIC_APP_VERSION) {
