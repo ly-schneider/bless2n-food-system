@@ -69,12 +69,20 @@
                 "region": "northeurope"
               }
             ],
-            "timeGrain": "auto"
+            "timeGrain": "auto",
+            "allowedTimeGrainsMs": [
+              60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
+              86400000
+            ],
+            "dimensionFilters": [],
+            "customNamespace": "",
+            "top": "10"
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
             "uid": "${datasource}"
           },
+          "subscription": "$subscription",
           "queryType": "Azure Monitor",
           "refId": "A"
         }
@@ -183,12 +191,20 @@
                 "region": "northeurope"
               }
             ],
-            "timeGrain": "auto"
+            "timeGrain": "auto",
+            "allowedTimeGrainsMs": [
+              60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
+              86400000
+            ],
+            "dimensionFilters": [],
+            "customNamespace": "",
+            "top": "10"
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
             "uid": "${datasource}"
           },
+          "subscription": "$subscription",
           "queryType": "Azure Monitor",
           "refId": "A"
         }
@@ -244,12 +260,20 @@
                 "region": "northeurope"
               }
             ],
-            "timeGrain": "auto"
+            "timeGrain": "auto",
+            "allowedTimeGrainsMs": [
+              60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
+              86400000
+            ],
+            "dimensionFilters": [],
+            "customNamespace": "",
+            "top": "10"
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
             "uid": "${datasource}"
           },
+          "subscription": "$subscription",
           "queryType": "Azure Monitor",
           "refId": "A"
         }
@@ -317,7 +341,6 @@
         {
           "azureMonitor": {
             "aggregation": "Total",
-            "dimensionFilters": [],
             "metricName": "Requests",
             "metricNamespace": "microsoft.app/containerapps",
             "region": "northeurope",
@@ -330,12 +353,20 @@
                 "region": "northeurope"
               }
             ],
-            "timeGrain": "auto"
+            "timeGrain": "auto",
+            "allowedTimeGrainsMs": [
+              60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
+              86400000
+            ],
+            "dimensionFilters": [],
+            "customNamespace": "",
+            "top": "10"
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
             "uid": "${datasource}"
           },
+          "subscription": "$subscription",
           "queryType": "Azure Monitor",
           "refId": "A"
         }
@@ -632,12 +663,20 @@
                 "region": "northeurope"
               }
             ],
-            "timeGrain": "auto"
+            "timeGrain": "auto",
+            "allowedTimeGrainsMs": [
+              60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
+              86400000
+            ],
+            "dimensionFilters": [],
+            "customNamespace": "",
+            "top": "10"
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
             "uid": "${datasource}"
           },
+          "subscription": "$subscription",
           "queryType": "Azure Monitor",
           "refId": "A"
         }
@@ -699,12 +738,20 @@
                 "region": "northeurope"
               }
             ],
-            "timeGrain": "auto"
+            "timeGrain": "auto",
+            "allowedTimeGrainsMs": [
+              60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
+              86400000
+            ],
+            "dimensionFilters": [],
+            "customNamespace": "",
+            "top": "10"
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
             "uid": "${datasource}"
           },
+          "subscription": "$subscription",
           "queryType": "Azure Monitor",
           "refId": "A"
         }
@@ -766,12 +813,20 @@
                 "region": "northeurope"
               }
             ],
-            "timeGrain": "auto"
+            "timeGrain": "auto",
+            "allowedTimeGrainsMs": [
+              60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
+              86400000
+            ],
+            "dimensionFilters": [],
+            "customNamespace": "",
+            "top": "10"
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
             "uid": "${datasource}"
           },
+          "subscription": "$subscription",
           "queryType": "Azure Monitor",
           "refId": "A"
         }
@@ -988,16 +1043,16 @@
           "type": "grafana-azure-monitor-datasource",
           "uid": "${datasource}"
         },
-        "definition": "ResourceNames($subscription, $resourceGroup, microsoft.app/containerapps)",
+        "definition": "ResourceNames($subscription, $resourceGroup, Microsoft.App/containerApps)",
         "hide": 0,
-        "includeAll": true,
+        "includeAll": false,
         "label": "Container App",
-        "multi": true,
+        "multi": false,
         "name": "app",
         "options": [],
         "query": {
           "azureMonitor": {
-            "rawQuery": "ResourceNames($subscription, $resourceGroup, microsoft.app/containerapps)"
+            "rawQuery": "ResourceNames($subscription, $resourceGroup, Microsoft.App/containerApps)"
           },
           "queryType": "Azure Resource Names",
           "refId": "A"
