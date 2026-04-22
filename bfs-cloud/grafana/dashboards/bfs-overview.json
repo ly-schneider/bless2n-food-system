@@ -58,13 +58,15 @@
           "azureMonitor": {
             "aggregation": "Total",
             "metricName": "Requests",
-            "metricNamespace": "Microsoft.App/containerApps",
+            "metricNamespace": "microsoft.app/containerapps",
+            "region": "northeurope",
             "resources": [
               {
-                "metricNamespace": "Microsoft.App/containerApps",
+                "subscription": "$subscription",
                 "resourceGroup": "$resourceGroup",
+                "metricNamespace": "Microsoft.App/containerApps",
                 "resourceName": "$app",
-                "subscription": "$subscription"
+                "region": "northeurope"
               }
             ],
             "timeGrain": "auto"
@@ -170,13 +172,15 @@
           "azureMonitor": {
             "aggregation": "Average",
             "metricName": "UsageNanoCores",
-            "metricNamespace": "Microsoft.App/containerApps",
+            "metricNamespace": "microsoft.app/containerapps",
+            "region": "northeurope",
             "resources": [
               {
-                "metricNamespace": "Microsoft.App/containerApps",
+                "subscription": "$subscription",
                 "resourceGroup": "$resourceGroup",
+                "metricNamespace": "Microsoft.App/containerApps",
                 "resourceName": "$app",
-                "subscription": "$subscription"
+                "region": "northeurope"
               }
             ],
             "timeGrain": "auto"
@@ -229,13 +233,15 @@
           "azureMonitor": {
             "aggregation": "Average",
             "metricName": "WorkingSetBytes",
-            "metricNamespace": "Microsoft.App/containerApps",
+            "metricNamespace": "microsoft.app/containerapps",
+            "region": "northeurope",
             "resources": [
               {
-                "metricNamespace": "Microsoft.App/containerApps",
+                "subscription": "$subscription",
                 "resourceGroup": "$resourceGroup",
+                "metricNamespace": "Microsoft.App/containerApps",
                 "resourceName": "$app",
-                "subscription": "$subscription"
+                "region": "northeurope"
               }
             ],
             "timeGrain": "auto"
@@ -313,13 +319,15 @@
             "aggregation": "Total",
             "dimensionFilters": [],
             "metricName": "Requests",
-            "metricNamespace": "Microsoft.App/containerApps",
+            "metricNamespace": "microsoft.app/containerapps",
+            "region": "northeurope",
             "resources": [
               {
-                "metricNamespace": "Microsoft.App/containerApps",
+                "subscription": "$subscription",
                 "resourceGroup": "$resourceGroup",
+                "metricNamespace": "Microsoft.App/containerApps",
                 "resourceName": "$app",
-                "subscription": "$subscription"
+                "region": "northeurope"
               }
             ],
             "timeGrain": "auto"
@@ -613,13 +621,15 @@
           "azureMonitor": {
             "aggregation": "Average",
             "metricName": "UsageNanoCores",
-            "metricNamespace": "Microsoft.App/containerApps",
+            "metricNamespace": "microsoft.app/containerapps",
+            "region": "northeurope",
             "resources": [
               {
-                "metricNamespace": "Microsoft.App/containerApps",
+                "subscription": "$subscription",
                 "resourceGroup": "$resourceGroup",
+                "metricNamespace": "Microsoft.App/containerApps",
                 "resourceName": "$app",
-                "subscription": "$subscription"
+                "region": "northeurope"
               }
             ],
             "timeGrain": "auto"
@@ -678,13 +688,15 @@
           "azureMonitor": {
             "aggregation": "Average",
             "metricName": "WorkingSetBytes",
-            "metricNamespace": "Microsoft.App/containerApps",
+            "metricNamespace": "microsoft.app/containerapps",
+            "region": "northeurope",
             "resources": [
               {
-                "metricNamespace": "Microsoft.App/containerApps",
+                "subscription": "$subscription",
                 "resourceGroup": "$resourceGroup",
+                "metricNamespace": "Microsoft.App/containerApps",
                 "resourceName": "$app",
-                "subscription": "$subscription"
+                "region": "northeurope"
               }
             ],
             "timeGrain": "auto"
@@ -743,13 +755,15 @@
           "azureMonitor": {
             "aggregation": "Maximum",
             "metricName": "Replicas",
-            "metricNamespace": "Microsoft.App/containerApps",
+            "metricNamespace": "microsoft.app/containerapps",
+            "region": "northeurope",
             "resources": [
               {
-                "metricNamespace": "Microsoft.App/containerApps",
+                "subscription": "$subscription",
                 "resourceGroup": "$resourceGroup",
+                "metricNamespace": "Microsoft.App/containerApps",
                 "resourceName": "$app",
-                "subscription": "$subscription"
+                "region": "northeurope"
               }
             ],
             "timeGrain": "auto"
@@ -974,7 +988,7 @@
           "type": "grafana-azure-monitor-datasource",
           "uid": "${datasource}"
         },
-        "definition": "ResourceNames($subscription, $resourceGroup, Microsoft.App/containerApps)",
+        "definition": "ResourceNames($subscription, $resourceGroup, microsoft.app/containerapps)",
         "hide": 0,
         "includeAll": true,
         "label": "Container App",
@@ -983,7 +997,7 @@
         "options": [],
         "query": {
           "azureMonitor": {
-            "rawQuery": "ResourceNames($subscription, $resourceGroup, Microsoft.App/containerApps)"
+            "rawQuery": "ResourceNames($subscription, $resourceGroup, microsoft.app/containerapps)"
           },
           "queryType": "Azure Resource Names",
           "refId": "A"
