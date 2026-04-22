@@ -34,7 +34,7 @@ variable "grafana_azure_client_secret" {
 variable "sentry_organization_slug" {
   description = "Sentry organization slug"
   type        = string
-  default     = "leys-services"
+  default     = "leys"
 }
 
 variable "sentry_auth_token" {
