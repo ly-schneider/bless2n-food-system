@@ -4,6 +4,7 @@ import (
 	"backend/internal/trace"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
@@ -38,25 +39,25 @@ func TraceRoute(next http.Handler) http.Handler {
 func LogHTTPErrors(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		start := time.Now()
 		next.ServeHTTP(rec, r)
-
-		if rec.status < 400 {
-			return
-		}
+		latencyMs := float64(time.Since(start).Microseconds()) / 1000.0
 
 		reqID := chiMw.GetReqID(r.Context())
-		trace.Tag(r.Context(), "http.status_code", fmt.Sprintf("%d", rec.status))
+		fields := []zap.Field{
+			zap.Int("status", rec.status),
+			zap.String("method", r.Method),
+			zap.String("path", r.URL.Path),
+			zap.Float64("latency_ms", latencyMs),
+			zap.String("remote_ip", r.RemoteAddr),
+			zap.String("request_id", reqID),
+		}
 
-		if rec.status >= 500 {
+		switch {
+		case rec.status >= 500:
+			trace.Tag(r.Context(), "http.status_code", fmt.Sprintf("%d", rec.status))
 			trace.Tag(r.Context(), "error", "true")
-
-			zap.L().Error("http 5xx",
-				zap.Int("status", rec.status),
-				zap.String("method", r.Method),
-				zap.String("path", r.URL.Path),
-				zap.String("remote_ip", r.RemoteAddr),
-				zap.String("request_id", reqID),
-			)
+			zap.L().Error("http request", fields...)
 
 			if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
 				hub.WithScope(func(scope *sentry.Scope) {
@@ -71,23 +72,22 @@ func LogHTTPErrors(next http.Handler) http.Handler {
 				Int("status", rec.status).
 				String("method", r.Method).
 				String("path", r.URL.Path).
+				Float64("latency_ms", latencyMs).
 				String("request_id", reqID).
 				Emitf("HTTP %d: %s %s", rec.status, r.Method, r.URL.Path)
-		} else {
-			zap.L().Warn("http 4xx",
-				zap.Int("status", rec.status),
-				zap.String("method", r.Method),
-				zap.String("path", r.URL.Path),
-				zap.String("remote_ip", r.RemoteAddr),
-				zap.String("request_id", reqID),
-			)
+		case rec.status >= 400:
+			trace.Tag(r.Context(), "http.status_code", fmt.Sprintf("%d", rec.status))
+			zap.L().Warn("http request", fields...)
 
 			SentryLogger(r.Context()).Warn().
 				Int("status", rec.status).
 				String("method", r.Method).
 				String("path", r.URL.Path).
+				Float64("latency_ms", latencyMs).
 				String("request_id", reqID).
 				Emitf("HTTP %d: %s %s", rec.status, r.Method, r.URL.Path)
+		default:
+			zap.L().Info("http request", fields...)
 		}
 	})
 }
