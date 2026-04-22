@@ -57,34 +57,26 @@
         {
           "azureMonitor": {
             "aggregation": "Total",
-            "metricName": "Requests",
-            "metricNamespace": "microsoft.app/containerapps",
-            "region": "northeurope",
-            "resources": [
-              {
-                "subscription": "$subscription",
-                "resourceGroup": "$resourceGroup",
-                "metricNamespace": "Microsoft.App/containerApps",
-                "resourceName": "$app",
-                "region": "northeurope"
-              }
-            ],
-            "timeGrain": "auto",
             "allowedTimeGrainsMs": [
               60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
               86400000
             ],
             "dimensionFilters": [],
-            "customNamespace": "",
+            "metricDefinition": "Microsoft.App/containerApps",
+            "metricName": "Requests",
+            "metricNamespace": "Microsoft.App/containerApps",
+            "resourceGroup": "$resourceGroup",
+            "resourceName": "$app",
+            "timeGrain": "auto",
             "top": "10"
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
             "uid": "${datasource}"
           },
-          "subscription": "$subscription",
           "queryType": "Azure Monitor",
-          "refId": "A"
+          "refId": "A",
+          "subscription": "$subscription"
         }
       ],
       "title": "Total Requests",
@@ -129,7 +121,7 @@
       "targets": [
         {
           "azureLogAnalytics": {
-            "query": "ContainerAppConsoleLogs_CL\n| where TimeGenerated $__timeFilter()\n| extend status = toint(extract(@'\"status\"\\s*[:=]\\s*(\\d+)', 1, Log_s))\n| where isnotnull(status)\n| summarize total = count(), errors = countif(status >= 500)\n| extend error_rate = iff(total == 0, 0.0, 100.0 * todouble(errors) / todouble(total))\n| project error_rate",
+            "query": "ContainerAppConsoleLogs_CL\n| where $__timeFilter(TimeGenerated)\n| extend status = toint(extract(@'\"status\"\\s*[:=]\\s*(\\d+)', 1, Log_s))\n| where isnotnull(status)\n| summarize total = count(), errors = countif(status >= 500)\n| extend error_rate = iff(total == 0, 0.0, 100.0 * todouble(errors) / todouble(total))\n| project error_rate",
             "resources": []
           },
           "datasource": {
@@ -179,34 +171,26 @@
         {
           "azureMonitor": {
             "aggregation": "Average",
-            "metricName": "UsageNanoCores",
-            "metricNamespace": "microsoft.app/containerapps",
-            "region": "northeurope",
-            "resources": [
-              {
-                "subscription": "$subscription",
-                "resourceGroup": "$resourceGroup",
-                "metricNamespace": "Microsoft.App/containerApps",
-                "resourceName": "$app",
-                "region": "northeurope"
-              }
-            ],
-            "timeGrain": "auto",
             "allowedTimeGrainsMs": [
               60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
               86400000
             ],
             "dimensionFilters": [],
-            "customNamespace": "",
+            "metricDefinition": "Microsoft.App/containerApps",
+            "metricName": "UsageNanoCores",
+            "metricNamespace": "Microsoft.App/containerApps",
+            "resourceGroup": "$resourceGroup",
+            "resourceName": "$app",
+            "timeGrain": "auto",
             "top": "10"
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
             "uid": "${datasource}"
           },
-          "subscription": "$subscription",
           "queryType": "Azure Monitor",
-          "refId": "A"
+          "refId": "A",
+          "subscription": "$subscription"
         }
       ],
       "title": "Avg CPU (nanocores)",
@@ -248,34 +232,26 @@
         {
           "azureMonitor": {
             "aggregation": "Average",
-            "metricName": "WorkingSetBytes",
-            "metricNamespace": "microsoft.app/containerapps",
-            "region": "northeurope",
-            "resources": [
-              {
-                "subscription": "$subscription",
-                "resourceGroup": "$resourceGroup",
-                "metricNamespace": "Microsoft.App/containerApps",
-                "resourceName": "$app",
-                "region": "northeurope"
-              }
-            ],
-            "timeGrain": "auto",
             "allowedTimeGrainsMs": [
               60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
               86400000
             ],
             "dimensionFilters": [],
-            "customNamespace": "",
+            "metricDefinition": "Microsoft.App/containerApps",
+            "metricName": "WorkingSetBytes",
+            "metricNamespace": "Microsoft.App/containerApps",
+            "resourceGroup": "$resourceGroup",
+            "resourceName": "$app",
+            "timeGrain": "auto",
             "top": "10"
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
             "uid": "${datasource}"
           },
-          "subscription": "$subscription",
           "queryType": "Azure Monitor",
-          "refId": "A"
+          "refId": "A",
+          "subscription": "$subscription"
         }
       ],
       "title": "Avg Memory",
@@ -341,34 +317,26 @@
         {
           "azureMonitor": {
             "aggregation": "Total",
-            "metricName": "Requests",
-            "metricNamespace": "microsoft.app/containerapps",
-            "region": "northeurope",
-            "resources": [
-              {
-                "subscription": "$subscription",
-                "resourceGroup": "$resourceGroup",
-                "metricNamespace": "Microsoft.App/containerApps",
-                "resourceName": "$app",
-                "region": "northeurope"
-              }
-            ],
-            "timeGrain": "auto",
             "allowedTimeGrainsMs": [
               60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
               86400000
             ],
             "dimensionFilters": [],
-            "customNamespace": "",
+            "metricDefinition": "Microsoft.App/containerApps",
+            "metricName": "Requests",
+            "metricNamespace": "Microsoft.App/containerApps",
+            "resourceGroup": "$resourceGroup",
+            "resourceName": "$app",
+            "timeGrain": "auto",
             "top": "10"
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
             "uid": "${datasource}"
           },
-          "subscription": "$subscription",
           "queryType": "Azure Monitor",
-          "refId": "A"
+          "refId": "A",
+          "subscription": "$subscription"
         }
       ],
       "title": "Requests per app",
@@ -425,7 +393,7 @@
       "targets": [
         {
           "azureLogAnalytics": {
-            "query": "ContainerAppConsoleLogs_CL\n| where TimeGenerated $__timeFilter()\n| where ContainerAppName_s startswith \"bfs-backend\"\n| extend latency_ms = todouble(extract(@'\"latency_ms\"\\s*[:=]\\s*([\\d\\.]+)', 1, Log_s))\n| where isnotnull(latency_ms)\n| summarize p50 = percentile(latency_ms, 50), p95 = percentile(latency_ms, 95), p99 = percentile(latency_ms, 99) by bin(TimeGenerated, $__timeInterval)\n| order by TimeGenerated asc",
+            "query": "ContainerAppConsoleLogs_CL\n| where $__timeFilter(TimeGenerated)\n| where ContainerAppName_s startswith \"bfs-backend\"\n| extend latency_ms = todouble(extract(@'\"latency_ms\"\\s*[:=]\\s*([\\d\\.]+)', 1, Log_s))\n| where isnotnull(latency_ms)\n| summarize p50 = percentile(latency_ms, 50), p95 = percentile(latency_ms, 95), p99 = percentile(latency_ms, 99) by bin(TimeGenerated, $__timeInterval)\n| order by TimeGenerated asc",
             "resources": []
           },
           "datasource": {
@@ -535,7 +503,7 @@
       "targets": [
         {
           "azureLogAnalytics": {
-            "query": "ContainerAppConsoleLogs_CL\n| where TimeGenerated $__timeFilter()\n| extend status = toint(extract(@'\"status\"\\s*[:=]\\s*(\\d+)', 1, Log_s))\n| where isnotnull(status)\n| extend bucket = case(status >= 500, \"5xx\", status >= 400, \"4xx\", status >= 300, \"3xx\", status >= 200, \"2xx\", \"other\")\n| summarize count() by bin(TimeGenerated, $__timeInterval), bucket\n| order by TimeGenerated asc",
+            "query": "ContainerAppConsoleLogs_CL\n| where $__timeFilter(TimeGenerated)\n| extend status = toint(extract(@'\"status\"\\s*[:=]\\s*(\\d+)', 1, Log_s))\n| where isnotnull(status)\n| extend bucket = case(status >= 500, \"5xx\", status >= 400, \"4xx\", status >= 300, \"3xx\", status >= 200, \"2xx\", \"other\")\n| summarize count() by bin(TimeGenerated, $__timeInterval), bucket\n| order by TimeGenerated asc",
             "resources": []
           },
           "datasource": {
@@ -587,7 +555,7 @@
       "targets": [
         {
           "azureLogAnalytics": {
-            "query": "ContainerAppConsoleLogs_CL\n| where TimeGenerated $__timeFilter()\n| extend status = toint(extract(@'\"status\"\\s*[:=]\\s*(\\d+)', 1, Log_s))\n| extend path = extract(@'\"path\"\\s*[:=]\\s*\"([^\"]+)\"', 1, Log_s)\n| where status >= 400 and isnotempty(path)\n| summarize errors = count() by path, status\n| top 20 by errors desc",
+            "query": "ContainerAppConsoleLogs_CL\n| where $__timeFilter(TimeGenerated)\n| extend status = toint(extract(@'\"status\"\\s*[:=]\\s*(\\d+)', 1, Log_s))\n| extend path = extract(@'\"path\"\\s*[:=]\\s*\"([^\"]+)\"', 1, Log_s)\n| where status >= 400 and isnotempty(path)\n| summarize errors = count() by path, status\n| top 20 by errors desc",
             "resources": []
           },
           "datasource": {
@@ -651,34 +619,26 @@
         {
           "azureMonitor": {
             "aggregation": "Average",
-            "metricName": "UsageNanoCores",
-            "metricNamespace": "microsoft.app/containerapps",
-            "region": "northeurope",
-            "resources": [
-              {
-                "subscription": "$subscription",
-                "resourceGroup": "$resourceGroup",
-                "metricNamespace": "Microsoft.App/containerApps",
-                "resourceName": "$app",
-                "region": "northeurope"
-              }
-            ],
-            "timeGrain": "auto",
             "allowedTimeGrainsMs": [
               60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
               86400000
             ],
             "dimensionFilters": [],
-            "customNamespace": "",
+            "metricDefinition": "Microsoft.App/containerApps",
+            "metricName": "UsageNanoCores",
+            "metricNamespace": "Microsoft.App/containerApps",
+            "resourceGroup": "$resourceGroup",
+            "resourceName": "$app",
+            "timeGrain": "auto",
             "top": "10"
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
             "uid": "${datasource}"
           },
-          "subscription": "$subscription",
           "queryType": "Azure Monitor",
-          "refId": "A"
+          "refId": "A",
+          "subscription": "$subscription"
         }
       ],
       "title": "CPU (nanocores)",
@@ -726,34 +686,26 @@
         {
           "azureMonitor": {
             "aggregation": "Average",
-            "metricName": "WorkingSetBytes",
-            "metricNamespace": "microsoft.app/containerapps",
-            "region": "northeurope",
-            "resources": [
-              {
-                "subscription": "$subscription",
-                "resourceGroup": "$resourceGroup",
-                "metricNamespace": "Microsoft.App/containerApps",
-                "resourceName": "$app",
-                "region": "northeurope"
-              }
-            ],
-            "timeGrain": "auto",
             "allowedTimeGrainsMs": [
               60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
               86400000
             ],
             "dimensionFilters": [],
-            "customNamespace": "",
+            "metricDefinition": "Microsoft.App/containerApps",
+            "metricName": "WorkingSetBytes",
+            "metricNamespace": "Microsoft.App/containerApps",
+            "resourceGroup": "$resourceGroup",
+            "resourceName": "$app",
+            "timeGrain": "auto",
             "top": "10"
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
             "uid": "${datasource}"
           },
-          "subscription": "$subscription",
           "queryType": "Azure Monitor",
-          "refId": "A"
+          "refId": "A",
+          "subscription": "$subscription"
         }
       ],
       "title": "Memory (working set)",
@@ -801,34 +753,26 @@
         {
           "azureMonitor": {
             "aggregation": "Maximum",
-            "metricName": "Replicas",
-            "metricNamespace": "microsoft.app/containerapps",
-            "region": "northeurope",
-            "resources": [
-              {
-                "subscription": "$subscription",
-                "resourceGroup": "$resourceGroup",
-                "metricNamespace": "Microsoft.App/containerApps",
-                "resourceName": "$app",
-                "region": "northeurope"
-              }
-            ],
-            "timeGrain": "auto",
             "allowedTimeGrainsMs": [
               60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
               86400000
             ],
             "dimensionFilters": [],
-            "customNamespace": "",
+            "metricDefinition": "Microsoft.App/containerApps",
+            "metricName": "Replicas",
+            "metricNamespace": "Microsoft.App/containerApps",
+            "resourceGroup": "$resourceGroup",
+            "resourceName": "$app",
+            "timeGrain": "auto",
             "top": "10"
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
             "uid": "${datasource}"
           },
-          "subscription": "$subscription",
           "queryType": "Azure Monitor",
-          "refId": "A"
+          "refId": "A",
+          "subscription": "$subscription"
         }
       ],
       "title": "Replicas",
@@ -1043,7 +987,7 @@
           "type": "grafana-azure-monitor-datasource",
           "uid": "${datasource}"
         },
-        "definition": "ResourceNames($subscription, $resourceGroup, Microsoft.App/containerApps)",
+        "definition": "",
         "hide": 0,
         "includeAll": false,
         "label": "Container App",
@@ -1051,11 +995,11 @@
         "name": "app",
         "options": [],
         "query": {
-          "azureMonitor": {
-            "rawQuery": "ResourceNames($subscription, $resourceGroup, Microsoft.App/containerApps)"
-          },
+          "namespace": "Microsoft.App/containerApps",
           "queryType": "Azure Resource Names",
-          "refId": "A"
+          "refId": "A",
+          "resourceGroup": "$resourceGroup",
+          "subscription": "$subscription"
         },
         "refresh": 1,
         "regex": "",
