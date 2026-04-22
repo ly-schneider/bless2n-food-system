@@ -28,7 +28,7 @@ type OrderRepository interface {
 
 	// POS payment methods - creates payment record and updates order status
 	SetPosPaymentCash(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error
-	SetPosPaymentCard(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error
+	SetPosPaymentCard(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64, card *CardMeta) error
 	SetPosPaymentTwint(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error
 	SetPosPaymentGratisGuest(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error
 	SetPosPaymentGratisVIP(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error
@@ -294,7 +294,16 @@ func (r *orderRepo) ListByCustomerIDPaginated(ctx context.Context, customerID st
 	return rows, int64(total), nil
 }
 
-func (r *orderRepo) setPosPayment(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, method orderpayment.Method, amountCents int64) error {
+// CardMeta carries non-sensitive card payment details captured by the terminal.
+// All fields are optional.
+type CardMeta struct {
+	Brand         *string
+	Last4         *string
+	EntryMode     *string
+	TransactionID *string
+}
+
+func (r *orderRepo) setPosPayment(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, method orderpayment.Method, amountCents int64, card *CardMeta) error {
 	tx, err := r.ec(ctx).Tx(ctx)
 	if err != nil {
 		return err
@@ -308,6 +317,20 @@ func (r *orderRepo) setPosPayment(ctx context.Context, orderID uuid.UUID, device
 		SetPaidAt(time.Now())
 	if deviceID != nil {
 		payBuilder.SetDeviceID(*deviceID)
+	}
+	if card != nil {
+		if card.Brand != nil {
+			payBuilder.SetCardBrand(*card.Brand)
+		}
+		if card.Last4 != nil {
+			payBuilder.SetCardLast4(*card.Last4)
+		}
+		if card.EntryMode != nil {
+			payBuilder.SetEntryMode(*card.EntryMode)
+		}
+		if card.TransactionID != nil {
+			payBuilder.SetCardTransactionID(*card.TransactionID)
+		}
 	}
 	if _, err := payBuilder.Save(ctx); err != nil {
 		return translateError(err)
@@ -323,31 +346,31 @@ func (r *orderRepo) setPosPayment(ctx context.Context, orderID uuid.UUID, device
 }
 
 func (r *orderRepo) SetPosPaymentCash(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error {
-	return r.setPosPayment(ctx, orderID, deviceID, orderpayment.MethodCASH, amountCents)
+	return r.setPosPayment(ctx, orderID, deviceID, orderpayment.MethodCASH, amountCents, nil)
 }
 
-func (r *orderRepo) SetPosPaymentCard(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error {
-	return r.setPosPayment(ctx, orderID, deviceID, orderpayment.MethodCARD, amountCents)
+func (r *orderRepo) SetPosPaymentCard(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64, card *CardMeta) error {
+	return r.setPosPayment(ctx, orderID, deviceID, orderpayment.MethodCARD, amountCents, card)
 }
 
 func (r *orderRepo) SetPosPaymentTwint(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error {
-	return r.setPosPayment(ctx, orderID, deviceID, orderpayment.MethodTWINT, amountCents)
+	return r.setPosPayment(ctx, orderID, deviceID, orderpayment.MethodTWINT, amountCents, nil)
 }
 
 func (r *orderRepo) SetPosPaymentGratisGuest(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error {
-	return r.setPosPayment(ctx, orderID, deviceID, orderpayment.MethodGRATIS_GUEST, amountCents)
+	return r.setPosPayment(ctx, orderID, deviceID, orderpayment.MethodGRATIS_GUEST, amountCents, nil)
 }
 
 func (r *orderRepo) SetPosPaymentGratisVIP(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error {
-	return r.setPosPayment(ctx, orderID, deviceID, orderpayment.MethodGRATIS_VIP, amountCents)
+	return r.setPosPayment(ctx, orderID, deviceID, orderpayment.MethodGRATIS_VIP, amountCents, nil)
 }
 
 func (r *orderRepo) SetPosPaymentGratisStaff(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error {
-	return r.setPosPayment(ctx, orderID, deviceID, orderpayment.MethodGRATIS_STAFF, amountCents)
+	return r.setPosPayment(ctx, orderID, deviceID, orderpayment.MethodGRATIS_STAFF, amountCents, nil)
 }
 
 func (r *orderRepo) SetPosPaymentGratis100Club(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error {
-	return r.setPosPayment(ctx, orderID, deviceID, orderpayment.MethodGRATIS_100CLUB, amountCents)
+	return r.setPosPayment(ctx, orderID, deviceID, orderpayment.MethodGRATIS_100CLUB, amountCents, nil)
 }
 
 func (r *orderRepo) DeleteIfPending(ctx context.Context, id uuid.UUID) (bool, error) {

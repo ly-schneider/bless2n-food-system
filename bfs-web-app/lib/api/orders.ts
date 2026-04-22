@@ -42,12 +42,24 @@ export interface OrderLineDTO {
   redemption?: OrderLineRedemptionDTO | null
 }
 
+export interface OrderPaymentSummaryDTO {
+  id?: string
+  method?: "CASH" | "CARD" | "TWINT"
+  amountCents?: number
+  paidAt?: string
+  cardBrand?: string
+  cardLast4?: string
+  entryMode?: string
+  cardTransactionId?: string
+}
+
 export interface PublicOrderDetailsDTO {
   id: string
   status: OrderStatus
   totalCents: number
   createdAt: string
   lines?: OrderLineDTO[]
+  payments?: OrderPaymentSummaryDTO[]
 }
 
 export async function getOrderPublicById(orderId: string) {

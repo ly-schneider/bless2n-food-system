@@ -238,10 +238,14 @@ func toAPIOrderLineRedemption(e *ent.OrderLineRedemption) generated.OrderLineRed
 func toAPIOrderPaymentSummary(e *ent.OrderPayment) generated.OrderPaymentSummary {
 	method := generated.OrderPaymentSummaryMethod(e.Method)
 	return generated.OrderPaymentSummary{
-		Id:          ptr(openapi_types.UUID(e.ID)),
-		Method:      &method,
-		AmountCents: ptr(e.AmountCents),
-		PaidAt:      ptr(e.PaidAt),
+		Id:                ptr(openapi_types.UUID(e.ID)),
+		Method:            &method,
+		AmountCents:       ptr(e.AmountCents),
+		PaidAt:            ptr(e.PaidAt),
+		CardBrand:         e.CardBrand,
+		CardLast4:         e.CardLast4,
+		EntryMode:         e.EntryMode,
+		CardTransactionId: e.CardTransactionID,
 	}
 }
 

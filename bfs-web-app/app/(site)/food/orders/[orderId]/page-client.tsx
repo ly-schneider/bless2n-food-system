@@ -12,6 +12,27 @@ import { getOrderPublicById, type OrderLineDTO, type PublicOrderDetailsDTO } fro
 import { addOrder } from "@/lib/orders-storage"
 import { formatChf } from "@/lib/utils"
 
+function paymentMethodLabel(method: string | undefined): string {
+  switch (method) {
+    case "CASH":
+      return "Bar"
+    case "CARD":
+      return "Karte"
+    case "TWINT":
+      return "TWINT"
+    default:
+      return method ?? "–"
+  }
+}
+
+function entryModeLabel(mode: string): string {
+  const m = mode.toLowerCase()
+  if (m.includes("contact")) return "Kontaktlos"
+  if (m.includes("chip")) return "Chip"
+  if (m.includes("swipe") || m.includes("magnet")) return "Magnetstreifen"
+  return mode
+}
+
 export default function OrderPageClient() {
   const sp = useSearchParams()
   const { orderId } = useParams<{ orderId: string }>()
@@ -139,7 +160,8 @@ export default function OrderPageClient() {
       return <p className="text-red-600">Bestellnummer fehlt.</p>
     }
     if (qrReady) {
-      return <QRCode value={orderId ?? ""} size={260} className="mx-auto rounded-[11px] border-2 p-1" />
+      const base = process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin
+      return <QRCode value={`${base}/o/${orderId}`} size={260} className="mx-auto rounded-[11px] border-2 p-1" />
     }
     return <div className="mx-auto h-[260px] w-[260px] animate-pulse rounded-[11px] border-2 bg-gray-100" />
   })()
@@ -220,6 +242,68 @@ export default function OrderPageClient() {
               <span className="text-base font-semibold">{formatChf(serverOrder.totalCents)}</span>
             </div>
           )}
+
+          {serverOrder.payments && serverOrder.payments.length > 0 && (
+            <div className="mt-6">
+              <h2 className="mb-3 text-lg font-semibold">Zahlung</h2>
+              <div className="rounded-xl border p-3 text-sm">
+                {serverOrder.payments.map((p) => (
+                  <div key={p.id ?? p.paidAt ?? ""} className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Methode</span>
+                      <span>{paymentMethodLabel(p.method)}</span>
+                    </div>
+                    {p.paidAt && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Bezahlt am</span>
+                        <span>{new Date(p.paidAt).toLocaleString("de-CH")}</span>
+                      </div>
+                    )}
+                    {(p.cardBrand || p.cardLast4) && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Karte</span>
+                        <span>
+                          {[p.cardBrand, p.cardLast4 ? `•••• ${p.cardLast4}` : null].filter(Boolean).join(" ")}
+                        </span>
+                      </div>
+                    )}
+                    {p.entryMode && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Einlesemodus</span>
+                        <span>{entryModeLabel(p.entryMode)}</span>
+                      </div>
+                    )}
+                    {p.cardTransactionId && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Transaktion</span>
+                        <span className="font-mono text-xs">{p.cardTransactionId}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-6 rounded-xl border p-3 text-sm">
+            <p className="font-semibold">BlessThun Food</p>
+            <p className="text-muted-foreground">Industriestrasse 5, 3600 Thun</p>
+            <p className="text-muted-foreground mt-2">
+              Fragen zur Bestellung?{" "}
+              <a className="underline" href="mailto:hello@bless2n.ch">
+                hello@bless2n.ch
+              </a>
+            </p>
+            <p className="text-muted-foreground mt-2 text-xs">
+              <a className="underline" href="/nutzungsbedingungen">
+                Nutzungsbedingungen
+              </a>
+              {" · "}
+              <a className="underline" href="/datenschutz">
+                Datenschutz
+              </a>
+            </p>
+          </div>
         </div>
       ) : mounted && orderId ? (
         <div className="mt-8">

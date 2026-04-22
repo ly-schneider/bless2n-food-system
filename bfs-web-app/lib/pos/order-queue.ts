@@ -1,4 +1,5 @@
 import type {
+  CardMeta,
   GratisInfo,
   OrderSyncStatus,
   PosPaymentMethod,
@@ -112,7 +113,8 @@ export class OrderQueueManager {
     totalCents: number,
     paymentMethod: PosPaymentMethod,
     receiptData?: { items: ReceiptItem[]; pickupQr: string | null },
-    gratisInfo?: GratisInfo
+    gratisInfo?: GratisInfo,
+    cardMeta?: CardMeta
   ): QueuedOrder {
     const now = Date.now()
     const localId = generateLocalId()
@@ -124,6 +126,7 @@ export class OrderQueueManager {
       totalCents,
       paymentMethod,
       gratisInfo,
+      cardMeta,
       status: "pending",
       attemptCount: 0,
       createdAt: now,
@@ -218,6 +221,9 @@ export class OrderQueueManager {
           elvantoPersonName: order.gratisInfo.elvantoPersonName,
           freeQuantity: order.gratisInfo.freeQuantity || 1,
         }
+      }
+      if (order.paymentMethod === "card" && order.cardMeta) {
+        paymentBody.card = order.cardMeta
       }
       const resPay = await fetch(`/api/v1/orders/${serverId}/payment`, {
         method: "POST",

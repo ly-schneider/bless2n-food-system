@@ -660,10 +660,6 @@ class WebPosActivity : ComponentActivity() {
             val orderId = obj.optString("orderId", "-")
             val method = obj.optString("method", "card")
             val currency = obj.optString("currency", "CHF")
-            val last4 = obj.optString("cardLast4", "")
-            val brand = obj.optString("cardType", "")
-            val entry = obj.optString("entryMode", "")
-            val txId = obj.optString("txId", obj.optString("transactionCode", ""))
             val address = "Industriestrasse 5, 3600 Thun"
             val orderTs = obj.optLong("orderTimestamp", -1L)
             val dateStr = try {
@@ -675,24 +671,12 @@ class WebPosActivity : ComponentActivity() {
             lines.append("[C]<b>BlessThun Food</b>\n")
             lines.append("[C]$address\n")
             if (dateStr.isNotEmpty()) lines.append("[C]$dateStr\n")
-            // 1) Items
-            run {
-                val items = obj.optJSONArray("items")
-                if (items != null) {
-                    for (i in 0 until items.length()) {
-                        val it = items.optJSONObject(i)
-                        val qty = it?.optInt("quantity", 1) ?: 1
-                        val title = it?.optString("title", "Item") ?: "Item"
-                        val unit = it?.optLong("unitPriceCents", 0L) ?: 0L
-                        val lineTotal = unit * qty
-                        val priceText = String.format("%s %.2f", currency, lineTotal / 100.0)
-                        lines.append("${qty}x ${title} - ${priceText}\n")
-                    }
-                }
+            if (totalCents >= 0) {
+                val amt = String.format("%s %.2f", currency, totalCents.toDouble() / 100.0)
+                lines.append("Total: $amt\n")
             }
-            // 2) Border
-            lines.append("[C]------------------------------\n")
-            // 3) Cash received/change
+            val methodPretty = if (method.isNotEmpty()) method.substring(0, 1).uppercase() + method.substring(1) else method
+            lines.append("Zahlart: ${methodPretty}\n")
             if (method.equals("cash", ignoreCase = true)) {
                 val rec = obj.optLong("amountReceivedCents", -1L)
                 val chg = obj.optLong("changeCents", -1L)
@@ -705,45 +689,6 @@ class WebPosActivity : ComponentActivity() {
                     lines.append("Rückgeld: $chgStr\n")
                 }
             }
-            // 4) Border (only if we printed cash details)
-            val hasCashDetails = method.equals("cash", ignoreCase = true) &&
-                (obj.optLong("amountReceivedCents", -1L) >= 0 || obj.optLong("changeCents", -1L) >= 0)
-            if (hasCashDetails) {
-                lines.append("[C]------------------------------\n")
-            }
-            // 5) Total
-            if (totalCents >= 0) {
-                val amt = String.format("%s %.2f", currency, totalCents.toDouble() / 100.0)
-                lines.append("Total: $amt\n")
-            }
-            // 6) Whitespace divider
-            lines.append("\n")
-            // 7) Method (and card details for non-cash)
-            lines.append("Zahlart: ${method}\n")
-            if (!method.equals("cash", ignoreCase = true)) {
-                if (brand.isNotEmpty() || last4.isNotEmpty() || entry.isNotEmpty()) {
-                    val dots = if (last4.isNotEmpty()) " •••• $last4" else ""
-                    val entryLabel = if (entry.isNotEmpty()) {
-                        val em = entry.lowercase()
-                        when {
-                            em.contains("contact") -> "Kontaktlos"
-                            em.contains("chip") -> "Chip"
-                            em.contains("swipe") || em.contains("magnet") -> "Magnetstreifen"
-                            else -> entry.uppercase()
-                        }
-                    } else ""
-                    val cardLine = when {
-                        brand.isNotEmpty() || last4.isNotEmpty() -> "Karte: ${brand}$dots" + (if (entryLabel.isNotEmpty()) " ($entryLabel)" else "")
-                        entryLabel.isNotEmpty() -> "Karte: $entryLabel"
-                        else -> null
-                    }
-                    cardLine?.let { lines.append(it + "\n") }
-                }
-                if (txId.isNotEmpty()) {
-                    lines.append("Transaktion: $txId\n")
-                }
-            }
-            // 8) Thank you
             lines.append("Bestellung: ${orderId}\n")
             lines.append("\n")
             lines.append("[C]Danke!\n\n")
@@ -877,7 +822,7 @@ class WebPosActivity : ComponentActivity() {
         val headerTopPad = 12
         val headerBottomPad = 6
         val bottomPad = 56
-        val qrSize = 320 // make QR code larger (was 260)
+        val qrSize = 200
 
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK; textSize = fontSize }
         val bold = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK; textSize = headerSize; isFakeBoldText = true }
@@ -896,19 +841,9 @@ class WebPosActivity : ComponentActivity() {
             // QR (optional)
             val hasQr = obj.optString("pickupQr", "").isNotEmpty()
             if (hasQr) h += qrSize + lineSpacing
-            // Items
-            val items = obj.optJSONArray("items")
-            if (items != null) {
-                for (i in 0 until items.length()) {
-                    h += (fm.bottom - fm.top).toInt() + lineSpacing
-                    val it = items.optJSONObject(i)
-                    val cfg = it?.optJSONArray("configuration")
-                    if (cfg != null) {
-                        for (j in 0 until cfg.length()) h += (fmSmall.bottom - fmSmall.top).toInt() + (lineSpacing / 2)
-                    }
-                }
-            }
-            // Divider (after items)
+            // Total
+            h += (fm.bottom - fm.top).toInt() + lineSpacing
+            // Payment line
             h += (fm.bottom - fm.top).toInt() + lineSpacing
             // Cash: received + change (up to two small lines)
             val methodForHeight = obj.optString("method", "card")
@@ -918,25 +853,7 @@ class WebPosActivity : ComponentActivity() {
                 if (rec >= 0) h += (fmSmall.bottom - fmSmall.top).toInt() + lineSpacing
                 if (chg >= 0) h += (fmSmall.bottom - fmSmall.top).toInt() + lineSpacing
             }
-            // Second divider only if cash details are present
-            if (methodForHeight.equals("cash", ignoreCase = true)) {
-                val rec = obj.optLong("amountReceivedCents", -1L)
-                val chg = obj.optLong("changeCents", -1L)
-                if (rec >= 0 || chg >= 0) {
-                    h += (fm.bottom - fm.top).toInt() + lineSpacing
-                }
-            }
-            // Total
-            h += (fm.bottom - fm.top).toInt() + lineSpacing
-            // Whitespace divider
-            h += (fm.bottom - fm.top).toInt() / 2 + lineSpacing
-            // Payment line
-            h += (fm.bottom - fm.top).toInt() + lineSpacing
-            // Optional card + tx lines (small)
-            val hasCardDetails = obj.optString("cardType", "").isNotEmpty() || obj.optString("cardLast4", "").isNotEmpty() || obj.optString("entryMode", "").isNotEmpty()
-            if (hasCardDetails) h += (fmSmall.bottom - fmSmall.top).toInt() + lineSpacing
-            if (obj.optString("txId", obj.optString("transactionCode", "")).isNotEmpty()) h += (fmSmall.bottom - fmSmall.top).toInt() + lineSpacing
-            // Order ID (small) under method
+            // Order ID (small)
             h += (fmSmall.bottom - fmSmall.top).toInt() + lineSpacing
             // Whitespace divider
             h += (fm.bottom - fm.top).toInt() / 2 + lineSpacing
@@ -1004,89 +921,14 @@ class WebPosActivity : ComponentActivity() {
             }
         }
 
-        // Items list
-        val items = obj.optJSONArray("items")
-        if (items != null) {
-            val fm = Paint.FontMetrics(); paint.getFontMetrics(fm)
-            val fmSmall = Paint.FontMetrics(); small.getFontMetrics(fmSmall)
-            for (i in 0 until items.length()) {
-                val it = items.optJSONObject(i)
-                val qty = it?.optInt("quantity", 1) ?: 1
-                val title = it?.optString("title", "Item") ?: "Item"
-                val unit = it?.optLong("unitPriceCents", 0L) ?: 0L
-                val lineTotal = unit * qty
-                val priceText = String.format("CHF %.2f", lineTotal / 100.0)
-                val priceW = paint.measureText(priceText)
-                val leftX = padding.toFloat()
-                val rightX = width - padding - priceW
+        y += lineSpacing
 
-                // Ellipsize title to fit
-                val maxTitleWidth = rightX - leftX - 12
-                val titleText = ellipsize("${qty}x ${title}", paint, maxTitleWidth)
-                canvas.drawText(titleText, leftX, y - fm.top, paint)
-                canvas.drawText(priceText, rightX, y - fm.top, paint)
-                y += (fm.bottom - fm.top) + lineSpacing
-
-                // Configuration lines
-                val cfg = it?.optJSONArray("configuration")
-                if (cfg != null) {
-                    for (j in 0 until cfg.length()) {
-                        val c = cfg.optJSONObject(j)
-                        val slotName = c?.optString("slot", "") ?: ""
-                        val choiceName = c?.optString("choice", "") ?: ""
-                        val line = "- $slotName: $choiceName"
-                        canvas.drawText(ellipsize(line, small, (width - padding * 2).toFloat()), leftX + 14f, y - fmSmall.top, small)
-                        y += (fmSmall.bottom - fmSmall.top) + (lineSpacing / 2)
-                    }
-                }
-            }
-        }
-
-        // Divider after items
-        run {
-            val fm = Paint.FontMetrics(); paint.getFontMetrics(fm)
-            canvas.drawText("------------------------------", padding.toFloat(), y - fm.top, paint)
-            y += (fm.bottom - fm.top) + lineSpacing
-        }
-
-        // Totals and meta
         val totalCents = obj.optLong("totalCents", -1)
         val currency = obj.optString("currency", "CHF")
-        // Read method now to position cash lines earlier
         val method = obj.optString("method", "card")
         val orderId = obj.optString("orderId", "-")
 
-        // 3) Cash details after first divider (only for cash)
-        if (method.equals("cash", ignoreCase = true)) {
-            val fmSmall = Paint.FontMetrics(); small.getFontMetrics(fmSmall)
-            val rec = obj.optLong("amountReceivedCents", -1L)
-            val chg = obj.optLong("changeCents", -1L)
-            if (rec >= 0) {
-                val recStr = String.format("Erhalten: %s %.2f", currency, rec / 100.0)
-                val line = ellipsize(recStr, small, (width - padding * 2).toFloat())
-                canvas.drawText(line, padding.toFloat(), y - fmSmall.top, small)
-                y += (fmSmall.bottom - fmSmall.top) + lineSpacing
-            }
-            if (chg >= 0) {
-                val chgStr = String.format("Rückgeld: %s %.2f", currency, chg / 100.0)
-                val line = ellipsize(chgStr, small, (width - padding * 2).toFloat())
-                canvas.drawText(line, padding.toFloat(), y - fmSmall.top, small)
-                y += (fmSmall.bottom - fmSmall.top) + lineSpacing
-            }
-        }
-
-        // 4) Second divider only if we actually printed cash details
-        run {
-            val rec = obj.optLong("amountReceivedCents", -1L)
-            val chg = obj.optLong("changeCents", -1L)
-            if (method.equals("cash", ignoreCase = true) && (rec >= 0 || chg >= 0)) {
-                val fm = Paint.FontMetrics(); paint.getFontMetrics(fm)
-                canvas.drawText("------------------------------", padding.toFloat(), y - fm.top, paint)
-                y += (fm.bottom - fm.top) + lineSpacing
-            }
-        }
-
-        // 5) Total
+        // Total
         if (totalCents >= 0) {
             val fm = Paint.FontMetrics(); paint.getFontMetrics(fm)
             val t = String.format("Total: %s %.2f", currency, totalCents / 100.0)
@@ -1094,58 +936,31 @@ class WebPosActivity : ComponentActivity() {
             y += (fm.bottom - fm.top) + lineSpacing
         }
 
-        // 6) Whitespace divider
+        // Payment line with capitalized method
         run {
             val fm = Paint.FontMetrics(); paint.getFontMetrics(fm)
-            y += (fm.bottom - fm.top) / 2 + lineSpacing
-        }
-        run {
-            // Payment line with capitalized method
-            val fm = Paint.FontMetrics(); paint.getFontMetrics(fm)
-            val methodPretty = if (method.isNotEmpty()) method.substring(0,1).uppercase() + method.substring(1) else method
+            val methodPretty = if (method.isNotEmpty()) method.substring(0, 1).uppercase() + method.substring(1) else method
             val payLine = "Zahlart: $methodPretty"
             val payText = ellipsize(payLine, paint, (width - padding * 2).toFloat())
             canvas.drawText(payText, padding.toFloat(), y - fm.top, paint)
             y += (fm.bottom - fm.top) + lineSpacing
         }
 
-        // Cash details already printed above after the first divider
-
-        // Card details (small font)
-        run {
+        // Cash details
+        if (method.equals("cash", ignoreCase = true)) {
             val fmSmall = Paint.FontMetrics(); small.getFontMetrics(fmSmall)
-            val brand = obj.optString("cardType", "")
-            val last4 = obj.optString("cardLast4", "")
-            val entry = obj.optString("entryMode", "")
-            if (brand.isNotEmpty() || last4.isNotEmpty() || entry.isNotEmpty()) {
-                val dots = if (last4.isNotEmpty()) " •••• $last4" else ""
-                val entryLabel = if (entry.isNotEmpty()) {
-                    val em = entry.lowercase()
-                    when {
-                        em.contains("contact") -> "Kontaktlos"
-                        em.contains("chip") -> "Chip"
-                        em.contains("swipe") || em.contains("magnet") -> "Magnetstreifen"
-                        else -> entry.uppercase()
-                    }
-                } else ""
-                val text = when {
-                    brand.isNotEmpty() || last4.isNotEmpty() -> "Karte: ${brand}$dots" + (if (entryLabel.isNotEmpty()) " ($entryLabel)" else "")
-                    entryLabel.isNotEmpty() -> "Karte: $entryLabel"
-                    else -> null
-                }
-                text?.let {
-                    val cardLine = ellipsize(it, small, (width - padding * 2).toFloat())
-                    canvas.drawText(cardLine, padding.toFloat(), y - fmSmall.top, small)
-                    y += (fmSmall.bottom - fmSmall.top) + lineSpacing
-                }
-            }
-            val txId = obj.optString("txId", obj.optString("transactionCode", ""))
-            if (txId.isNotEmpty()) {
-                val txLine = ellipsize("Transaktion: $txId", small, (width - padding * 2).toFloat())
-                canvas.drawText(txLine, padding.toFloat(), y - fmSmall.top, small)
+            val rec = obj.optLong("amountReceivedCents", -1L)
+            val chg = obj.optLong("changeCents", -1L)
+            if (rec >= 0) {
+                val recStr = String.format("Erhalten: %s %.2f", currency, rec / 100.0)
+                canvas.drawText(ellipsize(recStr, small, (width - padding * 2).toFloat()), padding.toFloat(), y - fmSmall.top, small)
                 y += (fmSmall.bottom - fmSmall.top) + lineSpacing
             }
-            // no explicit status line — success is implied
+            if (chg >= 0) {
+                val chgStr = String.format("Rückgeld: %s %.2f", currency, chg / 100.0)
+                canvas.drawText(ellipsize(chgStr, small, (width - padding * 2).toFloat()), padding.toFloat(), y - fmSmall.top, small)
+                y += (fmSmall.bottom - fmSmall.top) + lineSpacing
+            }
         }
 
         // Order ID under method

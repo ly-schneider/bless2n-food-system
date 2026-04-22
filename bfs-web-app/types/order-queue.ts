@@ -53,6 +53,13 @@ export interface ReceiptItem {
   configuration?: Array<{ slot: string; choice: string }>
 }
 
+export interface CardMeta {
+  brand?: string
+  last4?: string
+  entryMode?: string
+  transactionId?: string
+}
+
 export interface QueuedOrder {
   localId: string
   idempotencyKey: string
@@ -60,6 +67,7 @@ export interface QueuedOrder {
   totalCents: Cents
   paymentMethod: PosPaymentMethod
   gratisInfo?: GratisInfo
+  cardMeta?: CardMeta
   status: OrderSyncStatus
   serverId?: string
   attemptCount: number

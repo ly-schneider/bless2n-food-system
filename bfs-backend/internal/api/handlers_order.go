@@ -313,7 +313,16 @@ func (h *Handlers) CreateOrderPayment(w http.ResponseWriter, r *http.Request, or
 				h.logger.Warn("failed to record club100 redemption for card payment", zap.Error(err))
 			}
 		}
-		if err := h.pos.PayCard(ctx, id, deviceID); err != nil {
+		var card *repository.CardMeta
+		if body.Card != nil {
+			card = &repository.CardMeta{
+				Brand:         body.Card.Brand,
+				Last4:         body.Card.Last4,
+				EntryMode:     body.Card.EntryMode,
+				TransactionID: body.Card.TransactionId,
+			}
+		}
+		if err := h.pos.PayCard(ctx, id, deviceID, card); err != nil {
 			writeError(w, http.StatusBadRequest, "payment_failed", err.Error())
 			return
 		}

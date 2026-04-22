@@ -20,6 +20,7 @@ import { formatChf } from "@/lib/utils"
 import type { CartItem } from "@/types/cart"
 import type { PosFulfillmentMode } from "@/types/jeton"
 import type {
+  CardMeta,
   Club100Discount,
   GratisInfo,
   PosPaymentMethod,
@@ -75,7 +76,8 @@ interface BasketPanelProps {
     totalCents: number,
     paymentMethod: PosPaymentMethod,
     receiptData?: { items: ReceiptItem[]; pickupQr: string | null },
-    gratisInfo?: GratisInfo
+    gratisInfo?: GratisInfo,
+    cardMeta?: CardMeta
   ) => QueuedOrder | null
   stockMap?: Map<string, number>
 }
@@ -202,7 +204,8 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
     })
   }, [cart.items])
   const generatePickupQr = useCallback((orderId: string) => {
-    return orderId
+    const base = process.env.NEXT_PUBLIC_APP_URL ?? (typeof window !== "undefined" ? window.location.origin : "")
+    return `${base}/o/${orderId}`
   }, [])
 
   const emitInventoryDecrement = useCallback((items: typeof cart.items) => {
@@ -316,7 +319,15 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
   useEffect(() => {
     const onSumup = async (ev: Event) => {
       try {
-        const ce = ev as CustomEvent<{ success?: boolean; error?: string; txId?: string; correlationId?: string }>
+        const ce = ev as CustomEvent<{
+          success?: boolean
+          error?: string
+          txId?: string
+          correlationId?: string
+          cardLast4?: string
+          cardType?: string
+          entryMode?: string
+        }>
         const d = ce.detail || {}
         if (cardRef && d.correlationId && d.correlationId !== cardRef) return
         if (!showCard) return
@@ -334,18 +345,26 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
           const nextReceipt: Receipt & { orderTimestamp?: number } = {
             method: "card",
             totalCents: total,
-            items: printItems,
             pickupQr,
             orderTimestamp: Date.now(),
           }
           const jetons = computeJetonTotals()
+
+          const cardMeta: CardMeta = {
+            brand: d.cardType || undefined,
+            last4: d.cardLast4 || undefined,
+            entryMode: d.entryMode || undefined,
+            transactionId: d.txId || undefined,
+          }
+          const hasCardMeta = Object.values(cardMeta).some((v) => typeof v === "string" && v.length > 0)
 
           submitOrder(
             itemsBody,
             originalTotal,
             "card",
             { items: printItems, pickupQr },
-            selectedGratisInfo ?? undefined
+            selectedGratisInfo ?? undefined,
+            hasCardMeta ? cardMeta : undefined
           )
           emitInventoryDecrement(cart.items)
 
@@ -472,7 +491,6 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
     const receiptPayload: Receipt & { orderTimestamp?: number } = {
       method: "cash",
       totalCents: total,
-      items: printItems,
       pickupQr: pickupQr || undefined,
       orderTimestamp: Date.now(),
     }
@@ -535,7 +553,6 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
     const receiptPayload: Receipt & { orderTimestamp?: number } = {
       method: "twint",
       totalCents: total,
-      items: printItems,
       pickupQr: pickupQr || undefined,
       orderTimestamp: Date.now(),
     }
@@ -671,7 +688,6 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
       const receiptPayload: Receipt & { orderTimestamp?: number } = {
         method: paymentMethod,
         totalCents: total,
-        items: printItems,
         pickupQr: pickupQr || undefined,
         orderTimestamp: Date.now(),
       }

@@ -240,7 +240,7 @@ func TestPOSService_PayCard(t *testing.T) {
 	t.Run("PayCard processes payment", func(t *testing.T) {
 		order := fixtures.CreateOrder(1000, entOrder.StatusPending, entOrder.OriginPos)
 
-		err := svc.PayCard(ctx, order.ID, &device.ID)
+		err := svc.PayCard(ctx, order.ID, &device.ID, nil)
 		require.NoError(t, err)
 
 		// Verify order status
@@ -252,7 +252,7 @@ func TestPOSService_PayCard(t *testing.T) {
 	t.Run("PayCard fails for non-pending order", func(t *testing.T) {
 		order := fixtures.CreateOrder(1000, entOrder.StatusPaid, entOrder.OriginPos)
 
-		err := svc.PayCard(ctx, order.ID, &device.ID)
+		err := svc.PayCard(ctx, order.ID, &device.ID, nil)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "not_pending")
 	})

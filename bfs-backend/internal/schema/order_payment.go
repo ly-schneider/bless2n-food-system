@@ -36,6 +36,18 @@ func (OrderPayment) Fields() []ent.Field {
 			Nillable(),
 		field.Time("paid_at").
 			Default(time.Now),
+		field.String("card_brand").
+			Optional().
+			Nillable(),
+		field.String("card_last4").
+			Optional().
+			Nillable(),
+		field.String("entry_mode").
+			Optional().
+			Nillable(),
+		field.String("card_transaction_id").
+			Optional().
+			Nillable(),
 	}
 }
 

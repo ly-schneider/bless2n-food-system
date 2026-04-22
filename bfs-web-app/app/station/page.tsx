@@ -18,6 +18,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import { getDeviceToken } from "@/lib/device-auth"
 
+const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
+
+function extractOrderIdFromScan(raw: string): string | null {
+  const trimmed = (raw ?? "").trim()
+  if (!trimmed) return null
+  const match = trimmed.match(UUID_RE)
+  return match ? match[0] : null
+}
+
 type StationProduct = { productId: string; name?: string }
 type StationStatus = {
   id: string
@@ -210,7 +219,7 @@ export default function StationPage() {
   const handleScanned = useCallback(
     async (code: string) => {
       setError(null)
-      const orderId = code.trim()
+      const orderId = extractOrderIdFromScan(code)
       if (!orderId) {
         setError("Ungültiger QR-Code")
         resumeScanning()

@@ -58,9 +58,29 @@ PaymentCreate:
       description: |
         External transaction reference.
         Required for POS card payments (SumUp transaction ID).
+    card:
+      $ref: "#/CardPaymentMeta"
+      description: Optional card details captured by the terminal. POS card payments only.
     club100:
       $ref: "../schemas/club100.yaml#/Club100PaymentInfo"
       description: Required for gratis_100club payments. Contains Elvanto person info and quantity.
+
+CardPaymentMeta:
+  type: object
+  description: Non-sensitive card details captured by the POS terminal.
+  properties:
+    brand:
+      type: string
+      description: Card network (e.g. Visa, Mastercard).
+    last4:
+      type: string
+      description: Last four digits of the card PAN.
+    entryMode:
+      type: string
+      description: How the card was read (contactless, chip, magnetic_stripe).
+    transactionId:
+      type: string
+      description: Terminal/acquirer transaction ID.
 Payment:
   type: object
   required: [id, orderId, method, status, amountCents]

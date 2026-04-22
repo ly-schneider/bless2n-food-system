@@ -156,6 +156,18 @@ OrderPaymentSummary:
     paidAt:
       type: string
       format: date-time
+    cardBrand:
+      type: string
+      description: Card network (card payments only).
+    cardLast4:
+      type: string
+      description: Last four digits of the card PAN.
+    entryMode:
+      type: string
+      description: How the card was read (contactless, chip, magnetic_stripe).
+    cardTransactionId:
+      type: string
+      description: Terminal/acquirer transaction ID.
 
 OrderCreate:
   type: object

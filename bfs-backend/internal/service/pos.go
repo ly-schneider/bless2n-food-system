@@ -21,7 +21,7 @@ type POSService interface {
 	// Orders
 	CreateOrder(ctx context.Context, items []POSCheckoutItem, customerEmail *string) (uuid.UUID, error)
 	PayCash(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID) error
-	PayCard(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID) error
+	PayCard(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, card *repository.CardMeta) error
 	PayTwint(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID) error
 	PayGratisGuest(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID) error
 	PayGratisVIP(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID) error
@@ -122,7 +122,7 @@ func (s *posService) PayCash(ctx context.Context, orderID uuid.UUID, deviceID *u
 	return s.orders.SetPosPaymentCash(ctx, orderID, deviceID, ord.TotalCents)
 }
 
-func (s *posService) PayCard(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID) error {
+func (s *posService) PayCard(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, card *repository.CardMeta) error {
 	if orderID == uuid.Nil {
 		return fmt.Errorf("invalid order id")
 	}
@@ -135,7 +135,7 @@ func (s *posService) PayCard(ctx context.Context, orderID uuid.UUID, deviceID *u
 		return fmt.Errorf("not_pending")
 	}
 
-	return s.orders.SetPosPaymentCard(ctx, orderID, deviceID, ord.TotalCents)
+	return s.orders.SetPosPaymentCard(ctx, orderID, deviceID, ord.TotalCents, card)
 }
 
 func (s *posService) PayTwint(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID) error {

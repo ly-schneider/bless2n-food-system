@@ -2,7 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { OrderQueueManager } from "@/lib/pos/order-queue"
-import type { GratisInfo, PosPaymentMethod, QueuedOrder, QueuedOrderItem, ReceiptItem } from "@/types/order-queue"
+import type {
+  CardMeta,
+  GratisInfo,
+  PosPaymentMethod,
+  QueuedOrder,
+  QueuedOrderItem,
+  ReceiptItem,
+} from "@/types/order-queue"
 
 interface UseOrderQueueOptions {
   token: string
@@ -52,10 +59,11 @@ export function useOrderQueue({ token, deviceId, onOrderSynced, onPaymentError }
       totalCents: number,
       paymentMethod: PosPaymentMethod,
       receiptData?: { items: ReceiptItem[]; pickupQr: string | null },
-      gratisInfo?: GratisInfo
+      gratisInfo?: GratisInfo,
+      cardMeta?: CardMeta
     ): QueuedOrder | null => {
       if (!managerRef.current) return null
-      return managerRef.current.enqueue(items, totalCents, paymentMethod, receiptData, gratisInfo)
+      return managerRef.current.enqueue(items, totalCents, paymentMethod, receiptData, gratisInfo, cardMeta)
     },
     []
   )
