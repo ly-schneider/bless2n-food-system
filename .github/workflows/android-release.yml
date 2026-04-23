@@ -134,41 +134,58 @@ jobs:
           done
           sha256sum bfs-pos.apk > bfs-pos.apk.sha256
 
-      - name: Create GitHub Release (draft, with assets)
-        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
-        with:
-          tag_name: android-${{ inputs.environment }}-v${{ inputs.version }}
-          name: Android POS - ${{ inputs.environment }} v${{ inputs.version }}
-          body: |
-            ## Android POS Release
-
-            **Environment:** ${{ inputs.environment }}
-            **Version:** ${{ inputs.version }} (build ${{ steps.version.version_code }})
-            **Built:** ${{ steps.version.date }}
-            **Branch:** ${{ github.ref_name }}
-            **Commit:** ${{ github.sha }}
-
-            ---
-
-            Download the APK below and install on your tablets.
-          draft: true
-          prerelease: ${{ inputs.environment == 'staging' }}
-          files: |
-            bfs-android-app/app/build/outputs/apk/staging/bfs-pos.apk
-            bfs-android-app/app/build/outputs/apk/staging/bfs-pos.apk.sha256
-            bfs-android-app/app/build/outputs/apk/release/bfs-pos.apk
-            bfs-android-app/app/build/outputs/apk/release/bfs-pos.apk.sha256
-
-      - name: Publish draft release
+      - name: Create and publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: android-${{ inputs.environment }}-v${{ inputs.version }}
-          PRERELEASE: ${{ inputs.environment == 'staging' }}
+          TITLE: Android POS - ${{ inputs.environment }} v${{ inputs.version }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          VERSION: ${{ inputs.version }}
+          VERSION_CODE: ${{ steps.version.outputs.version_code }}
+          BUILT_AT: ${{ steps.version.outputs.date }}
+          BRANCH: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+          IS_PRERELEASE: ${{ inputs.environment == 'staging' }}
         run: |
-          gh release edit "$TAG" \
+          set -euo pipefail
+
+          if [ "$ENVIRONMENT" = "staging" ]; then
+            APK_DIR="bfs-android-app/app/build/outputs/apk/staging"
+          else
+            APK_DIR="bfs-android-app/app/build/outputs/apk/release"
+          fi
+
+          NOTES=$(cat <<EOF
+          ## Android POS Release
+
+          **Environment:** $ENVIRONMENT
+          **Version:** $VERSION (build $VERSION_CODE)
+          **Built:** $BUILT_AT
+          **Branch:** $BRANCH
+          **Commit:** $COMMIT_SHA
+
+          ---
+
+          Download the APK below and install on your tablets.
+          EOF
+          )
+
+          # Create as draft so assets can be attached on immutable-release repos
+          gh release create "$TAG" \
             --repo "$GITHUB_REPOSITORY" \
-            --draft=false \
-            --prerelease="$PRERELEASE"
+            --title "$TITLE" \
+            --notes "$NOTES" \
+            --target "$COMMIT_SHA" \
+            --draft \
+            "$APK_DIR/bfs-pos.apk" \
+            "$APK_DIR/bfs-pos.apk.sha256"
+
+          # Publish draft; set prerelease flag based on environment
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease
+          else
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease=false
+          fi
 
       - name: Build summary
         run: |
