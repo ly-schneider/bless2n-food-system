@@ -45,7 +45,8 @@ async function handle(req: Request, params: Promise<{ path: string[] }>) {
     pathName.startsWith("/v1/health") ||
     pathName.startsWith("/v1/public/") ||
     pathName.startsWith("/v1/invites/") ||
-    pathName.startsWith("/v1/payments/webhooks/")
+    pathName.startsWith("/v1/payments/webhooks/") ||
+    pathName.startsWith("/v1/claim/")
 
   const hasBearerAuth = !!inHeaders.get("authorization")?.startsWith("Bearer ")
 

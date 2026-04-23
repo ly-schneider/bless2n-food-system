@@ -442,47 +442,86 @@ export default function StationPage() {
                 ))}
               </div>
             )}
-            {!dialogLoading && result && (
-              <div className="flex flex-col gap-3">
-                {result.lines
-                  ?.filter((it) => !it.redemption)
-                  .map((it) => (
-                    <div key={it.id} className="bg-card/50 rounded-xl border p-3">
-                      <div className="flex items-center gap-3">
-                        {it.productImage ? (
-                          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[11px] bg-[#cec9c6]">
-                            <Image
-                              src={it.productImage}
-                              alt={it.title}
-                              fill
-                              sizes="64px"
-                              className="h-full w-full object-cover"
-                            />
+            {!dialogLoading &&
+              result &&
+              (() => {
+                const matched = result.lines || []
+                const unredeemed = matched.filter((it) => !it.redemption)
+                const alreadyRedeemed = matched.filter((it) => it.redemption)
+                const renderLineCard = (it: OrderLine, redeemed: boolean) => (
+                  <div
+                    key={it.id}
+                    className={`rounded-xl border p-3 ${redeemed ? "bg-muted/40 opacity-70" : "bg-card/50"}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      {it.productImage ? (
+                        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[11px] bg-[#cec9c6]">
+                          <Image
+                            src={it.productImage}
+                            alt={it.title}
+                            fill
+                            sizes="64px"
+                            className={`h-full w-full object-cover ${redeemed ? "grayscale" : ""}`}
+                          />
+                        </div>
+                      ) : null}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">{it.title}</p>
+                            {it.menuSlotName && (
+                              <div className="text-muted-foreground mt-1 text-xs">
+                                {it.menuSlotName}: {it.title}
+                              </div>
+                            )}
+                            {redeemed && it.redemption?.redeemedAt && (
+                              <div className="text-muted-foreground mt-1 text-xs">
+                                Eingelöst: {new Date(it.redemption.redeemedAt).toLocaleString("de-CH")}
+                              </div>
+                            )}
                           </div>
-                        ) : null}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="truncate font-medium">{it.title}</p>
-                              {it.menuSlotName && (
-                                <div className="text-muted-foreground mt-1 text-xs">
-                                  {it.menuSlotName}: {it.title}
-                                </div>
-                              )}
-                            </div>
-                            <div className="shrink-0 text-right">
-                              <p className="text-muted-foreground text-base">x{it.quantity}</p>
-                            </div>
+                          <div className="shrink-0 text-right">
+                            <p className="text-muted-foreground text-base">x{it.quantity}</p>
                           </div>
                         </div>
                       </div>
                     </div>
-                  ))}
-                {(result.lines?.filter((it) => !it.redemption).length || 0) === 0 && (
-                  <div className="text-muted-foreground text-sm">Keine Artikel zum Einlösen.</div>
-                )}
-              </div>
-            )}
+                  </div>
+                )
+
+                if (matched.length === 0) {
+                  return (
+                    <div className="bg-muted/40 text-muted-foreground rounded-xl border p-4 text-sm">
+                      Diese Station bietet keine Artikel aus dieser Bestellung an.
+                    </div>
+                  )
+                }
+
+                if (unredeemed.length === 0) {
+                  return (
+                    <div className="flex flex-col gap-3">
+                      <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm font-medium text-amber-900">
+                        Bereits eingelöst
+                      </div>
+                      {alreadyRedeemed.map((it) => renderLineCard(it, true))}
+                    </div>
+                  )
+                }
+
+                return (
+                  <div className="flex flex-col gap-3">
+                    {unredeemed.map((it) => renderLineCard(it, false))}
+                    {alreadyRedeemed.length > 0 && (
+                      <>
+                        <div className="text-muted-foreground mt-2 text-xs tracking-wide uppercase">
+                          Bereits eingelöst
+                        </div>
+                        {alreadyRedeemed.map((it) => renderLineCard(it, true))}
+                      </>
+                    )}
+                  </div>
+                )
+              })()}
           </div>
           <ModalFooter>
             <Button

@@ -1,5 +1,6 @@
-h1:VdkQG8myuYLzYjcoeahWxOi+MDkkHMgoD+haXUYrb3A=
+h1:Whaa5EIIONmFFWP+eekHti54iHxgFGr4A9PPSqg3uHQ=
 20250101000000_baseline.sql h1:z9BJICN8dYjrasqPjQowYTfcrKGSGsYtpVYCoUZGadQ=
 20260221000000_add_system_enabled.sql h1:lHyW5L6Zu54ssG45YaRwxKzNLCwGp0byB69DQiTxxJc=
 20260329000000_add_hybrid_pos_mode.sql h1:iEWaAO+s+NRkmEXKNaxaj+mdnCBvXWPzfqhPQCf6fHk=
 20260422112111_add_card_metadata_to_order_payment.sql h1:0xnWtB4zFJrE48UEgw7STNAPwck/O2c8YVEdXw+KldA=
+20260423000000_add_volunteer_campaigns.sql h1:mqvbzOZX8hRoFciDd9Y37cKQCxgJ5QTHoeGjwyEGDng=

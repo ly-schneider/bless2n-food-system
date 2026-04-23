@@ -134,7 +134,7 @@ jobs:
           done
           sha256sum bfs-pos.apk > bfs-pos.apk.sha256
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release (draft, with assets)
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           tag_name: android-${{ inputs.environment }}-v${{ inputs.version }}
@@ -151,13 +151,24 @@ jobs:
             ---
 
             Download the APK below and install on your tablets.
-          draft: false
+          draft: true
           prerelease: ${{ inputs.environment == 'staging' }}
           files: |
             bfs-android-app/app/build/outputs/apk/staging/bfs-pos.apk
             bfs-android-app/app/build/outputs/apk/staging/bfs-pos.apk.sha256
             bfs-android-app/app/build/outputs/apk/release/bfs-pos.apk
             bfs-android-app/app/build/outputs/apk/release/bfs-pos.apk.sha256
+
+      - name: Publish draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: android-${{ inputs.environment }}-v${{ inputs.version }}
+          PRERELEASE: ${{ inputs.environment == 'staging' }}
+        run: |
+          gh release edit "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft=false \
+            --prerelease="$PRERELEASE"
 
       - name: Build summary
         run: |

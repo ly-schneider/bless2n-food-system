@@ -18,7 +18,10 @@ export default function Header() {
     <header className="my-2 w-full">
       <div
         className={`mx-auto px-4 ${
-          pathname.includes("/food/orders") || pathname.includes("/food/checkout") || pathname.includes("/profile")
+          pathname.includes("/food/orders") ||
+          pathname.includes("/food/checkout") ||
+          pathname.includes("/profile") ||
+          pathname.includes("/claim")
             ? "max-w-xl"
             : "container"
         }`}

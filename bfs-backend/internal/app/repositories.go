@@ -28,6 +28,8 @@ func NewRepositories() fx.Option {
 			repository.NewSessionRepository,
 			repository.NewDeviceBindingRepository,
 			repository.NewClub100RedemptionRepository,
+			repository.NewVolunteerCampaignRepository,
+			repository.NewVolunteerSlotRepository,
 		),
 	)
 }

@@ -28,6 +28,7 @@ type Handlers struct {
 	users         service.UserService
 	devices       service.DeviceService
 	club100       service.Club100Service
+	volunteers    service.VolunteerService
 	androidUpdate service.AndroidUpdateService
 	verification  repository.VerificationRepository
 	idempotency   repository.IdempotencyRepository
@@ -57,6 +58,7 @@ type HandlersDeps struct {
 	Users         service.UserService
 	Devices       service.DeviceService
 	Club100       service.Club100Service
+	Volunteers    service.VolunteerService
 	AndroidUpdate service.AndroidUpdateService
 	Verification  repository.VerificationRepository
 	Idempotency   repository.IdempotencyRepository
@@ -80,6 +82,7 @@ func NewHandlers(deps HandlersDeps) *Handlers {
 		users:                deps.Users,
 		devices:              deps.Devices,
 		club100:              deps.Club100,
+		volunteers:           deps.Volunteers,
 		androidUpdate:        deps.AndroidUpdate,
 		verification:         deps.Verification,
 		idempotency:          deps.Idempotency,

@@ -76,5 +76,8 @@ func (Product) Edges() []ent.Edge {
 		edge.From("club100_settings", Settings.Type).
 			Ref("club100_free_products").
 			Through("club100_free_product_links", Club100FreeProduct.Type),
+		edge.From("volunteer_campaigns", VolunteerCampaign.Type).
+			Ref("products").
+			Through("campaign_products", VolunteerCampaignProduct.Type),
 	}
 }
