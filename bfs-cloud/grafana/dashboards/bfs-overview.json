@@ -22,17 +22,486 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
       "id": 100,
       "panels": [],
-      "title": "Overview",
+      "title": "Health at a glance",
       "type": "row"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "pg-${env}" },
+      "description": "Paid orders placed since local midnight (Europe/Zurich).",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "purple" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "purple", "value": null }]
+          },
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "id": 1,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "pg-${env}" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) AS value FROM \"order\" WHERE created_at >= (date_trunc('day', now() AT TIME ZONE 'Europe/Zurich') AT TIME ZONE 'Europe/Zurich') AND status = 'paid';",
+          "refId": "A"
+        }
+      ],
+      "title": "Orders today",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "pg-${env}" },
+      "description": "Sum of payments taken since local midnight, excluding GRATIS_* methods.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          },
+          "unit": "currencyCHF",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "id": 2,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "pg-${env}" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE(SUM(amount_cents), 0) / 100.0 AS value FROM order_payment WHERE paid_at >= (date_trunc('day', now() AT TIME ZONE 'Europe/Zurich') AT TIME ZONE 'Europe/Zurich') AND method NOT LIKE 'GRATIS_%';",
+          "refId": "A"
+        }
+      ],
+      "title": "Revenue today",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "pg-${env}" },
+      "description": "Share of orders that reached `paid` status over the last hour (paid / (paid + cancelled)).",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "decimals": 1,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 90 },
+              { "color": "yellow", "value": 95 },
+              { "color": "green", "value": 99 }
+            ]
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "id": 3,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "pg-${env}" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT 100.0 * COUNT(*) FILTER (WHERE status = 'paid')::float / NULLIF(COUNT(*), 0) AS value FROM \"order\" WHERE updated_at > NOW() - INTERVAL '1 hour' AND status IN ('paid', 'cancelled');",
+          "refId": "A"
+        }
+      ],
+      "title": "Payment success (1h)",
+      "type": "stat"
     },
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "${datasource}"
+        "uid": "azmon-${env}"
       },
+      "description": "Share of non-5xx responses over the last 24h. Parses `status` from backend JSON logs.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 99 },
+              { "color": "yellow", "value": 99.5 },
+              { "color": "green", "value": 99.9 }
+            ]
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+      "id": 4,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "azureLogAnalytics": {
+            "query": "ContainerAppConsoleLogs_CL\n| where TimeGenerated > ago(24h)\n| extend status = toint(extract(@'\"status\"\\s*[:=]\\s*(\\d+)', 1, Log_s))\n| where isnotnull(status)\n| summarize total = count(), errors = countif(status >= 500)\n| extend uptime_pct = iff(total == 0, 100.0, 100.0 - 100.0 * todouble(errors) / todouble(total))\n| project uptime_pct",
+            "resources": []
+          },
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "azmon-${env}"
+          },
+          "queryType": "Azure Log Analytics",
+          "refId": "A"
+        }
+      ],
+      "title": "Uptime 24h",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "azmon-${env}"
+      },
+      "description": "95th percentile backend request latency over the last 5 minutes. Parses `latency_ms` from backend logs.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "decimals": 0,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 200 },
+              { "color": "orange", "value": 500 },
+              { "color": "red", "value": 1000 }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
+      "id": 5,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "azureLogAnalytics": {
+            "query": "ContainerAppConsoleLogs_CL\n| where TimeGenerated > ago(10m)\n| where ContainerAppName_s startswith \"bfs-backend\"\n| extend latency_ms = todouble(extract(@'\"latency_ms\"\\s*[:=]\\s*([\\d\\.]+)', 1, Log_s))\n| where isnotnull(latency_ms)\n| summarize p95 = percentile(latency_ms, 95) by bin(TimeGenerated, 1m)\n| order by TimeGenerated asc",
+            "resources": []
+          },
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "azmon-${env}"
+          },
+          "queryType": "Azure Log Analytics",
+          "refId": "A"
+        }
+      ],
+      "title": "p95 latency (5m)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "azmon-${env}"
+      },
+      "description": "Share of 5xx responses over the last 5 minutes. Parses `status` from backend logs.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "decimals": 2,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "orange", "value": 3 },
+              { "color": "red", "value": 5 }
+            ]
+          },
+          "unit": "percent",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
+      "id": 6,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "azureLogAnalytics": {
+            "query": "ContainerAppConsoleLogs_CL\n| where TimeGenerated > ago(10m)\n| extend status = toint(extract(@'\"status\"\\s*[:=]\\s*(\\d+)', 1, Log_s))\n| where isnotnull(status)\n| summarize total = count(), errors = countif(status >= 500) by bin(TimeGenerated, 1m)\n| extend error_rate = iff(total == 0, 0.0, 100.0 * todouble(errors) / todouble(total))\n| project TimeGenerated, error_rate\n| order by TimeGenerated asc",
+            "resources": []
+          },
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "azmon-${env}"
+          },
+          "queryType": "Azure Log Analytics",
+          "refId": "A"
+        }
+      ],
+      "title": "5xx error rate (5m)",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 200,
+      "panels": [],
+      "title": "Revenue & orders",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "pg-${env}" },
+      "description": "Revenue per hour from non-GRATIS payments over the selected range.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "gradientMode": "opacity",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          },
+          "unit": "currencyCHF",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "id": 7,
+      "options": {
+        "legend": {
+          "calcs": ["sum", "max"],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "pg-${env}" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  $__timeGroupAlias(paid_at, 1h),\n  COALESCE(SUM(amount_cents), 0) / 100.0 AS \"CHF\"\nFROM order_payment\nWHERE $__timeFilter(paid_at)\n  AND method NOT LIKE 'GRATIS_%'\nGROUP BY 1\nORDER BY 1;",
+          "refId": "A"
+        }
+      ],
+      "title": "Revenue by hour",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "pg-${env}" },
+      "description": "Share of order payments by method over the selected range.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false }
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 6 },
+      "id": 8,
+      "options": {
+        "displayLabels": ["percent"],
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "values": ["value"]
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "pg-${env}" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT method::text AS metric, COUNT(*)::bigint AS value FROM order_payment WHERE $__timeFilter(paid_at) GROUP BY method ORDER BY value DESC;",
+          "refId": "A"
+        }
+      ],
+      "title": "Payment methods",
+      "type": "piechart"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "pg-${env}" },
+      "description": "Paid orders split by origin (shop vs pos) over the selected range.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false }
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 6 },
+      "id": 9,
+      "options": {
+        "displayLabels": ["percent"],
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "values": ["value"]
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "pg-${env}" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT origin::text AS metric, COUNT(*)::bigint AS value FROM \"order\" WHERE $__timeFilter(created_at) AND status = 'paid' GROUP BY origin;",
+          "refId": "A"
+        }
+      ],
+      "title": "Orders by origin",
+      "type": "piechart"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "id": 300,
+      "panels": [],
+      "title": "Products",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "pg-${env}" },
+      "description": "Top 15 products by units sold in the selected range. Paid orders only.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "continuous-BlPu" },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -42,234 +511,314 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
-      "id": 1,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "id": 10,
       "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
-        "textMode": "auto"
-      },
-      "pluginVersion": "11.0.0",
-      "targets": [
-        {
-          "azureMonitor": {
-            "aggregation": "Total",
-            "allowedTimeGrainsMs": [
-              60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
-              86400000
-            ],
-            "dimensionFilters": [],
-            "metricDefinition": "Microsoft.App/containerApps",
-            "metricName": "Requests",
-            "metricNamespace": "Microsoft.App/containerApps",
-            "resourceGroup": "$resourceGroup",
-            "resourceName": "$app",
-            "timeGrain": "auto",
-            "top": "10"
-          },
-          "datasource": {
-            "type": "grafana-azure-monitor-datasource",
-            "uid": "${datasource}"
-          },
-          "queryType": "Azure Monitor",
-          "refId": "A",
-          "subscription": "$subscription"
-        }
-      ],
-      "title": "Total Requests",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "grafana-azure-monitor-datasource",
-        "uid": "${datasource}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "thresholds" },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 1 },
-              { "color": "red", "value": 5 }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
-      "id": 2,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
+        "displayMode": "gradient",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "orientation": "horizontal",
         "reduceOptions": {
           "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "showUnfilled": true,
+        "valueMode": "color"
       },
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "azureLogAnalytics": {
-            "query": "ContainerAppConsoleLogs_CL\n| where $__timeFilter(TimeGenerated)\n| extend status = toint(extract(@'\"status\"\\s*[:=]\\s*(\\d+)', 1, Log_s))\n| where isnotnull(status)\n| summarize total = count(), errors = countif(status >= 500)\n| extend error_rate = iff(total == 0, 0.0, 100.0 * todouble(errors) / todouble(total))\n| project error_rate",
-            "resources": []
-          },
-          "datasource": {
-            "type": "grafana-azure-monitor-datasource",
-            "uid": "${datasource}"
-          },
-          "queryType": "Azure Log Analytics",
+          "datasource": { "type": "postgres", "uid": "pg-${env}" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT p.name AS product, SUM(ol.quantity)::bigint AS units FROM order_line ol JOIN \"order\" o ON o.id = ol.order_id JOIN product p ON p.id = ol.product_id WHERE $__timeFilter(o.created_at) AND o.status = 'paid' GROUP BY p.name ORDER BY units DESC LIMIT 15;",
           "refId": "A"
         }
       ],
-      "title": "5xx Error Rate",
-      "type": "stat"
+      "title": "Top products by units sold",
+      "type": "bargauge"
     },
     {
-      "datasource": {
-        "type": "grafana-azure-monitor-datasource",
-        "uid": "${datasource}"
-      },
+      "datasource": { "type": "postgres", "uid": "pg-${env}" },
+      "description": "Top 15 products by gross revenue in the selected range. Paid orders only.",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": { "mode": "continuous-GrYlRd" },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 500000000 },
-              { "color": "red", "value": 800000000 }
+            "steps": [{ "color": "green", "value": null }]
+          },
+          "unit": "currencyCHF",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "id": 11,
+      "options": {
+        "displayMode": "gradient",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "valueMode": "color"
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "pg-${env}" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT p.name AS product, (SUM(ol.quantity * ol.unit_price_cents) / 100.0)::numeric(12,2) AS chf FROM order_line ol JOIN \"order\" o ON o.id = ol.order_id JOIN product p ON p.id = ol.product_id WHERE $__timeFilter(o.created_at) AND o.status = 'paid' GROUP BY p.name ORDER BY chf DESC LIMIT 15;",
+          "refId": "A"
+        }
+      ],
+      "title": "Top products by revenue",
+      "type": "bargauge"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
+      "id": 400,
+      "panels": [],
+      "title": "Order health & inventory",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "pg-${env}" },
+      "description": "Order volume over the selected range, split by terminal status.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 85,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "normal" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "paid" },
+            "properties": [
+              {
+                "id": "color",
+                "value": { "fixedColor": "green", "mode": "fixed" }
+              }
             ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "pending" },
+            "properties": [
+              {
+                "id": "color",
+                "value": { "fixedColor": "blue", "mode": "fixed" }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "cancelled" },
+            "properties": [
+              {
+                "id": "color",
+                "value": { "fixedColor": "orange", "mode": "fixed" }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "refunded" },
+            "properties": [
+              {
+                "id": "color",
+                "value": { "fixedColor": "red", "mode": "fixed" }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "id": 12,
+      "options": {
+        "legend": {
+          "calcs": ["sum"],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "pg-${env}" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  $__timeGroupAlias(created_at, $__interval),\n  COUNT(*) FILTER (WHERE status = 'pending')::bigint AS pending,\n  COUNT(*) FILTER (WHERE status = 'paid')::bigint AS paid,\n  COUNT(*) FILTER (WHERE status = 'cancelled')::bigint AS cancelled,\n  COUNT(*) FILTER (WHERE status = 'refunded')::bigint AS refunded\nFROM \"order\"\nWHERE $__timeFilter(created_at)\nGROUP BY 1\nORDER BY 1;",
+          "refId": "A"
+        }
+      ],
+      "title": "Orders by status over time",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "pg-${env}" },
+      "description": "Most recent cancelled or refunded orders in the selected range.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": {
+            "align": "auto",
+            "cellOptions": { "type": "auto" },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "status" },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": { "type": "color-text" }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "cancelled": { "color": "orange", "index": 0 }
+                    }
+                  },
+                  {
+                    "type": "value",
+                    "options": { "refunded": { "color": "red", "index": 1 } }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "chf" },
+            "properties": [
+              { "id": "unit", "value": "currencyCHF" },
+              { "id": "decimals", "value": 2 }
+            ]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 24 },
+      "id": 13,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [{ "desc": true, "displayName": "created_at" }]
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "pg-${env}" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT created_at, status::text AS status, (total_cents / 100.0)::numeric(12,2) AS chf, origin::text AS origin FROM \"order\" WHERE $__timeFilter(created_at) AND status IN ('cancelled', 'refunded') ORDER BY created_at DESC LIMIT 20;",
+          "refId": "A"
+        }
+      ],
+      "title": "Recent cancellations & refunds",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "postgres", "uid": "pg-${env}" },
+      "description": "Absolute net inventory movement per product today (Europe/Zurich). Highlights fast movers.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "continuous-YlBl" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
           },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
-      "id": 3,
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 24 },
+      "id": 14,
       "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": { "calcs": ["mean"], "fields": "", "values": false },
-        "textMode": "auto"
-      },
-      "pluginVersion": "11.0.0",
-      "targets": [
-        {
-          "azureMonitor": {
-            "aggregation": "Average",
-            "allowedTimeGrainsMs": [
-              60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
-              86400000
-            ],
-            "dimensionFilters": [],
-            "metricDefinition": "Microsoft.App/containerApps",
-            "metricName": "UsageNanoCores",
-            "metricNamespace": "Microsoft.App/containerApps",
-            "resourceGroup": "$resourceGroup",
-            "resourceName": "$app",
-            "timeGrain": "auto",
-            "top": "10"
-          },
-          "datasource": {
-            "type": "grafana-azure-monitor-datasource",
-            "uid": "${datasource}"
-          },
-          "queryType": "Azure Monitor",
-          "refId": "A",
-          "subscription": "$subscription"
-        }
-      ],
-      "title": "Avg CPU (nanocores)",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "grafana-azure-monitor-datasource",
-        "uid": "${datasource}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "thresholds" },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 268435456 },
-              { "color": "red", "value": 429496729 }
-            ]
-          },
-          "unit": "bytes"
+        "displayMode": "gradient",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
         },
-        "overrides": []
-      },
-      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
-      "id": 4,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": { "calcs": ["mean"], "fields": "", "values": false },
-        "textMode": "auto"
+        "showUnfilled": true,
+        "valueMode": "color"
       },
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "azureMonitor": {
-            "aggregation": "Average",
-            "allowedTimeGrainsMs": [
-              60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
-              86400000
-            ],
-            "dimensionFilters": [],
-            "metricDefinition": "Microsoft.App/containerApps",
-            "metricName": "WorkingSetBytes",
-            "metricNamespace": "Microsoft.App/containerApps",
-            "resourceGroup": "$resourceGroup",
-            "resourceName": "$app",
-            "timeGrain": "auto",
-            "top": "10"
-          },
-          "datasource": {
-            "type": "grafana-azure-monitor-datasource",
-            "uid": "${datasource}"
-          },
-          "queryType": "Azure Monitor",
-          "refId": "A",
-          "subscription": "$subscription"
+          "datasource": { "type": "postgres", "uid": "pg-${env}" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT p.name AS product, ABS(SUM(il.delta))::bigint AS movement FROM inventory_ledger il JOIN product p ON p.id = il.product_id WHERE il.created_at >= (date_trunc('day', now() AT TIME ZONE 'Europe/Zurich') AT TIME ZONE 'Europe/Zurich') GROUP BY p.name HAVING ABS(SUM(il.delta)) > 0 ORDER BY movement DESC LIMIT 10;",
+          "refId": "A"
         }
       ],
-      "title": "Avg Memory",
-      "type": "stat"
+      "title": "Inventory movement today",
+      "type": "bargauge"
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
-      "id": 200,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 },
+      "id": 500,
       "panels": [],
-      "title": "Requests & Latency",
+      "title": "Traffic",
       "type": "row"
     },
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "${datasource}"
+        "uid": "azmon-${env}"
       },
+      "description": "Per-app HTTP request rate (Azure Monitor `Requests` metric).",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -280,8 +829,8 @@
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
-            "fillOpacity": 20,
-            "gradientMode": "none",
+            "fillOpacity": 30,
+            "gradientMode": "opacity",
             "hideFrom": { "legend": false, "tooltip": false, "viz": false },
             "lineInterpolation": "smooth",
             "lineWidth": 2,
@@ -301,16 +850,16 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
-      "id": 5,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 33 },
+      "id": 15,
       "options": {
         "legend": {
-          "calcs": ["sum"],
+          "calcs": ["sum", "mean"],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true
         },
-        "tooltip": { "mode": "multi", "sort": "none" }
+        "tooltip": { "mode": "multi", "sort": "desc" }
       },
       "pluginVersion": "11.0.0",
       "targets": [
@@ -325,28 +874,141 @@
             "metricDefinition": "Microsoft.App/containerApps",
             "metricName": "Requests",
             "metricNamespace": "Microsoft.App/containerApps",
-            "resourceGroup": "$resourceGroup",
+            "resourceGroup": "bfs-${env}-rg",
             "resourceName": "$app",
             "timeGrain": "auto",
             "top": "10"
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
-            "uid": "${datasource}"
+            "uid": "azmon-${env}"
           },
           "queryType": "Azure Monitor",
           "refId": "A",
           "subscription": "$subscription"
         }
       ],
-      "title": "Requests per app",
+      "title": "Request rate per app",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "${datasource}"
+        "uid": "azmon-${env}"
       },
+      "description": "Top 15 routes by request count over the selected time range. Parses `path` from backend logs.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "continuous-GrYlRd" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 33 },
+      "id": 16,
+      "options": {
+        "displayMode": "gradient",
+        "minVizHeight": 10,
+        "minVizWidth": 0,
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "showUnfilled": true,
+        "valueMode": "color"
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "azureLogAnalytics": {
+            "query": "ContainerAppConsoleLogs_CL\n| where $__timeFilter(TimeGenerated)\n| extend path = extract(@'\"path\"\\s*[:=]\\s*\"([^\"]+)\"', 1, Log_s)\n| where isnotempty(path)\n| summarize requests = count() by path\n| top 15 by requests desc",
+            "resources": []
+          },
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "azmon-${env}"
+          },
+          "queryType": "Azure Log Analytics",
+          "refId": "A"
+        }
+      ],
+      "title": "Top routes by requests",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "azmon-${env}"
+      },
+      "description": "Request share per container app over the selected time range.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false }
+          },
+          "mappings": [],
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 33 },
+      "id": 17,
+      "options": {
+        "displayLabels": ["percent"],
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "values": ["value"]
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "azureLogAnalytics": {
+            "query": "ContainerAppConsoleLogs_CL\n| where $__timeFilter(TimeGenerated)\n| where isnotempty(ContainerAppName_s)\n| extend status = toint(extract(@'\"status\"\\s*[:=]\\s*(\\d+)', 1, Log_s))\n| where isnotnull(status)\n| summarize requests = count() by ContainerAppName_s\n| order by requests desc",
+            "resources": []
+          },
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "azmon-${env}"
+          },
+          "queryType": "Azure Log Analytics",
+          "refId": "A"
+        }
+      ],
+      "title": "Requests by app",
+      "type": "piechart"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 41 },
+      "id": 600,
+      "panels": [],
+      "title": "Latency & performance",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "azmon-${env}"
+      },
+      "description": "p50 / p95 / p99 backend latency. Parses `latency_ms` from backend logs.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -357,8 +1019,8 @@
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
+            "fillOpacity": 15,
+            "gradientMode": "opacity",
             "hideFrom": { "legend": false, "tooltip": false, "viz": false },
             "lineInterpolation": "smooth",
             "lineWidth": 2,
@@ -376,10 +1038,38 @@
           },
           "unit": "ms"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "p50" },
+            "properties": [
+              {
+                "id": "color",
+                "value": { "fixedColor": "green", "mode": "fixed" }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "p95" },
+            "properties": [
+              {
+                "id": "color",
+                "value": { "fixedColor": "orange", "mode": "fixed" }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "p99" },
+            "properties": [
+              {
+                "id": "color",
+                "value": { "fixedColor": "red", "mode": "fixed" }
+              }
+            ]
+          }
+        ]
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
-      "id": 6,
+      "gridPos": { "h": 8, "w": 16, "x": 0, "y": 42 },
+      "id": 18,
       "options": {
         "legend": {
           "calcs": ["mean", "max"],
@@ -387,7 +1077,7 @@
           "placement": "right",
           "showLegend": true
         },
-        "tooltip": { "mode": "multi", "sort": "none" }
+        "tooltip": { "mode": "multi", "sort": "desc" }
       },
       "pluginVersion": "11.0.0",
       "targets": [
@@ -398,29 +1088,110 @@
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
-            "uid": "${datasource}"
+            "uid": "azmon-${env}"
           },
           "queryType": "Azure Log Analytics",
           "refId": "A"
         }
       ],
-      "title": "Backend latency p50/p95/p99",
-      "description": "Requires backend Zap logs to emit a `latency_ms` field per request. Update the KQL if your field name differs.",
+      "title": "Backend latency p50 / p95 / p99",
       "type": "timeseries"
     },
     {
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "azmon-${env}"
+      },
+      "description": "Routes ranked by p95 latency over the selected window. Parses `path` and `latency_ms` from backend logs.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": {
+            "align": "auto",
+            "cellOptions": { "type": "auto" },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "green", "value": null }]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "p95_ms" },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": { "mode": "gradient", "type": "color-background" }
+              },
+              { "id": "unit", "value": "ms" },
+              { "id": "decimals", "value": 0 },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "green", "value": null },
+                    { "color": "yellow", "value": 200 },
+                    { "color": "orange", "value": 500 },
+                    { "color": "red", "value": 1000 }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "path" },
+            "properties": [{ "id": "custom.width", "value": 320 }]
+          }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 42 },
+      "id": 19,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [{ "desc": true, "displayName": "p95_ms" }]
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "azureLogAnalytics": {
+            "query": "ContainerAppConsoleLogs_CL\n| where $__timeFilter(TimeGenerated)\n| where ContainerAppName_s startswith \"bfs-backend\"\n| extend path = extract(@'\"path\"\\s*[:=]\\s*\"([^\"]+)\"', 1, Log_s)\n| extend latency_ms = todouble(extract(@'\"latency_ms\"\\s*[:=]\\s*([\\d\\.]+)', 1, Log_s))\n| where isnotnull(latency_ms) and isnotempty(path)\n| summarize p95_ms = percentile(latency_ms, 95), requests = count() by path\n| where requests >= 5\n| top 10 by p95_ms desc",
+            "resources": []
+          },
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "azmon-${env}"
+          },
+          "queryType": "Azure Log Analytics",
+          "refId": "A"
+        }
+      ],
+      "title": "Slowest routes (p95)",
+      "type": "table"
+    },
+    {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
-      "id": 300,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 50 },
+      "id": 700,
       "panels": [],
-      "title": "HTTP Status Codes",
+      "title": "HTTP errors",
       "type": "row"
     },
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "${datasource}"
+        "uid": "azmon-${env}"
       },
+      "description": "Status code buckets over time. Parses `status` from backend logs.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -430,7 +1201,7 @@
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "bars",
-            "fillOpacity": 80,
+            "fillOpacity": 90,
             "gradientMode": "none",
             "hideFrom": { "legend": false, "tooltip": false, "viz": false },
             "lineInterpolation": "linear",
@@ -488,8 +1259,8 @@
           }
         ]
       },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
-      "id": 7,
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 51 },
+      "id": 20,
       "options": {
         "legend": {
           "calcs": ["sum"],
@@ -508,7 +1279,7 @@
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
-            "uid": "${datasource}"
+            "uid": "azmon-${env}"
           },
           "queryType": "Azure Log Analytics",
           "refId": "A"
@@ -520,8 +1291,9 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "${datasource}"
+        "uid": "azmon-${env}"
       },
+      "description": "Top routes by 4xx/5xx count. Parses `path` and `status` from backend logs.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -536,10 +1308,55 @@
             "steps": [{ "color": "green", "value": null }]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "errors" },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": { "mode": "gradient", "type": "color-background" }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "green", "value": null },
+                    { "color": "yellow", "value": 1 },
+                    { "color": "orange", "value": 10 },
+                    { "color": "red", "value": 50 }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "status" },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": { "type": "color-text" }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "orange", "value": null },
+                    { "color": "red", "value": 500 }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "path" },
+            "properties": [{ "id": "custom.width", "value": 320 }]
+          }
+        ]
       },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
-      "id": 8,
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 51 },
+      "id": 21,
       "options": {
         "cellHeight": "sm",
         "footer": {
@@ -560,7 +1377,7 @@
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
-            "uid": "${datasource}"
+            "uid": "azmon-${env}"
           },
           "queryType": "Azure Log Analytics",
           "refId": "A"
@@ -571,48 +1388,49 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 },
-      "id": 400,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 59 },
+      "id": 800,
       "panels": [],
-      "title": "Resources",
+      "title": "Infrastructure",
       "type": "row"
     },
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "${datasource}"
+        "uid": "azmon-${env}"
       },
+      "description": "Average CPU usage vs a 1 vCPU (1e9 nanocores) ceiling. Thresholds at 50% / 75% / 90%.",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" }
-          },
+          "color": { "mode": "thresholds" },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "green", "value": null }]
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 500000000 },
+              { "color": "orange", "value": 750000000 },
+              { "color": "red", "value": 900000000 }
+            ]
           },
-          "unit": "short"
+          "unit": "short",
+          "min": 0,
+          "max": 1000000000,
+          "decimals": 0
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 24 },
-      "id": 9,
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 60 },
+      "id": 22,
       "options": {
-        "legend": {
-          "calcs": ["mean", "max"],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["mean"],
+          "fields": "",
+          "values": false
         },
-        "tooltip": { "mode": "multi", "sort": "none" }
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
       },
       "pluginVersion": "11.0.0",
       "targets": [
@@ -627,59 +1445,59 @@
             "metricDefinition": "Microsoft.App/containerApps",
             "metricName": "UsageNanoCores",
             "metricNamespace": "Microsoft.App/containerApps",
-            "resourceGroup": "$resourceGroup",
+            "resourceGroup": "bfs-${env}-rg",
             "resourceName": "$app",
             "timeGrain": "auto",
             "top": "10"
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
-            "uid": "${datasource}"
+            "uid": "azmon-${env}"
           },
           "queryType": "Azure Monitor",
           "refId": "A",
           "subscription": "$subscription"
         }
       ],
-      "title": "CPU (nanocores)",
-      "type": "timeseries"
+      "title": "CPU (vs 1 vCPU)",
+      "type": "gauge"
     },
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "${datasource}"
+        "uid": "azmon-${env}"
       },
+      "description": "Working set vs 2 GiB ceiling. Thresholds at 60% / 80% / 90%.",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "lineInterpolation": "smooth",
-            "lineWidth": 2,
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" }
-          },
+          "color": { "mode": "thresholds" },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "green", "value": null }]
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1288490189 },
+              { "color": "orange", "value": 1717986918 },
+              { "color": "red", "value": 1932735283 }
+            ]
           },
-          "unit": "bytes"
+          "unit": "bytes",
+          "min": 0,
+          "max": 2147483648
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 24 },
-      "id": 10,
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 60 },
+      "id": 23,
       "options": {
-        "legend": {
-          "calcs": ["mean", "max"],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["mean"],
+          "fields": "",
+          "values": false
         },
-        "tooltip": { "mode": "multi", "sort": "none" }
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
       },
       "pluginVersion": "11.0.0",
       "targets": [
@@ -694,51 +1512,58 @@
             "metricDefinition": "Microsoft.App/containerApps",
             "metricName": "WorkingSetBytes",
             "metricNamespace": "Microsoft.App/containerApps",
-            "resourceGroup": "$resourceGroup",
+            "resourceGroup": "bfs-${env}-rg",
             "resourceName": "$app",
             "timeGrain": "auto",
             "top": "10"
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
-            "uid": "${datasource}"
+            "uid": "azmon-${env}"
           },
           "queryType": "Azure Monitor",
           "refId": "A",
           "subscription": "$subscription"
         }
       ],
-      "title": "Memory (working set)",
-      "type": "timeseries"
+      "title": "Memory (vs 2 GiB)",
+      "type": "gauge"
     },
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "${datasource}"
+        "uid": "azmon-${env}"
       },
+      "description": "Replica count over time with threshold line at the scale ceiling (20).",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
           "custom": {
             "drawStyle": "line",
-            "fillOpacity": 10,
+            "fillOpacity": 25,
+            "gradientMode": "opacity",
             "lineInterpolation": "stepAfter",
             "lineWidth": 2,
             "showPoints": "always",
             "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" }
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "line" }
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "green", "value": null }]
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 20 }
+            ]
           },
-          "unit": "short"
+          "unit": "short",
+          "min": 0
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 24 },
-      "id": 11,
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 60 },
+      "id": 24,
       "options": {
         "legend": {
           "calcs": ["mean", "max"],
@@ -761,14 +1586,14 @@
             "metricDefinition": "Microsoft.App/containerApps",
             "metricName": "Replicas",
             "metricNamespace": "Microsoft.App/containerApps",
-            "resourceGroup": "$resourceGroup",
+            "resourceGroup": "bfs-${env}-rg",
             "resourceName": "$app",
             "timeGrain": "auto",
             "top": "10"
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
-            "uid": "${datasource}"
+            "uid": "azmon-${env}"
           },
           "queryType": "Azure Monitor",
           "refId": "A",
@@ -779,15 +1604,11 @@
       "type": "timeseries"
     },
     {
-      "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 },
-      "id": 500,
-      "panels": [],
-      "title": "Errors (Sentry)",
-      "type": "row"
-    },
-    {
-      "datasource": { "type": "grafana-sentry-datasource", "uid": "sentry" },
+      "datasource": {
+        "type": "grafana-azure-monitor-datasource",
+        "uid": "azmon-${env}"
+      },
+      "description": "Container restart count in the selected window. Non-zero means pods are restarting — investigate.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -796,49 +1617,71 @@
             "mode": "absolute",
             "steps": [
               { "color": "green", "value": null },
-              { "color": "yellow", "value": 5 },
-              { "color": "red", "value": 20 }
+              { "color": "yellow", "value": 1 },
+              { "color": "orange", "value": 3 },
+              { "color": "red", "value": 5 }
             ]
           },
-          "unit": "short"
+          "unit": "short",
+          "decimals": 0
         },
         "overrides": []
       },
-      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 33 },
-      "id": 12,
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 60 },
+      "id": 25,
       "options": {
-        "colorMode": "value",
+        "colorMode": "background",
         "graphMode": "area",
-        "justifyMode": "auto",
+        "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": ["max"],
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "textMode": "value_and_name"
       },
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": {
-            "type": "grafana-sentry-datasource",
-            "uid": "sentry"
+          "azureMonitor": {
+            "aggregation": "Maximum",
+            "allowedTimeGrainsMs": [
+              60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
+              86400000
+            ],
+            "dimensionFilters": [],
+            "metricDefinition": "Microsoft.App/containerApps",
+            "metricName": "RestartCount",
+            "metricNamespace": "Microsoft.App/containerApps",
+            "resourceGroup": "bfs-${env}-rg",
+            "resourceName": "$app",
+            "timeGrain": "auto",
+            "top": "10"
           },
-          "environments": ["$env"],
-          "issuesQuery": "is:unresolved",
-          "issuesSort": "new",
-          "projects": [],
-          "queryType": "issues",
-          "refId": "A"
+          "datasource": {
+            "type": "grafana-azure-monitor-datasource",
+            "uid": "azmon-${env}"
+          },
+          "queryType": "Azure Monitor",
+          "refId": "A",
+          "subscription": "$subscription"
         }
       ],
-      "title": "Unresolved Issues",
-      "description": "Requires a Sentry data source. If the panel is empty, set sentry_auth_token in TF and confirm org slug.",
+      "title": "Restart count",
       "type": "stat"
     },
     {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 68 },
+      "id": 900,
+      "panels": [],
+      "title": "Errors (Sentry)",
+      "type": "row"
+    },
+    {
       "datasource": { "type": "grafana-sentry-datasource", "uid": "sentry" },
+      "description": "Unresolved Sentry issues for the selected environment, sorted by frequency.",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "thresholds" },
@@ -856,12 +1699,33 @@
         "overrides": [
           {
             "matcher": { "id": "byName", "options": "title" },
-            "properties": [{ "id": "custom.width", "value": 400 }]
+            "properties": [{ "id": "custom.width", "value": 520 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "count" },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": { "mode": "gradient", "type": "color-background" }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "green", "value": null },
+                    { "color": "yellow", "value": 5 },
+                    { "color": "orange", "value": 50 },
+                    { "color": "red", "value": 200 }
+                  ]
+                }
+              }
+            ]
           }
         ]
       },
-      "gridPos": { "h": 8, "w": 18, "x": 6, "y": 33 },
-      "id": 13,
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 69 },
+      "id": 26,
       "options": {
         "cellHeight": "sm",
         "footer": {
@@ -883,45 +1747,26 @@
           "environments": ["$env"],
           "issuesQuery": "is:unresolved",
           "issuesSort": "freq",
-          "issuesLimit": 20,
+          "issuesLimit": 25,
           "projects": [],
           "queryType": "issues",
           "refId": "A"
         }
       ],
-      "title": "Top issues (by frequency)",
+      "title": "Top Sentry issues (by frequency)",
       "type": "table"
     }
   ],
   "refresh": "1m",
   "schemaVersion": 39,
-  "tags": ["bfs", "container-apps", "azure-monitor"],
+  "tags": ["bfs", "container-apps", "azure-monitor", "postgres"],
   "templating": {
     "list": [
-      {
-        "current": {
-          "selected": false,
-          "text": "Azure Monitor - staging",
-          "value": "azmon-staging"
-        },
-        "hide": 0,
-        "includeAll": false,
-        "label": "Environment data source",
-        "multi": false,
-        "name": "datasource",
-        "options": [],
-        "query": "grafana-azure-monitor-datasource",
-        "queryValue": "",
-        "refresh": 1,
-        "regex": "",
-        "skipUrlSync": false,
-        "type": "datasource"
-      },
       {
         "current": { "selected": true, "text": "staging", "value": "staging" },
         "hide": 0,
         "includeAll": false,
-        "label": "Environment (for Sentry)",
+        "label": "Environment",
         "multi": false,
         "name": "env",
         "options": [
@@ -931,7 +1776,8 @@
         "query": "staging,production",
         "queryValue": "",
         "skipUrlSync": false,
-        "type": "custom"
+        "type": "custom",
+        "description": "Switches Azure Monitor, Postgres, and Sentry data sources together."
       },
       {
         "current": {
@@ -956,36 +1802,9 @@
         "type": "custom"
       },
       {
-        "current": {
-          "selected": true,
-          "text": "bfs-staging-rg",
-          "value": "bfs-staging-rg"
-        },
-        "hide": 0,
-        "includeAll": false,
-        "label": "Resource Group",
-        "multi": false,
-        "name": "resourceGroup",
-        "options": [
-          {
-            "selected": true,
-            "text": "bfs-staging-rg",
-            "value": "bfs-staging-rg"
-          },
-          {
-            "selected": false,
-            "text": "bfs-production-rg",
-            "value": "bfs-production-rg"
-          }
-        ],
-        "query": "bfs-staging-rg,bfs-production-rg",
-        "skipUrlSync": false,
-        "type": "custom"
-      },
-      {
         "datasource": {
           "type": "grafana-azure-monitor-datasource",
-          "uid": "${datasource}"
+          "uid": "azmon-${env}"
         },
         "definition": "",
         "hide": 0,
@@ -998,7 +1817,7 @@
           "namespace": "Microsoft.App/containerApps",
           "queryType": "Azure Resource Names",
           "refId": "A",
-          "resourceGroup": "$resourceGroup",
+          "resourceGroup": "bfs-${env}-rg",
           "subscription": "$subscription"
         },
         "refresh": 1,
@@ -1008,7 +1827,7 @@
       }
     ]
   },
-  "time": { "from": "now-6h", "to": "now" },
+  "time": { "from": "now-24h", "to": "now" },
   "timepicker": {
     "refresh_intervals": [
       "5s",
@@ -1026,7 +1845,7 @@
   "timezone": "browser",
   "title": "Bless2n Food System - Overview",
   "uid": "bfs-overview",
-  "version": 1,
+  "version": 3,
   "weekStart": "",
   "links": []
 }

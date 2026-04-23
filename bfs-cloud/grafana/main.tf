@@ -25,6 +25,15 @@ locals {
   }
 
   sentry_enabled = length(var.sentry_auth_token) > 0
+
+  neon_pg_hosts = {
+    staging    = var.neon_pg_host_staging
+    production = var.neon_pg_host_production
+  }
+
+  neon_pg_envs = toset([
+    for env, host in local.neon_pg_hosts : env if length(host) > 0
+  ])
 }
 
 resource "grafana_folder" "bfs" {
@@ -69,6 +78,30 @@ resource "grafana_data_source" "sentry" {
   })
 }
 
+resource "grafana_data_source" "postgres" {
+  for_each = local.neon_pg_envs
+
+  type     = "postgres"
+  name     = "Postgres - ${each.value}"
+  uid      = "pg-${each.value}"
+  url      = "${local.neon_pg_hosts[each.value]}:5432"
+  username = "grafana_reader"
+
+  json_data_encoded = jsonencode({
+    database        = var.neon_pg_database
+    sslmode         = "require"
+    postgresVersion = 1600
+    timescaledb     = false
+    maxOpenConns    = 10
+    maxIdleConns    = 5
+    connMaxLifetime = 14400
+  })
+
+  secure_json_data_encoded = jsonencode({
+    password = var.neon_grafana_password
+  })
+}
+
 resource "grafana_dashboard" "overview" {
   folder      = grafana_folder.bfs.uid
   config_json = file("${path.module}/dashboards/bfs-overview.json")
@@ -77,5 +110,6 @@ resource "grafana_dashboard" "overview" {
   depends_on = [
     grafana_data_source.azure_monitor,
     grafana_data_source.sentry,
+    grafana_data_source.postgres,
   ]
 }

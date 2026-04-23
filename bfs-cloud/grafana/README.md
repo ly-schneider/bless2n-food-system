@@ -70,7 +70,22 @@ az ad app credential reset \
 2. Permissions: Organization Read, Project Read, Issue & Event Read
 3. Copy the token (leave empty to skip Sentry wiring).
 
-### 4. Terraform Cloud workspace
+### 4. Neon read-only role (optional, unlocks business metrics panels)
+
+The business rows on the overview dashboard (Revenue, Products, Order health) query Postgres directly. Create a `grafana_reader` role on **each** Neon branch (`staging`, `production`), using the same password:
+
+```sql
+CREATE ROLE grafana_reader WITH LOGIN PASSWORD '<generate-and-store>';
+GRANT CONNECT ON DATABASE bfs TO grafana_reader;
+GRANT USAGE ON SCHEMA public TO grafana_reader;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO grafana_reader;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT ON TABLES TO grafana_reader;
+```
+
+Grab the connection host for each branch from the Neon console (e.g. `ep-xxxx-staging.eu-central-1.aws.neon.tech`). Leave `neon_pg_host_*` empty to skip the Postgres data source — the business panels will show "No data" but the rest of the dashboard keeps working.
+
+### 5. Terraform Cloud workspace
 
 Create a workspace backed by this repo, working directory `bfs-cloud/grafana`.
 
@@ -84,14 +99,17 @@ Terraform variables:
 | `azure_tenant_id`             | —         | Step 2 (`tenant`)                     |
 | `azure_subscription_id`       | —         | Your subscription holding the env RGs |
 | `sentry_auth_token`           | ✅        | Step 3 (or `""` to skip)              |
+| `neon_pg_host_staging`        | —         | Step 4 (or `""` to skip Postgres)     |
+| `neon_pg_host_production`     | —         | Step 4 (or `""` to skip Postgres)     |
+| `neon_grafana_password`       | ✅        | Step 4 (or `""` to skip Postgres)     |
 
-Defaults in `variables.tf` cover `grafana_stack_url`, Sentry org slug, and the remote state workspace names — override as needed.
+Defaults in `variables.tf` cover `grafana_stack_url`, Sentry org slug, the Neon database name (`bfs`), and the remote state workspace names — override as needed.
 
-### 5. Grant remote state access
+### 6. Grant remote state access
 
 In each env workspace (`staging`, `production`) → **Settings → Remote state sharing** → allow this workspace.
 
-### 6. Apply
+### 7. Apply
 
 ```
 terraform init
@@ -103,6 +121,7 @@ Expected resources:
 
 - 2 `grafana_data_source` (Azure Monitor, one per env)
 - 0–1 `grafana_data_source` (Sentry)
+- 0–2 `grafana_data_source` (Postgres, one per env with a host set)
 - 1 `grafana_folder`
 - 1 `grafana_dashboard`
 
@@ -115,19 +134,18 @@ Expected resources:
 1. Edit in the Grafana UI
 2. **Share → Export → "Export for sharing externally"**
 3. Paste the JSON into `dashboards/bfs-overview.json`
-4. Confirm datasource refs use `"uid": "${datasource}"` and `"uid": "sentry"`
+4. Confirm datasource refs use `"uid": "azmon-${env}"`, `"uid": "pg-${env}"`, and `"uid": "sentry"`
 5. Commit and apply
 
 ## Dashboard variables
 
-| Variable                           | Used by              | Behavior                                            |
-| ---------------------------------- | -------------------- | --------------------------------------------------- |
-| `$datasource`                      | Azure Monitor panels | Dropdown listing both env data sources              |
-| `$env`                             | Sentry panels        | Staging / production filter                         |
-| `$subscription` / `$resourceGroup` | metric panels        | Auto-populated from the selected data source        |
-| `$app`                             | metric panels        | Multi-select over Container Apps in the selected RG |
+| Variable        | Used by                     | Behavior                                                                       |
+| --------------- | --------------------------- | ------------------------------------------------------------------------------ |
+| `$env`          | all panels                  | Single switch. Resolves data sources as `azmon-${env}`, `pg-${env}`, `sentry`. |
+| `$subscription` | Azure Monitor panels        | Hidden. Azure subscription holding both env resource groups.                   |
+| `$app`          | Azure Monitor metric panels | Query-populated over container apps in `bfs-${env}-rg`.                        |
 
-Switch `$datasource` to toggle the whole dashboard between envs. For Sentry panels to follow, also switch `$env`.
+One switch (`$env`) flips Azure Monitor, Postgres, and Sentry data together — no more desynced views.
 
 ## Known gaps
 

@@ -55,3 +55,28 @@ variable "production_remote_state_workspace" {
   type        = string
   default     = "bfs-production"
 }
+
+variable "neon_pg_host_staging" {
+  description = "Neon Postgres host for the staging branch (e.g. ep-xxxx-staging.eu-central-1.aws.neon.tech). Leave empty to skip the staging Postgres data source."
+  type        = string
+  default     = ""
+}
+
+variable "neon_pg_host_production" {
+  description = "Neon Postgres host for the production branch. Leave empty to skip the production Postgres data source."
+  type        = string
+  default     = ""
+}
+
+variable "neon_pg_database" {
+  description = "Neon Postgres database name that holds BFS tables"
+  type        = string
+  default     = "bfs"
+}
+
+variable "neon_grafana_password" {
+  description = "Password for the grafana_reader role on Neon. Shared between staging and production branches."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
