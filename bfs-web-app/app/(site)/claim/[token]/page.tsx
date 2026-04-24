@@ -1,17 +1,18 @@
 "use client"
 
-import { ArrowRight, Check, Loader2, LockKeyhole, QrCode, Utensils } from "lucide-react"
-import { useParams, useRouter } from "next/navigation"
+import { Loader2, LockKeyhole, Utensils } from "lucide-react"
+import Image from "next/image"
+import { useParams } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
+import QRCode from "@/components/qrcode"
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp"
 import { readErrorMessage } from "@/lib/http"
-import type { ClaimListResponse, ClaimSlotSummary } from "@/types/volunteer"
+import type { ClaimCampaignResponse } from "@/types/volunteer"
 
 const ACCESS_INPUT_PATTERN = "^[A-Za-z1-9]*$"
 
-export default function ClaimListPage() {
+export default function ClaimPage() {
   const params = useParams<{ token: string }>()
-  const router = useRouter()
   const token = params?.token
 
   const [authed, setAuthed] = useState<null | boolean>(null)
@@ -20,15 +21,14 @@ export default function ClaimListPage() {
   const [verifying, setVerifying] = useState(false)
   const [shakeKey, setShakeKey] = useState(0)
 
-  const [data, setData] = useState<ClaimListResponse | null>(null)
+  const [data, setData] = useState<ClaimCampaignResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [actingOnSlotId, setActingOnSlotId] = useState<string | null>(null)
   const firstLoadDone = useRef(false)
 
   const load = useCallback(async () => {
     if (!token) return
     try {
-      const res = await fetch(`/api/v1/claim/${encodeURIComponent(token)}/slots`, { credentials: "include" })
+      const res = await fetch(`/api/v1/claim/${encodeURIComponent(token)}`, { credentials: "include" })
       if (res.status === 401) {
         setAuthed(false)
         return
@@ -44,7 +44,7 @@ export default function ClaimListPage() {
         return
       }
       if (!res.ok) throw new Error(await readErrorMessage(res))
-      const j = (await res.json()) as ClaimListResponse
+      const j = (await res.json()) as ClaimCampaignResponse
       setAuthed(true)
       setError(null)
       setData(j)
@@ -60,19 +60,13 @@ export default function ClaimListPage() {
     load()
   }, [load])
 
-  useEffect(() => {
-    if (authed !== true) return
-    const t = window.setInterval(load, 5000)
-    return () => window.clearInterval(t)
-  }, [authed, load])
-
   const handleCodeChange = (raw: string) => {
     const next = raw.toUpperCase().replace(/[^A-Z1-9]/g, "")
     setCode(next)
     setCodeError(null)
   }
 
-  async function submitCode() {
+  const submitCode = useCallback(async () => {
     if (!token) return
     setCodeError(null)
     if (code.length !== 4) {
@@ -89,15 +83,10 @@ export default function ClaimListPage() {
         body: JSON.stringify({ code }),
       })
       if (!res.ok) {
-        if (res.status === 401) {
-          setCodeError("Code ist falsch.")
-        } else if (res.status === 404) {
-          setCodeError("Diese Kampagne existiert nicht.")
-        } else if (res.status === 410) {
-          setCodeError("Diese Kampagne ist nicht mehr aktiv.")
-        } else {
-          setCodeError(await readErrorMessage(res))
-        }
+        if (res.status === 401) setCodeError("Code ist falsch.")
+        else if (res.status === 404) setCodeError("Diese Kampagne existiert nicht.")
+        else if (res.status === 410) setCodeError("Diese Kampagne ist nicht mehr aktiv.")
+        else setCodeError(await readErrorMessage(res))
         setShakeKey((k) => k + 1)
         setCode("")
         return
@@ -108,41 +97,13 @@ export default function ClaimListPage() {
     } finally {
       setVerifying(false)
     }
-  }
+  }, [code, load, token])
 
   useEffect(() => {
     if (code.length === 4 && !verifying) {
       submitCode()
     }
-  }, [code])
-
-  async function reserveAndOpen(slotId: string) {
-    if (!token) return
-    setActingOnSlotId(slotId)
-    try {
-      const res = await fetch(
-        `/api/v1/claim/${encodeURIComponent(token)}/slots/${encodeURIComponent(slotId)}/reserve`,
-        {
-          method: "POST",
-          credentials: "include",
-        }
-      )
-      if (!res.ok && res.status !== 204) {
-        setError(await readErrorMessage(res))
-        await load()
-        return
-      }
-      router.push(`/claim/${token}/${slotId}`)
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Reservieren fehlgeschlagen")
-    } finally {
-      setActingOnSlotId(null)
-    }
-  }
-
-  function openReserved(slotId: string) {
-    router.push(`/claim/${token}/${slotId}`)
-  }
+  }, [code, submitCode, verifying])
 
   if (!token) return null
 
@@ -227,8 +188,8 @@ export default function ClaimListPage() {
     )
   }
 
-  // ── Error states ──────────────────────────────────────────────────
-  if (error && (!data || (data.available.length === 0 && data.reservedByMe.length === 0))) {
+  // ── Error state ─────────────────────────────────────────────────
+  if (error && !data) {
     return (
       <div className="mx-auto max-w-xl p-4">
         <h1 className="mb-2 text-2xl font-semibold">Mitarbeiter-Essen</h1>
@@ -240,122 +201,62 @@ export default function ClaimListPage() {
     )
   }
 
-  // ── Loading state ────────────────────────────────────────────────
   if (!data) {
     return (
       <div className="mx-auto max-w-xl p-4">
-        <h1 className="mb-2 text-2xl font-semibold">Mitarbeiter-Essen</h1>
-        <p className="text-muted-foreground mb-6 text-sm">Lade …</p>
-        <ul className="flex flex-col gap-3">
-          {[0, 1, 2].map((i) => (
-            <li key={i} className="h-[68px] animate-pulse rounded-xl border bg-gray-50" />
-          ))}
-        </ul>
+        <div className="mb-2 h-8 w-40 animate-pulse rounded bg-gray-100" />
+        <div className="mb-6 h-4 w-64 animate-pulse rounded bg-gray-100" />
+        <div className="mx-auto h-[260px] w-[260px] animate-pulse rounded-[11px] border-2 bg-gray-100" />
       </div>
     )
   }
 
-  const totalConsumed = data.totalSlots - data.availableCount
-  const progressPct = data.totalSlots > 0 ? Math.round((totalConsumed / data.totalSlots) * 100) : 0
-
   return (
-    <div className="mx-auto max-w-xl p-4 pb-8">
+    <div className="mx-auto flex max-w-xl flex-col p-4 pb-8">
       <h1 className="mb-2 text-2xl font-semibold">{data.campaign.name}</h1>
-      <p className="text-muted-foreground text-sm tabular-nums">
-        <span className="text-foreground font-medium">{data.availableCount}</span> von {data.totalSlots} verfügbar
-      </p>
+      <p className="text-muted-foreground mb-6 text-sm">Zeig diesen QR-Code an der Station vor.</p>
 
-      <div className="bg-muted relative mt-3 mb-6 h-1.5 overflow-hidden rounded-full">
-        <div
-          className="bg-primary absolute inset-y-0 left-0 rounded-full transition-[width] duration-300"
-          style={{ width: `${progressPct}%` }}
-        />
-      </div>
+      <QRCode value={data.qrPayload} size={260} className="mx-auto rounded-[11px] border-2 p-1" />
 
-      {error && <div className="bg-destructive/10 text-destructive mb-4 rounded-xl p-3 text-sm">{error}</div>}
-
-      {data.reservedByMe.length > 0 && (
-        <section className="mb-6">
-          <h2 className="mb-3 text-lg font-semibold">Für dich reserviert</h2>
+      {data.products.length > 0 && (
+        <div className="mt-8">
+          <h2 className="mb-3 text-lg font-semibold">Dein Essen</h2>
           <ul className="flex flex-col gap-3">
-            {data.reservedByMe.map((s) => (
-              <li key={s.id}>
-                <ClaimRow slot={s} kind="mine" onClick={() => openReserved(s.id)} loading={actingOnSlotId === s.id} />
+            {data.products.map((p) => (
+              <li key={p.productId} className="rounded-xl border p-3">
+                <div className="flex items-center gap-3">
+                  {p.productImage ? (
+                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[11px] bg-[#cec9c6]">
+                      <Image
+                        src={p.productImage}
+                        alt={"Produktbild von " + p.productName}
+                        fill
+                        sizes="64px"
+                        quality={90}
+                        className="h-full w-full rounded-[11px] object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="h-16 w-16 shrink-0 rounded-[11px] bg-[#cec9c6]" aria-hidden />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="truncate font-medium">{p.productName}</p>
+                      <p className="text-muted-foreground shrink-0 text-sm tabular-nums">×{p.quantity}</p>
+                    </div>
+                  </div>
+                </div>
               </li>
             ))}
           </ul>
-        </section>
+        </div>
       )}
 
-      <section>
-        <h2 className="mb-3 text-lg font-semibold">
-          {data.reservedByMe.length > 0 ? "Weitere verfügbar" : "Verfügbar"}
-        </h2>
-        {data.available.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <Utensils className="text-muted-foreground mb-4 size-9" aria-hidden />
-            <p className="text-muted-foreground text-lg font-semibold">Alle QR-Codes vergeben</p>
-            <p className="text-muted-foreground mt-1 text-sm">
-              Alle Mahlzeiten sind reserviert oder bereits eingelöst.
-            </p>
-          </div>
-        ) : (
-          <ul className="flex flex-col gap-3">
-            {data.available.map((s) => (
-              <li key={s.id}>
-                <ClaimRow
-                  slot={s}
-                  kind="available"
-                  onClick={() => reserveAndOpen(s.id)}
-                  loading={actingOnSlotId === s.id}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {error && (
+        <div className="bg-destructive/10 text-destructive mt-6 rounded-xl p-3 text-sm" role="alert">
+          {error}
+        </div>
+      )}
     </div>
-  )
-}
-
-function ClaimRow({
-  kind,
-  onClick,
-  loading,
-}: {
-  slot: ClaimSlotSummary
-  kind: "available" | "mine"
-  onClick: () => void
-  loading: boolean
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={loading}
-      className={[
-        "group flex min-h-[64px] w-full items-center gap-4 rounded-xl border p-3 text-left transition",
-        "focus-visible:ring-ring/50 focus-visible:ring-2 focus-visible:outline-none",
-        "active:scale-[0.995] disabled:cursor-not-allowed disabled:opacity-60",
-        kind === "mine" ? "border-primary/40 bg-primary/5" : "bg-background hover:bg-accent/30",
-      ].join(" ")}
-    >
-      <span
-        className={[
-          "shrink-0 rounded-[10px] border p-2",
-          kind === "mine" ? "border-primary/40 bg-background text-primary" : "border-border bg-background",
-        ].join(" ")}
-      >
-        {kind === "mine" ? <Check className="size-6" aria-hidden /> : <QrCode className="size-6" aria-hidden />}
-      </span>
-      <span className="min-w-0 flex-1 text-base font-medium">Mahlzeit</span>
-      <span className="border-border bg-background shrink-0 rounded-[7px] border p-2">
-        {loading ? (
-          <Loader2 className="size-4 animate-spin" aria-hidden />
-        ) : (
-          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
-        )}
-      </span>
-    </button>
   )
 }

@@ -90,10 +90,7 @@ func NewRouter(
 			pub.Get("/categories/{categoryId}", wrapper.GetCategory)
 
 			pub.Post("/claim/{token}/auth", apiHandlers.VerifyClaimAccess)
-			pub.Get("/claim/{token}/slots", apiHandlers.ListClaimSlots)
-			pub.Get("/claim/{token}/slots/{slotId}", apiHandlers.GetClaimSlot)
-			pub.Post("/claim/{token}/slots/{slotId}/reserve", apiHandlers.ReserveClaimSlot)
-			pub.Post("/claim/{token}/slots/{slotId}/release", apiHandlers.ReleaseClaimSlot)
+			pub.Get("/claim/{token}", apiHandlers.GetClaimCampaign)
 		})
 
 		// ── Device-authenticated routes (blocked when disabled) ──
@@ -102,6 +99,7 @@ func NewRouter(
 			station.Use(deviceAuthMw.RequireDevice(auth.DeviceTypeStation))
 			station.Get("/stations/me", wrapper.GetCurrentStation)
 			station.Post("/stations/redeem", wrapper.RedeemAtStation)
+			station.Post("/stations/redeem-campaign", apiHandlers.RedeemCampaignAtStation)
 		})
 
 		v1.Group(func(pos chi.Router) {
@@ -201,6 +199,7 @@ func NewRouter(
 			admin.Patch("/staff-meals/{campaignId}", apiHandlers.UpdateVolunteerCampaign)
 			admin.Post("/staff-meals/{campaignId}/end", apiHandlers.EndVolunteerCampaign)
 			admin.Post("/staff-meals/{campaignId}/rotate-token", apiHandlers.RotateVolunteerCampaignToken)
+			admin.Get("/staff-meals/{campaignId}/print.pdf", apiHandlers.PrintStaffMealSlips)
 		})
 	})
 

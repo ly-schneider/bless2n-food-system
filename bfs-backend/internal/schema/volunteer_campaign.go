@@ -45,6 +45,12 @@ func (VolunteerCampaign) Fields() []ent.Field {
 			Values("draft", "active", "ended").
 			Default("active").
 			StorageKey("status"),
+		field.Int("max_redemptions").
+			Default(1).
+			Positive(),
+		field.Int("redemption_count").
+			Default(0).
+			NonNegative(),
 		field.Time("created_at").
 			Default(time.Now).
 			Immutable(),
@@ -58,7 +64,7 @@ func (VolunteerCampaign) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("products", Product.Type).
 			Through("campaign_products", VolunteerCampaignProduct.Type),
-		edge.To("slots", VolunteerSlot.Type),
+		edge.To("redemptions", VolunteerRedemption.Type),
 	}
 }
 

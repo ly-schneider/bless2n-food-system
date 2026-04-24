@@ -8,9 +8,8 @@ export interface VolunteerCampaignSummary {
   validFrom?: string | null
   validUntil?: string | null
   status: VolunteerCampaignStatus
-  totalSlots: number
-  redeemedSlots: number
-  reservedSlots: number
+  maxRedemptions: number
+  redemptionCount: number
   createdAt: string
   updatedAt: string
 }
@@ -18,55 +17,30 @@ export interface VolunteerCampaignSummary {
 export interface VolunteerCampaignProductItem {
   productId: string
   productName: string
+  productImage?: string | null
   quantity: number
 }
 
-export interface VolunteerCampaignSlotItem {
+export interface VolunteerCampaignRedemptionItem {
   id: string
   orderId: string
-  reservedBySession?: string | null
-  reservedUntil?: string | null
-  isRedeemed: boolean
-  redeemedAt?: string | null
+  createdAt: string
 }
 
 export interface VolunteerCampaignDetail extends VolunteerCampaignSummary {
   products: VolunteerCampaignProductItem[]
-  slots: VolunteerCampaignSlotItem[]
+  redemptions: VolunteerCampaignRedemptionItem[]
 }
 
 export interface ClaimCampaignPublic {
   name: string
   validFrom?: string | null
   validUntil?: string | null
+  status: VolunteerCampaignStatus
 }
 
-export interface ClaimSlotLineBrief {
-  productName: string
-  productImage?: string | null
-  quantity: number
-}
-
-export interface ClaimSlotSummary {
-  id: string
-  orderId: string
-  reservedUntil?: string | null
-  lines: ClaimSlotLineBrief[]
-}
-
-export interface ClaimListResponse {
+export interface ClaimCampaignResponse {
   campaign: ClaimCampaignPublic
-  totalSlots: number
-  availableCount: number
-  available: ClaimSlotSummary[]
-  reservedByMe: ClaimSlotSummary[]
-}
-
-export interface ClaimSlotDetail {
-  id: string
-  orderId: string
-  reservedUntil?: string | null
-  isRedeemed: boolean
-  redeemedAt?: string | null
-  lines: ClaimSlotLineBrief[]
+  products: VolunteerCampaignProductItem[]
+  qrPayload: string
 }

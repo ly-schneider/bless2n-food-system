@@ -19,12 +19,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getDeviceToken } from "@/lib/device-auth"
 
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
+const CAMPAIGN_PREFIX = "CAMP:"
 
-function extractOrderIdFromScan(raw: string): string | null {
+type ParsedScan = { kind: "order" | "campaign"; id: string }
+
+function parseScan(raw: string): ParsedScan | null {
   const trimmed = (raw ?? "").trim()
   if (!trimmed) return null
+  if (trimmed.toUpperCase().startsWith(CAMPAIGN_PREFIX)) {
+    const match = trimmed.slice(CAMPAIGN_PREFIX.length).match(UUID_RE)
+    return match ? { kind: "campaign", id: match[0] } : null
+  }
   const match = trimmed.match(UUID_RE)
-  return match ? match[0] : null
+  return match ? { kind: "order", id: match[0] } : null
 }
 
 type StationProduct = { productId: string; name?: string }
@@ -58,6 +65,7 @@ export default function StationPage() {
   }
   type VerifyResult = { orderId: string; lines: OrderLine[] }
   const [result, setResult] = useState<VerifyResult | null>(null)
+  const [scanKind, setScanKind] = useState<"order" | "campaign" | null>(null)
   const [scanned, setScanned] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [dialogLoading, setDialogLoading] = useState(false)
@@ -219,20 +227,85 @@ export default function StationPage() {
   const handleScanned = useCallback(
     async (code: string) => {
       setError(null)
-      const orderId = extractOrderIdFromScan(code)
-      if (!orderId) {
+      const parsed = parseScan(code)
+      if (!parsed) {
         setError("Ungültiger QR-Code")
         resumeScanning()
         return
       }
 
-      setScanned(orderId)
+      setScanned(parsed.id)
+      setScanKind(parsed.kind)
       setResult(null)
       setDialogLoading(true)
       setDrawerOpen(true)
 
       try {
-        const orderRes = await fetch(`/api/v1/orders/${encodeURIComponent(orderId)}`, {
+        if (parsed.kind === "campaign") {
+          const idem = `idem_${Date.now()}_${Math.random().toString(36).slice(2)}`
+          const res = await fetch(`/api/v1/stations/redeem-campaign`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${bearerToken}`,
+              "Idempotency-Key": idem,
+            },
+            body: JSON.stringify({ claimToken: parsed.id }),
+          })
+          type Problem = { detail?: string; message?: string }
+          if (!res.ok) {
+            const j = (await res.json().catch(() => ({}))) as Problem
+            if (res.status === 409) {
+              throw new Error(j.detail || j.message || "Maximale Einlösungen erreicht.")
+            }
+            if (res.status === 410) {
+              throw new Error(j.detail || j.message || "Kampagne nicht mehr aktiv.")
+            }
+            if (res.status === 404) {
+              throw new Error(j.detail || j.message || "Kampagne nicht gefunden.")
+            }
+            throw new Error(j.detail || j.message || `Fehler ${res.status}`)
+          }
+          type CampaignResp = {
+            orderId: string
+            redemptionCount: number
+            maxRedemptions: number
+            station?: {
+              orderId?: string
+              redeemedAt?: string
+              items?: Array<{
+                id: string
+                orderId: string
+                productId: string
+                title: string
+                quantity: number
+                isRedeemed: boolean
+                parentItemId?: string | null
+                menuSlotId?: string | null
+                menuSlotName?: string | null
+              }>
+            }
+          }
+          const data = (await res.json()) as CampaignResp
+          const redeemedAt = data.station?.redeemedAt || new Date().toISOString()
+          const items = data.station?.items || []
+          const lines: OrderLine[] = items.map((it) => ({
+            id: it.id,
+            orderId: it.orderId,
+            productId: it.productId,
+            title: it.title,
+            quantity: it.quantity,
+            unitPriceCents: 0,
+            redemption: it.isRedeemed ? { id: it.id, redeemedAt } : null,
+            parentLineId: it.parentItemId ?? null,
+            menuSlotId: it.menuSlotId ?? null,
+            menuSlotName: it.menuSlotName ?? null,
+          }))
+          setResult({ orderId: data.orderId, lines })
+          return
+        }
+
+        const orderRes = await fetch(`/api/v1/orders/${encodeURIComponent(parsed.id)}`, {
           headers: { Authorization: `Bearer ${bearerToken}` },
         })
         type Problem = { detail?: string }
@@ -417,6 +490,7 @@ export default function StationPage() {
             setDrawerOpen(false)
             setResult(null)
             setScanned(null)
+            setScanKind(null)
             setDialogLoading(false)
             resumeScanning()
           }
@@ -527,15 +601,17 @@ export default function StationPage() {
             <Button
               disabled={dialogLoading}
               onClick={() => {
-                const currentOrderId = scanned
+                const currentOrderId = result?.orderId || scanned
                 const hasItems = (result?.lines?.filter((i) => !i.redemption).length || 0) > 0
+                const kind = scanKind
 
                 setDrawerOpen(false)
                 setResult(null)
                 setScanned(null)
+                setScanKind(null)
                 resumeScanning()
 
-                if (status?.status === "approved" && hasItems && currentOrderId) {
+                if (kind === "order" && status?.status === "approved" && hasItems && currentOrderId) {
                   fireRedeem(currentOrderId)
                 }
               }}

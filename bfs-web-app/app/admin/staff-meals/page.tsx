@@ -5,13 +5,11 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
 import { getCSRFToken } from "@/lib/csrf"
 import { readErrorMessage } from "@/lib/http"
@@ -42,7 +40,7 @@ export default function AdminStaffMealsPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [formName, setFormName] = useState("")
-  const [formSlotCount, setFormSlotCount] = useState(20)
+  const [formMaxRedemptions, setFormMaxRedemptions] = useState(20)
   const [formProducts, setFormProducts] = useState<ProductRow[]>([])
   const [formValidUntil, setFormValidUntil] = useState<string>("")
   const [saving, setSaving] = useState(false)
@@ -83,7 +81,7 @@ export default function AdminStaffMealsPage() {
 
   const resetForm = () => {
     setFormName("")
-    setFormSlotCount(20)
+    setFormMaxRedemptions(20)
     setFormProducts([])
     setFormValidUntil("")
     setFormError(null)
@@ -104,8 +102,8 @@ export default function AdminStaffMealsPage() {
       setFormError("Mindestens ein Produkt erforderlich.")
       return
     }
-    if (formSlotCount < 1) {
-      setFormError("Anzahl muss mindestens 1 sein.")
+    if (formMaxRedemptions < 1) {
+      setFormError("Maximale Einlösungen muss mindestens 1 sein.")
       return
     }
     setSaving(true)
@@ -119,7 +117,7 @@ export default function AdminStaffMealsPage() {
         body: JSON.stringify({
           name: formName.trim(),
           validUntil: formValidUntil ? new Date(formValidUntil).toISOString() : undefined,
-          slotCount: formSlotCount,
+          maxRedemptions: formMaxRedemptions,
           products: formProducts,
         }),
       })
@@ -136,98 +134,67 @@ export default function AdminStaffMealsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 px-6 md:px-8 lg:px-10">
-      <Card>
-        <CardHeader className="flex-col items-start gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex flex-col gap-1">
-            <CardTitle>Mitarbeiter-Essen</CardTitle>
-            <p className="text-muted-foreground text-sm">
-              Gratis-Mahlzeiten, die Mitarbeiter per QR-Code an der Station einlösen.
-            </p>
-          </div>
-          <Button onClick={openCreate} className="shrink-0">
-            <Plus className="size-4" aria-hidden />
-            Neues Essen
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {error && <div className="bg-destructive/10 text-destructive mb-4 rounded-xl p-3 text-sm">{error}</div>}
+    <div className="space-y-4 pt-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <h1 className="font-primary text-2xl">Mitarbeiter-Essen</h1>
+          <p className="text-muted-foreground text-sm">
+            Gratis-Mahlzeiten, die Mitarbeiter per QR-Code an der Station einlösen.
+          </p>
+        </div>
+        <Button onClick={openCreate} className="shrink-0">
+          <Plus className="size-4" aria-hidden />
+          Neues Essen
+        </Button>
+      </div>
 
-          {!firstLoadDone ? (
-            <LoadingList />
-          ) : meals.length === 0 ? (
-            <EmptyState onCreate={openCreate} />
-          ) : (
-            <>
-              {/* Desktop table */}
-              <div className="hidden sm:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Eingelöst</TableHead>
-                      <TableHead className="text-right">Reserviert</TableHead>
-                      <TableHead className="text-right">Gesamt</TableHead>
-                      <TableHead>Code</TableHead>
-                      <TableHead />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {meals.map((m) => (
-                      <TableRow
-                        key={m.id}
-                        className="hover:bg-accent/40 cursor-pointer"
-                        onClick={() => router.push(`/admin/staff-meals/${m.id}`)}
-                      >
-                        <TableCell className="font-medium">{m.name}</TableCell>
-                        <TableCell>
-                          <StatusBadge status={m.status} />
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">{m.redeemedSlots}</TableCell>
-                        <TableCell className="text-right tabular-nums">{m.reservedSlots}</TableCell>
-                        <TableCell className="text-right tabular-nums">{m.totalSlots}</TableCell>
-                        <TableCell className="font-mono text-sm tracking-wider">{m.accessCode}</TableCell>
-                        <TableCell className="text-right">
-                          <ArrowRight className="text-muted-foreground inline size-4" aria-hidden />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+      {error && <div className="bg-destructive/10 text-destructive rounded-xl px-3 py-2 text-sm">{error}</div>}
 
-              {/* Mobile cards */}
-              <div className="flex flex-col gap-2 sm:hidden">
-                {meals.map((m) => (
-                  <Link
-                    key={m.id}
-                    href={`/admin/staff-meals/${m.id}`}
-                    className="hover:bg-accent/40 focus-visible:ring-ring/40 flex items-center justify-between gap-3 rounded-xl border p-4 transition focus-visible:ring-2 focus-visible:outline-none"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{m.name}</span>
-                        <StatusBadge status={m.status} />
-                      </div>
-                      <div className="text-muted-foreground mt-1 flex items-center gap-3 text-xs tabular-nums">
-                        <span>
-                          {m.redeemedSlots}/{m.totalSlots} eingelöst
-                        </span>
-                        {m.reservedSlots > 0 && <span>· {m.reservedSlots} reserviert</span>}
-                      </div>
+      {!firstLoadDone ? (
+        <LoadingList />
+      ) : meals.length === 0 ? (
+        <EmptyState onCreate={openCreate} />
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {meals.map((m) => {
+            const progress =
+              m.maxRedemptions > 0 ? Math.min(100, Math.round((m.redemptionCount / m.maxRedemptions) * 100)) : 0
+            return (
+              <Link
+                key={m.id}
+                href={`/admin/staff-meals/${m.id}`}
+                className="border-border bg-card hover:bg-accent/40 focus-visible:ring-ring/40 group flex flex-col gap-4 rounded-2xl border p-5 transition focus-visible:ring-2 focus-visible:outline-none"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate font-semibold">{m.name}</span>
+                      <StatusBadge status={m.status} />
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <code className="font-mono text-sm tracking-wider">{m.accessCode}</code>
-                      <ArrowRight className="text-muted-foreground size-4" aria-hidden />
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+                    <p className="text-muted-foreground mt-1 text-xs tabular-nums">
+                      {m.redemptionCount} / {m.maxRedemptions} eingelöst
+                    </p>
+                  </div>
+                  <ArrowRight
+                    className="text-muted-foreground group-hover:text-foreground mt-0.5 size-4 shrink-0 transition-transform group-hover:translate-x-0.5"
+                    aria-hidden
+                  />
+                </div>
+                <div className="bg-muted-foreground/20 relative h-1.5 overflow-hidden rounded-full">
+                  <div
+                    className="bg-primary absolute inset-y-0 left-0 rounded-full transition-[width] duration-300"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-muted-foreground text-xs">Zugangscode</span>
+                  <code className="font-mono text-sm tracking-wider">{m.accessCode}</code>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">
@@ -247,13 +214,13 @@ export default function AdminStaffMealsPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-2">
-                <Label htmlFor="meal-count">Anzahl Mitarbeiter</Label>
+                <Label htmlFor="meal-count">Maximale Einlösungen</Label>
                 <Input
                   id="meal-count"
                   type="number"
-                  value={formSlotCount}
+                  value={formMaxRedemptions}
                   min={1}
-                  onChange={(e) => setFormSlotCount(Math.max(1, parseInt(e.target.value || "0", 10) || 0))}
+                  onChange={(e) => setFormMaxRedemptions(Math.max(1, parseInt(e.target.value || "0", 10) || 0))}
                 />
               </div>
               <div className="grid gap-2">
@@ -267,7 +234,7 @@ export default function AdminStaffMealsPage() {
               </div>
             </div>
             <div className="grid gap-2">
-              <Label>Produkte pro Mitarbeiter</Label>
+              <Label>Produkte pro Einlösung</Label>
               <div className="flex flex-col gap-2">
                 {formProducts.map((row, idx) => (
                   <div key={idx} className="flex items-center gap-2">
@@ -363,7 +330,7 @@ function LoadingList() {
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="border-border/60 flex flex-col items-center gap-4 rounded-xl border border-dashed py-12 text-center">
+    <div className="border-border/60 flex flex-col items-center gap-4 rounded-2xl border border-dashed py-12 text-center">
       <div className="bg-muted text-muted-foreground flex h-12 w-12 items-center justify-center rounded-full">
         <Ticket className="size-5" aria-hidden />
       </div>

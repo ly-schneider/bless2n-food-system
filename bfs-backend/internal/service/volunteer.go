@@ -20,10 +20,10 @@ import (
 )
 
 const (
-	volunteerReservationTTL = 10 * time.Minute
 	volunteerSessionBytes   = 24
 	volunteerAccessCodeLen  = 4
 	volunteerAccessCodeAlph = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"
+	volunteerQRPayloadPfx   = "CAMP:"
 )
 
 var (
@@ -31,11 +31,10 @@ var (
 	ErrVolunteerCampaignInactive      = errors.New("volunteer_campaign_inactive")
 	ErrVolunteerCampaignOutsideValid  = errors.New("volunteer_campaign_outside_validity")
 	ErrVolunteerAccessCodeInvalid     = errors.New("volunteer_access_code_invalid")
-	ErrVolunteerSlotNotAvailable      = errors.New("volunteer_slot_not_available")
-	ErrVolunteerSlotNotYours          = errors.New("volunteer_slot_not_yours")
-	ErrVolunteerSlotAlreadyRedeemed   = errors.New("volunteer_slot_already_redeemed")
 	ErrVolunteerCampaignHasNoProducts = errors.New("volunteer_campaign_has_no_products")
 	ErrVolunteerCampaignInvalidAccess = errors.New("volunteer_access_code_must_be_4_digits")
+	ErrVolunteerMaxRedemptionsReached = errors.New("volunteer_max_redemptions_reached")
+	ErrVolunteerMaxBelowCount         = errors.New("volunteer_max_redemptions_below_current_count")
 )
 
 type VolunteerService interface {
@@ -49,95 +48,95 @@ type VolunteerService interface {
 	VerifyAccess(ctx context.Context, token uuid.UUID, code string) (sessionID string, err error)
 	NewSessionID() string
 
-	GetClaimCampaign(ctx context.Context, token uuid.UUID) (*ent.VolunteerCampaign, error)
-	ListClaimSlots(ctx context.Context, token uuid.UUID, sessionID string) (*VolunteerClaimView, error)
-	GetClaimSlot(ctx context.Context, token uuid.UUID, slotID uuid.UUID, sessionID string) (*VolunteerSlotView, error)
-	ReserveSlot(ctx context.Context, token uuid.UUID, slotID uuid.UUID, sessionID string) error
-	ReleaseSlot(ctx context.Context, token uuid.UUID, slotID uuid.UUID, sessionID string) error
+	GetClaimView(ctx context.Context, token uuid.UUID) (*VolunteerClaimView, error)
+	RedeemSharedQR(ctx context.Context, claimToken uuid.UUID, stationID uuid.UUID, idempotencyKey string) (*VolunteerRedemptionResult, error)
 }
 
 type CreateVolunteerCampaignInput struct {
-	Name       string
-	AccessCode string
-	ValidFrom  *time.Time
-	ValidUntil *time.Time
-	Products   []repository.VolunteerCampaignProductInput
-	SlotCount  int
+	Name           string
+	ValidFrom      *time.Time
+	ValidUntil     *time.Time
+	Products       []repository.VolunteerCampaignProductInput
+	MaxRedemptions int
 }
 
 type UpdateVolunteerCampaignInput struct {
-	Name       string
-	AccessCode string
-	ValidFrom  *time.Time
-	ValidUntil *time.Time
-	Status     volunteercampaign.Status
-	Products   []repository.VolunteerCampaignProductInput
+	Name           string
+	ValidFrom      *time.Time
+	ValidUntil     *time.Time
+	Status         volunteercampaign.Status
+	Products       []repository.VolunteerCampaignProductInput
+	MaxRedemptions *int
 }
 
 type VolunteerCampaignSummary struct {
-	Campaign      *ent.VolunteerCampaign
-	TotalSlots    int
-	RedeemedSlots int
-	ReservedSlots int
+	Campaign        *ent.VolunteerCampaign
+	MaxRedemptions  int
+	RedemptionCount int
 }
 
-type VolunteerCampaignDetail struct {
-	Campaign *ent.VolunteerCampaign
-	Products []*ent.VolunteerCampaignProduct
-	Slots    []*ent.VolunteerSlot
-}
-
-type VolunteerClaimView struct {
-	Campaign       *ent.VolunteerCampaign
-	AvailableSlots []VolunteerSlotView
-	ReservedByMe   []VolunteerSlotView
-	TotalSlots     int
-}
-
-type VolunteerSlotView struct {
-	Slot          *ent.VolunteerSlot
-	OrderID       uuid.UUID
-	IsReservedBy  string
-	ReservedUntil *time.Time
-	RedeemedAt    *time.Time
-	Lines         []VolunteerSlotLine
-}
-
-type VolunteerSlotLine struct {
+type VolunteerCampaignProductView struct {
+	ProductID    uuid.UUID
 	ProductName  string
 	ProductImage *string
 	Quantity     int
-	IsRedeemed   bool
-	RedeemedAt   *time.Time
+}
+
+type VolunteerRedemptionView struct {
+	ID        uuid.UUID
+	OrderID   uuid.UUID
+	CreatedAt time.Time
+}
+
+type VolunteerCampaignDetail struct {
+	Campaign    *ent.VolunteerCampaign
+	Products    []VolunteerCampaignProductView
+	Redemptions []VolunteerRedemptionView
+}
+
+type VolunteerClaimView struct {
+	Campaign  *ent.VolunteerCampaign
+	Products  []VolunteerCampaignProductView
+	QRPayload string
+}
+
+type VolunteerRedemptionResult struct {
+	OrderID         uuid.UUID
+	RedemptionCount int
+	MaxRedemptions  int
+	StationResult   map[string]any
 }
 
 type volunteerService struct {
-	client    *ent.Client
-	campaigns repository.VolunteerCampaignRepository
-	slots     repository.VolunteerSlotRepository
-	orders    repository.OrderRepository
-	lines     repository.OrderLineRepository
-	payments  repository.OrderPaymentRepository
-	products  *repository.ProductRepository
+	client      *ent.Client
+	campaigns   repository.VolunteerCampaignRepository
+	redemptions repository.VolunteerRedemptionRepository
+	orders      repository.OrderRepository
+	lines       repository.OrderLineRepository
+	payments    repository.OrderPaymentRepository
+	products    *repository.ProductRepository
+	stations    StationService
 }
 
 func NewVolunteerService(
 	client *ent.Client,
 	campaigns repository.VolunteerCampaignRepository,
-	slots repository.VolunteerSlotRepository,
+	redemptions repository.VolunteerRedemptionRepository,
 	orders repository.OrderRepository,
 	lines repository.OrderLineRepository,
 	payments repository.OrderPaymentRepository,
 	products *repository.ProductRepository,
+	stations StationService,
 ) VolunteerService {
 	return &volunteerService{
-		client:    client,
-		campaigns: campaigns,
-		slots:     slots,
-		orders:    orders,
-		lines:     lines,
-		payments:  payments,
-		products:  products,
+		client:      client,
+		campaigns:   campaigns,
+		redemptions: redemptions,
+		orders:      orders,
+		lines:       lines,
+		payments:    payments,
+		products:    products,
+		stations:    stations,
 	}
 }
 
@@ -145,18 +144,6 @@ func (s *volunteerService) NewSessionID() string {
 	b := make([]byte, volunteerSessionBytes)
 	_, _ = rand.Read(b)
 	return hex.EncodeToString(b)
-}
-
-func validateAccessCode(code string) error {
-	if len(code) != volunteerAccessCodeLen {
-		return ErrVolunteerCampaignInvalidAccess
-	}
-	for _, c := range code {
-		if !strings.ContainsRune(volunteerAccessCodeAlph, c) {
-			return ErrVolunteerCampaignInvalidAccess
-		}
-	}
-	return nil
 }
 
 func generateAccessCode() string {
@@ -170,6 +157,12 @@ func generateAccessCode() string {
 	return string(buf)
 }
 
+// BuildQRPayload returns the string encoded in the shared campaign QR code.
+// Station scanner detects the CAMP: prefix and routes to the campaign-redeem endpoint.
+func BuildQRPayload(claimToken uuid.UUID) string {
+	return volunteerQRPayloadPfx + claimToken.String()
+}
+
 func (s *volunteerService) CreateCampaign(ctx context.Context, input CreateVolunteerCampaignInput) (*ent.VolunteerCampaign, error) {
 	if strings.TrimSpace(input.Name) == "" {
 		return nil, errors.New("name_required")
@@ -177,16 +170,11 @@ func (s *volunteerService) CreateCampaign(ctx context.Context, input CreateVolun
 	if len(input.Products) == 0 {
 		return nil, ErrVolunteerCampaignHasNoProducts
 	}
-	if input.SlotCount <= 0 {
-		return nil, errors.New("slot_count_must_be_positive")
+	if input.MaxRedemptions <= 0 {
+		return nil, errors.New("max_redemptions_must_be_positive")
 	}
 
 	accessCode := generateAccessCode()
-
-	productSnapshots, err := s.loadProductSnapshots(ctx, input.Products)
-	if err != nil {
-		return nil, err
-	}
 
 	tx, err := s.client.Tx(ctx)
 	if err != nil {
@@ -196,19 +184,13 @@ func (s *volunteerService) CreateCampaign(ctx context.Context, input CreateVolun
 
 	txCtx := repository.ContextWithClient(ctx, tx.Client())
 
-	campaign, err := s.campaigns.Create(txCtx, input.Name, accessCode, input.ValidFrom, input.ValidUntil, volunteercampaign.StatusActive)
+	campaign, err := s.campaigns.Create(txCtx, input.Name, accessCode, input.ValidFrom, input.ValidUntil, volunteercampaign.StatusActive, input.MaxRedemptions)
 	if err != nil {
 		return nil, fmt.Errorf("create campaign: %w", err)
 	}
 
 	if err := s.campaigns.ReplaceProducts(txCtx, campaign.ID, input.Products); err != nil {
 		return nil, fmt.Errorf("attach products: %w", err)
-	}
-
-	for i := 0; i < input.SlotCount; i++ {
-		if err := s.createSlotOrder(txCtx, campaign.ID, productSnapshots); err != nil {
-			return nil, fmt.Errorf("create slot %d: %w", i, err)
-		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -245,26 +227,22 @@ func (s *volunteerService) loadProductSnapshots(ctx context.Context, items []rep
 	return out, nil
 }
 
-func (s *volunteerService) createSlotOrder(ctx context.Context, campaignID uuid.UUID, products []productSnapshot) error {
+func (s *volunteerService) createGratisOrder(ctx context.Context, products []productSnapshot) (uuid.UUID, error) {
 	ord, err := s.orders.Create(ctx, 0, order.StatusPaid, order.OriginShop, nil, nil, nil, nil, nil)
 	if err != nil {
-		return fmt.Errorf("create order: %w", err)
+		return uuid.Nil, fmt.Errorf("create order: %w", err)
 	}
 
 	for _, p := range products {
 		if _, err := s.lines.Create(ctx, ord.ID, orderline.LineTypeSimple, p.ID, truncatedTitle(p.Name), p.Quantity, 0, nil, nil, nil); err != nil {
-			return fmt.Errorf("create order line: %w", err)
+			return uuid.Nil, fmt.Errorf("create order line: %w", err)
 		}
 	}
 
 	if _, err := s.payments.Create(ctx, ord.ID, orderpayment.MethodGRATIS_STAFF, 0, time.Now(), nil); err != nil {
-		return fmt.Errorf("create payment: %w", err)
+		return uuid.Nil, fmt.Errorf("create payment: %w", err)
 	}
-
-	if _, err := s.slots.Create(ctx, campaignID, ord.ID); err != nil {
-		return fmt.Errorf("create slot: %w", err)
-	}
-	return nil
+	return ord.ID, nil
 }
 
 func truncatedTitle(s string) string {
@@ -281,36 +259,13 @@ func (s *volunteerService) ListCampaigns(ctx context.Context) ([]VolunteerCampai
 	}
 	out := make([]VolunteerCampaignSummary, 0, len(campaigns))
 	for _, c := range campaigns {
-		summary, err := s.summarize(ctx, c)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, summary)
+		out = append(out, VolunteerCampaignSummary{
+			Campaign:        c,
+			MaxRedemptions:  c.MaxRedemptions,
+			RedemptionCount: c.RedemptionCount,
+		})
 	}
 	return out, nil
-}
-
-func (s *volunteerService) summarize(ctx context.Context, c *ent.VolunteerCampaign) (VolunteerCampaignSummary, error) {
-	slots, err := s.slots.ListByCampaign(ctx, c.ID)
-	if err != nil {
-		return VolunteerCampaignSummary{}, err
-	}
-	total, redeemed, reserved := 0, 0, 0
-	now := time.Now()
-	for _, slot := range slots {
-		total++
-		if slotRedeemed(slot) {
-			redeemed++
-		} else if slot.ReservedBySession != nil && slot.ReservedUntil != nil && slot.ReservedUntil.After(now) {
-			reserved++
-		}
-	}
-	return VolunteerCampaignSummary{
-		Campaign:      c,
-		TotalSlots:    total,
-		RedeemedSlots: redeemed,
-		ReservedSlots: reserved,
-	}, nil
 }
 
 func (s *volunteerService) GetCampaign(ctx context.Context, id uuid.UUID) (*VolunteerCampaignDetail, error) {
@@ -321,27 +276,34 @@ func (s *volunteerService) GetCampaign(ctx context.Context, id uuid.UUID) (*Volu
 		}
 		return nil, err
 	}
-	products, err := s.campaigns.ListProducts(ctx, id)
+	cps, err := s.campaigns.ListProducts(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	slots, err := s.slots.ListByCampaign(ctx, id)
+	products := campaignProductsToViews(cps)
+
+	reds, err := s.redemptions.ListByCampaign(ctx, id, 50)
 	if err != nil {
 		return nil, err
+	}
+	redViews := make([]VolunteerRedemptionView, 0, len(reds))
+	for _, r := range reds {
+		redViews = append(redViews, VolunteerRedemptionView{
+			ID:        r.ID,
+			OrderID:   r.OrderID,
+			CreatedAt: r.CreatedAt,
+		})
 	}
 	return &VolunteerCampaignDetail{
-		Campaign: campaign,
-		Products: products,
-		Slots:    slots,
+		Campaign:    campaign,
+		Products:    products,
+		Redemptions: redViews,
 	}, nil
 }
 
 func (s *volunteerService) UpdateCampaign(ctx context.Context, id uuid.UUID, input UpdateVolunteerCampaignInput) (*ent.VolunteerCampaign, error) {
 	if strings.TrimSpace(input.Name) == "" {
 		return nil, errors.New("name_required")
-	}
-	if err := validateAccessCode(input.AccessCode); err != nil {
-		return nil, err
 	}
 
 	tx, err := s.client.Tx(ctx)
@@ -351,13 +313,36 @@ func (s *volunteerService) UpdateCampaign(ctx context.Context, id uuid.UUID, inp
 	defer func() { _ = tx.Rollback() }()
 	txCtx := repository.ContextWithClient(ctx, tx.Client())
 
-	campaign, err := s.campaigns.Update(txCtx, id, input.Name, input.AccessCode, input.ValidFrom, input.ValidUntil, input.Status)
+	existing, err := s.campaigns.GetByID(txCtx, id)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return nil, ErrVolunteerCampaignNotFound
 		}
 		return nil, err
 	}
+
+	campaign, err := s.campaigns.Update(txCtx, id, input.Name, existing.AccessCode, input.ValidFrom, input.ValidUntil, input.Status)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, ErrVolunteerCampaignNotFound
+		}
+		return nil, err
+	}
+
+	if input.MaxRedemptions != nil {
+		if *input.MaxRedemptions <= 0 {
+			return nil, errors.New("max_redemptions_must_be_positive")
+		}
+		updated, ok, err := s.campaigns.UpdateMaxRedemptions(txCtx, id, *input.MaxRedemptions)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, ErrVolunteerMaxBelowCount
+		}
+		campaign = updated
+	}
+
 	if len(input.Products) > 0 {
 		if err := s.campaigns.ReplaceProducts(txCtx, id, input.Products); err != nil {
 			return nil, err
@@ -370,33 +355,13 @@ func (s *volunteerService) UpdateCampaign(ctx context.Context, id uuid.UUID, inp
 }
 
 func (s *volunteerService) EndCampaign(ctx context.Context, id uuid.UUID) error {
-	tx, err := s.client.Tx(ctx)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-	txCtx := repository.ContextWithClient(ctx, tx.Client())
-
-	if err := s.campaigns.SetStatus(txCtx, id, volunteercampaign.StatusEnded); err != nil {
+	if err := s.campaigns.SetStatus(ctx, id, volunteercampaign.StatusEnded); err != nil {
 		if ent.IsNotFound(err) {
 			return ErrVolunteerCampaignNotFound
 		}
 		return err
 	}
-
-	slots, err := s.slots.ListByCampaign(txCtx, id)
-	if err != nil {
-		return err
-	}
-	for _, slot := range slots {
-		if slotRedeemed(slot) {
-			continue
-		}
-		if err := s.orders.UpdateStatus(txCtx, slot.OrderID, order.StatusCancelled); err != nil {
-			return fmt.Errorf("cancel slot order %s: %w", slot.OrderID, err)
-		}
-	}
-	return tx.Commit()
+	return nil
 }
 
 func (s *volunteerService) RotateClaimToken(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
@@ -423,7 +388,7 @@ func (s *volunteerService) VerifyAccess(ctx context.Context, token uuid.UUID, co
 	return s.NewSessionID(), nil
 }
 
-func (s *volunteerService) GetClaimCampaign(ctx context.Context, token uuid.UUID) (*ent.VolunteerCampaign, error) {
+func (s *volunteerService) GetClaimView(ctx context.Context, token uuid.UUID) (*VolunteerClaimView, error) {
 	campaign, err := s.campaigns.GetByClaimToken(ctx, token)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -431,134 +396,120 @@ func (s *volunteerService) GetClaimCampaign(ctx context.Context, token uuid.UUID
 		}
 		return nil, err
 	}
-	return campaign, nil
-}
-
-func (s *volunteerService) ListClaimSlots(ctx context.Context, token uuid.UUID, sessionID string) (*VolunteerClaimView, error) {
-	campaign, err := s.GetClaimCampaign(ctx, token)
+	cps, err := s.campaigns.ListProducts(ctx, campaign.ID)
 	if err != nil {
 		return nil, err
 	}
+	return &VolunteerClaimView{
+		Campaign:  campaign,
+		Products:  campaignProductsToViews(cps),
+		QRPayload: BuildQRPayload(campaign.ClaimToken),
+	}, nil
+}
+
+func (s *volunteerService) RedeemSharedQR(ctx context.Context, claimToken uuid.UUID, stationID uuid.UUID, idempotencyKey string) (*VolunteerRedemptionResult, error) {
+	campaign, err := s.campaigns.GetByClaimToken(ctx, claimToken)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, ErrVolunteerCampaignNotFound
+		}
+		return nil, err
+	}
+
+	if idempotencyKey != "" {
+		if prev, err := s.redemptions.GetByIdempotencyKey(ctx, campaign.ID, idempotencyKey); err == nil && prev != nil {
+			stationResp, redeemErr := s.stations.RedeemAssigned(ctx, stationID, prev.OrderID, idempotencyKey)
+			if redeemErr != nil {
+				return nil, redeemErr
+			}
+			return &VolunteerRedemptionResult{
+				OrderID:         prev.OrderID,
+				RedemptionCount: campaign.RedemptionCount,
+				MaxRedemptions:  campaign.MaxRedemptions,
+				StationResult:   stationResp,
+			}, nil
+		}
+	}
+
 	if campaign.Status != volunteercampaign.StatusActive {
 		return nil, ErrVolunteerCampaignInactive
 	}
-	slots, err := s.slots.ListRedeemableByCampaign(ctx, campaign.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	now := time.Now()
-	view := &VolunteerClaimView{
-		Campaign:       campaign,
-		AvailableSlots: []VolunteerSlotView{},
-		ReservedByMe:   []VolunteerSlotView{},
-		TotalSlots:     len(slots),
-	}
-
-	for _, slot := range slots {
-		if slotRedeemed(slot) {
-			continue
-		}
-		v := toSlotView(slot)
-		reservedByMe := slot.ReservedBySession != nil && *slot.ReservedBySession == sessionID &&
-			slot.ReservedUntil != nil && slot.ReservedUntil.After(now)
-		if reservedByMe {
-			view.ReservedByMe = append(view.ReservedByMe, v)
-			continue
-		}
-		available := slot.ReservedBySession == nil || slot.ReservedUntil == nil || slot.ReservedUntil.Before(now)
-		if available {
-			view.AvailableSlots = append(view.AvailableSlots, v)
-		}
-	}
-	return view, nil
-}
-
-func (s *volunteerService) GetClaimSlot(ctx context.Context, token uuid.UUID, slotID uuid.UUID, sessionID string) (*VolunteerSlotView, error) {
-	campaign, err := s.GetClaimCampaign(ctx, token)
-	if err != nil {
-		return nil, err
-	}
-	slot, err := s.slots.GetByID(ctx, slotID)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return nil, ErrVolunteerSlotNotAvailable
-		}
-		return nil, err
-	}
-	if slot.CampaignID != campaign.ID {
-		return nil, ErrVolunteerSlotNotAvailable
-	}
-	ownedSlots, err := s.slots.ListRedeemableByCampaign(ctx, campaign.ID)
-	if err != nil {
-		return nil, err
-	}
-	for _, full := range ownedSlots {
-		if full.ID == slot.ID {
-			view := toSlotView(full)
-			return &view, nil
-		}
-	}
-	v := VolunteerSlotView{Slot: slot, OrderID: slot.OrderID}
-	return &v, nil
-}
-
-func (s *volunteerService) ReserveSlot(ctx context.Context, token uuid.UUID, slotID uuid.UUID, sessionID string) error {
-	campaign, err := s.GetClaimCampaign(ctx, token)
-	if err != nil {
-		return err
-	}
-	if campaign.Status != volunteercampaign.StatusActive {
-		return ErrVolunteerCampaignInactive
-	}
 	if !campaignWithinValidity(campaign, time.Now()) {
-		return ErrVolunteerCampaignOutsideValid
-	}
-	slot, err := s.slots.GetByID(ctx, slotID)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return ErrVolunteerSlotNotAvailable
-		}
-		return err
-	}
-	if slot.CampaignID != campaign.ID {
-		return ErrVolunteerSlotNotAvailable
+		return nil, ErrVolunteerCampaignOutsideValid
 	}
 
-	until := time.Now().Add(volunteerReservationTTL)
-	_, ok, err := s.slots.ReserveAtomic(ctx, slotID, sessionID, until)
+	cps, err := s.campaigns.ListProducts(ctx, campaign.ID)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if !ok {
-		return ErrVolunteerSlotNotAvailable
+	if len(cps) == 0 {
+		return nil, ErrVolunteerCampaignHasNoProducts
 	}
-	return nil
-}
-
-func (s *volunteerService) ReleaseSlot(ctx context.Context, token uuid.UUID, slotID uuid.UUID, sessionID string) error {
-	campaign, err := s.GetClaimCampaign(ctx, token)
-	if err != nil {
-		return err
-	}
-	slot, err := s.slots.GetByID(ctx, slotID)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return ErrVolunteerSlotNotAvailable
+	products := make([]productSnapshot, 0, len(cps))
+	for _, cp := range cps {
+		p, _ := cp.Edges.ProductOrErr()
+		name := ""
+		if p != nil {
+			name = p.Name
 		}
-		return err
+		qty := cp.Quantity
+		if qty <= 0 {
+			qty = 1
+		}
+		products = append(products, productSnapshot{
+			ID:       cp.ProductID,
+			Name:     name,
+			Quantity: qty,
+		})
 	}
-	if slot.CampaignID != campaign.ID {
-		return ErrVolunteerSlotNotAvailable
-	}
-	ok, err := s.slots.Release(ctx, slotID, sessionID)
+
+	incremented, err := s.campaigns.IncrementRedemptionAtomic(ctx, campaign.ID)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if !ok {
-		return ErrVolunteerSlotNotYours
+	if !incremented {
+		return nil, ErrVolunteerMaxRedemptionsReached
 	}
-	return nil
+
+	tx, err := s.client.Tx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	txCtx := repository.ContextWithClient(ctx, tx.Client())
+
+	orderID, err := s.createGratisOrder(txCtx, products)
+	if err != nil {
+		return nil, err
+	}
+
+	var idemPtr *string
+	if idempotencyKey != "" {
+		idemPtr = &idempotencyKey
+	}
+	var stationPtr *uuid.UUID
+	if stationID != uuid.Nil {
+		stationPtr = &stationID
+	}
+	if _, err := s.redemptions.Create(txCtx, campaign.ID, orderID, stationPtr, idemPtr); err != nil {
+		return nil, fmt.Errorf("record redemption: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit: %w", err)
+	}
+
+	stationResp, err := s.stations.RedeemAssigned(ctx, stationID, orderID, idempotencyKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return &VolunteerRedemptionResult{
+		OrderID:         orderID,
+		RedemptionCount: campaign.RedemptionCount + 1,
+		MaxRedemptions:  campaign.MaxRedemptions,
+		StationResult:   stationResp,
+	}, nil
 }
 
 func campaignWithinValidity(c *ent.VolunteerCampaign, now time.Time) bool {
@@ -571,68 +522,21 @@ func campaignWithinValidity(c *ent.VolunteerCampaign, now time.Time) bool {
 	return true
 }
 
-func slotRedeemed(slot *ent.VolunteerSlot) bool {
-	ord, err := slot.Edges.OrderOrErr()
-	if err != nil || ord == nil {
-		return false
-	}
-	lines := ord.Edges.Lines
-	if len(lines) == 0 {
-		return false
-	}
-	for _, l := range lines {
-		r, _ := l.Edges.RedemptionOrErr()
-		if r == nil {
-			return false
+func campaignProductsToViews(cps []*ent.VolunteerCampaignProduct) []VolunteerCampaignProductView {
+	out := make([]VolunteerCampaignProductView, 0, len(cps))
+	for _, cp := range cps {
+		name := ""
+		var image *string
+		if p, _ := cp.Edges.ProductOrErr(); p != nil {
+			name = p.Name
+			image = p.Image
 		}
+		out = append(out, VolunteerCampaignProductView{
+			ProductID:    cp.ProductID,
+			ProductName:  name,
+			ProductImage: image,
+			Quantity:     cp.Quantity,
+		})
 	}
-	return true
-}
-
-func toSlotView(slot *ent.VolunteerSlot) VolunteerSlotView {
-	v := VolunteerSlotView{
-		Slot:          slot,
-		OrderID:       slot.OrderID,
-		ReservedUntil: slot.ReservedUntil,
-	}
-	if slot.ReservedBySession != nil {
-		v.IsReservedBy = *slot.ReservedBySession
-	}
-	ord, err := slot.Edges.OrderOrErr()
-	if err == nil && ord != nil {
-		allRedeemed := len(ord.Edges.Lines) > 0
-		var earliest *time.Time
-		for _, l := range ord.Edges.Lines {
-			r, _ := l.Edges.RedemptionOrErr()
-			productName := ""
-			var productImage *string
-			if p, _ := l.Edges.ProductOrErr(); p != nil {
-				productName = p.Name
-				productImage = p.Image
-			} else {
-				productName = l.Title
-			}
-			var redeemedAt *time.Time
-			if r != nil {
-				ra := r.RedeemedAt
-				redeemedAt = &ra
-				if earliest == nil || ra.Before(*earliest) {
-					earliest = &ra
-				}
-			} else {
-				allRedeemed = false
-			}
-			v.Lines = append(v.Lines, VolunteerSlotLine{
-				ProductName:  productName,
-				ProductImage: productImage,
-				Quantity:     l.Quantity,
-				IsRedeemed:   r != nil,
-				RedeemedAt:   redeemedAt,
-			})
-		}
-		if allRedeemed {
-			v.RedeemedAt = earliest
-		}
-	}
-	return v
+	return out
 }

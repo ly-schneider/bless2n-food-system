@@ -5,27 +5,32 @@ import (
 	"time"
 
 	"backend/internal/generated/ent"
-	"backend/internal/generated/ent/order"
 	"backend/internal/generated/ent/volunteercampaign"
 	"backend/internal/generated/ent/volunteercampaignproduct"
-	"backend/internal/generated/ent/volunteerslot"
+	"backend/internal/generated/ent/volunteerredemption"
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 )
 
 type VolunteerCampaignRepository interface {
-	Create(ctx context.Context, name, accessCode string, validFrom, validUntil *time.Time, status volunteercampaign.Status) (*ent.VolunteerCampaign, error)
+	Create(ctx context.Context, name, accessCode string, validFrom, validUntil *time.Time, status volunteercampaign.Status, maxRedemptions int) (*ent.VolunteerCampaign, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*ent.VolunteerCampaign, error)
 	GetByIDWithProducts(ctx context.Context, id uuid.UUID) (*ent.VolunteerCampaign, error)
 	GetByClaimToken(ctx context.Context, token uuid.UUID) (*ent.VolunteerCampaign, error)
 	List(ctx context.Context) ([]*ent.VolunteerCampaign, error)
 	Update(ctx context.Context, id uuid.UUID, name, accessCode string, validFrom, validUntil *time.Time, status volunteercampaign.Status) (*ent.VolunteerCampaign, error)
+	UpdateMaxRedemptions(ctx context.Context, id uuid.UUID, newMax int) (*ent.VolunteerCampaign, bool, error)
 	RotateClaimToken(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	SetStatus(ctx context.Context, id uuid.UUID, status volunteercampaign.Status) error
 
 	ReplaceProducts(ctx context.Context, campaignID uuid.UUID, items []VolunteerCampaignProductInput) error
 	ListProducts(ctx context.Context, campaignID uuid.UUID) ([]*ent.VolunteerCampaignProduct, error)
+
+	// IncrementRedemptionAtomic conditionally increments redemption_count iff the campaign
+	// is active, inside its validity window, and under max_redemptions. Returns true when
+	// the increment succeeded.
+	IncrementRedemptionAtomic(ctx context.Context, campaignID uuid.UUID) (bool, error)
 }
 
 type VolunteerCampaignProductInput struct {
@@ -33,21 +38,17 @@ type VolunteerCampaignProductInput struct {
 	Quantity  int
 }
 
-type VolunteerSlotRepository interface {
-	Create(ctx context.Context, campaignID, orderID uuid.UUID) (*ent.VolunteerSlot, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*ent.VolunteerSlot, error)
-	ListByCampaign(ctx context.Context, campaignID uuid.UUID) ([]*ent.VolunteerSlot, error)
-	ListRedeemableByCampaign(ctx context.Context, campaignID uuid.UUID) ([]*ent.VolunteerSlot, error)
-	ReserveAtomic(ctx context.Context, slotID uuid.UUID, sessionID string, until time.Time) (*ent.VolunteerSlot, bool, error)
-	Release(ctx context.Context, slotID uuid.UUID, sessionID string) (bool, error)
-	ListUnredeemedOrderIDs(ctx context.Context, campaignID uuid.UUID) ([]uuid.UUID, error)
+type VolunteerRedemptionRepository interface {
+	Create(ctx context.Context, campaignID, orderID uuid.UUID, stationDeviceID *uuid.UUID, idempotencyKey *string) (*ent.VolunteerRedemption, error)
+	GetByIdempotencyKey(ctx context.Context, campaignID uuid.UUID, key string) (*ent.VolunteerRedemption, error)
+	ListByCampaign(ctx context.Context, campaignID uuid.UUID, limit int) ([]*ent.VolunteerRedemption, error)
 }
 
 type volunteerCampaignRepo struct {
 	client *ent.Client
 }
 
-type volunteerSlotRepo struct {
+type volunteerRedemptionRepo struct {
 	client *ent.Client
 }
 
@@ -55,23 +56,24 @@ func NewVolunteerCampaignRepository(client *ent.Client) VolunteerCampaignReposit
 	return &volunteerCampaignRepo{client: client}
 }
 
-func NewVolunteerSlotRepository(client *ent.Client) VolunteerSlotRepository {
-	return &volunteerSlotRepo{client: client}
+func NewVolunteerRedemptionRepository(client *ent.Client) VolunteerRedemptionRepository {
+	return &volunteerRedemptionRepo{client: client}
 }
 
 func (r *volunteerCampaignRepo) ec(ctx context.Context) *ent.Client {
 	return ClientFromContext(ctx, r.client)
 }
 
-func (r *volunteerSlotRepo) ec(ctx context.Context) *ent.Client {
+func (r *volunteerRedemptionRepo) ec(ctx context.Context) *ent.Client {
 	return ClientFromContext(ctx, r.client)
 }
 
-func (r *volunteerCampaignRepo) Create(ctx context.Context, name, accessCode string, validFrom, validUntil *time.Time, status volunteercampaign.Status) (*ent.VolunteerCampaign, error) {
+func (r *volunteerCampaignRepo) Create(ctx context.Context, name, accessCode string, validFrom, validUntil *time.Time, status volunteercampaign.Status, maxRedemptions int) (*ent.VolunteerCampaign, error) {
 	b := r.ec(ctx).VolunteerCampaign.Create().
 		SetName(name).
 		SetAccessCode(accessCode).
-		SetStatus(status)
+		SetStatus(status).
+		SetMaxRedemptions(maxRedemptions)
 	if validFrom != nil {
 		b.SetValidFrom(*validFrom)
 	}
@@ -148,6 +150,30 @@ func (r *volunteerCampaignRepo) Update(ctx context.Context, id uuid.UUID, name, 
 	return updated, nil
 }
 
+// UpdateMaxRedemptions updates max_redemptions only if newMax >= current redemption_count.
+// Returns (updated, ok, err). ok=false means the new value is below the current redemption count.
+func (r *volunteerCampaignRepo) UpdateMaxRedemptions(ctx context.Context, id uuid.UUID, newMax int) (*ent.VolunteerCampaign, bool, error) {
+	client := r.ec(ctx)
+	n, err := client.VolunteerCampaign.Update().
+		Where(
+			volunteercampaign.IDEQ(id),
+			volunteercampaign.RedemptionCountLTE(newMax),
+		).
+		SetMaxRedemptions(newMax).
+		Save(ctx)
+	if err != nil {
+		return nil, false, translateError(err)
+	}
+	if n == 0 {
+		return nil, false, nil
+	}
+	updated, err := client.VolunteerCampaign.Get(ctx, id)
+	if err != nil {
+		return nil, false, translateError(err)
+	}
+	return updated, true, nil
+}
+
 func (r *volunteerCampaignRepo) RotateClaimToken(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
 	newToken := uuid.Must(uuid.NewV7())
 	_, err := r.ec(ctx).VolunteerCampaign.UpdateOneID(id).
@@ -199,100 +225,28 @@ func (r *volunteerCampaignRepo) ListProducts(ctx context.Context, campaignID uui
 	return rows, nil
 }
 
-func (r *volunteerSlotRepo) Create(ctx context.Context, campaignID, orderID uuid.UUID) (*ent.VolunteerSlot, error) {
-	created, err := r.ec(ctx).VolunteerSlot.Create().
-		SetCampaignID(campaignID).
-		SetOrderID(orderID).
-		Save(ctx)
-	if err != nil {
-		return nil, translateError(err)
-	}
-	return created, nil
-}
-
-func (r *volunteerSlotRepo) GetByID(ctx context.Context, id uuid.UUID) (*ent.VolunteerSlot, error) {
-	e, err := r.ec(ctx).VolunteerSlot.Get(ctx, id)
-	if err != nil {
-		return nil, translateError(err)
-	}
-	return e, nil
-}
-
-func (r *volunteerSlotRepo) ListByCampaign(ctx context.Context, campaignID uuid.UUID) ([]*ent.VolunteerSlot, error) {
-	rows, err := r.ec(ctx).VolunteerSlot.Query().
-		Where(volunteerslot.CampaignIDEQ(campaignID)).
-		WithOrder(func(q *ent.OrderQuery) {
-			q.WithLines(func(lq *ent.OrderLineQuery) {
-				lq.WithRedemption()
-			})
-		}).
-		Order(volunteerslot.ByCreatedAt()).
-		All(ctx)
-	if err != nil {
-		return nil, translateError(err)
-	}
-	return rows, nil
-}
-
-func (r *volunteerSlotRepo) ListRedeemableByCampaign(ctx context.Context, campaignID uuid.UUID) ([]*ent.VolunteerSlot, error) {
-	rows, err := r.ec(ctx).VolunteerSlot.Query().
-		Where(
-			volunteerslot.CampaignIDEQ(campaignID),
-			volunteerslot.HasOrderWith(order.StatusEQ(order.StatusPaid)),
-		).
-		WithOrder(func(q *ent.OrderQuery) {
-			q.WithLines(func(lq *ent.OrderLineQuery) {
-				lq.WithProduct()
-				lq.WithRedemption()
-			})
-		}).
-		Order(volunteerslot.ByCreatedAt()).
-		All(ctx)
-	if err != nil {
-		return nil, translateError(err)
-	}
-	return rows, nil
-}
-
-func (r *volunteerSlotRepo) ReserveAtomic(ctx context.Context, slotID uuid.UUID, sessionID string, until time.Time) (*ent.VolunteerSlot, bool, error) {
-	client := r.ec(ctx)
+func (r *volunteerCampaignRepo) IncrementRedemptionAtomic(ctx context.Context, campaignID uuid.UUID) (bool, error) {
 	now := time.Now()
-
-	n, err := client.VolunteerSlot.Update().
+	n, err := r.ec(ctx).VolunteerCampaign.Update().
 		Where(
-			volunteerslot.IDEQ(slotID),
-			volunteerslot.Or(
-				volunteerslot.ReservedBySessionIsNil(),
-				volunteerslot.ReservedBySessionEQ(sessionID),
-				volunteerslot.ReservedUntilLT(now),
-			),
+			volunteercampaign.IDEQ(campaignID),
+			volunteercampaign.StatusEQ(volunteercampaign.StatusActive),
+			func(s *sql.Selector) {
+				s.Where(sql.ColumnsLT(
+					s.C(volunteercampaign.FieldRedemptionCount),
+					s.C(volunteercampaign.FieldMaxRedemptions),
+				))
+				s.Where(sql.Or(
+					sql.IsNull(s.C(volunteercampaign.FieldValidFrom)),
+					sql.LTE(s.C(volunteercampaign.FieldValidFrom), now),
+				))
+				s.Where(sql.Or(
+					sql.IsNull(s.C(volunteercampaign.FieldValidUntil)),
+					sql.GT(s.C(volunteercampaign.FieldValidUntil), now),
+				))
+			},
 		).
-		SetReservedBySession(sessionID).
-		SetReservedAt(now).
-		SetReservedUntil(until).
-		Save(ctx)
-	if err != nil {
-		return nil, false, translateError(err)
-	}
-	if n == 0 {
-		return nil, false, nil
-	}
-	slot, err := client.VolunteerSlot.Get(ctx, slotID)
-	if err != nil {
-		return nil, false, translateError(err)
-	}
-	return slot, true, nil
-}
-
-func (r *volunteerSlotRepo) Release(ctx context.Context, slotID uuid.UUID, sessionID string) (bool, error) {
-	n, err := r.ec(ctx).VolunteerSlot.Update().
-		Where(
-			volunteerslot.IDEQ(slotID),
-			volunteerslot.ReservedBySessionEQ(sessionID),
-		).
-		ClearReservedBySession().
-		ClearReservedAt().
-		ClearReservedUntil().
+		AddRedemptionCount(1).
 		Save(ctx)
 	if err != nil {
 		return false, translateError(err)
@@ -300,16 +254,46 @@ func (r *volunteerSlotRepo) Release(ctx context.Context, slotID uuid.UUID, sessi
 	return n > 0, nil
 }
 
-func (r *volunteerSlotRepo) ListUnredeemedOrderIDs(ctx context.Context, campaignID uuid.UUID) ([]uuid.UUID, error) {
-	var ids []uuid.UUID
-	err := r.ec(ctx).VolunteerSlot.Query().
-		Where(volunteerslot.CampaignIDEQ(campaignID)).
-		Modify(func(s *sql.Selector) {
-			s.Select(s.C(volunteerslot.FieldOrderID))
-		}).
-		Scan(ctx, &ids)
+func (r *volunteerRedemptionRepo) Create(ctx context.Context, campaignID, orderID uuid.UUID, stationDeviceID *uuid.UUID, idempotencyKey *string) (*ent.VolunteerRedemption, error) {
+	b := r.ec(ctx).VolunteerRedemption.Create().
+		SetCampaignID(campaignID).
+		SetOrderID(orderID)
+	if stationDeviceID != nil {
+		b.SetStationDeviceID(*stationDeviceID)
+	}
+	if idempotencyKey != nil {
+		b.SetIdempotencyKey(*idempotencyKey)
+	}
+	created, err := b.Save(ctx)
 	if err != nil {
 		return nil, translateError(err)
 	}
-	return ids, nil
+	return created, nil
+}
+
+func (r *volunteerRedemptionRepo) GetByIdempotencyKey(ctx context.Context, campaignID uuid.UUID, key string) (*ent.VolunteerRedemption, error) {
+	row, err := r.ec(ctx).VolunteerRedemption.Query().
+		Where(
+			volunteerredemption.CampaignIDEQ(campaignID),
+			volunteerredemption.IdempotencyKeyEQ(key),
+		).
+		Only(ctx)
+	if err != nil {
+		return nil, translateError(err)
+	}
+	return row, nil
+}
+
+func (r *volunteerRedemptionRepo) ListByCampaign(ctx context.Context, campaignID uuid.UUID, limit int) ([]*ent.VolunteerRedemption, error) {
+	q := r.ec(ctx).VolunteerRedemption.Query().
+		Where(volunteerredemption.CampaignIDEQ(campaignID)).
+		Order(volunteerredemption.ByCreatedAt(entDescOpt()))
+	if limit > 0 {
+		q = q.Limit(limit)
+	}
+	rows, err := q.All(ctx)
+	if err != nil {
+		return nil, translateError(err)
+	}
+	return rows, nil
 }

@@ -12,17 +12,17 @@ import (
 	"github.com/google/uuid"
 )
 
-type VolunteerSlot struct {
+type VolunteerRedemption struct {
 	ent.Schema
 }
 
-func (VolunteerSlot) Annotations() []schema.Annotation {
+func (VolunteerRedemption) Annotations() []schema.Annotation {
 	return []schema.Annotation{
-		entsql.Annotation{Table: "volunteer_slot"},
+		entsql.Annotation{Table: "volunteer_redemption"},
 	}
 }
 
-func (VolunteerSlot) Fields() []ent.Field {
+func (VolunteerRedemption) Fields() []ent.Field {
 	return []ent.Field{
 		field.UUID("id", uuid.UUID{}).
 			Default(uuidV7).
@@ -30,14 +30,11 @@ func (VolunteerSlot) Fields() []ent.Field {
 		field.UUID("campaign_id", uuid.UUID{}),
 		field.UUID("order_id", uuid.UUID{}).
 			Unique(),
-		field.String("reserved_by_session").
+		field.UUID("station_device_id", uuid.UUID{}).
+			Optional().
+			Nillable(),
+		field.String("idempotency_key").
 			MaxLen(64).
-			Optional().
-			Nillable(),
-		field.Time("reserved_at").
-			Optional().
-			Nillable(),
-		field.Time("reserved_until").
 			Optional().
 			Nillable(),
 		field.Time("created_at").
@@ -46,10 +43,10 @@ func (VolunteerSlot) Fields() []ent.Field {
 	}
 }
 
-func (VolunteerSlot) Edges() []ent.Edge {
+func (VolunteerRedemption) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("campaign", VolunteerCampaign.Type).
-			Ref("slots").
+			Ref("redemptions").
 			Field("campaign_id").
 			Unique().
 			Required(),
@@ -60,9 +57,8 @@ func (VolunteerSlot) Edges() []ent.Edge {
 	}
 }
 
-func (VolunteerSlot) Indexes() []ent.Index {
+func (VolunteerRedemption) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("campaign_id", "reserved_until"),
-		index.Fields("reserved_by_session"),
+		index.Fields("campaign_id"),
 	}
 }
