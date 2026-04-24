@@ -114,7 +114,6 @@ type volunteerService struct {
 	orders      repository.OrderRepository
 	lines       repository.OrderLineRepository
 	payments    repository.OrderPaymentRepository
-	products    *repository.ProductRepository
 	stations    StationService
 }
 
@@ -125,7 +124,6 @@ func NewVolunteerService(
 	orders repository.OrderRepository,
 	lines repository.OrderLineRepository,
 	payments repository.OrderPaymentRepository,
-	products *repository.ProductRepository,
 	stations StationService,
 ) VolunteerService {
 	return &volunteerService{
@@ -135,7 +133,6 @@ func NewVolunteerService(
 		orders:      orders,
 		lines:       lines,
 		payments:    payments,
-		products:    products,
 		stations:    stations,
 	}
 }
@@ -200,31 +197,9 @@ func (s *volunteerService) CreateCampaign(ctx context.Context, input CreateVolun
 }
 
 type productSnapshot struct {
-	ID         uuid.UUID
-	Name       string
-	PriceCents int64
-	Quantity   int
-}
-
-func (s *volunteerService) loadProductSnapshots(ctx context.Context, items []repository.VolunteerCampaignProductInput) ([]productSnapshot, error) {
-	out := make([]productSnapshot, 0, len(items))
-	for _, it := range items {
-		p, err := s.products.GetByID(ctx, it.ProductID)
-		if err != nil {
-			return nil, fmt.Errorf("load product %s: %w", it.ProductID, err)
-		}
-		qty := it.Quantity
-		if qty <= 0 {
-			qty = 1
-		}
-		out = append(out, productSnapshot{
-			ID:         p.ID,
-			Name:       p.Name,
-			PriceCents: p.PriceCents,
-			Quantity:   qty,
-		})
-	}
-	return out, nil
+	ID       uuid.UUID
+	Name     string
+	Quantity int
 }
 
 func (s *volunteerService) createGratisOrder(ctx context.Context, products []productSnapshot) (uuid.UUID, error) {
