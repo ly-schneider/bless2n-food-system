@@ -2,7 +2,7 @@ import java.util.regex.Pattern
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 fun semverFromTag(): Triple<Int, Int, Int> {
-    val raw = (System.getenv("GITHUB_REF_NAME") ?: System.getenv("VERSION_TAG") ?: "")
+    val raw = (System.getenv("VERSION_TAG") ?: System.getenv("GITHUB_REF_NAME") ?: "")
     val tag = raw.removePrefix("v")
     val m = Pattern.compile("""^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$""").matcher(tag)
     return if (m.matches()) Triple(
@@ -10,6 +10,12 @@ fun semverFromTag(): Triple<Int, Int, Int> {
         m.group(2).toInt(),
         m.group(3).toInt()
     ) else Triple(0, 0, 1)
+}
+
+fun appendChannel(base: String, channel: String): String {
+    if (base.isBlank()) return ""
+    val sep = if (base.contains("?")) "&" else "?"
+    return "$base${sep}channel=$channel"
 }
 
 val (maj, min, pat) = semverFromTag()
@@ -108,7 +114,7 @@ android {
             buildConfigField("boolean", "DEV_BUILD", "false")
 
             val updateCheckUrl = (project.findProperty("updateCheckUrl") as String?) ?: System.getenv("UPDATE_CHECK_URL") ?: ""
-            buildConfigField("String", "UPDATE_CHECK_URL", "\"$updateCheckUrl\"")
+            buildConfigField("String", "UPDATE_CHECK_URL", "\"${appendChannel(updateCheckUrl, "production")}\"")
 
             // App name for Play/production builds
             resValue("string", "app_name", "BlessThun Food")
@@ -146,7 +152,7 @@ android {
             buildConfigField("boolean", "DEV_BUILD", "false")
 
             val updateCheckUrl = (project.findProperty("updateCheckUrl") as String?) ?: System.getenv("UPDATE_CHECK_URL") ?: ""
-            buildConfigField("String", "UPDATE_CHECK_URL", "\"$updateCheckUrl\"")
+            buildConfigField("String", "UPDATE_CHECK_URL", "\"${appendChannel(updateCheckUrl, "staging")}\"")
 
             // App name for staging builds
             resValue("string", "app_name", "BlessThun Food (Staging)")

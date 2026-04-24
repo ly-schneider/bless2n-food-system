@@ -24,7 +24,17 @@ type AndroidRelease struct {
 }
 
 type AndroidUpdateService interface {
-	GetLatestRelease(ctx context.Context) (*AndroidRelease, error)
+	GetLatestRelease(ctx context.Context, channel string) (*AndroidRelease, error)
+}
+
+var validChannels = map[string]struct{}{
+	"staging":    {},
+	"production": {},
+}
+
+type cachedRelease struct {
+	release *AndroidRelease
+	at      time.Time
 }
 
 type androidUpdateService struct {
@@ -33,8 +43,7 @@ type androidUpdateService struct {
 	logger    *zap.Logger
 
 	mu       sync.Mutex
-	cached   *AndroidRelease
-	cachedAt time.Time
+	cache    map[string]cachedRelease
 	cacheTTL time.Duration
 }
 
@@ -45,27 +54,31 @@ func NewAndroidUpdateService(cfg config.AndroidConfig, logger *zap.Logger) Andro
 		repoOwner: owner,
 		repoName:  repo,
 		logger:    logger,
+		cache:     make(map[string]cachedRelease),
 		cacheTTL:  5 * time.Minute,
 	}
 }
 
-func (s *androidUpdateService) GetLatestRelease(ctx context.Context) (*AndroidRelease, error) {
+func (s *androidUpdateService) GetLatestRelease(ctx context.Context, channel string) (*AndroidRelease, error) {
+	if _, ok := validChannels[channel]; !ok {
+		return nil, fmt.Errorf("android update: invalid channel %q", channel)
+	}
+
 	s.mu.Lock()
-	if s.cached != nil && time.Since(s.cachedAt) < s.cacheTTL {
-		result := s.cached
+	if entry, ok := s.cache[channel]; ok && time.Since(entry.at) < s.cacheTTL {
+		result := entry.release
 		s.mu.Unlock()
 		return result, nil
 	}
 	s.mu.Unlock()
 
-	release, err := s.fetchLatestRelease(ctx)
+	release, err := s.fetchLatestRelease(ctx, channel)
 	if err != nil {
 		return nil, err
 	}
 
 	s.mu.Lock()
-	s.cached = release
-	s.cachedAt = time.Now()
+	s.cache[channel] = cachedRelease{release: release, at: time.Now()}
 	s.mu.Unlock()
 
 	return release, nil
@@ -81,7 +94,8 @@ type ghAsset struct {
 	BrowserDownloadURL string `json:"browser_download_url"`
 }
 
-func (s *androidUpdateService) fetchLatestRelease(ctx context.Context) (*AndroidRelease, error) {
+func (s *androidUpdateService) fetchLatestRelease(ctx context.Context, channel string) (*AndroidRelease, error) {
+	tagPrefix := "android-" + channel + "-v"
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases", s.repoOwner, s.repoName)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -106,11 +120,11 @@ func (s *androidUpdateService) fetchLatestRelease(ctx context.Context) (*Android
 	}
 
 	for _, rel := range releases {
-		if !strings.HasPrefix(rel.TagName, "android-production-v") {
+		if !strings.HasPrefix(rel.TagName, tagPrefix) {
 			continue
 		}
 
-		versionStr := strings.TrimPrefix(rel.TagName, "android-production-v")
+		versionStr := strings.TrimPrefix(rel.TagName, tagPrefix)
 		versionCode, err := parseVersionCode(versionStr)
 		if err != nil {
 			s.logger.Warn("android update: invalid version in tag", zap.String("tag", rel.TagName), zap.Error(err))
