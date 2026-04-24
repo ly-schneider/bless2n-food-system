@@ -111,7 +111,7 @@ jobs:
           BFS_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           BFS_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           BFS_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}
-          UPDATE_CHECK_URL: ${{ secrets.UPDATE_CHECK_URL }}
+          UPDATE_CHECK_URL: ${{ vars.UPDATE_CHECK_URL }}
         run: |
           # Build the appropriate variant based on environment
           if [ "${{ inputs.environment }}" == "staging" ]; then
