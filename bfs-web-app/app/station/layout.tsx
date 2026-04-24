@@ -37,13 +37,12 @@ export const viewport: Viewport = {
 export default function StationLayout({ children }: { children: React.ReactNode }) {
   return (
     <main className="flex min-h-screen flex-col px-2">
-      <div className="flex items-center justify-between gap-3 pt-6">
-        <div className="w-[120px]" aria-hidden />
+      <div className="relative flex items-center justify-center pt-6">
         <div className="inline-flex items-center gap-3">
           <Image src="/assets/images/blessthun.png" alt="BlessThun Logo" width={40} height={40} className="h-10 w-10" />
           <span className="text-lg font-semibold tracking-tight">BlessThun Food</span>
         </div>
-        <div className="flex w-[120px] justify-end">
+        <div className="absolute top-6 right-2">
           <InstallPrompt />
         </div>
       </div>

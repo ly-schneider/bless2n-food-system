@@ -23,9 +23,16 @@ export function InstallPrompt() {
 
   return (
     <>
-      <Button type="button" variant="outline" size="sm" onClick={handleClick} className="gap-2">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={handleClick}
+        aria-label="Installieren"
+        className="gap-1.5 px-2 sm:px-3"
+      >
         <DownloadIcon className="size-4" />
-        Installieren
+        <span className="hidden sm:inline">Installieren</span>
       </Button>
       <Dialog open={iosInstructionsOpen} onOpenChange={setIosInstructionsOpen}>
         <DialogContent className="sm:max-w-sm">

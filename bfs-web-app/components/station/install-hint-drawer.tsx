@@ -77,7 +77,7 @@ export function InstallHintDrawer() {
     <Drawer open={open} onOpenChange={handleOpenChange}>
       <DrawerContent className="mx-auto w-full sm:max-w-md">
         <DrawerHeader className="items-start gap-2 pt-6">
-          <div className="bg-primary/10 text-primary flex size-12 items-center justify-center rounded-2xl">
+          <div className="bg-primary/10 text-primary mb-3 flex size-12 items-center justify-center rounded-2xl">
             <DownloadIcon className="size-6" />
           </div>
           <DrawerTitle className="text-xl">Station-Scanner installieren</DrawerTitle>
