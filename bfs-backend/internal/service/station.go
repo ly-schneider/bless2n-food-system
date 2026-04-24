@@ -20,6 +20,7 @@ type StationService interface {
 	GetStationByID(ctx context.Context, id uuid.UUID) (*ent.Device, error)
 	SetStationProducts(ctx context.Context, stationID uuid.UUID, productIDs []uuid.UUID) error
 	RemoveStationProduct(ctx context.Context, stationID uuid.UUID, productID uuid.UUID) error
+	ListStationProductIDs(ctx context.Context, stationID uuid.UUID) ([]uuid.UUID, error)
 	AssignedItemsForOrder(ctx context.Context, stationID, orderID uuid.UUID) ([]*ent.OrderLine, error)
 	RedeemAssigned(ctx context.Context, stationID, orderID uuid.UUID, idemKey string) (map[string]any, error)
 }
@@ -90,6 +91,10 @@ func (s *stationService) SetStationProducts(ctx context.Context, stationID uuid.
 
 func (s *stationService) RemoveStationProduct(ctx context.Context, stationID uuid.UUID, productID uuid.UUID) error {
 	return s.deviceProducts.Delete(ctx, stationID, productID)
+}
+
+func (s *stationService) ListStationProductIDs(ctx context.Context, stationID uuid.UUID) ([]uuid.UUID, error) {
+	return s.devices.ListProductIDsByDevice(ctx, stationID)
 }
 
 func (s *stationService) AssignedItemsForOrder(ctx context.Context, stationID, orderID uuid.UUID) ([]*ent.OrderLine, error) {

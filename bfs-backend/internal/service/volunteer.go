@@ -27,14 +27,15 @@ const (
 )
 
 var (
-	ErrVolunteerCampaignNotFound      = errors.New("volunteer_campaign_not_found")
-	ErrVolunteerCampaignInactive      = errors.New("volunteer_campaign_inactive")
-	ErrVolunteerCampaignOutsideValid  = errors.New("volunteer_campaign_outside_validity")
-	ErrVolunteerAccessCodeInvalid     = errors.New("volunteer_access_code_invalid")
-	ErrVolunteerCampaignHasNoProducts = errors.New("volunteer_campaign_has_no_products")
-	ErrVolunteerCampaignInvalidAccess = errors.New("volunteer_access_code_must_be_4_digits")
-	ErrVolunteerMaxRedemptionsReached = errors.New("volunteer_max_redemptions_reached")
-	ErrVolunteerMaxBelowCount         = errors.New("volunteer_max_redemptions_below_current_count")
+	ErrVolunteerCampaignNotFound          = errors.New("volunteer_campaign_not_found")
+	ErrVolunteerCampaignInactive          = errors.New("volunteer_campaign_inactive")
+	ErrVolunteerCampaignOutsideValid      = errors.New("volunteer_campaign_outside_validity")
+	ErrVolunteerAccessCodeInvalid         = errors.New("volunteer_access_code_invalid")
+	ErrVolunteerCampaignHasNoProducts     = errors.New("volunteer_campaign_has_no_products")
+	ErrVolunteerCampaignInvalidAccess     = errors.New("volunteer_access_code_must_be_4_digits")
+	ErrVolunteerMaxRedemptionsReached     = errors.New("volunteer_max_redemptions_reached")
+	ErrVolunteerMaxBelowCount             = errors.New("volunteer_max_redemptions_below_current_count")
+	ErrVolunteerStationNoMatchingProducts = errors.New("volunteer_station_has_no_matching_products")
 )
 
 type VolunteerService interface {
@@ -421,6 +422,7 @@ func (s *volunteerService) RedeemSharedQR(ctx context.Context, claimToken uuid.U
 		return nil, ErrVolunteerCampaignHasNoProducts
 	}
 	products := make([]productSnapshot, 0, len(cps))
+	campaignProductIDs := make(map[uuid.UUID]struct{}, len(cps))
 	for _, cp := range cps {
 		p, _ := cp.Edges.ProductOrErr()
 		name := ""
@@ -436,6 +438,22 @@ func (s *volunteerService) RedeemSharedQR(ctx context.Context, claimToken uuid.U
 			Name:     name,
 			Quantity: qty,
 		})
+		campaignProductIDs[cp.ProductID] = struct{}{}
+	}
+
+	stationProductIDs, err := s.stations.ListStationProductIDs(ctx, stationID)
+	if err != nil {
+		return nil, fmt.Errorf("list station products: %w", err)
+	}
+	hasMatch := false
+	for _, pid := range stationProductIDs {
+		if _, ok := campaignProductIDs[pid]; ok {
+			hasMatch = true
+			break
+		}
+	}
+	if !hasMatch {
+		return nil, ErrVolunteerStationNoMatchingProducts
 	}
 
 	incremented, err := s.campaigns.IncrementRedemptionAtomic(ctx, campaign.ID)

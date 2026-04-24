@@ -324,6 +324,8 @@ func (h *Handlers) writeVolunteerError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusConflict, "max_redemptions_reached", "This campaign has reached its maximum number of redemptions.")
 	case errors.Is(err, service.ErrVolunteerMaxBelowCount):
 		writeError(w, http.StatusConflict, "max_redemptions_below_count", "New maximum cannot be lower than the current redemption count.")
+	case errors.Is(err, service.ErrVolunteerStationNoMatchingProducts):
+		writeError(w, http.StatusConflict, "station_no_matching_products", "Diese Station bietet keine Artikel aus diesem Helfer-Essen an.")
 	default:
 		h.logger.Error("volunteer error", zap.Error(err))
 		writeError(w, http.StatusInternalServerError, "internal_error", err.Error())

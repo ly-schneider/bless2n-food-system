@@ -46,7 +46,8 @@ func (h *Handlers) RedeemCampaignAtStation(w http.ResponseWriter, r *http.Reques
 			errors.Is(err, service.ErrVolunteerCampaignInactive) ||
 			errors.Is(err, service.ErrVolunteerCampaignOutsideValid) ||
 			errors.Is(err, service.ErrVolunteerMaxRedemptionsReached) ||
-			errors.Is(err, service.ErrVolunteerCampaignHasNoProducts) {
+			errors.Is(err, service.ErrVolunteerCampaignHasNoProducts) ||
+			errors.Is(err, service.ErrVolunteerStationNoMatchingProducts) {
 			h.writeVolunteerError(w, err)
 			return
 		}
