@@ -1,6 +1,7 @@
 import { Metadata, Viewport } from "next"
 import Image from "next/image"
 import { VersionLabel } from "@/components/layout/version-label"
+import { InstallHintDrawer } from "@/components/station/install-hint-drawer"
 import { InstallPrompt } from "@/components/station/install-prompt"
 import { PWARuntime } from "@/components/station/pwa-runtime"
 import { ServiceWorkerRegister } from "@/components/station/service-worker-register"
@@ -50,6 +51,7 @@ export default function StationLayout({ children }: { children: React.ReactNode 
       <VersionLabel className="pb-6 text-center text-sm" version={process.env.APP_VERSION} />
       <ServiceWorkerRegister />
       <PWARuntime />
+      <InstallHintDrawer />
     </main>
   )
 }
