@@ -69,7 +69,9 @@ android {
     signingConfigs {
         create("release") {
             val buildingRelease =
-                gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
+                gradle.startParameter.taskNames.any {
+                    it.contains("Release", ignoreCase = true) || it.contains("Staging", ignoreCase = true)
+                }
 
             val storeFilePath = (System.getenv("BFS_UPLOAD_STORE_FILE")
                 ?: project.findProperty("BFS_UPLOAD_STORE_FILE") as String?) ?: ""
@@ -140,8 +142,7 @@ android {
         // Optional staging buildType for pre-prod testing
         create("staging") {
             initWith(getByName("release"))
-            // Use debug signing by default for convenience; switch if needed
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
             applicationIdSuffix = ".staging"
             versionNameSuffix = "-staging"
 
