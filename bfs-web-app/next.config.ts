@@ -29,6 +29,17 @@ const config: NextConfig = {
       fullUrl: true,
     },
   },
+  async headers() {
+    return [
+      {
+        source: "/station-sw.js",
+        headers: [
+          { key: "Service-Worker-Allowed", value: "/station" },
+          { key: "Cache-Control", value: "no-cache" },
+        ],
+      },
+    ]
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 2592000,
