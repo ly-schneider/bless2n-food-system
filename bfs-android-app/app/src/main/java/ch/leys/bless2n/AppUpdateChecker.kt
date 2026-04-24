@@ -3,6 +3,7 @@ package ch.leys.bless2n
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
+import android.util.Log
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import org.json.JSONObject
@@ -12,11 +13,18 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
 
+private const val TAG = "AppUpdateChecker"
+
 class AppUpdateChecker(private val activity: Activity) {
 
     fun checkForUpdate() {
         val url = BuildConfig.UPDATE_CHECK_URL
-        if (url.isBlank()) return
+        if (url.isBlank()) {
+            Log.w(TAG, "UPDATE_CHECK_URL is blank; skipping update check")
+            return
+        }
+
+        Log.i(TAG, "Checking for update: url=$url currentVersionCode=${BuildConfig.VERSION_CODE}")
 
         Thread {
             try {
@@ -27,7 +35,8 @@ class AppUpdateChecker(private val activity: Activity) {
                 conn.setRequestProperty("Accept", "application/json")
 
                 val code = conn.responseCode
-                if (code == 204 || code != 200) {
+                if (code != 200) {
+                    Log.w(TAG, "Update endpoint returned HTTP $code")
                     conn.disconnect()
                     return@Thread
                 }
@@ -41,8 +50,22 @@ class AppUpdateChecker(private val activity: Activity) {
                 val downloadUrl = json.optString("downloadUrl", "")
                 val sha256 = json.optString("sha256", "")
 
-                if (remoteVersionCode <= BuildConfig.VERSION_CODE) return@Thread
-                if (downloadUrl.isBlank()) return@Thread
+                Log.i(
+                    TAG,
+                    "Remote release: versionCode=$remoteVersionCode versionName=$remoteVersionName downloadUrl=$downloadUrl"
+                )
+
+                if (remoteVersionCode <= BuildConfig.VERSION_CODE) {
+                    Log.i(
+                        TAG,
+                        "Remote versionCode $remoteVersionCode <= current ${BuildConfig.VERSION_CODE}; no update"
+                    )
+                    return@Thread
+                }
+                if (downloadUrl.isBlank()) {
+                    Log.w(TAG, "Remote release missing downloadUrl; skipping")
+                    return@Thread
+                }
 
                 activity.runOnUiThread {
                     AlertDialog.Builder(activity)
@@ -55,7 +78,8 @@ class AppUpdateChecker(private val activity: Activity) {
                         .setCancelable(true)
                         .show()
                 }
-            } catch (_: Throwable) {
+            } catch (t: Throwable) {
+                Log.e(TAG, "Update check failed", t)
             }
         }.start()
     }
