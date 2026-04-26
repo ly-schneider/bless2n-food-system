@@ -1840,7 +1840,7 @@
       {
         "datasource": {
           "type": "grafana-azure-monitor-datasource",
-          "uid": "${azmon_ds}"
+          "uid": "azmon-staging"
         },
         "definition": "",
         "hide": 0,
