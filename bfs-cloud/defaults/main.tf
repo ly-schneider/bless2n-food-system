@@ -128,11 +128,6 @@ locals {
   frontend_url    = "https://${local.frontend_domain}"
   backend_url     = "https://${local.backend_domain}"
 
-  umami_website_id = {
-    staging    = "da115eac-4999-4552-8210-c8fbe1dc49e1"
-    production = "e910e40b-977e-459e-9f12-6cb95f44fc67"
-  }
-
   registry_host   = "ghcr.io"
   registry_prefix = "ly-schneider/bless2n-food-system"
   registry_user   = "ly-schneider"
@@ -192,7 +187,6 @@ output "config" {
           NEXT_PUBLIC_APP_VERSION      = var.image_tag
           NEXT_PUBLIC_POS_PIN          = "0000"
           NEXT_PUBLIC_POS_IDLE_TIMEOUT = "300000"
-          NEXT_PUBLIC_UMAMI_WEBSITE_ID = local.umami_website_id[var.env]
           NEXT_PUBLIC_API_BASE_URL     = local.backend_url
           NEXT_PUBLIC_APP_URL          = local.frontend_url
           BETTER_AUTH_URL              = local.frontend_url
