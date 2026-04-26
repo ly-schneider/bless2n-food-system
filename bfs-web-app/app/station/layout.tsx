@@ -2,6 +2,7 @@ import { Metadata, Viewport } from "next"
 import Image from "next/image"
 import { VersionLabel } from "@/components/layout/version-label"
 import { FullscreenButton } from "@/components/station/fullscreen-button"
+import { HardRefreshButton } from "@/components/station/hard-refresh-button"
 import { PWARuntime } from "@/components/station/pwa-runtime"
 import { ServiceWorkerRegister } from "@/components/station/service-worker-register"
 
@@ -41,7 +42,8 @@ export default function StationLayout({ children }: { children: React.ReactNode 
           <Image src="/assets/images/blessthun.png" alt="BlessThun Logo" width={40} height={40} className="h-10 w-10" />
           <span className="text-lg font-semibold tracking-tight">BlessThun Food</span>
         </div>
-        <div className="absolute top-6 right-2">
+        <div className="absolute top-6 right-2 flex items-center gap-1.5">
+          <HardRefreshButton />
           <FullscreenButton />
         </div>
       </div>
