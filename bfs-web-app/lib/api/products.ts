@@ -13,6 +13,7 @@ interface RawSlotOption {
   name?: string
   priceCents?: number
   image?: string | null
+  description?: string | null
   jeton?: { id: string; name: string; color: string } | null
 }
 
@@ -53,6 +54,7 @@ function normalizeProduct(raw: RawProduct): ProductDTO {
               priceCents: opt.priceCents ?? 0,
               type: "simple" as const,
               image: opt.image ?? null,
+              description: opt.description ?? null,
               isActive: true,
               isAvailable: true,
               category: null as unknown as ProductSummaryDTO["category"],

@@ -135,6 +135,10 @@ MenuSlotSummary:
           image:
             type: string
             nullable: true
+          description:
+            type: string
+            maxLength: 500
+            nullable: true
           jeton:
             $ref: "jetons.yaml#/JetonSummary"
             nullable: true

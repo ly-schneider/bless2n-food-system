@@ -388,27 +388,24 @@ func toAPIMenuSlotSummary(e *ent.MenuSlot) generated.MenuSlotSummary {
 
 	// Map Options edge if loaded, producing inline option summaries.
 	if opts, err := e.Edges.OptionsOrErr(); err == nil {
-		optSummaries := make([]struct {
-			Image      *string                 `json:"image"`
-			Jeton      *generated.JetonSummary `json:"jeton,omitempty"`
-			Name       *string                 `json:"name,omitempty"`
-			PriceCents *int64                  `json:"priceCents,omitempty"`
-			ProductId  *openapi_types.UUID     `json:"productId,omitempty"`
-		}, 0, len(opts))
+		type optEntry = struct {
+			Description *string                 `json:"description"`
+			Image       *string                 `json:"image"`
+			Jeton       *generated.JetonSummary `json:"jeton,omitempty"`
+			Name        *string                 `json:"name,omitempty"`
+			PriceCents  *int64                  `json:"priceCents,omitempty"`
+			ProductId   *openapi_types.UUID     `json:"productId,omitempty"`
+		}
+		optSummaries := make([]optEntry, 0, len(opts))
 		for _, o := range opts {
-			entry := struct {
-				Image      *string                 `json:"image"`
-				Jeton      *generated.JetonSummary `json:"jeton,omitempty"`
-				Name       *string                 `json:"name,omitempty"`
-				PriceCents *int64                  `json:"priceCents,omitempty"`
-				ProductId  *openapi_types.UUID     `json:"productId,omitempty"`
-			}{
+			entry := optEntry{
 				ProductId: ptr(openapi_types.UUID(o.OptionProductID)),
 			}
 			if o.Edges.OptionProduct != nil {
 				entry.Name = ptr(o.Edges.OptionProduct.Name)
 				entry.PriceCents = ptr(o.Edges.OptionProduct.PriceCents)
 				entry.Image = o.Edges.OptionProduct.Image
+				entry.Description = o.Edges.OptionProduct.Description
 				if o.Edges.OptionProduct.Edges.Jeton != nil {
 					js := toAPIJetonSummary(o.Edges.OptionProduct.Edges.Jeton)
 					entry.Jeton = &js

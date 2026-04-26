@@ -14,6 +14,7 @@ interface ProductConfigurationModalProps {
   onClose: () => void
   initialConfiguration?: CartItemConfiguration
   editingItemId?: string // when provided, modal acts in edit mode
+  isPOS?: boolean
 }
 
 export function ProductConfigurationModal({
@@ -22,6 +23,7 @@ export function ProductConfigurationModal({
   onClose,
   initialConfiguration,
   editingItemId,
+  isPOS = false,
 }: ProductConfigurationModalProps) {
   const { addToCart, updateItemConfiguration } = useCart()
   const [selectedConfiguration, setSelectedConfiguration] = useState<CartItemConfiguration>(initialConfiguration || {})
@@ -91,6 +93,7 @@ export function ProductConfigurationModal({
                 slot={slot}
                 selectedProductId={selectedConfiguration[slot.id]}
                 onSelect={(productId) => handleSlotSelection(slot.id, productId)}
+                showDescription={!isPOS}
               />
             ))}
         </div>
@@ -120,9 +123,10 @@ interface MenuSlotSelectorProps {
   slot: MenuSlotDTO
   selectedProductId?: string
   onSelect: (productId: string) => void
+  showDescription?: boolean
 }
 
-function MenuSlotSelector({ slot, selectedProductId, onSelect }: MenuSlotSelectorProps) {
+function MenuSlotSelector({ slot, selectedProductId, onSelect, showDescription = false }: MenuSlotSelectorProps) {
   if (!slot.options) {
     return null
   }
@@ -177,7 +181,14 @@ function MenuSlotSelector({ slot, selectedProductId, onSelect }: MenuSlotSelecto
                       </div>
                     </div>
                   )}
-                  <h4 className="font-family-secondary font-medium">{item.name}</h4>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-family-secondary font-medium">{item.name}</h4>
+                    {showDescription && item.description && (
+                      <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs whitespace-pre-line">
+                        {item.description}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

@@ -931,6 +931,7 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
           onClose={() => setEditingItem(null)}
           initialConfiguration={editingItem.configuration}
           editingItemId={editingItem.id}
+          isPOS
         />
       )}
 

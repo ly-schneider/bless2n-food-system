@@ -420,6 +420,7 @@ function PosInner() {
                   setConfigOpen(false)
                   setConfigProduct(null)
                 }}
+                isPOS
               />
             )}
           </div>
