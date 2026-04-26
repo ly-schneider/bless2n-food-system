@@ -26,7 +26,7 @@
       "type": "row"
     },
     {
-      "datasource": { "type": "postgres", "uid": "pg-${env}" },
+      "datasource": { "type": "postgres", "uid": "${pg_ds}" },
       "description": "Paid orders placed since local midnight (Europe/Zurich).",
       "fieldConfig": {
         "defaults": {
@@ -58,7 +58,7 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "pg-${env}" },
+          "datasource": { "type": "postgres", "uid": "${pg_ds}" },
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT COUNT(*) AS value FROM \"order\" WHERE created_at >= (date_trunc('day', now() AT TIME ZONE 'Europe/Zurich') AT TIME ZONE 'Europe/Zurich') AND status = 'paid';",
@@ -69,7 +69,7 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "postgres", "uid": "pg-${env}" },
+      "datasource": { "type": "postgres", "uid": "${pg_ds}" },
       "description": "Sum of payments taken since local midnight, excluding GRATIS_* methods.",
       "fieldConfig": {
         "defaults": {
@@ -101,7 +101,7 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "pg-${env}" },
+          "datasource": { "type": "postgres", "uid": "${pg_ds}" },
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT COALESCE(SUM(amount_cents), 0) / 100.0 AS value FROM order_payment WHERE paid_at >= (date_trunc('day', now() AT TIME ZONE 'Europe/Zurich') AT TIME ZONE 'Europe/Zurich') AND method::text NOT LIKE 'GRATIS_%';",
@@ -112,7 +112,7 @@
       "type": "stat"
     },
     {
-      "datasource": { "type": "postgres", "uid": "pg-${env}" },
+      "datasource": { "type": "postgres", "uid": "${pg_ds}" },
       "description": "Share of orders that reached `paid` status over the last hour (paid / (paid + cancelled)).",
       "fieldConfig": {
         "defaults": {
@@ -151,7 +151,7 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "pg-${env}" },
+          "datasource": { "type": "postgres", "uid": "${pg_ds}" },
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT 100.0 * COUNT(*) FILTER (WHERE status = 'paid')::float / NULLIF(COUNT(*), 0) AS value FROM \"order\" WHERE updated_at > NOW() - INTERVAL '1 hour' AND status IN ('paid', 'cancelled');",
@@ -164,7 +164,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "azmon-${env}"
+        "uid": "${azmon_ds}"
       },
       "description": "Share of non-5xx responses over the last 24h. Parses `status` from backend JSON logs.",
       "fieldConfig": {
@@ -210,7 +210,7 @@
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
-            "uid": "azmon-${env}"
+            "uid": "${azmon_ds}"
           },
           "queryType": "Azure Log Analytics",
           "refId": "A"
@@ -222,7 +222,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "azmon-${env}"
+        "uid": "${azmon_ds}"
       },
       "description": "95th percentile backend request latency over the last 5 minutes. Parses `latency_ms` from backend logs.",
       "fieldConfig": {
@@ -266,7 +266,7 @@
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
-            "uid": "azmon-${env}"
+            "uid": "${azmon_ds}"
           },
           "queryType": "Azure Log Analytics",
           "refId": "A"
@@ -278,7 +278,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "azmon-${env}"
+        "uid": "${azmon_ds}"
       },
       "description": "Share of 5xx responses over the last 5 minutes. Parses `status` from backend logs.",
       "fieldConfig": {
@@ -323,7 +323,7 @@
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
-            "uid": "azmon-${env}"
+            "uid": "${azmon_ds}"
           },
           "queryType": "Azure Log Analytics",
           "refId": "A"
@@ -341,7 +341,7 @@
       "type": "row"
     },
     {
-      "datasource": { "type": "postgres", "uid": "pg-${env}" },
+      "datasource": { "type": "postgres", "uid": "${pg_ds}" },
       "description": "Revenue per hour from non-GRATIS payments over the selected range.",
       "fieldConfig": {
         "defaults": {
@@ -388,7 +388,7 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "pg-${env}" },
+          "datasource": { "type": "postgres", "uid": "${pg_ds}" },
           "format": "time_series",
           "rawQuery": true,
           "rawSql": "SELECT\n  $__timeGroupAlias(paid_at, 1h),\n  COALESCE(SUM(amount_cents), 0) / 100.0 AS \"CHF\"\nFROM order_payment\nWHERE $__timeFilter(paid_at)\n  AND method::text NOT LIKE 'GRATIS_%'\nGROUP BY 1\nORDER BY 1;",
@@ -399,7 +399,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "postgres", "uid": "pg-${env}" },
+      "datasource": { "type": "postgres", "uid": "${pg_ds}" },
       "description": "Share of order payments by method over the selected range.",
       "fieldConfig": {
         "defaults": {
@@ -433,7 +433,7 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "pg-${env}" },
+          "datasource": { "type": "postgres", "uid": "${pg_ds}" },
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT method::text AS metric, COUNT(*)::bigint AS value FROM order_payment WHERE $__timeFilter(paid_at) GROUP BY method ORDER BY value DESC;",
@@ -444,7 +444,7 @@
       "type": "piechart"
     },
     {
-      "datasource": { "type": "postgres", "uid": "pg-${env}" },
+      "datasource": { "type": "postgres", "uid": "${pg_ds}" },
       "description": "Paid orders split by origin (shop vs pos) over the selected range.",
       "fieldConfig": {
         "defaults": {
@@ -478,7 +478,7 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "pg-${env}" },
+          "datasource": { "type": "postgres", "uid": "${pg_ds}" },
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT origin::text AS metric, COUNT(*)::bigint AS value FROM \"order\" WHERE $__timeFilter(created_at) AND status = 'paid' GROUP BY origin;",
@@ -497,7 +497,7 @@
       "type": "row"
     },
     {
-      "datasource": { "type": "postgres", "uid": "pg-${env}" },
+      "datasource": { "type": "postgres", "uid": "${pg_ds}" },
       "description": "Top 15 products by units sold in the selected range. Paid orders only.",
       "fieldConfig": {
         "defaults": {
@@ -529,7 +529,7 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "pg-${env}" },
+          "datasource": { "type": "postgres", "uid": "${pg_ds}" },
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT p.name AS product, SUM(ol.quantity)::bigint AS units FROM order_line ol JOIN \"order\" o ON o.id = ol.order_id JOIN product p ON p.id = ol.product_id WHERE $__timeFilter(o.created_at) AND o.status = 'paid' GROUP BY p.name ORDER BY units DESC LIMIT 15;",
@@ -540,7 +540,7 @@
       "type": "bargauge"
     },
     {
-      "datasource": { "type": "postgres", "uid": "pg-${env}" },
+      "datasource": { "type": "postgres", "uid": "${pg_ds}" },
       "description": "Top 15 products by gross revenue in the selected range. Paid orders only.",
       "fieldConfig": {
         "defaults": {
@@ -573,7 +573,7 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "pg-${env}" },
+          "datasource": { "type": "postgres", "uid": "${pg_ds}" },
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT p.name AS product, (SUM(ol.quantity * ol.unit_price_cents) / 100.0)::numeric(12,2) AS chf FROM order_line ol JOIN \"order\" o ON o.id = ol.order_id JOIN product p ON p.id = ol.product_id WHERE $__timeFilter(o.created_at) AND o.status = 'paid' GROUP BY p.name ORDER BY chf DESC LIMIT 15;",
@@ -592,7 +592,7 @@
       "type": "row"
     },
     {
-      "datasource": { "type": "postgres", "uid": "pg-${env}" },
+      "datasource": { "type": "postgres", "uid": "${pg_ds}" },
       "description": "Order volume over the selected range, split by terminal status.",
       "fieldConfig": {
         "defaults": {
@@ -675,7 +675,7 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "pg-${env}" },
+          "datasource": { "type": "postgres", "uid": "${pg_ds}" },
           "format": "time_series",
           "rawQuery": true,
           "rawSql": "SELECT\n  $__timeGroupAlias(created_at, $__interval),\n  COUNT(*) FILTER (WHERE status = 'pending')::bigint AS pending,\n  COUNT(*) FILTER (WHERE status = 'paid')::bigint AS paid,\n  COUNT(*) FILTER (WHERE status = 'cancelled')::bigint AS cancelled,\n  COUNT(*) FILTER (WHERE status = 'refunded')::bigint AS refunded\nFROM \"order\"\nWHERE $__timeFilter(created_at)\nGROUP BY 1\nORDER BY 1;",
@@ -686,7 +686,7 @@
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "postgres", "uid": "pg-${env}" },
+      "datasource": { "type": "postgres", "uid": "${pg_ds}" },
       "description": "Most recent cancelled or refunded orders in the selected range.",
       "fieldConfig": {
         "defaults": {
@@ -752,7 +752,7 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "pg-${env}" },
+          "datasource": { "type": "postgres", "uid": "${pg_ds}" },
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT created_at, status::text AS status, (total_cents / 100.0)::numeric(12,2) AS chf, origin::text AS origin FROM \"order\" WHERE $__timeFilter(created_at) AND status IN ('cancelled', 'refunded') ORDER BY created_at DESC LIMIT 20;",
@@ -763,7 +763,7 @@
       "type": "table"
     },
     {
-      "datasource": { "type": "postgres", "uid": "pg-${env}" },
+      "datasource": { "type": "postgres", "uid": "${pg_ds}" },
       "description": "Absolute net inventory movement per product today (Europe/Zurich). Highlights fast movers.",
       "fieldConfig": {
         "defaults": {
@@ -795,7 +795,7 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "pg-${env}" },
+          "datasource": { "type": "postgres", "uid": "${pg_ds}" },
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT p.name AS product, ABS(SUM(il.delta))::bigint AS movement FROM inventory_ledger il JOIN product p ON p.id = il.product_id WHERE il.created_at >= (date_trunc('day', now() AT TIME ZONE 'Europe/Zurich') AT TIME ZONE 'Europe/Zurich') GROUP BY p.name HAVING ABS(SUM(il.delta)) > 0 ORDER BY movement DESC LIMIT 10;",
@@ -816,7 +816,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "azmon-${env}"
+        "uid": "${azmon_ds}"
       },
       "description": "Per-app HTTP request rate (Azure Monitor `Requests` metric).",
       "fieldConfig": {
@@ -881,7 +881,7 @@
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
-            "uid": "azmon-${env}"
+            "uid": "${azmon_ds}"
           },
           "queryType": "Azure Monitor",
           "refId": "A",
@@ -894,7 +894,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "azmon-${env}"
+        "uid": "${azmon_ds}"
       },
       "description": "Top 15 routes by request count over the selected time range. Parses `path` from backend logs.",
       "fieldConfig": {
@@ -933,7 +933,7 @@
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
-            "uid": "azmon-${env}"
+            "uid": "${azmon_ds}"
           },
           "queryType": "Azure Log Analytics",
           "refId": "A"
@@ -945,7 +945,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "azmon-${env}"
+        "uid": "${azmon_ds}"
       },
       "description": "Request share per container app over the selected time range.",
       "fieldConfig": {
@@ -986,7 +986,7 @@
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
-            "uid": "azmon-${env}"
+            "uid": "${azmon_ds}"
           },
           "queryType": "Azure Log Analytics",
           "refId": "A"
@@ -1006,7 +1006,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "azmon-${env}"
+        "uid": "${azmon_ds}"
       },
       "description": "p50 / p95 / p99 backend latency. Parses `latency_ms` from backend logs.",
       "fieldConfig": {
@@ -1088,7 +1088,7 @@
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
-            "uid": "azmon-${env}"
+            "uid": "${azmon_ds}"
           },
           "queryType": "Azure Log Analytics",
           "refId": "A"
@@ -1100,7 +1100,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "azmon-${env}"
+        "uid": "${azmon_ds}"
       },
       "description": "Routes ranked by p95 latency over the selected window. Parses `path` and `latency_ms` from backend logs.",
       "fieldConfig": {
@@ -1169,7 +1169,7 @@
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
-            "uid": "azmon-${env}"
+            "uid": "${azmon_ds}"
           },
           "queryType": "Azure Log Analytics",
           "refId": "A"
@@ -1189,7 +1189,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "azmon-${env}"
+        "uid": "${azmon_ds}"
       },
       "description": "Status code buckets over time. Parses `status` from backend logs.",
       "fieldConfig": {
@@ -1279,7 +1279,7 @@
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
-            "uid": "azmon-${env}"
+            "uid": "${azmon_ds}"
           },
           "queryType": "Azure Log Analytics",
           "refId": "A"
@@ -1291,7 +1291,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "azmon-${env}"
+        "uid": "${azmon_ds}"
       },
       "description": "Top routes by 4xx/5xx count. Parses `path` and `status` from backend logs.",
       "fieldConfig": {
@@ -1377,7 +1377,7 @@
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
-            "uid": "azmon-${env}"
+            "uid": "${azmon_ds}"
           },
           "queryType": "Azure Log Analytics",
           "refId": "A"
@@ -1397,7 +1397,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "azmon-${env}"
+        "uid": "${azmon_ds}"
       },
       "description": "Average CPU usage vs a 1 vCPU (1e9 nanocores) ceiling. Thresholds at 50% / 75% / 90%.",
       "fieldConfig": {
@@ -1452,7 +1452,7 @@
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
-            "uid": "azmon-${env}"
+            "uid": "${azmon_ds}"
           },
           "queryType": "Azure Monitor",
           "refId": "A",
@@ -1465,7 +1465,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "azmon-${env}"
+        "uid": "${azmon_ds}"
       },
       "description": "Working set vs 2 GiB ceiling. Thresholds at 60% / 80% / 90%.",
       "fieldConfig": {
@@ -1519,7 +1519,7 @@
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
-            "uid": "azmon-${env}"
+            "uid": "${azmon_ds}"
           },
           "queryType": "Azure Monitor",
           "refId": "A",
@@ -1532,7 +1532,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "azmon-${env}"
+        "uid": "${azmon_ds}"
       },
       "description": "Replica count over time with threshold line at the scale ceiling (20).",
       "fieldConfig": {
@@ -1593,7 +1593,7 @@
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
-            "uid": "azmon-${env}"
+            "uid": "${azmon_ds}"
           },
           "queryType": "Azure Monitor",
           "refId": "A",
@@ -1606,7 +1606,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "azmon-${env}"
+        "uid": "${azmon_ds}"
       },
       "description": "Container restart count in the selected window. Non-zero means pods are restarting — investigate.",
       "fieldConfig": {
@@ -1661,7 +1661,7 @@
           },
           "datasource": {
             "type": "grafana-azure-monitor-datasource",
-            "uid": "azmon-${env}"
+            "uid": "${azmon_ds}"
           },
           "queryType": "Azure Monitor",
           "refId": "A",
@@ -1802,9 +1802,37 @@
         "type": "custom"
       },
       {
+        "current": { "selected": false, "text": "", "value": "" },
+        "hide": 2,
+        "includeAll": false,
+        "label": "Azure Monitor data source",
+        "multi": false,
+        "name": "azmon_ds",
+        "options": [],
+        "query": "grafana-azure-monitor-datasource",
+        "refresh": 1,
+        "regex": "/^azmon-${env}$/",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "current": { "selected": false, "text": "", "value": "" },
+        "hide": 2,
+        "includeAll": false,
+        "label": "Postgres data source",
+        "multi": false,
+        "name": "pg_ds",
+        "options": [],
+        "query": "postgres",
+        "refresh": 1,
+        "regex": "/^pg-${env}$/",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
         "datasource": {
           "type": "grafana-azure-monitor-datasource",
-          "uid": "azmon-${env}"
+          "uid": "${azmon_ds}"
         },
         "definition": "",
         "hide": 0,
