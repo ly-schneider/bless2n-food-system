@@ -117,6 +117,10 @@ OrderLine:
       type: string
       nullable: true
       description: Product image URL snapshot
+    productDescription:
+      type: string
+      nullable: true
+      description: Current product description (resolved from product, not snapshotted)
     childLines:
       type: array
       items:

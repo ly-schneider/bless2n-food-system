@@ -11,6 +11,7 @@ import (
 	"backend/internal/generated/ent/product"
 	"backend/internal/response"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	"go.uber.org/zap"
@@ -288,6 +289,50 @@ func (h *Handlers) AdjustProductInventory(w http.ResponseWriter, r *http.Request
 		ProductId: openapi_types.UUID(id),
 		Quantity:  int(stock),
 	})
+}
+
+// SetProductActive toggles isActive for a product or menu from a POS device.
+// PATCH /v1/pos/products/{productId}/active
+func (h *Handlers) SetProductActive(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	id, err := uuid.Parse(chi.URLParam(r, "productId"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_id", "Invalid product id")
+		return
+	}
+
+	var body struct {
+		IsActive *bool `json:"isActive"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.IsActive == nil {
+		writeError(w, http.StatusBadRequest, "invalid_body", "isActive required")
+		return
+	}
+
+	existing, err := h.products.GetByID(ctx, id)
+	if err != nil {
+		writeEntError(w, err)
+		return
+	}
+
+	prod, err := h.products.Update(
+		ctx,
+		id,
+		existing.CategoryID,
+		existing.Type,
+		existing.Name,
+		existing.PriceCents,
+		*body.IsActive,
+		existing.Image,
+		existing.Description,
+		existing.JetonID,
+	)
+	if err != nil {
+		writeEntError(w, err)
+		return
+	}
+	response.WriteJSON(w, http.StatusOK, toAPIProduct(prod))
 }
 
 var allowedImageTypes = map[string]bool{

@@ -119,3 +119,16 @@ export async function listProducts(params: ListProductsParams = {}): Promise<Lis
 
   return { ...raw, items }
 }
+
+export async function setProductActive(token: string, productId: string, isActive: boolean): Promise<ProductDTO> {
+  const res = await fetch(`/api/v1/pos/products/${encodeURIComponent(productId)}/active`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ isActive }),
+  })
+  if (!res.ok) throw new Error("active_update_failed")
+  return (await res.json()) as ProductDTO
+}

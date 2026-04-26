@@ -6,6 +6,7 @@ export interface Menu {
   categoryId: string
   name: string
   image: string | null
+  description: string | null
   priceCents: number
   isActive: boolean
   createdAt: string

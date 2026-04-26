@@ -109,6 +109,7 @@ func NewRouter(
 			pos.Get("/club100/people", wrapper.ListClub100People)
 			pos.Get("/club100/remaining/{elvantoPersonId}", wrapper.GetClub100Remaining)
 			pos.Patch("/pos/products/{productId}/inventory", wrapper.AdjustProductInventory)
+			pos.Patch("/pos/products/{productId}/active", apiHandlers.SetProductActive)
 		})
 
 		// ── Orders (anonymous allowed, blocked when disabled) ────

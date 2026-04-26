@@ -45,6 +45,11 @@ func (h *Handlers) CreateMenu(w http.ResponseWriter, r *http.Request) {
 		priceCents = *body.PriceCents
 	}
 
+	description := body.Description
+	if description != nil && *description == "" {
+		description = nil
+	}
+
 	prod, err := h.products.Create(
 		r.Context(),
 		uuid.UUID(body.CategoryId),
@@ -53,7 +58,7 @@ func (h *Handlers) CreateMenu(w http.ResponseWriter, r *http.Request) {
 		priceCents,
 		true, // isActive
 		body.Image,
-		nil, // description set via product update endpoint
+		description,
 		nil, // no jeton for menus
 	)
 	if err != nil {
@@ -108,6 +113,14 @@ func (h *Handlers) UpdateMenu(w http.ResponseWriter, r *http.Request, menuId ope
 	if body.Image != nil {
 		image = body.Image
 	}
+	description := existing.Description
+	if body.Description != nil {
+		if *body.Description == "" {
+			description = nil
+		} else {
+			description = body.Description
+		}
+	}
 
 	prod, err := h.products.Update(
 		ctx,
@@ -118,7 +131,7 @@ func (h *Handlers) UpdateMenu(w http.ResponseWriter, r *http.Request, menuId ope
 		priceCents,
 		isActive,
 		image,
-		existing.Description,
+		description,
 		nil, // no jeton for menus
 	)
 	if err != nil {
@@ -244,14 +257,15 @@ func (h *Handlers) RemoveSlotOption(w http.ResponseWriter, r *http.Request, menu
 // entProductToAPIMenu converts an ent.Product (type=menu) into a generated.Menu.
 func entProductToAPIMenu(e *ent.Product) generated.Menu {
 	m := generated.Menu{
-		Id:         e.ID,
-		CategoryId: e.CategoryID,
-		Name:       e.Name,
-		Image:      e.Image,
-		PriceCents: e.PriceCents,
-		IsActive:   e.IsActive,
-		CreatedAt:  ptr(e.CreatedAt),
-		UpdatedAt:  ptr(e.UpdatedAt),
+		Id:          e.ID,
+		CategoryId:  e.CategoryID,
+		Name:        e.Name,
+		Image:       e.Image,
+		Description: e.Description,
+		PriceCents:  e.PriceCents,
+		IsActive:    e.IsActive,
+		CreatedAt:   ptr(e.CreatedAt),
+		UpdatedAt:   ptr(e.UpdatedAt),
 	}
 
 	// Map MenuSlots edge if loaded.

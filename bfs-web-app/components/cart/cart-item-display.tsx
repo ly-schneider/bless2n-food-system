@@ -64,6 +64,11 @@ export function CartItemDisplay({
                 <h3 className={`font-family-secondary truncate font-medium ${isPOS ? "text-sm" : "text-lg"}`}>
                   {item.product.name}
                 </h3>
+                {!isPOS && item.product.description && (
+                  <p className="text-muted-foreground line-clamp-2 text-xs whitespace-pre-line">
+                    {item.product.description}
+                  </p>
+                )}
                 {hasConfiguration && (
                   <div className="flex flex-row flex-wrap gap-1.5">
                     {Object.entries(item.configuration || {}).map(([slotId, productId]) => {
@@ -170,6 +175,11 @@ export function CartItemDisplay({
               <h3 className={`font-family-secondary truncate font-medium ${isPOS ? "text-sm" : "text-lg"}`}>
                 {item.product.name}
               </h3>
+              {!isPOS && item.product.description && (
+                <p className="text-muted-foreground line-clamp-2 text-xs whitespace-pre-line">
+                  {item.product.description}
+                </p>
+              )}
               <div className="flex items-center gap-2">
                 {isFullyDiscounted ? (
                   <>

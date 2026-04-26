@@ -200,6 +200,7 @@ func toAPIOrderLine(e *ent.OrderLine) generated.OrderLine {
 
 	if e.Edges.Product != nil {
 		ol.ProductImage = e.Edges.Product.Image
+		ol.ProductDescription = e.Edges.Product.Description
 	}
 
 	// Map Redemption edge if loaded.

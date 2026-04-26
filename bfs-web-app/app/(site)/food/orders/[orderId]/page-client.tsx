@@ -206,6 +206,11 @@ export default function OrderPageClient() {
                       <div className={`flex justify-between gap-3 ${isRedeemed ? "items-start" : "items-center"}`}>
                         <div className="min-w-0">
                           <p className="truncate font-medium">{parent.title}</p>
+                          {parent.productDescription && (
+                            <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs whitespace-pre-line">
+                              {parent.productDescription}
+                            </p>
+                          )}
                           {children.length > 0 && (
                             <div className="mt-1 flex flex-row flex-wrap gap-1.5">
                               {children.map((c) => (

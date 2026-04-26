@@ -38,6 +38,7 @@ export interface OrderLineDTO {
   menuSlotId?: string | null
   menuSlotName?: string | null
   productImage?: string | null
+  productDescription?: string | null
   childLines?: OrderLineDTO[] | null
   redemption?: OrderLineRedemptionDTO | null
 }

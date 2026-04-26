@@ -3,6 +3,7 @@
 import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Pencil, Plus, RefreshCw, Trash2, X } from "lucide-react"
 import Image from "next/image"
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { ImageUpload } from "@/components/admin/image-upload"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +25,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
+import { Textarea } from "@/components/ui/textarea"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
 import { getCSRFToken } from "@/lib/csrf"
 import { readErrorMessage } from "@/lib/http"
@@ -60,7 +62,7 @@ type FetchFn = ReturnType<typeof useAuthorizedFetch>
 
 async function apiCreateMenu(
   fetchAuth: FetchFn,
-  body: { categoryId: string; name: string; priceCents: number; image?: string }
+  body: { categoryId: string; name: string; priceCents: number; image?: string; description?: string | null }
 ): Promise<Menu> {
   const res = await fetchAuth(`/api/v1/menus`, {
     method: "POST",
@@ -71,10 +73,37 @@ async function apiCreateMenu(
   return (await res.json()) as Menu
 }
 
+async function apiUploadMenuImage(fetchAuth: FetchFn, menuId: string, file: File): Promise<string> {
+  const formData = new FormData()
+  formData.append("file", file)
+  const res = await fetchAuth(`/api/v1/products/${encodeURIComponent(menuId)}/image`, {
+    method: "POST",
+    headers: { "X-CSRF": getCSRFToken() || "" },
+    body: formData,
+  })
+  if (!res.ok) throw new Error(await readErrorMessage(res))
+  const data = (await res.json()) as { imageUrl: string }
+  return data.imageUrl
+}
+
+async function apiDeleteMenuImage(fetchAuth: FetchFn, menuId: string): Promise<void> {
+  const res = await fetchAuth(`/api/v1/products/${encodeURIComponent(menuId)}/image`, {
+    method: "DELETE",
+    headers: { "X-CSRF": getCSRFToken() || "" },
+  })
+  if (!res.ok) throw new Error(await readErrorMessage(res))
+}
+
 async function apiUpdateMenu(
   fetchAuth: FetchFn,
   menuId: string,
-  body: Partial<{ name: string; priceCents: number; isActive: boolean; image: string | null }>
+  body: Partial<{
+    name: string
+    priceCents: number
+    isActive: boolean
+    image: string | null
+    description: string | null
+  }>
 ): Promise<Menu> {
   const res = await fetchAuth(`/api/v1/menus/${encodeURIComponent(menuId)}`, {
     method: "PATCH",
@@ -732,6 +761,7 @@ function CreateMenuDialog({
   const [categoryId, setCategoryId] = useState<string>("")
   const [priceInput, setPriceInput] = useState("")
   const [image, setImage] = useState("")
+  const [description, setDescription] = useState("")
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -741,6 +771,7 @@ function CreateMenuDialog({
       setCategoryId("")
       setPriceInput("")
       setImage("")
+      setDescription("")
       setErrors({})
     }
   }, [open])
@@ -761,11 +792,13 @@ function CreateMenuDialog({
     setSaving(true)
     try {
       const cents = parsePriceInputToCents(priceInput) ?? 0
+      const trimmedDescription = description.trim()
       await apiCreateMenu(fetchAuth, {
         categoryId,
         name: name.trim(),
         priceCents: cents,
         ...(image.trim() ? { image: image.trim() } : {}),
+        ...(trimmedDescription ? { description: trimmedDescription } : {}),
       })
       onClose()
       await onCreated()
@@ -836,6 +869,18 @@ function CreateMenuDialog({
               placeholder="https://..."
             />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="create-description">Beschreibung (optional)</Label>
+            <Textarea
+              id="create-description"
+              value={description}
+              maxLength={500}
+              rows={3}
+              placeholder="Optional: Zutaten, Allergene, Hinweise…"
+              onChange={(e) => setDescription(e.target.value)}
+            />
+            <p className="text-muted-foreground text-xs">{description.length}/500</p>
+          </div>
           <div className="flex items-center justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
               Abbrechen
@@ -868,7 +913,8 @@ function EditMenuDialog({
 }) {
   const [name, setName] = useState("")
   const [priceInput, setPriceInput] = useState("")
-  const [image, setImage] = useState("")
+  const [image, setImage] = useState<string | null>(null)
+  const [description, setDescription] = useState("")
   const [isActive, setIsActive] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -876,7 +922,8 @@ function EditMenuDialog({
     if (menu) {
       setName(menu.name)
       setPriceInput((menu.priceCents / 100).toString())
-      setImage(menu.image || "")
+      setImage(menu.image)
+      setDescription(menu.description ?? "")
       setIsActive(menu.isActive)
     }
   }, [menu])
@@ -887,25 +934,27 @@ function EditMenuDialog({
     return (
       name.trim() !== menu.name ||
       (cents !== null && cents !== menu.priceCents) ||
-      (image.trim() || null) !== (menu.image || null) ||
+      description.trim() !== (menu.description ?? "") ||
       isActive !== menu.isActive
     )
-  }, [menu, name, priceInput, image, isActive])
+  }, [menu, name, priceInput, description, isActive])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!menu || !dirty) return
     setSaving(true)
     try {
-      const patch: Record<string, unknown> = {}
+      const patch: Parameters<typeof apiUpdateMenu>[2] = {}
       if (name.trim() !== menu.name) patch.name = name.trim()
       const cents = parsePriceInputToCents(priceInput)
       if (cents !== null && cents !== menu.priceCents) patch.priceCents = cents
-      const imgVal = image.trim() || null
-      if (imgVal !== (menu.image || null)) patch.image = imgVal
+      const trimmedDescription = description.trim()
+      if (trimmedDescription !== (menu.description ?? "")) {
+        patch.description = trimmedDescription || null
+      }
       if (isActive !== menu.isActive) patch.isActive = isActive
 
-      await apiUpdateMenu(fetchAuth, menu.id, patch as Parameters<typeof apiUpdateMenu>[2])
+      await apiUpdateMenu(fetchAuth, menu.id, patch)
       onClose()
       await onSaved()
     } catch (e: unknown) {
@@ -929,6 +978,34 @@ function EditMenuDialog({
         {menu && (
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-2">
+              <Label>Bild</Label>
+              <ImageUpload
+                currentImageUrl={image}
+                onUpload={async (file) => {
+                  try {
+                    const url = await apiUploadMenuImage(fetchAuth, menu.id, file)
+                    setImage(url)
+                    await onSaved()
+                    return url
+                  } catch (e: unknown) {
+                    onError(e instanceof Error ? e.message : "Bild-Upload fehlgeschlagen")
+                    throw e
+                  }
+                }}
+                onRemove={async () => {
+                  try {
+                    await apiDeleteMenuImage(fetchAuth, menu.id)
+                    setImage(null)
+                    await onSaved()
+                  } catch (e: unknown) {
+                    onError(e instanceof Error ? e.message : "Bild löschen fehlgeschlagen")
+                    throw e
+                  }
+                }}
+                disabled={saving}
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="edit-name">Name</Label>
               <Input id="edit-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={20} />
             </div>
@@ -942,13 +1019,16 @@ function EditMenuDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-image">Bild URL</Label>
-              <Input
-                id="edit-image"
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
-                placeholder="https://..."
+              <Label htmlFor="edit-description">Beschreibung</Label>
+              <Textarea
+                id="edit-description"
+                value={description}
+                maxLength={500}
+                rows={3}
+                placeholder="Optional: Zutaten, Allergene, Hinweise…"
+                onChange={(e) => setDescription(e.target.value)}
               />
+              <p className="text-muted-foreground text-xs">{description.length}/500</p>
             </div>
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor="edit-active">Aktiv</Label>

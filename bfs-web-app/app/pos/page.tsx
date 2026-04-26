@@ -329,6 +329,13 @@ function PosInner() {
     }))
   }, [])
 
+  const handleInventoryActiveUpdated = useCallback((productId: string, isActive: boolean) => {
+    setProducts((prev) => ({
+      ...prev,
+      items: prev.items.map((p) => (p.id === productId ? { ...p, isActive } : p)),
+    }))
+  }, [])
+
   const isMobile = useIsMobile()
   const [isLandscape, setIsLandscape] = useState(false)
   const [mobileView, setMobileView] = useState<"products" | "cart">("products")
@@ -422,6 +429,7 @@ function PosInner() {
             products={products}
             token={sessionToken || ""}
             onStockUpdated={handleInventoryStockUpdated}
+            onActiveUpdated={handleInventoryActiveUpdated}
           />
         </TabsContent>
       </Tabs>
