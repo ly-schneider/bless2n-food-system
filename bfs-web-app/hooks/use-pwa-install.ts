@@ -23,11 +23,18 @@ function detectIos(): boolean {
   return iOS || iPadOS
 }
 
+function detectAndroid(): boolean {
+  if (typeof window === "undefined") return false
+  return /Android/i.test(window.navigator.userAgent)
+}
+
 export type PwaInstallState = {
   installed: boolean
   ios: boolean
+  android: boolean
   canPromptInstall: boolean
   canShowIosInstructions: boolean
+  canShowManualInstructions: boolean
   promptInstall: () => Promise<"accepted" | "dismissed" | "unavailable">
 }
 
@@ -35,10 +42,12 @@ export function usePwaInstall(): PwaInstallState {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null)
   const [installed, setInstalled] = useState(false)
   const [ios, setIos] = useState(false)
+  const [android, setAndroid] = useState(false)
 
   useEffect(() => {
     setInstalled(detectStandalone())
     setIos(detectIos())
+    setAndroid(detectAndroid())
 
     const onBeforeInstall = (e: Event) => {
       e.preventDefault()
@@ -69,8 +78,10 @@ export function usePwaInstall(): PwaInstallState {
   return {
     installed,
     ios,
+    android,
     canPromptInstall: deferred !== null && !installed,
     canShowIosInstructions: ios && !installed,
+    canShowManualInstructions: !ios && deferred === null && !installed,
     promptInstall,
   }
 }

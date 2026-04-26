@@ -1,24 +1,28 @@
 "use client"
 
-import { DownloadIcon, PlusSquareIcon, ShareIcon } from "lucide-react"
+import { DownloadIcon, MoreVerticalIcon, PlusSquareIcon, ShareIcon } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { usePwaInstall } from "@/hooks/use-pwa-install"
 
 export function InstallPrompt() {
-  const { installed, ios, canPromptInstall, canShowIosInstructions, promptInstall } = usePwaInstall()
+  const { installed, ios, canPromptInstall, promptInstall } = usePwaInstall()
   const [iosInstructionsOpen, setIosInstructionsOpen] = useState(false)
+  const [manualInstructionsOpen, setManualInstructionsOpen] = useState(false)
 
   if (installed) return null
-  if (!canPromptInstall && !canShowIosInstructions) return null
 
   const handleClick = async () => {
     if (canPromptInstall) {
-      await promptInstall()
+      const outcome = await promptInstall()
+      if (outcome !== "unavailable") return
+    }
+    if (ios) {
+      setIosInstructionsOpen(true)
       return
     }
-    if (ios) setIosInstructionsOpen(true)
+    setManualInstructionsOpen(true)
   }
 
   return (
@@ -67,6 +71,43 @@ export function InstallPrompt() {
               </span>
               <span>
                 Bestätige mit <strong>Hinzufügen</strong>. Öffne dann den Station-Scanner vom Home-Bildschirm.
+              </span>
+            </li>
+          </ol>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={manualInstructionsOpen} onOpenChange={setManualInstructionsOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Zum Home-Bildschirm hinzufügen</DialogTitle>
+            <DialogDescription>So installierst du den Station-Scanner über das Browser-Menü.</DialogDescription>
+          </DialogHeader>
+          <ol className="space-y-3 text-sm">
+            <li className="flex items-start gap-3">
+              <span className="bg-muted mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full font-semibold">
+                1
+              </span>
+              <span className="flex flex-wrap items-center gap-1">
+                Öffne das Browser-Menü
+                <MoreVerticalIcon className="inline size-4" aria-label="Menü" />
+                oben rechts.
+              </span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="bg-muted mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full font-semibold">
+                2
+              </span>
+              <span>
+                Wähle <strong>App installieren</strong> oder <strong>Zur Startseite hinzufügen</strong>.
+              </span>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="bg-muted mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full font-semibold">
+                3
+              </span>
+              <span>
+                Bestätige mit <strong>Installieren</strong> oder <strong>Hinzufügen</strong> und öffne den Scanner vom
+                Home-Bildschirm.
               </span>
             </li>
           </ol>
