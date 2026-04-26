@@ -141,6 +141,52 @@ item:
             schema:
               $ref: "../schemas/common.yaml#/Error"
 
+  patch:
+    tags: [Stations]
+    summary: Rename station
+    description: Updates the station name.
+    operationId: renameStation
+    security:
+      - sessionAuth: []
+    x-required-permissions: [stations:manage]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/stations.yaml#/StationRename"
+    responses:
+      "200":
+        description: Station renamed
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/stations.yaml#/Station"
+      "400":
+        description: Invalid request body
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/Error"
+      "401":
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/Error"
+      "404":
+        description: Resource not found
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/Error"
+
   delete:
     tags: [Stations]
     summary: Revoke station

@@ -1,11 +1,12 @@
 "use client"
 
-import { ChevronDown, ChevronRight, X } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { Check, ChevronDown, ChevronRight, Pencil, X } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { PairDeviceCard } from "@/components/admin/pair-device-card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
 import { getCSRFToken } from "@/lib/csrf"
@@ -63,6 +64,23 @@ export default function AdminStationRequestsPage() {
     (a, b) =>
       statusOrder(a.status) - statusOrder(b.status) || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   )
+
+  async function renameStation(id: string, name: string) {
+    try {
+      const res = await fetchAuth(`/api/v1/stations/${id}`, {
+        method: "PATCH",
+        headers: csrfHeaders("PATCH"),
+        body: JSON.stringify({ name }),
+      })
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { detail?: string; message?: string }
+        throw new Error(j.detail || j.message || `Error ${res.status}`)
+      }
+      setStations((prev) => prev.map((s) => (s.id === id ? { ...s, name } : s)))
+    } catch {
+      setError("Umbenennen fehlgeschlagen")
+    }
+  }
 
   async function revokeStation(id: string) {
     try {
@@ -146,6 +164,7 @@ export default function AdminStationRequestsPage() {
             onLoadProducts={() => loadStationProducts(st.id)}
             onAddProduct={(productId) => addProduct(st.id, productId)}
             onRemoveProduct={(productId) => removeProduct(st.id, productId)}
+            onRename={(name) => renameStation(st.id, name)}
             onRevoke={() => revokeStation(st.id)}
           />
         ))}
@@ -161,6 +180,7 @@ function StationCard({
   onLoadProducts,
   onAddProduct,
   onRemoveProduct,
+  onRename,
   onRevoke,
 }: {
   station: Station
@@ -169,10 +189,14 @@ function StationCard({
   onLoadProducts: () => Promise<void>
   onAddProduct: (productId: string) => Promise<void>
   onRemoveProduct: (productId: string) => Promise<void>
+  onRename: (name: string) => Promise<void>
   onRevoke: () => void
 }) {
   const [open, setOpen] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editName, setEditName] = useState(st.name)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const unassigned = useMemo(
     () => allProducts.filter((p) => !assigned.some((a) => a.productId === p.id)),
@@ -191,7 +215,63 @@ function StationCard({
     <div className="bg-card border-border rounded-[11px] border p-3">
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <div className="truncate font-semibold">{st.name}</div>
+          {editing ? (
+            <form
+              className="flex items-center gap-1.5"
+              onSubmit={async (e) => {
+                e.preventDefault()
+                const trimmed = editName.trim()
+                if (trimmed && trimmed !== st.name) {
+                  await onRename(trimmed)
+                }
+                setEditing(false)
+              }}
+            >
+              <Input
+                ref={inputRef}
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                maxLength={20}
+                className="h-7 w-40 text-sm font-semibold"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    setEditName(st.name)
+                    setEditing(false)
+                  }
+                }}
+              />
+              <Button type="submit" variant="ghost" size="icon" className="size-7">
+                <Check className="size-3.5" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                onClick={() => {
+                  setEditName(st.name)
+                  setEditing(false)
+                }}
+              >
+                <X className="size-3.5" />
+              </Button>
+            </form>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <div className="truncate font-semibold">{st.name}</div>
+              <button
+                className="text-muted-foreground hover:text-foreground shrink-0"
+                onClick={() => {
+                  setEditName(st.name)
+                  setEditing(true)
+                }}
+                aria-label="Station umbenennen"
+              >
+                <Pencil className="size-3.5" />
+              </button>
+            </div>
+          )}
           <div className="text-muted-foreground truncate text-sm">
             {st.model || "Unbekanntes Modell"} • {st.os || "Unbekanntes OS"}
           </div>

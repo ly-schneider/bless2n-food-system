@@ -162,6 +162,7 @@ func NewRouter(
 
 			admin.Get("/stations", wrapper.ListStations)
 			admin.Get("/stations/{stationId}", wrapper.GetStation)
+			admin.Patch("/stations/{stationId}", wrapper.RenameStation)
 			admin.Get("/stations/{stationId}/products", wrapper.ListStationProducts)
 			admin.Put("/stations/{stationId}/products", wrapper.SetStationProducts)
 			admin.Delete("/stations/{stationId}/products/{productId}", wrapper.RemoveStationProduct)

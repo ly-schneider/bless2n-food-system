@@ -211,6 +211,29 @@ func (h *Handlers) RedeemAtStation(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, resp)
 }
 
+// RenameStation updates the station name.
+// (PATCH /stations/{stationId})
+func (h *Handlers) RenameStation(w http.ResponseWriter, r *http.Request, stationId openapi_types.UUID) {
+	var body generated.StationRename
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_body", "Invalid request body")
+		return
+	}
+
+	name := body.Name
+	if len(name) == 0 || len(name) > 20 {
+		writeError(w, http.StatusBadRequest, "invalid_name", "Name must be between 1 and 20 characters")
+		return
+	}
+
+	station, err := h.stations.RenameStation(r.Context(), uuid.UUID(stationId), name)
+	if err != nil {
+		writeEntError(w, err)
+		return
+	}
+	response.WriteJSON(w, http.StatusOK, toAPIStation(station))
+}
+
 // RevokeStation revokes a station device.
 // (DELETE /stations/{stationId})
 func (h *Handlers) RevokeStation(w http.ResponseWriter, r *http.Request, stationId openapi_types.UUID) {

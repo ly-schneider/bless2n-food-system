@@ -68,6 +68,15 @@ StationProductList:
       items:
         $ref: "#/StationProduct"
 
+StationRename:
+  type: object
+  required: [name]
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 20
+
 StationProductAssignment:
   type: object
   required: [productIds]

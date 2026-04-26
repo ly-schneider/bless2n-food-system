@@ -395,6 +395,7 @@ export default function StationPage() {
   return (
     <div className="bg-background text-foreground flex flex-1 flex-col items-center gap-2 pt-6 sm:p-6">
       <h1 className="font-primary text-3xl">Abholungsstation</h1>
+      {status?.name && <p className="text-lg font-medium">{status.name}</p>}
       <p className="text-muted-foreground max-w-md text-center">Scanne Abhol-QR-Codes hier</p>
 
       {(!status || status.status !== "approved") && (

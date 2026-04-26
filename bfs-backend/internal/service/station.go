@@ -23,6 +23,7 @@ type StationService interface {
 	ListStationProductIDs(ctx context.Context, stationID uuid.UUID) ([]uuid.UUID, error)
 	AssignedItemsForOrder(ctx context.Context, stationID, orderID uuid.UUID) ([]*ent.OrderLine, error)
 	RedeemAssigned(ctx context.Context, stationID, orderID uuid.UUID, idemKey string) (map[string]any, error)
+	RenameStation(ctx context.Context, stationID uuid.UUID, name string) (*ent.Device, error)
 }
 
 type stationService struct {
@@ -95,6 +96,17 @@ func (s *stationService) RemoveStationProduct(ctx context.Context, stationID uui
 
 func (s *stationService) ListStationProductIDs(ctx context.Context, stationID uuid.UUID) ([]uuid.UUID, error) {
 	return s.devices.ListProductIDsByDevice(ctx, stationID)
+}
+
+func (s *stationService) RenameStation(ctx context.Context, stationID uuid.UUID, name string) (*ent.Device, error) {
+	_, err := s.client.Device.UpdateOneID(stationID).
+		Where(device.TypeEQ(device.TypeSTATION)).
+		SetName(name).
+		Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return s.getStationWithProducts(ctx, stationID)
 }
 
 func (s *stationService) AssignedItemsForOrder(ctx context.Context, stationID, orderID uuid.UUID) ([]*ent.OrderLine, error) {
