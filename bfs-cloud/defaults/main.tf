@@ -218,7 +218,7 @@ output "config" {
             custom_rule_type = "cron"
             metadata = {
               timezone        = "Europe/Zurich"
-              start           = "0 17 * * 0"
+              start           = "0 12 * * 0"
               end             = "0 0 * * 1"
               desiredReplicas = "1"
             }
@@ -307,7 +307,7 @@ output "config" {
             custom_rule_type = "cron"
             metadata = {
               timezone        = "Europe/Zurich"
-              start           = "0 17 * * 0"
+              start           = "0 12 * * 0"
               end             = "0 0 * * 1"
               desiredReplicas = "1"
             }
