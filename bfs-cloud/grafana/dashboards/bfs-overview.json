@@ -1802,7 +1802,11 @@
         "type": "custom"
       },
       {
-        "current": { "selected": false, "text": "", "value": "" },
+        "current": {
+          "selected": true,
+          "text": "azmon-staging",
+          "value": "azmon-staging"
+        },
         "hide": 2,
         "includeAll": false,
         "label": "Azure Monitor data source",
@@ -1811,12 +1815,16 @@
         "options": [],
         "query": "grafana-azure-monitor-datasource",
         "refresh": 1,
-        "regex": "/^azmon-${env}$/",
+        "regex": "/^azmon-$env$/",
         "skipUrlSync": false,
         "type": "datasource"
       },
       {
-        "current": { "selected": false, "text": "", "value": "" },
+        "current": {
+          "selected": true,
+          "text": "pg-staging",
+          "value": "pg-staging"
+        },
         "hide": 2,
         "includeAll": false,
         "label": "Postgres data source",
@@ -1825,7 +1833,7 @@
         "options": [],
         "query": "postgres",
         "refresh": 1,
-        "regex": "/^pg-${env}$/",
+        "regex": "/^pg-$env$/",
         "skipUrlSync": false,
         "type": "datasource"
       },
