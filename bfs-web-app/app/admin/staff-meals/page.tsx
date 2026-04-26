@@ -16,7 +16,7 @@ import { readErrorMessage } from "@/lib/http"
 import type { ProductSummaryDTO } from "@/types/product"
 import type { VolunteerCampaignStatus, VolunteerCampaignSummary } from "@/types/volunteer"
 
-type ProductRow = { productId: string; quantity: number }
+type ProductRow = { productId: string; quantity: number | "" }
 
 const STATUS_LABEL: Record<VolunteerCampaignStatus, string> = {
   draft: "Entwurf",
@@ -40,7 +40,7 @@ export default function AdminStaffMealsPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [formName, setFormName] = useState("")
-  const [formMaxRedemptions, setFormMaxRedemptions] = useState(20)
+  const [formMaxRedemptions, setFormMaxRedemptions] = useState<number | "">(20)
   const [formProducts, setFormProducts] = useState<ProductRow[]>([])
   const [formValidUntil, setFormValidUntil] = useState<string>("")
   const [saving, setSaving] = useState(false)
@@ -102,10 +102,15 @@ export default function AdminStaffMealsPage() {
       setFormError("Mindestens ein Produkt erforderlich.")
       return
     }
-    if (formMaxRedemptions < 1) {
+    const maxRedemptions = formMaxRedemptions === "" ? 0 : formMaxRedemptions
+    if (maxRedemptions < 1) {
       setFormError("Maximale Einlösungen muss mindestens 1 sein.")
       return
     }
+    const productsPayload = formProducts.map((r) => ({
+      ...r,
+      quantity: Math.max(1, r.quantity === "" ? 1 : r.quantity),
+    }))
     setSaving(true)
     try {
       const res = await fetchAuth("/api/v1/staff-meals", {
@@ -117,8 +122,8 @@ export default function AdminStaffMealsPage() {
         body: JSON.stringify({
           name: formName.trim(),
           validUntil: formValidUntil ? new Date(formValidUntil).toISOString() : undefined,
-          maxRedemptions: formMaxRedemptions,
-          products: formProducts,
+          maxRedemptions,
+          products: productsPayload,
         }),
       })
       if (!res.ok) throw new Error(await readErrorMessage(res))
@@ -220,7 +225,10 @@ export default function AdminStaffMealsPage() {
                   type="number"
                   value={formMaxRedemptions}
                   min={1}
-                  onChange={(e) => setFormMaxRedemptions(Math.max(1, parseInt(e.target.value || "0", 10) || 0))}
+                  onChange={(e) => {
+                    const raw = e.target.value
+                    setFormMaxRedemptions(raw === "" ? "" : parseInt(raw, 10))
+                  }}
                 />
               </div>
               <div className="grid gap-2">
@@ -261,13 +269,12 @@ export default function AdminStaffMealsPage() {
                       className="w-20"
                       value={row.quantity}
                       aria-label="Menge"
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const raw = e.target.value
                         setFormProducts((rs) =>
-                          rs.map((r, i) =>
-                            i === idx ? { ...r, quantity: Math.max(1, parseInt(e.target.value || "0", 10) || 0) } : r
-                          )
+                          rs.map((r, i) => (i === idx ? { ...r, quantity: raw === "" ? "" : parseInt(raw, 10) } : r))
                         )
-                      }
+                      }}
                     />
                     <Button
                       variant="ghost"

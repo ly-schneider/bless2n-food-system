@@ -26,7 +26,8 @@ export default function AdminCategoriesPage() {
   const fetchAuth = useAuthorizedFetch()
   const [items, setItems] = useState<Category[]>([])
   const [name, setName] = useState("")
-  const [position, setPosition] = useState<number>(0)
+  const [position, setPosition] = useState<string>("0")
+  const [posDrafts, setPosDrafts] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -48,7 +49,8 @@ export default function AdminCategoriesPage() {
 
   async function createCategory() {
     if (!name.trim()) return
-    if (!Number.isFinite(position) || position < 0) {
+    const pos = position.trim() === "" ? 0 : Number(position)
+    if (!Number.isFinite(pos) || pos < 0) {
       setError("Position muss >= 0 sein")
       return
     }
@@ -56,14 +58,14 @@ export default function AdminCategoriesPage() {
     const res = await fetchAuth(`/api/v1/categories`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
-      body: JSON.stringify({ name: name.trim(), position }),
+      body: JSON.stringify({ name: name.trim(), position: pos }),
     })
     if (!res.ok) {
       setError(await readErrorMessage(res))
       return
     }
     setName("")
-    setPosition(0)
+    setPosition("0")
     await reload()
   }
 
@@ -145,7 +147,7 @@ export default function AdminCategoriesPage() {
         <Input
           type="number"
           value={position}
-          onChange={(e) => setPosition(Number(e.target.value))}
+          onChange={(e) => setPosition(e.target.value)}
           placeholder="Position"
           className="h-8 w-24"
         />
@@ -179,12 +181,18 @@ export default function AdminCategoriesPage() {
                     <TableCell className="w-24">
                       <Input
                         type="number"
-                        value={c.position}
-                        onChange={(e) => {
-                          const v = Number(e.target.value)
-                          setItems((prev) => prev.map((it) => (it.id === c.id ? { ...it, position: v } : it)))
+                        value={posDrafts[c.id] ?? String(c.position)}
+                        onChange={(e) => setPosDrafts((p) => ({ ...p, [c.id]: e.target.value }))}
+                        onBlur={(e) => {
+                          const raw = e.target.value
+                          const n = raw.trim() === "" ? 0 : Number(raw)
+                          setPosDrafts((p) => {
+                            const next = { ...p }
+                            delete next[c.id]
+                            return next
+                          })
+                          void updatePosition(c.id, n)
                         }}
-                        onBlur={(e) => void updatePosition(c.id, Number(e.target.value))}
                         className="h-7"
                       />
                     </TableCell>

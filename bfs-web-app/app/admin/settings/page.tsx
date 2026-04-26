@@ -29,7 +29,7 @@ export default function AdminSettingsPage() {
   const [posMode, setPosMode] = useState<PosFulfillmentMode>("QR_CODE")
   const [missingJetons, setMissingJetons] = useState(0)
   const [club100FreeProductIds, setClub100FreeProductIds] = useState<string[]>([])
-  const [club100MaxRedemptions, setClub100MaxRedemptions] = useState(2)
+  const [club100MaxRedemptions, setClub100MaxRedemptions] = useState<number | "">(2)
 
   const [products, setProducts] = useState<Product[]>([])
   const [saving, setSaving] = useState(false)
@@ -209,13 +209,13 @@ export default function AdminSettingsPage() {
               min={1}
               value={club100MaxRedemptions}
               onChange={(e) => {
-                const val = parseInt(e.target.value, 10)
-                if (!isNaN(val) && val > 0) {
-                  setClub100MaxRedemptions(val)
-                }
+                const raw = e.target.value
+                setClub100MaxRedemptions(raw === "" ? "" : parseInt(raw, 10))
               }}
               onBlur={() => {
-                updateSettings({ club100MaxRedemptions })
+                const value = club100MaxRedemptions === "" || !club100MaxRedemptions ? 1 : club100MaxRedemptions
+                if (value !== club100MaxRedemptions) setClub100MaxRedemptions(value)
+                updateSettings({ club100MaxRedemptions: value })
               }}
               disabled={saving}
               className="max-w-24 rounded-xl"

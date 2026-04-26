@@ -811,7 +811,7 @@ function CreateProductCard({
   const [type, setType] = useState<"simple" | "menu">("simple")
   const [jetonId, setJetonId] = useState<string>("")
   const [isActive, setIsActive] = useState(true)
-  const [initialStock, setInitialStock] = useState(0)
+  const [initialStock, setInitialStock] = useState<number | "">(0)
   const [error, setError] = useState<string | null>(null)
   const [image, setImage] = useState<string>("")
   const [description, setDescription] = useState<string>("")
@@ -819,7 +819,7 @@ function CreateProductCard({
   const parsedPrice = parsePrice(priceInput)
   const trimmedName = name.trim()
   const jetonRequired = type === "simple" && posMode !== "QR_CODE" && isActive && !jetonId
-  const stockValid = initialStock >= 0
+  const stockValid = initialStock === "" || initialStock >= 0
   const valid =
     trimmedName.length > 0 &&
     parsedPrice != null &&
@@ -852,6 +852,7 @@ function CreateProductCard({
     setSaving(true)
     setError(null)
     try {
+      const stockValue = initialStock === "" ? 0 : initialStock
       const trimmedDescription = description.trim()
       const res = await createProduct({
         name: trimmedName,
@@ -872,14 +873,14 @@ function CreateProductCard({
         isActive,
         category: category ? { id: categoryId, name: category.name } : undefined,
         jeton: jetonId ? jetons.find((j) => j.id === jetonId) : undefined,
-        stock: initialStock,
+        stock: stockValue,
         type,
         image: image.trim() || null,
         description: trimmedDescription || null,
       }
-      if (initialStock !== 0 && res?.id) {
-        await adjustInventory(res.id, initialStock)
-        created.stock = initialStock
+      if (stockValue !== 0 && res?.id) {
+        await adjustInventory(res.id, stockValue)
+        created.stock = stockValue
       }
       if (jetonId && res?.id) {
         try {
@@ -1015,7 +1016,10 @@ function CreateProductCard({
                 id="new-stock"
                 type="number"
                 value={initialStock}
-                onChange={(e) => setInitialStock(parseInt(e.target.value || "0", 10))}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  setInitialStock(raw === "" ? "" : parseInt(raw, 10))
+                }}
                 className="w-28"
               />
             </div>

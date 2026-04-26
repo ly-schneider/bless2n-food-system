@@ -52,12 +52,12 @@ export default function AdminStaffMealDetailPage() {
   const [rotateConfirmOpen, setRotateConfirmOpen] = useState(false)
 
   const [editingMax, setEditingMax] = useState(false)
-  const [maxDraft, setMaxDraft] = useState<number>(0)
+  const [maxDraft, setMaxDraft] = useState<number | "">(0)
   const [savingMax, setSavingMax] = useState(false)
   const [maxError, setMaxError] = useState<string | null>(null)
 
   const [printOpen, setPrintOpen] = useState(false)
-  const [printCount, setPrintCount] = useState(30)
+  const [printCount, setPrintCount] = useState<number | "">(30)
 
   const load = useCallback(async () => {
     if (!id) return
@@ -114,11 +114,12 @@ export default function AdminStaffMealDetailPage() {
   async function saveMax() {
     if (!id || !detail) return
     setMaxError(null)
-    if (maxDraft < detail.redemptionCount) {
+    const maxValue = maxDraft === "" ? 0 : maxDraft
+    if (maxValue < detail.redemptionCount) {
       setMaxError(`Nicht unter aktueller Einlösungszahl (${detail.redemptionCount}).`)
       return
     }
-    if (maxDraft < 1) {
+    if (maxValue < 1) {
       setMaxError("Muss mindestens 1 sein.")
       return
     }
@@ -132,7 +133,7 @@ export default function AdminStaffMealDetailPage() {
           validFrom: detail.validFrom ?? undefined,
           validUntil: detail.validUntil ?? undefined,
           status: detail.status,
-          maxRedemptions: maxDraft,
+          maxRedemptions: maxValue,
         }),
       })
       if (!res.ok) throw new Error(await readErrorMessage(res))
@@ -167,7 +168,8 @@ export default function AdminStaffMealDetailPage() {
 
   function submitPrint() {
     if (!id) return
-    const count = Math.max(1, Math.min(500, printCount || 0))
+    const raw = printCount === "" ? 0 : printCount
+    const count = Math.max(1, Math.min(500, raw || 0))
     const url = `/api/v1/staff-meals/${encodeURIComponent(id)}/print.pdf?count=${count}`
     window.open(url, "_blank")
     setPrintOpen(false)
@@ -252,7 +254,10 @@ export default function AdminStaffMealDetailPage() {
                     type="number"
                     value={maxDraft}
                     min={detail.redemptionCount || 1}
-                    onChange={(e) => setMaxDraft(parseInt(e.target.value || "0", 10) || 0)}
+                    onChange={(e) => {
+                      const raw = e.target.value
+                      setMaxDraft(raw === "" ? "" : parseInt(raw, 10))
+                    }}
                     className="h-8 w-20"
                   />
                   <Button size="sm" onClick={saveMax} disabled={savingMax}>
@@ -448,7 +453,10 @@ export default function AdminStaffMealDetailPage() {
                 min={1}
                 max={500}
                 value={printCount}
-                onChange={(e) => setPrintCount(parseInt(e.target.value || "0", 10) || 0)}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  setPrintCount(raw === "" ? "" : parseInt(raw, 10))
+                }}
                 autoFocus
               />
               <p className="text-muted-foreground text-xs">
@@ -460,7 +468,7 @@ export default function AdminStaffMealDetailPage() {
             <Button variant="outline" onClick={() => setPrintOpen(false)}>
               Abbrechen
             </Button>
-            <Button onClick={submitPrint} disabled={printCount < 1 || printCount > 500}>
+            <Button onClick={submitPrint} disabled={printCount === "" || printCount < 1 || printCount > 500}>
               PDF öffnen
             </Button>
           </DialogFooter>
