@@ -11,6 +11,7 @@ export interface Product {
   type: ProductType
   name: string
   image: string | null
+  description: string | null
   priceCents: Cents
   isActive: boolean
   createdAt: string // ISO date
@@ -23,6 +24,7 @@ export interface ProductSummaryDTO {
   type: ProductType
   name: string
   image: string | null
+  description?: string | null
   priceCents: Cents
   isActive: boolean
   availableQuantity?: number | null

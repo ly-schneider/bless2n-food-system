@@ -191,7 +191,7 @@ func (f *Fixtures) CreateJeton(name, color string) *ent.Jeton {
 
 // CreateProduct creates a test product.
 func (f *Fixtures) CreateProduct(name string, categoryID uuid.UUID, priceCents int64, productType product.Type, jetonID *uuid.UUID) *ent.Product {
-	p, err := f.repos.Product.Create(f.ctx, categoryID, productType, name, priceCents, true, nil, jetonID)
+	p, err := f.repos.Product.Create(f.ctx, categoryID, productType, name, priceCents, true, nil, nil, jetonID)
 	if err != nil {
 		panic(fmt.Sprintf("failed to create product: %v", err))
 	}

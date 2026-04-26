@@ -18,7 +18,7 @@ func NewProductRepository(client *ent.Client) *ProductRepository {
 	return &ProductRepository{client: client}
 }
 
-func (r *ProductRepository) Create(ctx context.Context, categoryID uuid.UUID, productType product.Type, name string, priceCents int64, isActive bool, image *string, jetonID *uuid.UUID) (*ent.Product, error) {
+func (r *ProductRepository) Create(ctx context.Context, categoryID uuid.UUID, productType product.Type, name string, priceCents int64, isActive bool, image *string, description *string, jetonID *uuid.UUID) (*ent.Product, error) {
 	builder := r.client.Product.Create().
 		SetCategoryID(categoryID).
 		SetType(productType).
@@ -27,6 +27,9 @@ func (r *ProductRepository) Create(ctx context.Context, categoryID uuid.UUID, pr
 		SetIsActive(isActive)
 	if image != nil {
 		builder.SetImage(*image)
+	}
+	if description != nil {
+		builder.SetDescription(*description)
 	}
 	if jetonID != nil {
 		builder.SetJetonID(*jetonID)
@@ -159,7 +162,7 @@ func (r *ProductRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*e
 	return rows, nil
 }
 
-func (r *ProductRepository) Update(ctx context.Context, id, categoryID uuid.UUID, productType product.Type, name string, priceCents int64, isActive bool, image *string, jetonID *uuid.UUID) (*ent.Product, error) {
+func (r *ProductRepository) Update(ctx context.Context, id, categoryID uuid.UUID, productType product.Type, name string, priceCents int64, isActive bool, image *string, description *string, jetonID *uuid.UUID) (*ent.Product, error) {
 	builder := r.client.Product.UpdateOneID(id).
 		SetCategoryID(categoryID).
 		SetType(productType).
@@ -170,6 +173,11 @@ func (r *ProductRepository) Update(ctx context.Context, id, categoryID uuid.UUID
 		builder.SetImage(*image)
 	} else {
 		builder.ClearImage()
+	}
+	if description != nil {
+		builder.SetDescription(*description)
+	} else {
+		builder.ClearDescription()
 	}
 	if jetonID != nil {
 		builder.SetJetonID(*jetonID)

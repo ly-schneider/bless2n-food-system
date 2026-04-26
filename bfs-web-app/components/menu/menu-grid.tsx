@@ -1,12 +1,10 @@
 "use client"
 
-import { Info } from "lucide-react"
 import Image from "next/image"
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import { CartButtons } from "@/components/cart/cart-buttons"
 import { ProductConfigurationModal } from "@/components/cart/product-configuration-modal"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useCart } from "@/contexts/cart-context"
 import { formatChf } from "@/lib/utils"
 import { ListResponse, ProductDTO } from "@/types"
@@ -49,17 +47,6 @@ function MenuProductCard({ product }: { product: ProductDTO }) {
   const quantity = product.type === "menu" ? getTotalProductQuantity(product.id) : getItemQuantity(product.id)
   const maxQty = typeof availableQty === "number" ? availableQty : undefined
   const reachedMax = typeof maxQty === "number" && quantity >= maxQty
-  const composition = useMemo(() => {
-    if (product.type !== "menu" || !product.menu?.slots || product.menu.slots.length === 0) return null
-    const counts = new Map<string, number>()
-    for (const slot of product.menu.slots) {
-      const name = slot.name?.trim() || "Slot"
-      counts.set(name, (counts.get(name) || 0) + 1)
-    }
-    // Build minimal description like: "Burger + Beilage + 2× Getränk"
-    const parts = Array.from(counts.entries()).map(([name, count]) => (count > 1 ? `${count}× ${name}` : name))
-    return parts.join(" + ")
-  }, [product])
 
   const handleConfigureProduct = () => {
     setIsConfigModalOpen(true)
@@ -127,36 +114,19 @@ function MenuProductCard({ product }: { product: ProductDTO }) {
                 </span>
               </div>
             )}
-            {composition && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label="Menüinhalt anzeigen"
-                    className="absolute top-1 right-1 z-10 inline-flex size-7 items-center justify-center rounded-full bg-white text-black shadow-sm ring-1 ring-black/10 hover:bg-white/90"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Info className="size-4" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent
-                  side="left"
-                  align="start"
-                  sideOffset={6}
-                  className="rounded-full border-none bg-white px-3 py-1 text-sm text-black"
-                >
-                  {composition}
-                </PopoverContent>
-              </Popover>
-            )}
           </div>
         </CardHeader>
 
         <CardContent className="px-2 pt-0 pb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 flex-col">
               <h3 className="font-family-secondary text-lg">{product.name}</h3>
-              <p className="font-family-secondary text-base">{formatChf(product.priceCents)}</p>
+              {product.description && (
+                <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs whitespace-pre-line">
+                  {product.description}
+                </p>
+              )}
+              <p className="font-family-secondary mt-1 text-base">{formatChf(product.priceCents)}</p>
             </div>
             <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
               <CartButtons product={product} onConfigureProduct={handleConfigureProduct} disabled={disabled} />

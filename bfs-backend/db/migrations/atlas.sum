@@ -1,7 +1,8 @@
-h1:k4mjI0JnRDNPTo/JFNxjPM+0UmI/QydojsVb37DU70E=
+h1:JB3wfbzTDF/atPWuXYz/SD5iv/JU8Itc1aaJ8wOTYCU=
 20250101000000_baseline.sql h1:z9BJICN8dYjrasqPjQowYTfcrKGSGsYtpVYCoUZGadQ=
 20260221000000_add_system_enabled.sql h1:lHyW5L6Zu54ssG45YaRwxKzNLCwGp0byB69DQiTxxJc=
 20260329000000_add_hybrid_pos_mode.sql h1:iEWaAO+s+NRkmEXKNaxaj+mdnCBvXWPzfqhPQCf6fHk=
 20260422112111_add_card_metadata_to_order_payment.sql h1:0xnWtB4zFJrE48UEgw7STNAPwck/O2c8YVEdXw+KldA=
 20260423000000_add_volunteer_campaigns.sql h1:mqvbzOZX8hRoFciDd9Y37cKQCxgJ5QTHoeGjwyEGDng=
 20260424000000_volunteer_shared_qr.sql h1:IWgsIPDWcxA9NvvT9Fgoz0+Bid/7p+EkFFu7FAiK0jE=
+20260426000000_add_product_description.sql h1:56LtRpKA+rXqQBy4e20VS31M3AVfxQnqsN/uOkddDFE=

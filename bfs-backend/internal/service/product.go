@@ -22,8 +22,8 @@ type ProductService interface {
 	GetAll(ctx context.Context) ([]*ent.Product, error)
 	GetByCategory(ctx context.Context, categoryID uuid.UUID) ([]*ent.Product, error)
 	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*ent.Product, error)
-	Create(ctx context.Context, categoryID uuid.UUID, productType product.Type, name string, priceCents int64, isActive bool, image *string, jetonID *uuid.UUID) (*ent.Product, error)
-	Update(ctx context.Context, id, categoryID uuid.UUID, productType product.Type, name string, priceCents int64, isActive bool, image *string, jetonID *uuid.UUID) (*ent.Product, error)
+	Create(ctx context.Context, categoryID uuid.UUID, productType product.Type, name string, priceCents int64, isActive bool, image *string, description *string, jetonID *uuid.UUID) (*ent.Product, error)
+	Update(ctx context.Context, id, categoryID uuid.UUID, productType product.Type, name string, priceCents int64, isActive bool, image *string, description *string, jetonID *uuid.UUID) (*ent.Product, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 	CountActiveWithoutJeton(ctx context.Context) (int64, error)
 	CountByJetonIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]int64, error)
@@ -110,12 +110,12 @@ func (s *productService) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*ent.
 	return s.productRepo.GetByIDs(ctx, ids)
 }
 
-func (s *productService) Create(ctx context.Context, categoryID uuid.UUID, productType product.Type, name string, priceCents int64, isActive bool, image *string, jetonID *uuid.UUID) (*ent.Product, error) {
-	return s.productRepo.Create(ctx, categoryID, productType, name, priceCents, isActive, image, jetonID)
+func (s *productService) Create(ctx context.Context, categoryID uuid.UUID, productType product.Type, name string, priceCents int64, isActive bool, image *string, description *string, jetonID *uuid.UUID) (*ent.Product, error) {
+	return s.productRepo.Create(ctx, categoryID, productType, name, priceCents, isActive, image, description, jetonID)
 }
 
-func (s *productService) Update(ctx context.Context, id, categoryID uuid.UUID, productType product.Type, name string, priceCents int64, isActive bool, image *string, jetonID *uuid.UUID) (*ent.Product, error) {
-	return s.productRepo.Update(ctx, id, categoryID, productType, name, priceCents, isActive, image, jetonID)
+func (s *productService) Update(ctx context.Context, id, categoryID uuid.UUID, productType product.Type, name string, priceCents int64, isActive bool, image *string, description *string, jetonID *uuid.UUID) (*ent.Product, error) {
+	return s.productRepo.Update(ctx, id, categoryID, productType, name, priceCents, isActive, image, description, jetonID)
 }
 
 func (s *productService) Delete(ctx context.Context, id uuid.UUID) error {

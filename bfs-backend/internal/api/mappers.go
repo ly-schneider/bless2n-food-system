@@ -61,16 +61,17 @@ func toAPICategorySummary(e *ent.Category) generated.CategorySummary {
 
 func toAPIProduct(e *ent.Product) generated.Product {
 	p := generated.Product{
-		Id:         e.ID,
-		CategoryId: e.CategoryID,
-		Type:       generated.ProductType(e.Type),
-		Name:       e.Name,
-		Image:      e.Image,
-		PriceCents: e.PriceCents,
-		JetonId:    (*openapi_types.UUID)(e.JetonID),
-		IsActive:   e.IsActive,
-		CreatedAt:  ptr(e.CreatedAt),
-		UpdatedAt:  ptr(e.UpdatedAt),
+		Id:          e.ID,
+		CategoryId:  e.CategoryID,
+		Type:        generated.ProductType(e.Type),
+		Name:        e.Name,
+		Image:       e.Image,
+		Description: e.Description,
+		PriceCents:  e.PriceCents,
+		JetonId:     (*openapi_types.UUID)(e.JetonID),
+		IsActive:    e.IsActive,
+		CreatedAt:   ptr(e.CreatedAt),
+		UpdatedAt:   ptr(e.UpdatedAt),
 	}
 
 	// Map Category edge if loaded.

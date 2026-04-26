@@ -37,6 +37,10 @@ func (Product) Fields() []ent.Field {
 		field.String("image").
 			Optional().
 			Nillable(),
+		field.String("description").
+			MaxLen(500).
+			Optional().
+			Nillable(),
 		field.Int64("price_cents").
 			Default(0),
 		field.UUID("jeton_id", uuid.UUID{}).

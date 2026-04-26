@@ -24,6 +24,11 @@ Product:
       type: string
       nullable: true
       description: Image URL
+    description:
+      type: string
+      nullable: true
+      maxLength: 500
+      description: Optional free-text description shown to customers
     priceCents:
       type: integer
       format: int64
@@ -74,6 +79,9 @@ ProductCreate:
       maxLength: 20
     image:
       type: string
+    description:
+      type: string
+      maxLength: 500
     priceCents:
       type: integer
       format: int64
@@ -91,6 +99,10 @@ ProductUpdate:
     image:
       type: string
       nullable: true
+    description:
+      type: string
+      nullable: true
+      maxLength: 500
     priceCents:
       type: integer
       format: int64

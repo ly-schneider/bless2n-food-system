@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { Textarea } from "@/components/ui/textarea"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
 
 import { getCSRFToken } from "@/lib/csrf"
@@ -31,6 +32,7 @@ type Product = {
   priceCents: number
   isActive: boolean
   image?: string | null
+  description?: string | null
   category?: { id: string; name: string }
   stock?: number | null
   jeton?: Jeton
@@ -135,6 +137,15 @@ export default function AdminProductsPage() {
     })
     if (!res.ok) throw new Error(await readErrorMessage(res))
   }
+  async function updateDescription(id: string, description: string | null) {
+    const csrf = getCSRFToken()
+    const res = await fetchAuth(`/api/v1/products/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "X-CSRF": csrf || "" },
+      body: JSON.stringify({ description: description ?? "" }),
+    })
+    if (!res.ok) throw new Error(await readErrorMessage(res))
+  }
   async function moveCategory(id: string, categoryId: string) {
     const csrf = getCSRFToken()
     const res = await fetchAuth(`/api/v1/products/${encodeURIComponent(id)}`, {
@@ -222,6 +233,7 @@ export default function AdminProductsPage() {
     type: "simple" | "menu"
     isActive: boolean
     image?: string | null
+    description?: string | null
     jetonId?: string | null
   }) {
     const csrf = getCSRFToken()
@@ -238,7 +250,12 @@ export default function AdminProductsPage() {
         }),
       })
       if (!res.ok) throw new Error(await readErrorMessage(res))
-      return (await res.json()) as Partial<Product> & { id?: string }
+      const created = (await res.json()) as Partial<Product> & { id?: string }
+      if (payload.description && created.id) {
+        await updateDescription(created.id, payload.description)
+        created.description = payload.description
+      }
+      return created
     }
     const res = await fetchAuth(`/api/v1/products`, {
       method: "POST",
@@ -250,6 +267,7 @@ export default function AdminProductsPage() {
         type: payload.type,
         isActive: payload.isActive,
         image: payload.image,
+        description: payload.description ?? undefined,
         jetonId: payload.jetonId,
       }),
     })
@@ -313,6 +331,7 @@ export default function AdminProductsPage() {
             }}
             updatePrice={updatePrice}
             updateName={updateName}
+            updateDescription={updateDescription}
             moveCategory={moveCategory}
             setActive={setActive}
             updateJeton={updateJeton}
@@ -336,6 +355,7 @@ type ProductCardProps = {
   onError: (msg: string) => void
   updatePrice: (id: string, priceCents: number) => Promise<void>
   updateName: (id: string, name: string) => Promise<void>
+  updateDescription: (id: string, description: string | null) => Promise<void>
   moveCategory: (id: string, categoryId: string) => Promise<void>
   setActive: (id: string, isActive: boolean) => Promise<void>
   updateJeton: (id: string, jetonId: string | null) => Promise<void>
@@ -354,6 +374,7 @@ function ProductCardEditable({
   onError,
   updatePrice,
   updateName,
+  updateDescription,
   moveCategory,
   setActive,
   updateJeton,
@@ -364,6 +385,7 @@ function ProductCardEditable({
   const [name, setName] = useState(product.name)
   const initialPrice = (product.priceCents / 100).toFixed(2)
   const [priceInput, setPriceInput] = useState(initialPrice)
+  const [description, setDescription] = useState(product.description ?? "")
   const [categoryId, setCategoryId] = useState(product.category?.id ?? "")
   const [jetonId, setJetonId] = useState(product.jeton?.id ?? "")
   const [isActive, setIsActiveLocal] = useState(product.isActive)
@@ -377,6 +399,7 @@ function ProductCardEditable({
   useEffect(() => {
     setName(product.name)
     setPriceInput((product.priceCents / 100).toFixed(2))
+    setDescription(product.description ?? "")
     setCategoryId(product.category?.id ?? "")
     setJetonId(product.jeton?.id ?? "")
     setIsActiveLocal(product.isActive)
@@ -396,9 +419,12 @@ function ProductCardEditable({
 
   const priceDirty = parsedPrice != null ? parsedPrice !== product.priceCents : priceInput !== initialPrice
   const deltaDirty = deltaInput.trim() !== "" && parsedDelta !== 0
+  const trimmedDescription = description.trim()
+  const descriptionDirty = trimmedDescription !== (product.description ?? "")
   const dirty =
     trimmedName !== product.name ||
     priceDirty ||
+    descriptionDirty ||
     categoryId !== (product.category?.id ?? "") ||
     jetonId !== (product.jeton?.id ?? "") ||
     isActive !== product.isActive ||
@@ -437,6 +463,7 @@ function ProductCardEditable({
       const updates: Array<Promise<void>> = []
       if (trimmedName !== product.name) updates.push(updateName(product.id, trimmedName))
       if (parsedPrice != null && parsedPrice !== product.priceCents) updates.push(updatePrice(product.id, parsedPrice))
+      if (descriptionDirty) updates.push(updateDescription(product.id, trimmedDescription || null))
       if (categoryId !== (product.category?.id ?? "")) updates.push(moveCategory(product.id, categoryId))
       if (jetonId !== (product.jeton?.id ?? "")) updates.push(updateJeton(product.id, jetonId || null))
       if (isActive !== product.isActive) {
@@ -452,6 +479,7 @@ function ProductCardEditable({
         ...product,
         name: trimmedName,
         priceCents: parsedPrice ?? product.priceCents,
+        description: descriptionDirty ? trimmedDescription || null : product.description,
         category: categoryId
           ? { id: categoryId, name: categories.find((c) => c.id === categoryId)?.name ?? product.category?.name ?? "" }
           : undefined,
@@ -513,6 +541,23 @@ function ProductCardEditable({
                 setFieldError(null)
               }}
             />
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor={`description-${product.id}`}>Beschreibung</Label>
+            <Textarea
+              id={`description-${product.id}`}
+              value={description}
+              maxLength={500}
+              rows={3}
+              placeholder="Optional: Zutaten, Allergene, Hinweise…"
+              onChange={(e) => {
+                setDescription(e.target.value)
+                setStatus("idle")
+                setFieldError(null)
+              }}
+            />
+            <p className="text-muted-foreground text-xs">{description.length}/500</p>
           </div>
 
           <div className="space-y-1">
@@ -739,6 +784,7 @@ type CreateProductCardProps = {
     type: "simple" | "menu"
     isActive: boolean
     image?: string | null
+    description?: string | null
     jetonId?: string | null
   }) => Promise<Partial<Product> | null>
   adjustInventory: (id: string, delta: number) => Promise<void>
@@ -768,6 +814,7 @@ function CreateProductCard({
   const [initialStock, setInitialStock] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [image, setImage] = useState<string>("")
+  const [description, setDescription] = useState<string>("")
 
   const parsedPrice = parsePrice(priceInput)
   const trimmedName = name.trim()
@@ -792,6 +839,7 @@ function CreateProductCard({
     setInitialStock(0)
     setError(null)
     setImage("")
+    setDescription("")
     setSubmitted(false)
   }
 
@@ -804,6 +852,7 @@ function CreateProductCard({
     setSaving(true)
     setError(null)
     try {
+      const trimmedDescription = description.trim()
       const res = await createProduct({
         name: trimmedName,
         priceCents: parsedPrice ?? 0,
@@ -811,6 +860,7 @@ function CreateProductCard({
         type,
         isActive,
         image: image.trim() || null,
+        description: trimmedDescription || null,
         jetonId: jetonId || undefined,
       })
       const newId = res?.id ?? crypto.randomUUID?.() ?? `${Date.now()}`
@@ -825,6 +875,7 @@ function CreateProductCard({
         stock: initialStock,
         type,
         image: image.trim() || null,
+        description: trimmedDescription || null,
       }
       if (initialStock !== 0 && res?.id) {
         await adjustInventory(res.id, initialStock)
@@ -912,6 +963,18 @@ function CreateProductCard({
           <div className="space-y-1">
             <Label htmlFor="new-image">Bild URL (optional)</Label>
             <Input id="new-image" value={image} onChange={(e) => setImage(e.target.value)} placeholder="https://…" />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="new-description">Beschreibung (optional)</Label>
+            <Textarea
+              id="new-description"
+              value={description}
+              maxLength={500}
+              rows={3}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Optional: Zutaten, Allergene, Hinweise…"
+            />
+            <p className="text-muted-foreground text-xs">{description.length}/500</p>
           </div>
           <div className="space-y-1">
             <Label htmlFor="new-jeton">Jeton</Label>

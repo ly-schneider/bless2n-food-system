@@ -53,6 +53,7 @@ func (h *Handlers) CreateMenu(w http.ResponseWriter, r *http.Request) {
 		priceCents,
 		true, // isActive
 		body.Image,
+		nil, // description set via product update endpoint
 		nil, // no jeton for menus
 	)
 	if err != nil {
@@ -117,6 +118,7 @@ func (h *Handlers) UpdateMenu(w http.ResponseWriter, r *http.Request, menuId ope
 		priceCents,
 		isActive,
 		image,
+		existing.Description,
 		nil, // no jeton for menus
 	)
 	if err != nil {

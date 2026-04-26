@@ -74,6 +74,11 @@ func (h *Handlers) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		jetonID = &id
 	}
 
+	description := body.Description
+	if description != nil && *description == "" {
+		description = nil
+	}
+
 	prod, err := h.products.Create(
 		r.Context(),
 		uuid.UUID(body.CategoryId),
@@ -82,6 +87,7 @@ func (h *Handlers) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		body.PriceCents,
 		true, // isActive defaults to true
 		body.Image,
+		description,
 		jetonID,
 	)
 	if err != nil {
@@ -147,6 +153,14 @@ func (h *Handlers) UpdateProduct(w http.ResponseWriter, r *http.Request, product
 	if body.Image != nil {
 		image = body.Image
 	}
+	description := existing.Description
+	if body.Description != nil {
+		if *body.Description == "" {
+			description = nil
+		} else {
+			description = body.Description
+		}
+	}
 	jetonID := existing.JetonID
 	if body.JetonId != nil {
 		id := uuid.UUID(*body.JetonId)
@@ -162,6 +176,7 @@ func (h *Handlers) UpdateProduct(w http.ResponseWriter, r *http.Request, product
 		priceCents,
 		isActive,
 		image,
+		description,
 		jetonID,
 	)
 	if err != nil {
@@ -343,7 +358,7 @@ func (h *Handlers) UploadProductImage(w http.ResponseWriter, r *http.Request, pr
 		return
 	}
 
-	_, err = h.products.Update(ctx, id, existing.CategoryID, existing.Type, existing.Name, existing.PriceCents, existing.IsActive, &url, existing.JetonID)
+	_, err = h.products.Update(ctx, id, existing.CategoryID, existing.Type, existing.Name, existing.PriceCents, existing.IsActive, &url, existing.Description, existing.JetonID)
 	if err != nil {
 		writeEntError(w, err)
 		return
@@ -368,7 +383,7 @@ func (h *Handlers) DeleteProductImage(w http.ResponseWriter, r *http.Request, pr
 		}
 	}
 
-	_, err = h.products.Update(ctx, id, existing.CategoryID, existing.Type, existing.Name, existing.PriceCents, existing.IsActive, nil, existing.JetonID)
+	_, err = h.products.Update(ctx, id, existing.CategoryID, existing.Type, existing.Name, existing.PriceCents, existing.IsActive, nil, existing.Description, existing.JetonID)
 	if err != nil {
 		writeEntError(w, err)
 		return
