@@ -65,6 +65,7 @@ bfs-docs/             Documentation site — Fumadocs, admin handbook, dev guide
 - Go 1.25+
 - Node.js 20+ with pnpm
 - Docker & Docker Compose
+- [Just](https://just.systems/) task runner
 
 ### Full Stack Development
 
@@ -72,10 +73,10 @@ bfs-docs/             Documentation site — Fumadocs, admin handbook, dev guide
 # Terminal 1 — Backend
 cd bfs-backend
 cp .env.example .env
-make docker-up
-make migrate-local
-make seed
-make dev              # API at http://localhost:8080
+just up
+just migrate
+just seed
+just dev              # API at http://localhost:8080
 
 # Terminal 2 — Web App
 cd bfs-web-app
@@ -120,8 +121,6 @@ Detailed READMEs are available in each sub-project:
 - [`bfs-android-app/README.md`](bfs-android-app/README.md) — Android POS, build variants, hardware integration
 - [`bfs-cloud/README.md`](bfs-cloud/README.md) — Infrastructure modules, scaling, deployment phases
 - [`bfs-docs/README.md`](bfs-docs/README.md) — Documentation site setup and content structure
-- [`bfs-http/README.md`](bfs-http/README.md) — API request collections for testing
-
 ## License
 
 This project is source-available. All rights reserved. See [LICENSE](LICENSE) for details.
