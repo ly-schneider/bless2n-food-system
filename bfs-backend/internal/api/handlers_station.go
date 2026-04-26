@@ -9,7 +9,6 @@ import (
 	"backend/internal/generated/api/generated"
 	"backend/internal/response"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
@@ -212,19 +211,8 @@ func (h *Handlers) RedeemAtStation(w http.ResponseWriter, r *http.Request) {
 
 // AddStationProduct adds a single product assignment to a station.
 // (POST /stations/{stationId}/products/{productId})
-func (h *Handlers) AddStationProduct(w http.ResponseWriter, r *http.Request) {
-	stationID, err := uuid.Parse(chi.URLParam(r, "stationId"))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_id", "Invalid station id")
-		return
-	}
-	productID, err := uuid.Parse(chi.URLParam(r, "productId"))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_id", "Invalid product id")
-		return
-	}
-
-	if err := h.stations.AddStationProduct(r.Context(), stationID, productID); err != nil {
+func (h *Handlers) AddStationProduct(w http.ResponseWriter, r *http.Request, stationId openapi_types.UUID, productId openapi_types.UUID) {
+	if err := h.stations.AddStationProduct(r.Context(), uuid.UUID(stationId), uuid.UUID(productId)); err != nil {
 		writeEntError(w, err)
 		return
 	}
