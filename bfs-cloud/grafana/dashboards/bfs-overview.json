@@ -1571,7 +1571,7 @@
       "targets": [
         {
           "azureLogAnalytics": {
-            "query": "ContainerAppConsoleLogs_CL\n| where $__timeFilter(TimeGenerated)\n| where ContainerAppName_s startswith \"backend-\"\n| extend latency_ms = todouble(extract(@'\"latency_ms\"\\s*[:=]\\s*([\\d\\.]+)', 1, Log_s))\n| where isnotnull(latency_ms)\n| summarize p50 = percentile(latency_ms, 50), p95 = percentile(latency_ms, 95), p99 = percentile(latency_ms, 99) by bin(TimeGenerated, $__timeInterval)\n| order by TimeGenerated asc",
+            "query": "ContainerAppConsoleLogs_CL\n| where $__timeFilter(TimeGenerated)\n| where ContainerAppName_s startswith \"backend-\"\n| extend latency_ms = todouble(extract(@'\"latency_ms\"\\s*[:=]\\s*([\\d\\.]+)', 1, Log_s))\n| where isnotnull(latency_ms)\n| summarize p50 = percentile(latency_ms, 50), p95 = percentile(latency_ms, 95), p99 = percentile(latency_ms, 99) by bin(TimeGenerated, $__interval)\n| order by TimeGenerated asc",
             "resources": [
               "/subscriptions/a6e97570-b80b-4a4d-a27c-081fe6c7e7f3/resourceGroups/bfs-${env}-rg/providers/Microsoft.OperationalInsights/workspaces/bfs-logs-workspace"
             ],
@@ -1873,7 +1873,7 @@
       "targets": [
         {
           "azureLogAnalytics": {
-            "query": "ContainerAppConsoleLogs_CL\n| where $__timeFilter(TimeGenerated)\n| where ContainerAppName_s startswith \"backend-\"\n| extend status = toint(extract(@'\"status\"\\s*[:=]\\s*(\\d+)', 1, Log_s))\n| where isnotnull(status)\n| extend bucket = case(status >= 500, \"5xx\", status >= 400, \"4xx\", status >= 300, \"3xx\", status >= 200, \"2xx\", \"other\")\n| summarize count() by bin(TimeGenerated, $__timeInterval), bucket\n| order by TimeGenerated asc",
+            "query": "ContainerAppConsoleLogs_CL\n| where $__timeFilter(TimeGenerated)\n| where ContainerAppName_s startswith \"backend-\"\n| extend status = toint(extract(@'\"status\"\\s*[:=]\\s*(\\d+)', 1, Log_s))\n| where isnotnull(status)\n| extend bucket = case(status >= 500, \"5xx\", status >= 400, \"4xx\", status >= 300, \"3xx\", status >= 200, \"2xx\", \"other\")\n| summarize count() by bin(TimeGenerated, $__interval), bucket\n| order by TimeGenerated asc",
             "resources": [
               "/subscriptions/a6e97570-b80b-4a4d-a27c-081fe6c7e7f3/resourceGroups/bfs-${env}-rg/providers/Microsoft.OperationalInsights/workspaces/bfs-logs-workspace"
             ],
