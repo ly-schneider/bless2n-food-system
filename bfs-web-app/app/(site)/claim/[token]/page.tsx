@@ -91,6 +91,7 @@ export default function ClaimPage() {
         setCode("")
         return
       }
+      setCode("")
       await load()
     } catch (e: unknown) {
       setCodeError(e instanceof Error ? e.message : "Prüfung fehlgeschlagen")

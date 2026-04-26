@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
 import { getCSRFToken } from "@/lib/csrf"
 
+type StationProduct = { productId: string; name: string }
+
 type Station = {
   id: string
   name: string
@@ -21,6 +23,7 @@ type Station = {
   status: string
   approvedAt?: string
   createdAt: string
+  products?: StationProduct[]
 }
 
 type Product = { id: string; name: string }
@@ -35,7 +38,6 @@ function csrfHeaders(method: string, json = true): Record<string, string> {
 export default function AdminStationRequestsPage() {
   const fetchAuth = useAuthorizedFetch()
   const [stations, setStations] = useState<Station[]>([])
-  const [assigned, setAssigned] = useState<Record<string, { productId: string; name: string }[]>>({})
   const [allProducts, setAllProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -98,40 +100,59 @@ export default function AdminStationRequestsPage() {
     }
   }
 
-  async function loadStationProducts(stationId: string) {
-    const res = await fetchAuth(`/api/v1/stations/${stationId}/products`)
-    const j = (await res.json()) as { items: { productId: string; name: string }[] }
-    setAssigned((prev) => ({ ...prev, [stationId]: j.items || [] }))
-  }
-
   async function addProduct(stationId: string, productId: string) {
-    const current = assigned[stationId] || []
-    const allIds = [...current.map((a) => a.productId), productId]
+    const product = allProducts.find((p) => p.id === productId)
+    if (!product) return
+
+    setStations((prev) =>
+      prev.map((s) => {
+        if (s.id !== stationId) return s
+        const current = s.products || []
+        if (current.some((p) => p.productId === productId)) return s
+        return { ...s, products: [...current, { productId, name: product.name }] }
+      })
+    )
+
     try {
-      const res = await fetchAuth(`/api/v1/stations/${stationId}/products`, {
-        method: "PUT",
-        headers: csrfHeaders("PUT"),
-        body: JSON.stringify({ productIds: allIds }),
+      const res = await fetchAuth(`/api/v1/stations/${stationId}/products/${productId}`, {
+        method: "POST",
+        headers: csrfHeaders("POST", false),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      await loadStationProducts(stationId)
     } catch {
+      setStations((prev) =>
+        prev.map((s) => {
+          if (s.id !== stationId) return s
+          return { ...s, products: (s.products || []).filter((p) => p.productId !== productId) }
+        })
+      )
       setError("Produkt hinzufügen fehlgeschlagen")
     }
   }
 
   async function removeProduct(stationId: string, productId: string) {
+    const prev = stations.find((s) => s.id === stationId)?.products || []
+
+    setStations((all) =>
+      all.map((s) => {
+        if (s.id !== stationId) return s
+        return { ...s, products: (s.products || []).filter((p) => p.productId !== productId) }
+      })
+    )
+
     try {
       const res = await fetchAuth(`/api/v1/stations/${stationId}/products/${productId}`, {
         method: "DELETE",
         headers: csrfHeaders("DELETE", false),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      setAssigned((prev) => ({
-        ...prev,
-        [stationId]: (prev[stationId] || []).filter((x) => x.productId !== productId),
-      }))
     } catch {
+      setStations((all) =>
+        all.map((s) => {
+          if (s.id !== stationId) return s
+          return { ...s, products: prev }
+        })
+      )
       setError("Produkt entfernen fehlgeschlagen")
     }
   }
@@ -160,8 +181,6 @@ export default function AdminStationRequestsPage() {
             key={st.id}
             station={st}
             allProducts={allProducts}
-            assigned={assigned[st.id] || []}
-            onLoadProducts={() => loadStationProducts(st.id)}
             onAddProduct={(productId) => addProduct(st.id, productId)}
             onRemoveProduct={(productId) => removeProduct(st.id, productId)}
             onRename={(name) => renameStation(st.id, name)}
@@ -176,8 +195,6 @@ export default function AdminStationRequestsPage() {
 function StationCard({
   station: st,
   allProducts,
-  assigned,
-  onLoadProducts,
   onAddProduct,
   onRemoveProduct,
   onRename,
@@ -185,31 +202,19 @@ function StationCard({
 }: {
   station: Station
   allProducts: Product[]
-  assigned: { productId: string; name: string }[]
-  onLoadProducts: () => Promise<void>
   onAddProduct: (productId: string) => Promise<void>
   onRemoveProduct: (productId: string) => Promise<void>
   onRename: (name: string) => Promise<void>
   onRevoke: () => void
 }) {
   const [open, setOpen] = useState(false)
-  const [loaded, setLoaded] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editName, setEditName] = useState(st.name)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const unassigned = useMemo(
-    () => allProducts.filter((p) => !assigned.some((a) => a.productId === p.id)),
-    [allProducts, assigned]
-  )
-
-  const handleOpenChange = async (isOpen: boolean) => {
-    setOpen(isOpen)
-    if (isOpen && !loaded) {
-      await onLoadProducts()
-      setLoaded(true)
-    }
-  }
+  const assigned = st.products || []
+  const assignedIds = useMemo(() => new Set(assigned.map((a) => a.productId)), [assigned])
+  const unassigned = useMemo(() => allProducts.filter((p) => !assignedIds.has(p.id)), [allProducts, assignedIds])
 
   return (
     <div className="bg-card border-border rounded-[11px] border p-3">
@@ -294,7 +299,7 @@ function StationCard({
       </div>
 
       {st.status === "approved" && (
-        <Collapsible open={open} onOpenChange={handleOpenChange} className="mt-2">
+        <Collapsible open={open} onOpenChange={setOpen} className="mt-2">
           <CollapsibleTrigger asChild>
             <Button variant="ghost" size="sm" className="text-muted-foreground -ml-2 gap-1.5 text-xs">
               {open ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}

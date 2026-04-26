@@ -16,9 +16,11 @@ import (
 )
 
 type StationService interface {
+	ListStations(ctx context.Context, status *string) ([]*ent.Device, error)
 	GetStationByKey(ctx context.Context, deviceKey string) (*ent.Device, error)
 	GetStationByID(ctx context.Context, id uuid.UUID) (*ent.Device, error)
 	SetStationProducts(ctx context.Context, stationID uuid.UUID, productIDs []uuid.UUID) error
+	AddStationProduct(ctx context.Context, stationID uuid.UUID, productID uuid.UUID) error
 	RemoveStationProduct(ctx context.Context, stationID uuid.UUID, productID uuid.UUID) error
 	ListStationProductIDs(ctx context.Context, stationID uuid.UUID) ([]uuid.UUID, error)
 	AssignedItemsForOrder(ctx context.Context, stationID, orderID uuid.UUID) ([]*ent.OrderLine, error)
@@ -56,6 +58,18 @@ func NewStationService(
 	}
 }
 
+func (s *stationService) ListStations(ctx context.Context, status *string) ([]*ent.Device, error) {
+	q := s.client.Device.Query().
+		Where(device.TypeEQ(device.TypeSTATION)).
+		WithDeviceProducts(func(dpq *ent.DeviceProductQuery) {
+			dpq.WithProduct()
+		})
+	if status != nil && *status != "" {
+		q = q.Where(device.StatusEQ(device.Status(*status)))
+	}
+	return q.Order(device.ByCreatedAt()).All(ctx)
+}
+
 func (s *stationService) GetStationByKey(ctx context.Context, deviceKey string) (*ent.Device, error) {
 	d, err := s.devices.GetByDeviceKey(ctx, deviceKey)
 	if err != nil {
@@ -88,6 +102,11 @@ func (s *stationService) getStationWithProducts(ctx context.Context, id uuid.UUI
 
 func (s *stationService) SetStationProducts(ctx context.Context, stationID uuid.UUID, productIDs []uuid.UUID) error {
 	return s.deviceProducts.ReplaceForDevice(ctx, stationID, productIDs)
+}
+
+func (s *stationService) AddStationProduct(ctx context.Context, stationID uuid.UUID, productID uuid.UUID) error {
+	_, err := s.deviceProducts.Create(ctx, stationID, productID)
+	return err
 }
 
 func (s *stationService) RemoveStationProduct(ctx context.Context, stationID uuid.UUID, productID uuid.UUID) error {

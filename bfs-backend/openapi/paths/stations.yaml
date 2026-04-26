@@ -308,6 +308,42 @@ product-item:
         type: string
         format: uuid
 
+  post:
+    tags: [Stations]
+    summary: Add product to station
+    description: Adds a single product assignment to a station.
+    operationId: addStationProduct
+    security:
+      - sessionAuth: []
+    x-required-permissions: [stations:manage]
+    responses:
+      "204":
+        description: Product added
+      "400":
+        description: Invalid request
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/Error"
+      "401":
+        description: Authentication required
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/Error"
+      "403":
+        description: Insufficient permissions
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/Error"
+      "409":
+        description: Product already assigned
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/Error"
+
   delete:
     tags: [Stations]
     summary: Remove product from station

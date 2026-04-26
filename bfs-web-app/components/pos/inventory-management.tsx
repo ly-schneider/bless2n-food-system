@@ -2,7 +2,7 @@
 
 import { Minus, Plus } from "lucide-react"
 import Image from "next/image"
-import { useCallback, useState } from "react"
+import { memo, useCallback, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -23,9 +23,18 @@ function StockControl({
 }) {
   const [localStock, setLocalStock] = useState(String(currentStock))
   const [saving, setSaving] = useState(false)
+  const pendingRef = useRef<AbortController | null>(null)
 
   const adjustStock = useCallback(
     async (delta: number) => {
+      pendingRef.current?.abort()
+
+      const optimistic = Math.max(0, parseInt(localStock, 10) + delta)
+      setLocalStock(String(optimistic))
+      onStockUpdated(product.id, optimistic)
+
+      const controller = new AbortController()
+      pendingRef.current = controller
       setSaving(true)
       try {
         const res = await fetch(`/api/v1/pos/products/${product.id}/inventory`, {
@@ -35,18 +44,25 @@ function StockControl({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ delta, reason: "manual_adjust" }),
+          signal: controller.signal,
         })
         if (res.ok) {
           const data = (await res.json()) as { quantity: number }
           setLocalStock(String(data.quantity))
           onStockUpdated(product.id, data.quantity)
+        } else {
+          setLocalStock(String(currentStock))
+          onStockUpdated(product.id, currentStock)
         }
-      } catch {
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return
+        setLocalStock(String(currentStock))
+        onStockUpdated(product.id, currentStock)
       } finally {
         setSaving(false)
       }
     },
-    [product.id, token, onStockUpdated]
+    [product.id, token, onStockUpdated, localStock, currentStock]
   )
 
   const handleAbsoluteSet = useCallback(async () => {
@@ -70,7 +86,7 @@ function StockControl({
         variant="outline"
         size="icon"
         className="size-9 shrink-0 rounded-[10px]"
-        disabled={saving || currentStock <= 0}
+        disabled={saving || parseInt(localStock, 10) <= 0}
         onClick={() => adjustStock(-1)}
       >
         <Minus className="size-4" />
@@ -133,7 +149,7 @@ function ActiveToggle({
   )
 }
 
-function ItemCard({
+const ItemCard = memo(function ItemCard({
   product,
   token,
   onStockUpdated,
@@ -181,7 +197,7 @@ function ItemCard({
       </div>
     </div>
   )
-}
+})
 
 export function InventoryManagement({
   products,
