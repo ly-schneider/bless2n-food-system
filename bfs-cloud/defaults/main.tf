@@ -212,7 +212,7 @@ output "config" {
           name           = "frontend-cpu-scale"
           cpu_percentage = 75
         }
-        custom_scale_rules = var.env == "production" ? [
+        custom_scale_rules = contains(["production", "staging"], var.env) ? [
           {
             name             = "frontend-cron-sunday"
             custom_rule_type = "cron"
@@ -301,7 +301,7 @@ output "config" {
           name           = "backend-cpu-scale"
           cpu_percentage = 80
         }
-        custom_scale_rules = var.env == "production" ? [
+        custom_scale_rules = contains(["production", "staging"], var.env) ? [
           {
             name             = "backend-cron-sunday"
             custom_rule_type = "cron"
