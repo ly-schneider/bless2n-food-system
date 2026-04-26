@@ -3,7 +3,7 @@ output "grafana_folder_url" {
   value       = "${var.grafana_stack_url}/dashboards/f/${grafana_folder.bfs.uid}"
 }
 
-output "dashboard_url" {
-  description = "URL to the main overview dashboard"
-  value       = "${var.grafana_stack_url}${grafana_dashboard.overview.url}"
+output "dashboard_urls" {
+  description = "URLs to the per-env overview dashboards"
+  value       = { for env, d in grafana_dashboard.overview : env => "${var.grafana_stack_url}${d.url}" }
 }
