@@ -22,6 +22,7 @@ export function InlineMenuGroup({ suggestion, items, onEditItem, onDismiss, isPO
   const { updateQuantity, removeFromCart, addToCart } = useCart()
 
   const sumSimpleCents = useMemo(() => items.reduce((sum, it) => sum + it.product.priceCents, 0), [items])
+  const hasSavings = suggestion.savingsCents > 0
 
   const applyConversion = () => {
     for (const ci of items) {
@@ -37,7 +38,7 @@ export function InlineMenuGroup({ suggestion, items, onEditItem, onDismiss, isPO
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">Menü-Vorschlag: {suggestion.menuProduct.name}</p>
             <p className="text-muted-foreground text-xs">
-              Spare {formatChf(suggestion.savingsCents)}
+              {hasSavings ? `Spare ${formatChf(suggestion.savingsCents)}` : "Als Menü bestellen — gleicher Preis"}
               {!isPOS && " — Deine Auswahl bleibt erhalten."}
             </p>
           </div>
@@ -64,10 +65,12 @@ export function InlineMenuGroup({ suggestion, items, onEditItem, onDismiss, isPO
                     <span>{suggestion.menuProduct.name}</span>
                     <span className="font-medium">{formatChf(suggestion.menuProduct.priceCents)}</span>
                   </div>
-                  <div className="mt-1 flex items-center justify-between border-t pt-1">
-                    <span>Gespart</span>
-                    <span className="font-semibold text-green-700">{formatChf(suggestion.savingsCents)}</span>
-                  </div>
+                  {hasSavings && (
+                    <div className="mt-1 flex items-center justify-between border-t pt-1">
+                      <span>Gespart</span>
+                      <span className="font-semibold text-green-700">{formatChf(suggestion.savingsCents)}</span>
+                    </div>
+                  )}
                 </div>
               </CollapsibleContent>
             </Collapsible>
@@ -93,7 +96,7 @@ export function InlineMenuGroup({ suggestion, items, onEditItem, onDismiss, isPO
         </div>
         <div className="mt-3 flex flex-col gap-2">
           <Button className="w-full" onClick={applyConversion}>
-            Jetzt wechseln{!isPOS && " und sparen"}
+            Jetzt wechseln{!isPOS && hasSavings && " und sparen"}
           </Button>
           {onDismiss && (
             <Button variant="outline" className="w-full text-xs" onClick={onDismiss}>

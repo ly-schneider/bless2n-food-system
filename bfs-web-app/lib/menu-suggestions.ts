@@ -60,7 +60,7 @@ export function findBestMenuSuggestion(cart: Cart, allProducts: ProductDTO[]): M
     if (chosen.length === slots.length) {
       const sumSimple = chosen.reduce((sum, ch) => sum + ch.cartItem.product.priceCents, 0)
       const savings = sumSimple - menu.priceCents
-      if (savings > 0) {
+      if (savings >= 0) {
         const suggestion: MenuSuggestion = {
           menuProduct: menu,
           configuration: buildConfiguration(slots, chosen),

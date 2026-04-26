@@ -345,6 +345,7 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
           const nextReceipt: Receipt & { orderTimestamp?: number } = {
             method: "card",
             totalCents: total,
+            orderId: localOrderId,
             pickupQr,
             orderTimestamp: Date.now(),
           }
@@ -491,6 +492,7 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
     const receiptPayload: Receipt & { orderTimestamp?: number } = {
       method: "cash",
       totalCents: total,
+      orderId: localOrderId,
       pickupQr: pickupQr || undefined,
       orderTimestamp: Date.now(),
     }
@@ -553,6 +555,7 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
     const receiptPayload: Receipt & { orderTimestamp?: number } = {
       method: "twint",
       totalCents: total,
+      orderId: localOrderId,
       pickupQr: pickupQr || undefined,
       orderTimestamp: Date.now(),
     }
@@ -688,6 +691,7 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
       const receiptPayload: Receipt & { orderTimestamp?: number } = {
         method: paymentMethod,
         totalCents: total,
+        orderId: localOrderId,
         pickupQr: pickupQr || undefined,
         orderTimestamp: Date.now(),
       }
