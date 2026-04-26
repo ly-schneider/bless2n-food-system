@@ -1,8 +1,7 @@
 import { Metadata, Viewport } from "next"
 import Image from "next/image"
 import { VersionLabel } from "@/components/layout/version-label"
-import { InstallHintDrawer } from "@/components/station/install-hint-drawer"
-import { InstallPrompt } from "@/components/station/install-prompt"
+import { FullscreenButton } from "@/components/station/fullscreen-button"
 import { PWARuntime } from "@/components/station/pwa-runtime"
 import { ServiceWorkerRegister } from "@/components/station/service-worker-register"
 
@@ -43,14 +42,13 @@ export default function StationLayout({ children }: { children: React.ReactNode 
           <span className="text-lg font-semibold tracking-tight">BlessThun Food</span>
         </div>
         <div className="absolute top-6 right-2">
-          <InstallPrompt />
+          <FullscreenButton />
         </div>
       </div>
       <div className="flex flex-1 flex-col">{children}</div>
       <VersionLabel className="pb-6 text-center text-sm" version={process.env.APP_VERSION} />
       <ServiceWorkerRegister />
       <PWARuntime />
-      <InstallHintDrawer />
     </main>
   )
 }
