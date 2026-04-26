@@ -36,7 +36,7 @@
     {
       "datasource": {
         "type": "postgres",
-        "uid": "${pg_ds}"
+        "uid": "pg-${env}"
       },
       "description": "Paid orders placed since local midnight (Europe/Zurich).",
       "fieldConfig": {
@@ -73,9 +73,7 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -96,7 +94,7 @@
     {
       "datasource": {
         "type": "postgres",
-        "uid": "${pg_ds}"
+        "uid": "pg-${env}"
       },
       "description": "Sum of payments taken since local midnight, excluding GRATIS_* methods.",
       "fieldConfig": {
@@ -133,9 +131,7 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -156,7 +152,7 @@
     {
       "datasource": {
         "type": "postgres",
-        "uid": "${pg_ds}"
+        "uid": "pg-${env}"
       },
       "description": "Share of orders that reached `paid` status over the last hour (paid / (paid + cancelled)).",
       "fieldConfig": {
@@ -206,9 +202,7 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -229,7 +223,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "${azmon_ds}"
+        "uid": "azmon-${env}"
       },
       "description": "Share of non-5xx responses over the last 24h. Parses `status` from backend JSON logs.",
       "fieldConfig": {
@@ -279,9 +273,7 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -304,7 +296,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "${azmon_ds}"
+        "uid": "azmon-${env}"
       },
       "description": "95th percentile backend request latency over the last 5 minutes. Parses `latency_ms` from backend logs.",
       "fieldConfig": {
@@ -352,9 +344,7 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -377,7 +367,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "${azmon_ds}"
+        "uid": "azmon-${env}"
       },
       "description": "Share of 5xx responses over the last 5 minutes. Parses `status` from backend logs.",
       "fieldConfig": {
@@ -426,9 +416,7 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -464,7 +452,7 @@
     {
       "datasource": {
         "type": "postgres",
-        "uid": "${pg_ds}"
+        "uid": "pg-${env}"
       },
       "description": "Revenue per hour from non-GRATIS payments over the selected range.",
       "fieldConfig": {
@@ -526,10 +514,7 @@
       "id": 7,
       "options": {
         "legend": {
-          "calcs": [
-            "sum",
-            "max"
-          ],
+          "calcs": ["sum", "max"],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true
@@ -554,7 +539,7 @@
     {
       "datasource": {
         "type": "postgres",
-        "uid": "${pg_ds}"
+        "uid": "pg-${env}"
       },
       "description": "Share of order payments by method over the selected range.",
       "fieldConfig": {
@@ -582,22 +567,16 @@
       },
       "id": 8,
       "options": {
-        "displayLabels": [
-          "percent"
-        ],
+        "displayLabels": ["percent"],
         "legend": {
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true,
-          "values": [
-            "value"
-          ]
+          "values": ["value"]
         },
         "pieType": "donut",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -621,7 +600,7 @@
     {
       "datasource": {
         "type": "postgres",
-        "uid": "${pg_ds}"
+        "uid": "pg-${env}"
       },
       "description": "Paid orders split by origin (shop vs pos) over the selected range.",
       "fieldConfig": {
@@ -649,22 +628,16 @@
       },
       "id": 9,
       "options": {
-        "displayLabels": [
-          "percent"
-        ],
+        "displayLabels": ["percent"],
         "legend": {
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true,
-          "values": [
-            "value"
-          ]
+          "values": ["value"]
         },
         "pieType": "donut",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -701,7 +674,7 @@
     {
       "datasource": {
         "type": "postgres",
-        "uid": "${pg_ds}"
+        "uid": "pg-${env}"
       },
       "description": "Top 15 products by units sold in the selected range. Paid orders only.",
       "fieldConfig": {
@@ -736,9 +709,7 @@
         "minVizWidth": 0,
         "orientation": "horizontal",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -760,7 +731,7 @@
     {
       "datasource": {
         "type": "postgres",
-        "uid": "${pg_ds}"
+        "uid": "pg-${env}"
       },
       "description": "Top 15 products by gross revenue in the selected range. Paid orders only.",
       "fieldConfig": {
@@ -796,9 +767,7 @@
         "minVizWidth": 0,
         "orientation": "horizontal",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -833,7 +802,7 @@
     {
       "datasource": {
         "type": "postgres",
-        "uid": "${pg_ds}"
+        "uid": "pg-${env}"
       },
       "description": "Order volume over the selected range, split by terminal status.",
       "fieldConfig": {
@@ -954,9 +923,7 @@
       "id": 12,
       "options": {
         "legend": {
-          "calcs": [
-            "sum"
-          ],
+          "calcs": ["sum"],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true
@@ -981,7 +948,7 @@
     {
       "datasource": {
         "type": "postgres",
-        "uid": "${pg_ds}"
+        "uid": "pg-${env}"
       },
       "description": "Most recent cancelled or refunded orders in the selected range.",
       "fieldConfig": {
@@ -1075,9 +1042,7 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": [
-            "sum"
-          ],
+          "reducer": ["sum"],
           "show": false
         },
         "showHeader": true,
@@ -1103,7 +1068,7 @@
     {
       "datasource": {
         "type": "postgres",
-        "uid": "${pg_ds}"
+        "uid": "pg-${env}"
       },
       "description": "Absolute net inventory movement per product today (Europe/Zurich). Highlights fast movers.",
       "fieldConfig": {
@@ -1138,9 +1103,7 @@
         "minVizWidth": 0,
         "orientation": "horizontal",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -1175,7 +1138,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "${azmon_ds}"
+        "uid": "azmon-${env}"
       },
       "description": "Per-app HTTP request rate (Azure Monitor `Requests` metric).",
       "fieldConfig": {
@@ -1236,10 +1199,7 @@
       "id": 15,
       "options": {
         "legend": {
-          "calcs": [
-            "sum",
-            "mean"
-          ],
+          "calcs": ["sum", "mean"],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true
@@ -1255,13 +1215,7 @@
           "azureMonitor": {
             "aggregation": "Total",
             "allowedTimeGrainsMs": [
-              60000,
-              300000,
-              900000,
-              1800000,
-              3600000,
-              21600000,
-              43200000,
+              60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
               86400000
             ],
             "dimensionFilters": [],
@@ -1284,7 +1238,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "${azmon_ds}"
+        "uid": "azmon-${env}"
       },
       "description": "Top 15 routes by request count over the selected time range. Parses `path` from backend logs.",
       "fieldConfig": {
@@ -1319,9 +1273,7 @@
         "minVizWidth": 0,
         "orientation": "horizontal",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -1345,7 +1297,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "${azmon_ds}"
+        "uid": "azmon-${env}"
       },
       "description": "Request share per container app over the selected time range.",
       "fieldConfig": {
@@ -1373,22 +1325,16 @@
       },
       "id": 17,
       "options": {
-        "displayLabels": [
-          "percent"
-        ],
+        "displayLabels": ["percent"],
         "legend": {
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true,
-          "values": [
-            "value"
-          ]
+          "values": ["value"]
         },
         "pieType": "donut",
         "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "fields": "",
           "values": false
         },
@@ -1427,7 +1373,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "${azmon_ds}"
+        "uid": "azmon-${env}"
       },
       "description": "p50 / p95 / p99 backend latency. Parses `latency_ms` from backend logs.",
       "fieldConfig": {
@@ -1534,10 +1480,7 @@
       "id": 18,
       "options": {
         "legend": {
-          "calcs": [
-            "mean",
-            "max"
-          ],
+          "calcs": ["mean", "max"],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true
@@ -1564,7 +1507,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "${azmon_ds}"
+        "uid": "azmon-${env}"
       },
       "description": "Routes ranked by p95 latency over the selected window. Parses `path` and `latency_ms` from backend logs.",
       "fieldConfig": {
@@ -1664,9 +1607,7 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": [
-            "sum"
-          ],
+          "reducer": ["sum"],
           "show": false
         },
         "showHeader": true,
@@ -1707,7 +1648,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "${azmon_ds}"
+        "uid": "azmon-${env}"
       },
       "description": "Status code buckets over time. Parses `status` from backend logs.",
       "fieldConfig": {
@@ -1828,9 +1769,7 @@
       "id": 20,
       "options": {
         "legend": {
-          "calcs": [
-            "sum"
-          ],
+          "calcs": ["sum"],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true
@@ -1857,7 +1796,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "${azmon_ds}"
+        "uid": "azmon-${env}"
       },
       "description": "Top routes by 4xx/5xx count. Parses `path` and `status` from backend logs.",
       "fieldConfig": {
@@ -1979,9 +1918,7 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": [
-            "sum"
-          ],
+          "reducer": ["sum"],
           "show": false
         },
         "showHeader": true,
@@ -2022,7 +1959,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "${azmon_ds}"
+        "uid": "azmon-${env}"
       },
       "description": "Average CPU usage vs a 1 vCPU (1e9 nanocores) ceiling. Thresholds at 50% / 75% / 90%.",
       "fieldConfig": {
@@ -2069,9 +2006,7 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "mean"
-          ],
+          "calcs": ["mean"],
           "fields": "",
           "values": false
         },
@@ -2084,13 +2019,7 @@
           "azureMonitor": {
             "aggregation": "Average",
             "allowedTimeGrainsMs": [
-              60000,
-              300000,
-              900000,
-              1800000,
-              3600000,
-              21600000,
-              43200000,
+              60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
               86400000
             ],
             "dimensionFilters": [],
@@ -2113,7 +2042,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "${azmon_ds}"
+        "uid": "azmon-${env}"
       },
       "description": "Working set vs 2 GiB ceiling. Thresholds at 60% / 80% / 90%.",
       "fieldConfig": {
@@ -2159,9 +2088,7 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "mean"
-          ],
+          "calcs": ["mean"],
           "fields": "",
           "values": false
         },
@@ -2174,13 +2101,7 @@
           "azureMonitor": {
             "aggregation": "Average",
             "allowedTimeGrainsMs": [
-              60000,
-              300000,
-              900000,
-              1800000,
-              3600000,
-              21600000,
-              43200000,
+              60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
               86400000
             ],
             "dimensionFilters": [],
@@ -2203,7 +2124,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "${azmon_ds}"
+        "uid": "azmon-${env}"
       },
       "description": "Replica count over time with threshold line at the scale ceiling (20).",
       "fieldConfig": {
@@ -2255,10 +2176,7 @@
       "id": 24,
       "options": {
         "legend": {
-          "calcs": [
-            "mean",
-            "max"
-          ],
+          "calcs": ["mean", "max"],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
@@ -2274,13 +2192,7 @@
           "azureMonitor": {
             "aggregation": "Maximum",
             "allowedTimeGrainsMs": [
-              60000,
-              300000,
-              900000,
-              1800000,
-              3600000,
-              21600000,
-              43200000,
+              60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
               86400000
             ],
             "dimensionFilters": [],
@@ -2303,7 +2215,7 @@
     {
       "datasource": {
         "type": "grafana-azure-monitor-datasource",
-        "uid": "${azmon_ds}"
+        "uid": "azmon-${env}"
       },
       "description": "Container restart count in the selected window. Non-zero means pods are restarting — investigate.",
       "fieldConfig": {
@@ -2351,9 +2263,7 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": [
-            "max"
-          ],
+          "calcs": ["max"],
           "fields": "",
           "values": false
         },
@@ -2365,13 +2275,7 @@
           "azureMonitor": {
             "aggregation": "Maximum",
             "allowedTimeGrainsMs": [
-              60000,
-              300000,
-              900000,
-              1800000,
-              3600000,
-              21600000,
-              43200000,
+              60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
               86400000
             ],
             "dimensionFilters": [],
@@ -2499,9 +2403,7 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": [
-            "sum"
-          ],
+          "reducer": ["sum"],
           "show": false
         },
         "showHeader": true,
@@ -2515,9 +2417,7 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "environments": [
-            "$env"
-          ],
+          "environments": ["$env"],
           "issuesQuery": "is:unresolved",
           "issuesSort": "freq",
           "issuesLimit": 25,
@@ -2532,43 +2432,9 @@
   ],
   "refresh": "1m",
   "schemaVersion": 39,
-  "tags": [
-    "bfs",
-    "container-apps",
-    "azure-monitor",
-    "postgres"
-  ],
+  "tags": ["bfs", "container-apps", "azure-monitor", "postgres"],
   "templating": {
     "list": [
-      {
-        "current": {
-          "selected": true,
-          "text": "staging",
-          "value": "staging"
-        },
-        "hide": 0,
-        "includeAll": false,
-        "label": "Environment",
-        "multi": false,
-        "name": "env",
-        "options": [
-          {
-            "selected": true,
-            "text": "staging",
-            "value": "staging"
-          },
-          {
-            "selected": false,
-            "text": "production",
-            "value": "production"
-          }
-        ],
-        "query": "staging,production",
-        "queryValue": "",
-        "skipUrlSync": false,
-        "type": "custom",
-        "description": "Switches Azure Monitor, Postgres, and Sentry data sources together."
-      },
       {
         "current": {
           "selected": true,
@@ -2592,45 +2458,9 @@
         "type": "custom"
       },
       {
-        "current": {
-          "selected": true,
-          "text": "azmon-staging",
-          "value": "azmon-staging"
-        },
-        "hide": 2,
-        "includeAll": false,
-        "label": "Azure Monitor data source",
-        "multi": false,
-        "name": "azmon_ds",
-        "options": [],
-        "query": "grafana-azure-monitor-datasource",
-        "refresh": 1,
-        "regex": "/^azmon-$env$/",
-        "skipUrlSync": false,
-        "type": "datasource"
-      },
-      {
-        "current": {
-          "selected": true,
-          "text": "pg-staging",
-          "value": "pg-staging"
-        },
-        "hide": 2,
-        "includeAll": false,
-        "label": "Postgres data source",
-        "multi": false,
-        "name": "pg_ds",
-        "options": [],
-        "query": "postgres",
-        "refresh": 1,
-        "regex": "/^pg-$env$/",
-        "skipUrlSync": false,
-        "type": "datasource"
-      },
-      {
         "datasource": {
           "type": "grafana-azure-monitor-datasource",
-          "uid": "azmon-staging"
+          "uid": "azmon-${env}"
         },
         "definition": "",
         "hide": 0,
@@ -2672,8 +2502,8 @@
     ]
   },
   "timezone": "browser",
-  "title": "Bless2n Food System - Overview",
-  "uid": "bfs-overview",
+  "title": "Bless2n Food System - ${env}",
+  "uid": "bfs-overview-${env}",
   "version": 3,
   "weekStart": "",
   "links": []

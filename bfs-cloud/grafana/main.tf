@@ -103,8 +103,10 @@ resource "grafana_data_source" "postgres" {
 }
 
 resource "grafana_dashboard" "overview" {
+  for_each = toset(["staging", "production"])
+
   folder      = grafana_folder.bfs.uid
-  config_json = file("${path.module}/dashboards/bfs-overview.json")
+  config_json = replace(file("${path.module}/dashboards/bfs-overview.json"), "$${env}", each.key)
   overwrite   = true
 
   depends_on = [
