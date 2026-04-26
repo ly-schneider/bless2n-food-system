@@ -213,6 +213,10 @@ export class OrderQueueManager {
       this.saveToStorage()
       this.notifyStateListeners()
 
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("bfs:pos:order-server-id", { detail: this.orders[idx]! }))
+      }
+
       const paymentKey = `${order.idempotencyKey}:pay`
       const paymentBody: Record<string, unknown> = { method: order.paymentMethod, channel: "pos" }
       if (order.gratisInfo && order.gratisInfo.type === "100club") {

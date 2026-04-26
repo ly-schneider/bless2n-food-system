@@ -134,6 +134,9 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
   const changeCents = Math.max(0, receivedCents - total)
   const scrollRef = useRef<HTMLDivElement>(null)
   const prevItemCount = useRef(cart.items.length)
+  const pendingPrintsRef = useRef<
+    Map<string, { template: Omit<Receipt, "orderId" | "pickupQr"> & { orderTimestamp?: number } }>
+  >(new Map())
   const cartIsEmpty = cart.items.length === 0
   const jetonMode = mode === "JETON" || mode === "HYBRID"
   const shouldPrint = mode !== "JETON"
@@ -207,6 +210,32 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
     const base = process.env.NEXT_PUBLIC_APP_URL ?? (typeof window !== "undefined" ? window.location.origin : "")
     return `${base}/o/${orderId}`
   }, [])
+
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      const synced = (ev as CustomEvent<QueuedOrder>).detail
+      if (!synced?.serverId) return
+      const entry = pendingPrintsRef.current.get(synced.localId)
+      if (!entry) return
+      pendingPrintsRef.current.delete(synced.localId)
+
+      const finalReceipt: Receipt & { orderTimestamp?: number } = {
+        ...entry.template,
+        orderId: synced.serverId,
+        pickupQr: generatePickupQr(synced.serverId),
+      }
+      try {
+        getBridge()?.print?.(JSON.stringify(finalReceipt))
+      } catch {}
+
+      setJetonSummary((prev) => {
+        if (!prev || prev.orderId !== synced.localId) return prev
+        return { ...prev, orderId: synced.serverId, receiptPayload: finalReceipt }
+      })
+    }
+    window.addEventListener("bfs:pos:order-server-id", handler as EventListener)
+    return () => window.removeEventListener("bfs:pos:order-server-id", handler as EventListener)
+  }, [generatePickupQr])
 
   const emitInventoryDecrement = useCallback((items: typeof cart.items) => {
     const decrements = new Map<string, number>()
@@ -339,16 +368,6 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
             menuSelections: toMenuSelections(it.configuration),
           }))
           const printItems = buildPrintItems()
-          const localOrderId = `local_${Date.now()}`
-          const pickupQr = generatePickupQr(localOrderId)
-
-          const nextReceipt: Receipt & { orderTimestamp?: number } = {
-            method: "card",
-            totalCents: total,
-            orderId: localOrderId,
-            pickupQr,
-            orderTimestamp: Date.now(),
-          }
           const jetons = computeJetonTotals()
 
           const cardMeta: CardMeta = {
@@ -359,11 +378,11 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
           }
           const hasCardMeta = Object.values(cardMeta).some((v) => typeof v === "string" && v.length > 0)
 
-          submitOrder(
+          const queued = submitOrder(
             itemsBody,
             originalTotal,
             "card",
-            { items: printItems, pickupQr },
+            { items: printItems, pickupQr: null },
             selectedGratisInfo ?? undefined,
             hasCardMeta ? cardMeta : undefined
           )
@@ -372,16 +391,16 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
           setCardProcessing(false)
           setCardSuccess(true)
 
-          if (shouldPrint) {
+          if (shouldPrint && canPrint && queued) {
             setCardPrintInProgress(true)
-            try {
-              if (canPrint) getBridge()?.print?.(JSON.stringify(nextReceipt))
-            } catch {}
+            pendingPrintsRef.current.set(queued.localId, {
+              template: { method: "card", totalCents: total, items: printItems, orderTimestamp: Date.now() },
+            })
           }
 
-          if (jetonMode) {
+          if (jetonMode && queued) {
             setShowCard(false)
-            setJetonSummary({ items: jetons, orderId: localOrderId, payment: "card", receiptPayload: nextReceipt })
+            setJetonSummary({ items: jetons, orderId: queued.localId, payment: "card" })
           }
 
           clearCart()
@@ -410,7 +429,6 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
     shouldPrint,
     computeJetonTotals,
     buildPrintItems,
-    generatePickupQr,
     cart.items,
     submitOrder,
     canPrint,
@@ -486,27 +504,23 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
     }))
     const printItems = buildPrintItems()
     const jetons = computeJetonTotals()
-    const localOrderId = `local_${Date.now()}`
-    const pickupQr = generatePickupQr(localOrderId)
 
-    const receiptPayload: Receipt & { orderTimestamp?: number } = {
-      method: "cash",
-      totalCents: total,
-      orderId: localOrderId,
-      pickupQr: pickupQr || undefined,
-      orderTimestamp: Date.now(),
-    }
-
-    submitOrder(items, originalTotal, "cash", { items: printItems, pickupQr }, selectedGratisInfo ?? undefined)
+    const queued = submitOrder(
+      items,
+      originalTotal,
+      "cash",
+      { items: printItems, pickupQr: null },
+      selectedGratisInfo ?? undefined
+    )
     emitInventoryDecrement(cart.items)
 
-    if (shouldPrint) {
-      try {
-        if (canPrint) getBridge()?.print?.(JSON.stringify(receiptPayload))
-      } catch {}
+    if (shouldPrint && canPrint && queued) {
+      pendingPrintsRef.current.set(queued.localId, {
+        template: { method: "cash", totalCents: total, items: printItems, orderTimestamp: Date.now() },
+      })
     }
-    if (jetonMode) {
-      setJetonSummary({ items: jetons, orderId: localOrderId, payment: "cash", receiptPayload })
+    if (jetonMode && queued) {
+      setJetonSummary({ items: jetons, orderId: queued.localId, payment: "cash" })
     }
 
     clearCart()
@@ -527,7 +541,6 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
     clearCart,
     clearClub100Discount,
     buildPrintItems,
-    generatePickupQr,
     submitOrder,
     emitInventoryDecrement,
     selectedGratisInfo,
@@ -549,27 +562,23 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
     }))
     const printItems = buildPrintItems()
     const jetons = computeJetonTotals()
-    const localOrderId = `local_${Date.now()}`
-    const pickupQr = generatePickupQr(localOrderId)
 
-    const receiptPayload: Receipt & { orderTimestamp?: number } = {
-      method: "twint",
-      totalCents: total,
-      orderId: localOrderId,
-      pickupQr: pickupQr || undefined,
-      orderTimestamp: Date.now(),
-    }
-
-    submitOrder(items, originalTotal, "twint", { items: printItems, pickupQr }, selectedGratisInfo ?? undefined)
+    const queued = submitOrder(
+      items,
+      originalTotal,
+      "twint",
+      { items: printItems, pickupQr: null },
+      selectedGratisInfo ?? undefined
+    )
     emitInventoryDecrement(cart.items)
 
-    if (shouldPrint) {
-      try {
-        if (canPrint) getBridge()?.print?.(JSON.stringify(receiptPayload))
-      } catch {}
+    if (shouldPrint && canPrint && queued) {
+      pendingPrintsRef.current.set(queued.localId, {
+        template: { method: "twint", totalCents: total, items: printItems, orderTimestamp: Date.now() },
+      })
     }
-    if (jetonMode) {
-      setJetonSummary({ items: jetons, orderId: localOrderId, payment: "twint", receiptPayload })
+    if (jetonMode && queued) {
+      setJetonSummary({ items: jetons, orderId: queued.localId, payment: "twint" })
     }
 
     clearCart()
@@ -585,7 +594,6 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
     cart.items,
     computeJetonTotals,
     buildPrintItems,
-    generatePickupQr,
     originalTotal,
     total,
     canPrint,
@@ -685,27 +693,17 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
       }))
       const printItems = buildPrintItems()
       const jetons = computeJetonTotals()
-      const localOrderId = `local_${Date.now()}`
-      const pickupQr = generatePickupQr(localOrderId)
 
-      const receiptPayload: Receipt & { orderTimestamp?: number } = {
-        method: paymentMethod,
-        totalCents: total,
-        orderId: localOrderId,
-        pickupQr: pickupQr || undefined,
-        orderTimestamp: Date.now(),
-      }
-
-      submitOrder(items, total, paymentMethod, { items: printItems, pickupQr }, gratisInfo)
+      const queued = submitOrder(items, total, paymentMethod, { items: printItems, pickupQr: null }, gratisInfo)
       emitInventoryDecrement(cart.items)
 
-      if (shouldPrint) {
-        try {
-          if (canPrint) getBridge()?.print?.(JSON.stringify(receiptPayload))
-        } catch {}
+      if (shouldPrint && canPrint && queued) {
+        pendingPrintsRef.current.set(queued.localId, {
+          template: { method: paymentMethod, totalCents: total, items: printItems, orderTimestamp: Date.now() },
+        })
       }
-      if (jetonMode) {
-        setJetonSummary({ items: jetons, orderId: localOrderId, payment: paymentMethod, receiptPayload })
+      if (jetonMode && queued) {
+        setJetonSummary({ items: jetons, orderId: queued.localId, payment: paymentMethod })
       }
 
       clearCart()
@@ -721,7 +719,6 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
       hasMissingJeton,
       computeJetonTotals,
       buildPrintItems,
-      generatePickupQr,
       submitOrder,
       emitInventoryDecrement,
       clearCart,
