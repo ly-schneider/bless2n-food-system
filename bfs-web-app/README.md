@@ -11,6 +11,7 @@ app/
 ├── (auth)/         Authentication flows (login, register, password reset)
 ├── (site)/         Public ordering — menu browsing, cart, QR code ordering, TWINT checkout
 ├── admin/          Admin dashboard — orders, inventory, analytics, devices, settings
+├── o/              Short order URL redirects
 ├── pos/            POS terminal — cashier interface for on-site SumUp payments
 ├── station/        Station display — kitchen preparation queue for food operators
 ├── health/         Health check endpoint
@@ -58,6 +59,7 @@ bfs-web-app/
 ├── hooks/                Custom React hooks
 ├── lib/                  Utilities and helpers
 ├── contexts/             React Context providers
+├── types/                TypeScript type definitions
 ├── styles/               Global styles
 ├── public/               Static assets
 ├── .storybook/           Storybook configuration

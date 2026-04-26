@@ -66,34 +66,32 @@ bfs-backend/
 │   ├── provisioning/         Database role/schema setup
 │   └── seed/                 Development seed data
 ├── internal/
-│   ├── app/                  Uber FX wiring & DI modules
 │   ├── api/                  Generated OpenAPI types
+│   ├── app/                  Uber FX wiring & DI modules
 │   ├── auth/                 JWKS validation, RBAC, device auth
 │   ├── blobstore/            Azure Blob Storage integration
 │   ├── config/               Configuration management
 │   ├── database/             Connection pooling & lifecycle
 │   ├── generated/            Generated code (Ent, OpenAPI)
-│   ├── handler/              HTTP handlers
 │   ├── http/                 Chi router setup
 │   ├── inventory/            Inventory management
 │   ├── middleware/           Common HTTP middleware
-│   ├── model/                Data models & entities
 │   ├── payrexx/              Payment gateway integration
+│   ├── pdf/                  PDF generation
 │   ├── repository/           Data access layer
 │   ├── response/             HTTP response helpers
 │   ├── schema/               Ent database schema definitions
 │   ├── service/              Business logic (orders, payments, email)
+│   ├── trace/                Tracing utilities
 │   ├── utils/                Utilities
 │   └── version/              Build version info
 ├── openapi/                  OpenAPI specifications
 ├── docs/                     Generated Swagger docs
 ├── test/
-│   ├── integration/          Integration tests (requires PostgreSQL)
-│   └── fixtures/             Test data
+│   └── integration/          Integration tests (requires PostgreSQL)
 ├── docker-compose.yml        PostgreSQL, Mailpit, Azurite
 ├── Dockerfile                Multi-stage distroless build
-├── justfile                  Development commands (Just)
-├── Makefile                  Development commands (Make)
+├── justfile                  Development commands
 ├── atlas.hcl                 Atlas migration config
 └── .air.toml                 Live reload config
 ```
@@ -102,17 +100,17 @@ bfs-backend/
 
 - **Go 1.25+**
 - **Docker & Docker Compose** — for PostgreSQL, Mailpit, and Azurite
-- **Make** or **Just** — for running development commands
+- **Just** — for running development commands
 
 ## Development Setup
 
 ```bash
 cp .env.example .env
 
-make docker-up          # Start PostgreSQL + Mailpit + Azurite
-make migrate-local      # Apply database migrations
-make seed               # Seed development data (idempotent)
-make dev                # Start with live reload via Air
+just up                 # Start PostgreSQL + Mailpit + Azurite
+just migrate            # Apply database migrations
+just seed               # Seed development data (idempotent)
+just dev                # Start with live reload via Air
 ```
 
 ### Service URLs
@@ -129,18 +127,18 @@ make dev                # Start with live reload via Air
 ### Development
 
 ```bash
-make dev                    # Live reload via Air
-make test                   # Unit tests (go test -v -race)
-make test-integration       # Integration tests (requires POSTGRES_TEST_DSN)
+just dev                    # Live reload via Air
+just test                   # Unit tests (go test -v -race)
+just test-integration       # Integration tests (requires PostgreSQL)
 ```
 
 ### Docker
 
 ```bash
-make docker-up              # Start services
-make docker-up-dev          # Start with extras (pgAdmin)
-make docker-down            # Stop (keep volumes)
-make docker-down-v          # Stop and remove volumes
+just up                     # Start services
+just up --profile dev       # Start with extras (pgAdmin)
+just down                   # Stop (keep volumes)
+just down --volumes         # Stop and remove volumes
 ```
 
 ### Database
@@ -149,17 +147,19 @@ make docker-down-v          # Stop and remove volumes
 just migrate                # Apply Atlas migrations
 just migrate-status         # Show migration status
 just migrate-diff <name>    # Generate migration from Ent schema diff
-make seed                   # Seed development data
-make psql                   # Open psql shell
+just migrate-hash           # Validate migration files and compute checksum
+just migrate-lint           # Lint migrations for common issues
+just seed                   # Seed development data
+just provision              # Provision database roles and grants
 ```
 
 ### Code Quality
 
 ```bash
-make lint                   # Run golangci-lint
-make lint-fix               # Auto-fix lint issues
-make fmt                    # Format code
-make tidy                   # Tidy go modules
+just lint                   # Run golangci-lint
+just lint --fix             # Auto-fix lint issues
+just fmt                    # Format code
+just tidy                   # Tidy go modules
 ```
 
 ### Code Generation

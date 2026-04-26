@@ -21,7 +21,7 @@ Terraform infrastructure-as-code for the BlessThun Food System — deploys to Az
 │  └──────────────────────────────────────────────┘   │
 │                                                     │
 │  ┌──────────┐  ┌───────────┐  ┌──────────────┐      │
-│  │   ACR    │  │ Key Vault │  │ Blob Storage │      │
+│  │   GHCR   │  │ Key Vault │  │ Blob Storage │      │
 │  └──────────┘  └───────────┘  └──────────────┘      │
 │                                                     │
 │  ┌──────────────────┐  ┌──────────────────────┐     │
@@ -35,8 +35,8 @@ Terraform infrastructure-as-code for the BlessThun Food System — deploys to Az
 - **Scale-to-zero** — zero cost when applications are idle, auto-burst up to 20 replicas
 - **Immutable image promotion** — production uses the exact staging image digest (no rebuild)
 - **Environment isolation** — separate VNets, resource groups, and Terraform states per environment
-- **Three-phase CI/CD** — ACR infrastructure first, then image build, then Container Apps deployment
-- **Least-privilege RBAC** — minimal Azure roles for the Terraform Cloud service principal
+- **GHCR image registry** — images are built and pushed to GitHub Container Registry, pulled into Container Apps via token
+- **External database** — PostgreSQL hosted on NeonDB (managed outside Terraform)
 
 ## Module Structure
 
@@ -45,13 +45,15 @@ bfs-cloud/
 ├── envs/
 │   ├── staging/                Staging root module
 │   │   ├── main.tf             Calls modules/stack with staging config
-│   │   ├── backend.tf          State backend (Terraform Cloud)
+│   │   ├── versions.tf         Provider versions & Terraform Cloud backend
 │   │   ├── variables.tf        Staging-specific variables
+│   │   ├── imports.tf          Terraform import blocks
 │   │   └── outputs.tf
 │   └── production/             Production root module
 │       ├── main.tf
-│       ├── backend.tf
+│       ├── versions.tf
 │       ├── variables.tf
+│       ├── imports.tf
 │       └── outputs.tf
 ├── modules/
 │   ├── stack/                  Full infrastructure composition
@@ -59,12 +61,9 @@ bfs-cloud/
 │   ├── containerapps_env/      Container Apps environment + VNet
 │   ├── observability/          Log Analytics workspace
 │   ├── diagnostic_setting/     Monitoring & diagnostics
-│   ├── alerts/                 Metric-based alerts
-│   ├── network/                VNets & subnets
 │   ├── blob_storage/           Azure Blob Storage
 │   ├── rg/                     Resource group
-│   ├── security/               Key Vault & RBAC
-│   └── rbac_tfc/               Terraform Cloud service principal roles
+│   └── security/               Key Vault & RBAC
 ├── defaults/                   Default variable values
 ├── SETUP.md                    Prerequisites & troubleshooting
 └── README.md
@@ -92,21 +91,19 @@ terraform plan
 terraform apply
 ```
 
-### CI/CD Three-Phase Deployment
+### CI/CD Deployment
 
-1. **Phase 1 — ACR Infrastructure**: Terraform creates Azure Container Registry
-2. **Phase 2 — Image Build**: GitHub Actions builds and pushes Docker images to ACR
-3. **Phase 3 — Container Apps**: Terraform deploys apps referencing the new images
+1. **Image Build**: GitHub Actions builds and pushes Docker images to GHCR
+2. **Container Apps**: Terraform deploys apps pulling images from GHCR via token
 
 ### Terraform Variables
 
-| Variable                             | Type   | Purpose                                          |
-| ------------------------------------ | ------ | ------------------------------------------------ |
-| `enable_acr`                         | bool   | Create ACR and grant AcrPull to identities       |
-| `acr_name`                           | string | ACR name (images resolve to `<name>.azurecr.io`) |
-| `image_tag`                          | string | Branch/version tag to deploy                     |
-| `frontend_digest` / `backend_digest` | string | Immutable image digest (preferred in CI)         |
-| `revision_suffix`                    | string | Force new revision (e.g., commit SHA)            |
+| Variable                                             | Type   | Purpose                                  |
+| ---------------------------------------------------- | ------ | ---------------------------------------- |
+| `ghcr_token`                                         | string | GitHub Container Registry pull token     |
+| `image_tag`                                          | string | Branch/version tag to deploy             |
+| `frontend_digest` / `backend_digest` / `docs_digest` | string | Immutable image digest (preferred in CI) |
+| `revision_suffix`                                    | string | Force new revision (e.g., commit SHA)    |
 
 ### App URLs via Key Vault
 
@@ -129,15 +126,6 @@ terraform {
   }
 }
 ```
-
-### RBAC for Terraform Cloud
-
-The `modules/rbac_tfc` module grants minimal roles at the resource group scope:
-
-- **Network Contributor** — VNets, subnets, private endpoints
-- **Private DNS Zone Contributor** — DNS zones/links
-- **User Access Administrator** — RBAC assignments (Key Vault, ACR Pull)
-- **Managed Identity Contributor** — user-assigned identities for Container Apps
 
 ### Adding a New Environment
 

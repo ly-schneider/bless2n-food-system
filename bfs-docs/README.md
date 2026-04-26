@@ -16,15 +16,15 @@ Built on [Fumadocs](https://fumadocs.dev), a documentation framework for Next.js
 
 ## Tech Stack
 
-| Category        | Technology                    |
-| --------------- | ----------------------------- |
-| Framework       | Next.js 16                    |
-| Docs Engine     | Fumadocs 16 (core + UI + MDX) |
-| UI              | React 19, Tailwind CSS 4      |
-| Content         | MDX with custom components    |
-| Search          | Built-in API route            |
-| Icons           | Lucide React                  |
-| Package Manager | pnpm                          |
+| Category        | Technology                      |
+| --------------- | ------------------------------- |
+| Framework       | Next.js 16                      |
+| Docs Engine     | Fumadocs (core + UI 16, MDX 14) |
+| UI              | React 19, Tailwind CSS 4        |
+| Content         | MDX with custom components      |
+| Search          | Built-in API route              |
+| Icons           | Lucide React                    |
+| Package Manager | pnpm                            |
 
 ## Project Structure
 
@@ -35,8 +35,11 @@ bfs-docs/
 │   ├── developer-guide/      Developer documentation
 │   └── infrastruktur/        Infrastructure docs (German)
 ├── app/
-│   ├── page.tsx              Home page
-│   └── api/search/route.ts   Search endpoint
+│   ├── (home)/[[...slug]]/page.tsx   Documentation pages
+│   ├── api/search/route.ts           Search endpoint
+│   ├── api/health/route.ts           Health check
+│   ├── og/[...slug]/route.tsx        Open Graph image generation
+│   └── llms-full.txt/route.ts        LLM-friendly full text export
 ├── lib/
 │   ├── source.ts             Content source adapter
 │   └── layout.shared.tsx     Shared layout options

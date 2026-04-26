@@ -4,11 +4,14 @@ Android POS terminal application for the Bless2n Food System — provides on-sit
 
 ## Architecture
 
-The app is a **Kotlin + Jetpack Compose** application that wraps the web-based POS interface in a WebView, extending it with native Android capabilities for hardware integration.
+The app uses **Kotlin + Jetpack Compose** with two distinct activities:
+
+1. **MainActivity** (Compose) — native payment UI with QR scanner, receipt printing, and SumUp card terminal integration
+2. **WebPosActivity** (WebView) — loads the Next.js web app's `/pos` interface for the cashier workflow
 
 ### Key Design Decisions
 
-- **WebView-based POS** — the core POS UI comes from the Next.js web app (`/pos`), keeping business logic centralized
+- **Dual-activity architecture** — native Compose UI for hardware-integrated features, WebView for the web-based POS interface
 - **SumUp SDK** for card terminal payments — connects to physical SumUp readers
 - **ZXing** for barcode/QR code scanning — reads order codes and product barcodes
 - **ESCPOS thermal printing** — prints receipts on compatible thermal printers
@@ -16,17 +19,17 @@ The app is a **Kotlin + Jetpack Compose** application that wraps the web-based P
 
 ## Tech Stack
 
-| Category     | Technology                            |
-| ------------ | ------------------------------------- |
-| Language     | Kotlin                                |
-| UI           | Jetpack Compose (Material 3)          |
-| Payments     | SumUp Merchant SDK 6.0                |
-| QR / Barcode | ZXing Core 3.5 + Android Embedded 4.3 |
-| Printing     | ESCPOS-ThermalPrinter-Android 3.4     |
-| WebView      | AndroidX WebKit 1.15                  |
-| Min SDK      | 26 (Android 8.0)                      |
-| Target SDK   | 35                                    |
-| Compile SDK  | 36                                    |
+| Category     | Technology                              |
+| ------------ | --------------------------------------- |
+| Language     | Kotlin                                  |
+| UI           | Jetpack Compose (Material 3)            |
+| Payments     | SumUp Merchant SDK 6.0                  |
+| QR / Barcode | ZXing Core 3.5.4 + Android Embedded 4.3 |
+| Printing     | ESCPOS-ThermalPrinter-Android 3.4       |
+| WebView      | AndroidX WebKit 1.15                    |
+| Min SDK      | 26 (Android 8.0)                        |
+| Target SDK   | 35                                      |
+| Compile SDK  | 36                                      |
 
 ## Project Structure
 
