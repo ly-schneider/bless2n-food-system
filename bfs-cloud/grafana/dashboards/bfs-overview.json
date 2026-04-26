@@ -73,7 +73,9 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -131,7 +133,9 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -202,7 +206,9 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -273,7 +279,9 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -284,7 +292,11 @@
         {
           "azureLogAnalytics": {
             "query": "ContainerAppConsoleLogs_CL\n| where TimeGenerated > ago(24h)\n| extend status = toint(extract(@'\"status\"\\s*[:=]\\s*(\\d+)', 1, Log_s))\n| where isnotnull(status)\n| summarize total = count(), errors = countif(status >= 500)\n| extend uptime_pct = iff(total == 0, 100.0, 100.0 - 100.0 * todouble(errors) / todouble(total))\n| project uptime_pct",
-            "resources": []
+            "resources": [
+              "/subscriptions/a6e97570-b80b-4a4d-a27c-081fe6c7e7f3/resourceGroups/bfs-${env}-rg/providers/Microsoft.OperationalInsights/workspaces/bfs-logs-workspace"
+            ],
+            "dashboardTime": true,
+            "timeColumn": "TimeGenerated"
           },
           "queryType": "Azure Log Analytics",
           "refId": "A"
@@ -344,7 +356,9 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -355,7 +369,11 @@
         {
           "azureLogAnalytics": {
             "query": "ContainerAppConsoleLogs_CL\n| where TimeGenerated > ago(10m)\n| where ContainerAppName_s startswith \"backend-\"\n| extend latency_ms = todouble(extract(@'\"latency_ms\"\\s*[:=]\\s*([\\d\\.]+)', 1, Log_s))\n| where isnotnull(latency_ms)\n| summarize p95 = percentile(latency_ms, 95) by bin(TimeGenerated, 1m)\n| order by TimeGenerated asc",
-            "resources": []
+            "resources": [
+              "/subscriptions/a6e97570-b80b-4a4d-a27c-081fe6c7e7f3/resourceGroups/bfs-${env}-rg/providers/Microsoft.OperationalInsights/workspaces/bfs-logs-workspace"
+            ],
+            "dashboardTime": true,
+            "timeColumn": "TimeGenerated"
           },
           "queryType": "Azure Log Analytics",
           "refId": "A"
@@ -416,7 +434,9 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -427,7 +447,11 @@
         {
           "azureLogAnalytics": {
             "query": "ContainerAppConsoleLogs_CL\n| where TimeGenerated > ago(10m)\n| extend status = toint(extract(@'\"status\"\\s*[:=]\\s*(\\d+)', 1, Log_s))\n| where isnotnull(status)\n| summarize total = count(), errors = countif(status >= 500) by bin(TimeGenerated, 1m)\n| extend error_rate = iff(total == 0, 0.0, 100.0 * todouble(errors) / todouble(total))\n| project TimeGenerated, error_rate\n| order by TimeGenerated asc",
-            "resources": []
+            "resources": [
+              "/subscriptions/a6e97570-b80b-4a4d-a27c-081fe6c7e7f3/resourceGroups/bfs-${env}-rg/providers/Microsoft.OperationalInsights/workspaces/bfs-logs-workspace"
+            ],
+            "dashboardTime": true,
+            "timeColumn": "TimeGenerated"
           },
           "queryType": "Azure Log Analytics",
           "refId": "A"
@@ -514,7 +538,10 @@
       "id": 7,
       "options": {
         "legend": {
-          "calcs": ["sum", "max"],
+          "calcs": [
+            "sum",
+            "max"
+          ],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true
@@ -567,16 +594,22 @@
       },
       "id": 8,
       "options": {
-        "displayLabels": ["percent"],
+        "displayLabels": [
+          "percent"
+        ],
         "legend": {
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true,
-          "values": ["value"]
+          "values": [
+            "value"
+          ]
         },
         "pieType": "donut",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -628,16 +661,22 @@
       },
       "id": 9,
       "options": {
-        "displayLabels": ["percent"],
+        "displayLabels": [
+          "percent"
+        ],
         "legend": {
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true,
-          "values": ["value"]
+          "values": [
+            "value"
+          ]
         },
         "pieType": "donut",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -709,7 +748,9 @@
         "minVizWidth": 0,
         "orientation": "horizontal",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -767,7 +808,9 @@
         "minVizWidth": 0,
         "orientation": "horizontal",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -923,7 +966,9 @@
       "id": 12,
       "options": {
         "legend": {
-          "calcs": ["sum"],
+          "calcs": [
+            "sum"
+          ],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true
@@ -1042,7 +1087,9 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": ["sum"],
+          "reducer": [
+            "sum"
+          ],
           "show": false
         },
         "showHeader": true,
@@ -1103,7 +1150,9 @@
         "minVizWidth": 0,
         "orientation": "horizontal",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -1199,7 +1248,10 @@
       "id": 15,
       "options": {
         "legend": {
-          "calcs": ["sum", "mean"],
+          "calcs": [
+            "sum",
+            "mean"
+          ],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true
@@ -1215,7 +1267,13 @@
           "azureMonitor": {
             "aggregation": "Total",
             "allowedTimeGrainsMs": [
-              60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
+              60000,
+              300000,
+              900000,
+              1800000,
+              3600000,
+              21600000,
+              43200000,
               86400000
             ],
             "dimensionFilters": [],
@@ -1273,7 +1331,9 @@
         "minVizWidth": 0,
         "orientation": "horizontal",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -1285,7 +1345,11 @@
         {
           "azureLogAnalytics": {
             "query": "ContainerAppConsoleLogs_CL\n| where $__timeFilter(TimeGenerated)\n| where ContainerAppName_s startswith \"backend-\"\n| extend path = extract(@'\"path\"\\s*[:=]\\s*\"([^\"]+)\"', 1, Log_s)\n| where isnotempty(path)\n| summarize requests = count() by path\n| top 15 by requests desc",
-            "resources": []
+            "resources": [
+              "/subscriptions/a6e97570-b80b-4a4d-a27c-081fe6c7e7f3/resourceGroups/bfs-${env}-rg/providers/Microsoft.OperationalInsights/workspaces/bfs-logs-workspace"
+            ],
+            "dashboardTime": true,
+            "timeColumn": "TimeGenerated"
           },
           "queryType": "Azure Log Analytics",
           "refId": "A"
@@ -1325,16 +1389,22 @@
       },
       "id": 17,
       "options": {
-        "displayLabels": ["percent"],
+        "displayLabels": [
+          "percent"
+        ],
         "legend": {
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true,
-          "values": ["value"]
+          "values": [
+            "value"
+          ]
         },
         "pieType": "donut",
         "reduceOptions": {
-          "calcs": ["lastNotNull"],
+          "calcs": [
+            "lastNotNull"
+          ],
           "fields": "",
           "values": false
         },
@@ -1348,7 +1418,11 @@
         {
           "azureLogAnalytics": {
             "query": "ContainerAppConsoleLogs_CL\n| where $__timeFilter(TimeGenerated)\n| where isnotempty(ContainerAppName_s)\n| extend status = toint(extract(@'\"status\"\\s*[:=]\\s*(\\d+)', 1, Log_s))\n| where isnotnull(status)\n| summarize requests = count() by ContainerAppName_s\n| order by requests desc",
-            "resources": []
+            "resources": [
+              "/subscriptions/a6e97570-b80b-4a4d-a27c-081fe6c7e7f3/resourceGroups/bfs-${env}-rg/providers/Microsoft.OperationalInsights/workspaces/bfs-logs-workspace"
+            ],
+            "dashboardTime": true,
+            "timeColumn": "TimeGenerated"
           },
           "queryType": "Azure Log Analytics",
           "refId": "A"
@@ -1480,7 +1554,10 @@
       "id": 18,
       "options": {
         "legend": {
-          "calcs": ["mean", "max"],
+          "calcs": [
+            "mean",
+            "max"
+          ],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true
@@ -1495,8 +1572,12 @@
         {
           "azureLogAnalytics": {
             "query": "ContainerAppConsoleLogs_CL\n| where $__timeFilter(TimeGenerated)\n| where ContainerAppName_s startswith \"backend-\"\n| extend latency_ms = todouble(extract(@'\"latency_ms\"\\s*[:=]\\s*([\\d\\.]+)', 1, Log_s))\n| where isnotnull(latency_ms)\n| summarize p50 = percentile(latency_ms, 50), p95 = percentile(latency_ms, 95), p99 = percentile(latency_ms, 99) by bin(TimeGenerated, $__timeInterval)\n| order by TimeGenerated asc",
-            "resources": [],
-            "resultFormat": "time_series"
+            "resources": [
+              "/subscriptions/a6e97570-b80b-4a4d-a27c-081fe6c7e7f3/resourceGroups/bfs-${env}-rg/providers/Microsoft.OperationalInsights/workspaces/bfs-logs-workspace"
+            ],
+            "resultFormat": "time_series",
+            "dashboardTime": true,
+            "timeColumn": "TimeGenerated"
           },
           "queryType": "Azure Log Analytics",
           "refId": "A"
@@ -1608,7 +1689,9 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": ["sum"],
+          "reducer": [
+            "sum"
+          ],
           "show": false
         },
         "showHeader": true,
@@ -1624,7 +1707,11 @@
         {
           "azureLogAnalytics": {
             "query": "ContainerAppConsoleLogs_CL\n| where $__timeFilter(TimeGenerated)\n| where ContainerAppName_s startswith \"backend-\"\n| extend path = extract(@'\"path\"\\s*[:=]\\s*\"([^\"]+)\"', 1, Log_s)\n| extend latency_ms = todouble(extract(@'\"latency_ms\"\\s*[:=]\\s*([\\d\\.]+)', 1, Log_s))\n| where isnotnull(latency_ms) and isnotempty(path)\n| summarize p95_ms = percentile(latency_ms, 95), requests = count() by path\n| where requests >= 5\n| top 10 by p95_ms desc",
-            "resources": []
+            "resources": [
+              "/subscriptions/a6e97570-b80b-4a4d-a27c-081fe6c7e7f3/resourceGroups/bfs-${env}-rg/providers/Microsoft.OperationalInsights/workspaces/bfs-logs-workspace"
+            ],
+            "dashboardTime": true,
+            "timeColumn": "TimeGenerated"
           },
           "queryType": "Azure Log Analytics",
           "refId": "A"
@@ -1770,7 +1857,9 @@
       "id": 20,
       "options": {
         "legend": {
-          "calcs": ["sum"],
+          "calcs": [
+            "sum"
+          ],
           "displayMode": "table",
           "placement": "right",
           "showLegend": true
@@ -1785,8 +1874,12 @@
         {
           "azureLogAnalytics": {
             "query": "ContainerAppConsoleLogs_CL\n| where $__timeFilter(TimeGenerated)\n| where ContainerAppName_s startswith \"backend-\"\n| extend status = toint(extract(@'\"status\"\\s*[:=]\\s*(\\d+)', 1, Log_s))\n| where isnotnull(status)\n| extend bucket = case(status >= 500, \"5xx\", status >= 400, \"4xx\", status >= 300, \"3xx\", status >= 200, \"2xx\", \"other\")\n| summarize count() by bin(TimeGenerated, $__timeInterval), bucket\n| order by TimeGenerated asc",
-            "resources": [],
-            "resultFormat": "time_series"
+            "resources": [
+              "/subscriptions/a6e97570-b80b-4a4d-a27c-081fe6c7e7f3/resourceGroups/bfs-${env}-rg/providers/Microsoft.OperationalInsights/workspaces/bfs-logs-workspace"
+            ],
+            "resultFormat": "time_series",
+            "dashboardTime": true,
+            "timeColumn": "TimeGenerated"
           },
           "queryType": "Azure Log Analytics",
           "refId": "A"
@@ -1920,7 +2013,9 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": ["sum"],
+          "reducer": [
+            "sum"
+          ],
           "show": false
         },
         "showHeader": true,
@@ -1936,7 +2031,11 @@
         {
           "azureLogAnalytics": {
             "query": "ContainerAppConsoleLogs_CL\n| where $__timeFilter(TimeGenerated)\n| where ContainerAppName_s startswith \"backend-\"\n| extend status = toint(extract(@'\"status\"\\s*[:=]\\s*(\\d+)', 1, Log_s))\n| extend path = extract(@'\"path\"\\s*[:=]\\s*\"([^\"]+)\"', 1, Log_s)\n| where status >= 400 and isnotempty(path)\n| summarize errors = count() by path, status\n| top 20 by errors desc",
-            "resources": []
+            "resources": [
+              "/subscriptions/a6e97570-b80b-4a4d-a27c-081fe6c7e7f3/resourceGroups/bfs-${env}-rg/providers/Microsoft.OperationalInsights/workspaces/bfs-logs-workspace"
+            ],
+            "dashboardTime": true,
+            "timeColumn": "TimeGenerated"
           },
           "queryType": "Azure Log Analytics",
           "refId": "A"
@@ -2008,7 +2107,9 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["mean"],
+          "calcs": [
+            "mean"
+          ],
           "fields": "",
           "values": false
         },
@@ -2021,7 +2122,13 @@
           "azureMonitor": {
             "aggregation": "Average",
             "allowedTimeGrainsMs": [
-              60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
+              60000,
+              300000,
+              900000,
+              1800000,
+              3600000,
+              21600000,
+              43200000,
               86400000
             ],
             "dimensionFilters": [],
@@ -2090,7 +2197,9 @@
       "options": {
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["mean"],
+          "calcs": [
+            "mean"
+          ],
           "fields": "",
           "values": false
         },
@@ -2103,7 +2212,13 @@
           "azureMonitor": {
             "aggregation": "Average",
             "allowedTimeGrainsMs": [
-              60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
+              60000,
+              300000,
+              900000,
+              1800000,
+              3600000,
+              21600000,
+              43200000,
               86400000
             ],
             "dimensionFilters": [],
@@ -2178,7 +2293,10 @@
       "id": 24,
       "options": {
         "legend": {
-          "calcs": ["mean", "max"],
+          "calcs": [
+            "mean",
+            "max"
+          ],
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": true
@@ -2194,7 +2312,13 @@
           "azureMonitor": {
             "aggregation": "Maximum",
             "allowedTimeGrainsMs": [
-              60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
+              60000,
+              300000,
+              900000,
+              1800000,
+              3600000,
+              21600000,
+              43200000,
               86400000
             ],
             "dimensionFilters": [],
@@ -2265,7 +2389,9 @@
         "justifyMode": "center",
         "orientation": "auto",
         "reduceOptions": {
-          "calcs": ["max"],
+          "calcs": [
+            "max"
+          ],
           "fields": "",
           "values": false
         },
@@ -2277,7 +2403,13 @@
           "azureMonitor": {
             "aggregation": "Maximum",
             "allowedTimeGrainsMs": [
-              60000, 300000, 900000, 1800000, 3600000, 21600000, 43200000,
+              60000,
+              300000,
+              900000,
+              1800000,
+              3600000,
+              21600000,
+              43200000,
               86400000
             ],
             "dimensionFilters": [],
@@ -2405,7 +2537,9 @@
         "footer": {
           "countRows": false,
           "fields": "",
-          "reducer": ["sum"],
+          "reducer": [
+            "sum"
+          ],
           "show": false
         },
         "showHeader": true,
@@ -2419,7 +2553,9 @@
       "pluginVersion": "11.0.0",
       "targets": [
         {
-          "environments": ["${env}"],
+          "environments": [
+            "${env}"
+          ],
           "issuesQuery": "is:unresolved",
           "issuesSort": "freq",
           "issuesLimit": 25,
@@ -2434,7 +2570,12 @@
   ],
   "refresh": "1m",
   "schemaVersion": 39,
-  "tags": ["bfs", "container-apps", "azure-monitor", "postgres"],
+  "tags": [
+    "bfs",
+    "container-apps",
+    "azure-monitor",
+    "postgres"
+  ],
   "templating": {
     "list": [
       {
