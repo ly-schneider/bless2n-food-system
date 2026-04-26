@@ -1,11 +1,18 @@
 "use client"
+
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import Image from "next/image"
 import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
 import { formatChf } from "@/lib/utils"
+import { OrdersByOriginChart } from "./_components/orders-by-origin-chart"
+import { OrdersByStatusChart } from "./_components/orders-by-status-chart"
+import { PaymentMethodsChart } from "./_components/payment-methods-chart"
+import { RecentCancellations } from "./_components/recent-cancellations"
+import { RevenueByHourChart } from "./_components/revenue-by-hour-chart"
+import { StatCard } from "./_components/stat-card"
+import { TopProductsChart } from "./_components/top-products-chart"
 
 type OrderPayment = {
   method?: string
@@ -17,12 +24,15 @@ type OrderLine = {
   productId: string
   title: string
   quantity: number
+  unitPriceCents: number
   lineType?: string
   parentLineId?: string | null
 }
 
 type OrderItem = {
   id: string
+  status?: string
+  origin?: string
   totalCents?: number | null
   createdAt?: string
   payments?: OrderPayment[] | null
@@ -46,12 +56,32 @@ type EventDay = {
 
 const LOW_STOCK_THRESHOLD = 10
 
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  CASH: "Bargeld",
+  CARD: "Karte",
+  TWINT: "TWINT",
+  GRATIS_GUEST: "Gratis (Gast)",
+  GRATIS_VIP: "Gratis (VIP)",
+  GRATIS_STAFF: "Gratis (Personal)",
+  GRATIS_100CLUB: "Gratis (100 Club)",
+}
+
+const ORIGIN_LABELS: Record<string, string> = {
+  shop: "Shop",
+  pos: "POS",
+}
+
+function isGratisMethod(method?: string) {
+  return method?.startsWith("GRATIS_") ?? false
+}
+
 export default function AdminDashboard() {
   const fetchAuth = useAuthorizedFetch()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   const [orders, setOrders] = useState<OrderItem[]>([])
+  const [prevDayOrders, setPrevDayOrders] = useState<OrderItem[]>([])
   const [products, setProducts] = useState<ProductWithStock[]>([])
 
   const [events, setEvents] = useState<EventDay[]>([])
@@ -96,31 +126,42 @@ export default function AdminDashboard() {
       try {
         const from = new Date(event.year, event.month - 1, event.day)
         const to = new Date(event.year, event.month - 1, event.day + 1)
+        const dateParams = `date_from=${encodeURIComponent(from.toISOString())}&date_to=${encodeURIComponent(to.toISOString())}`
 
-        const [ordersRes, productsRes] = await Promise.all([
-          fetchAuth(
-            `/api/v1/orders?status=paid&date_from=${encodeURIComponent(from.toISOString())}&date_to=${encodeURIComponent(
-              to.toISOString()
-            )}`
-          ),
-          fetchAuth(`/api/v1/products`),
-        ])
+        const prevEvent = events[currentEventIndex + 1]
+        const prevDateParams = prevEvent
+          ? `date_from=${encodeURIComponent(new Date(prevEvent.year, prevEvent.month - 1, prevEvent.day).toISOString())}&date_to=${encodeURIComponent(new Date(prevEvent.year, prevEvent.month - 1, prevEvent.day + 1).toISOString())}`
+          : null
+
+        const fetches: Promise<Response>[] = [fetchAuth(`/api/v1/orders?${dateParams}`), fetchAuth("/api/v1/products")]
+        if (prevDateParams) {
+          fetches.push(fetchAuth(`/api/v1/orders?status=paid&${prevDateParams}`))
+        }
+
+        const [ordersRes, productsRes, prevRes] = await Promise.all(fetches)
 
         let fetchedOrders: OrderItem[] = []
-        if (ordersRes.ok) {
+        if (ordersRes?.ok) {
           const data = (await ordersRes.json()) as { items?: OrderItem[] }
           fetchedOrders = data.items || []
         }
 
         let fetchedProducts: ProductWithStock[] = []
-        if (productsRes.ok) {
+        if (productsRes?.ok) {
           const data = (await productsRes.json()) as { items?: ProductWithStock[] }
           fetchedProducts = data.items || []
+        }
+
+        let fetchedPrevOrders: OrderItem[] = []
+        if (prevRes?.ok) {
+          const data = (await prevRes.json()) as { items?: OrderItem[] }
+          fetchedPrevOrders = data.items || []
         }
 
         if (!cancelled) {
           setOrders(fetchedOrders)
           setProducts(fetchedProducts)
+          setPrevDayOrders(fetchedPrevOrders)
           setLoading(false)
         }
       } catch (e: unknown) {
@@ -136,38 +177,161 @@ export default function AdminDashboard() {
     }
   }, [fetchAuth, events, currentEventIndex])
 
-  const totalRevenue = useMemo(() => {
-    return orders.reduce((sum, o) => sum + (o.totalCents ?? 0), 0)
-  }, [orders])
+  // --- Derived data ---
 
-  const totalOrders = orders.length
+  const paidOrders = useMemo(() => orders.filter((o) => o.status === "paid"), [orders])
 
-  const revenueByPaymentType = useMemo(() => {
-    const byType: Record<string, number> = {}
-    for (const order of orders) {
-      const payment = order.payments?.[0]
-      const method = payment?.method ?? "unbekannt"
-      byType[method] = (byType[method] || 0) + (order.totalCents ?? 0)
+  const paidNonGratisOrders = useMemo(
+    () => paidOrders.filter((o) => !isGratisMethod(o.payments?.[0]?.method)),
+    [paidOrders]
+  )
+
+  const totalRevenue = useMemo(
+    () => paidNonGratisOrders.reduce((sum, o) => sum + (o.totalCents ?? 0), 0),
+    [paidNonGratisOrders]
+  )
+
+  const totalOrders = paidOrders.length
+
+  const prevDayRevenue = useMemo(
+    () =>
+      prevDayOrders
+        .filter((o) => !isGratisMethod(o.payments?.[0]?.method))
+        .reduce((sum, o) => sum + (o.totalCents ?? 0), 0),
+    [prevDayOrders]
+  )
+
+  const prevDayOrderCount = prevDayOrders.length
+
+  const averageOrderValue = useMemo(
+    () => (paidNonGratisOrders.length > 0 ? Math.round(totalRevenue / paidNonGratisOrders.length) : 0),
+    [totalRevenue, paidNonGratisOrders.length]
+  )
+
+  const prevDayAvgOrderValue = useMemo(() => {
+    const prevNonGratis = prevDayOrders.filter((o) => !isGratisMethod(o.payments?.[0]?.method))
+    return prevNonGratis.length > 0
+      ? Math.round(prevNonGratis.reduce((s, o) => s + (o.totalCents ?? 0), 0) / prevNonGratis.length)
+      : 0
+  }, [prevDayOrders])
+
+  const cancellationCount = useMemo(
+    () => orders.filter((o) => o.status === "cancelled" || o.status === "refunded").length,
+    [orders]
+  )
+
+  const revenueByHour = useMemo(() => {
+    const byHour: Record<number, number> = {}
+    for (const o of paidNonGratisOrders) {
+      if (!o.createdAt) continue
+      const h = new Date(o.createdAt).getHours()
+      byHour[h] = (byHour[h] || 0) + (o.totalCents ?? 0)
     }
-    return Object.entries(byType)
-      .map(([method, cents]) => ({ method, cents }))
-      .sort((a, b) => b.cents - a.cents)
-  }, [orders])
+    if (Object.keys(byHour).length === 0) return []
+    const minH = Math.min(...Object.keys(byHour).map(Number))
+    const maxH = Math.max(...Object.keys(byHour).map(Number))
+    const result = []
+    for (let h = minH; h <= maxH; h++) {
+      result.push({ hour: `${h.toString().padStart(2, "0")}:00`, revenueCents: byHour[h] || 0 })
+    }
+    return result
+  }, [paidNonGratisOrders])
 
-  const productOrderCounts = useMemo(() => {
-    const counts: Record<string, { title: string; count: number }> = {}
-    for (const order of orders) {
-      for (const line of order.lines ?? []) {
+  const paymentMethodCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const o of paidOrders) {
+      const method = o.payments?.[0]?.method ?? "UNKNOWN"
+      counts[method] = (counts[method] || 0) + 1
+    }
+    return Object.entries(counts)
+      .map(([method, count]) => ({
+        method,
+        label: PAYMENT_METHOD_LABELS[method] ?? method,
+        count,
+      }))
+      .sort((a, b) => b.count - a.count)
+  }, [paidOrders])
+
+  const ordersByOrigin = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const o of paidOrders) {
+      const origin = o.origin || "shop"
+      counts[origin] = (counts[origin] || 0) + 1
+    }
+    return Object.entries(counts)
+      .map(([origin, count]) => ({
+        origin,
+        label: ORIGIN_LABELS[origin] ?? origin,
+        count,
+      }))
+      .sort((a, b) => b.count - a.count)
+  }, [paidOrders])
+
+  const topProductsByUnits = useMemo(() => {
+    const agg: Record<string, { title: string; value: number }> = {}
+    for (const o of paidOrders) {
+      for (const line of o.lines ?? []) {
         if (line.lineType === "component" || line.parentLineId) continue
-        const key = line.productId
-        if (!counts[key]) {
-          counts[key] = { title: line.title, count: 0 }
-        }
-        counts[key].count += line.quantity
+        const entry = agg[line.productId] ?? (agg[line.productId] = { title: line.title, value: 0 })
+        entry.value += line.quantity
       }
     }
-    return Object.values(counts).sort((a, b) => b.count - a.count)
+    return Object.values(agg)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 15)
+  }, [paidOrders])
+
+  const topProductsByRevenue = useMemo(() => {
+    const agg: Record<string, { title: string; value: number }> = {}
+    for (const o of paidOrders) {
+      for (const line of o.lines ?? []) {
+        if (line.lineType === "component" || line.parentLineId) continue
+        const entry = agg[line.productId] ?? (agg[line.productId] = { title: line.title, value: 0 })
+        entry.value += line.quantity * (line.unitPriceCents || 0)
+      }
+    }
+    return Object.values(agg)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 15)
+  }, [paidOrders])
+
+  const ordersByStatusByHour = useMemo(() => {
+    const byHour: Record<number, { paid: number; pending: number; cancelled: number; refunded: number }> = {}
+    for (const o of orders) {
+      if (!o.createdAt) continue
+      const h = new Date(o.createdAt).getHours()
+      if (!byHour[h]) byHour[h] = { paid: 0, pending: 0, cancelled: 0, refunded: 0 }
+      const status = o.status as keyof (typeof byHour)[number]
+      if (status && status in byHour[h]) byHour[h][status]++
+    }
+    if (Object.keys(byHour).length === 0) return []
+    const minH = Math.min(...Object.keys(byHour).map(Number))
+    const maxH = Math.max(...Object.keys(byHour).map(Number))
+    const result = []
+    for (let h = minH; h <= maxH; h++) {
+      result.push({
+        hour: `${h.toString().padStart(2, "0")}:00`,
+        ...(byHour[h] || { paid: 0, pending: 0, cancelled: 0, refunded: 0 }),
+      })
+    }
+    return result
   }, [orders])
+
+  const recentCancellations = useMemo(
+    () =>
+      orders
+        .filter((o) => o.status === "cancelled" || o.status === "refunded")
+        .sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())
+        .slice(0, 10)
+        .map((o) => ({
+          id: o.id,
+          status: o.status!,
+          totalCents: o.totalCents ?? 0,
+          origin: o.origin || "shop",
+          createdAt: o.createdAt!,
+        })),
+    [orders]
+  )
 
   const lowStockProducts = useMemo(() => {
     return products
@@ -175,13 +339,6 @@ export default function AdminDashboard() {
       .sort((a, b) => (a.stock ?? 0) - (b.stock ?? 0))
       .slice(0, 10)
   }, [products])
-
-  const paymentMethodLabels: Record<string, string> = {
-    cash: "Bargeld",
-    card: "Karte",
-    twint: "TWINT",
-    unbekannt: "Unbekannt",
-  }
 
   const currentEventLabel = useMemo(() => {
     if (events.length === 0) return "–"
@@ -193,6 +350,16 @@ export default function AdminDashboard() {
       year: "numeric",
     })
   }, [events, currentEventIndex])
+
+  function comparisonLabel(current: number, previous: number): { label: string; positive: boolean } | null {
+    if (previous === 0) return null
+    const delta = current - previous
+    const pct = ((delta / previous) * 100).toFixed(0)
+    const sign = delta >= 0 ? "+" : ""
+    return { label: `${sign}${pct}% zum Vortag`, positive: delta >= 0 }
+  }
+
+  const hasPrevDay = prevDayOrders.length > 0
 
   return (
     <div className="space-y-6">
@@ -222,71 +389,55 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Dialog>
-          <div className="rounded-lg border border-gray-200">
-            <div className="text-muted-foreground text-sm font-medium">Umsatz</div>
-            <div className="mt-1 text-3xl font-semibold">{loading ? "–" : formatChf(totalRevenue)}</div>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="mt-3 gap-1 px-0" disabled={loading}>
-                Details <ChevronRight className="size-4" />
-              </Button>
-            </DialogTrigger>
-          </div>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Umsatz nach Zahlungsart</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-2">
-              {revenueByPaymentType.length === 0 ? (
-                <p className="text-muted-foreground text-sm">Keine Daten vorhanden.</p>
-              ) : (
-                revenueByPaymentType.map(({ method, cents }) => (
-                  <div key={method} className="flex items-center justify-between">
-                    <span className="capitalize">{paymentMethodLabels[method] ?? method}</span>
-                    <span className="font-medium">{formatChf(cents)}</span>
-                  </div>
-                ))
-              )}
-              <div className="mt-4 flex items-center justify-between border-t pt-3">
-                <span className="font-medium">Gesamt</span>
-                <span className="font-semibold">{formatChf(totalRevenue)}</span>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog>
-          <div className="rounded-lg border border-gray-200">
-            <div className="text-muted-foreground text-sm font-medium">Bestellungen</div>
-            <div className="mt-1 text-3xl font-semibold">{loading ? "–" : totalOrders}</div>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="mt-3 gap-1 px-0" disabled={loading}>
-                Details <ChevronRight className="size-4" />
-              </Button>
-            </DialogTrigger>
-          </div>
-          <DialogContent className="max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Produkte nach Bestellmenge</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-2">
-              {productOrderCounts.length === 0 ? (
-                <p className="text-muted-foreground text-sm">Keine Daten vorhanden.</p>
-              ) : (
-                productOrderCounts.map(({ title, count }, idx) => (
-                  <div key={idx} className="flex items-center justify-between">
-                    <span className="truncate pr-4">{title}</span>
-                    <span className="shrink-0 font-medium">{count}×</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
+      {/* Stat cards */}
+      <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <StatCard
+          title="Umsatz"
+          value={formatChf(totalRevenue)}
+          loading={loading}
+          comparison={hasPrevDay ? comparisonLabel(totalRevenue, prevDayRevenue) : null}
+        />
+        <StatCard
+          title="Bestellungen"
+          value={String(totalOrders)}
+          loading={loading}
+          comparison={hasPrevDay ? comparisonLabel(totalOrders, prevDayOrderCount) : null}
+        />
+        <StatCard
+          title="Ø Bestellwert"
+          value={formatChf(averageOrderValue)}
+          loading={loading}
+          comparison={hasPrevDay ? comparisonLabel(averageOrderValue, prevDayAvgOrderValue) : null}
+        />
+        <StatCard title="Stornierungen" value={String(cancellationCount)} loading={loading} />
       </section>
 
-      <section className="mt-12">
+      {/* Revenue & Orders charts */}
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr_1fr]">
+        <RevenueByHourChart data={revenueByHour} loading={loading} />
+        <PaymentMethodsChart data={paymentMethodCounts} loading={loading} />
+        <OrdersByOriginChart data={ordersByOrigin} loading={loading} />
+      </section>
+
+      {/* Product rankings */}
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <TopProductsChart title="Top Produkte nach Menge" data={topProductsByUnits} loading={loading} />
+        <TopProductsChart
+          title="Top Produkte nach Umsatz"
+          data={topProductsByRevenue}
+          loading={loading}
+          formatAsCurrency
+        />
+      </section>
+
+      {/* Order health */}
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <OrdersByStatusChart data={ordersByStatusByHour} loading={loading} />
+        <RecentCancellations data={recentCancellations} loading={loading} />
+      </section>
+
+      {/* Low stock products */}
+      <section>
         <h2 className="text-xl font-semibold">Artikel mit niedrigem Bestand</h2>
         <p className="text-muted-foreground mt-1 text-sm">Produkte mit weniger als {LOW_STOCK_THRESHOLD} Einheiten</p>
         {loading ? (
