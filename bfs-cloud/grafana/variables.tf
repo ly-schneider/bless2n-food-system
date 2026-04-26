@@ -71,7 +71,7 @@ variable "neon_pg_host_production" {
 variable "neon_pg_database" {
   description = "Neon Postgres database name that holds BFS tables"
   type        = string
-  default     = "bfs"
+  default     = "bless2n_food_system"
 }
 
 variable "neon_grafana_password" {

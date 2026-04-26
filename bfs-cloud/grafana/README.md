@@ -72,11 +72,18 @@ az ad app credential reset \
 
 ### 4. Neon read-only role (optional, unlocks business metrics panels)
 
-The business rows on the overview dashboard (Revenue, Products, Order health) query Postgres directly. Create a `grafana_reader` role on **each** Neon branch (`staging`, `production`), using the same password:
+The business rows on the overview dashboard (Revenue, Products, Order health) query Postgres directly. Create a `grafana_reader` role on **each** Neon branch (`staging`, `production`), using the same password.
+
+Run the role creation once (Neon roles are cluster-wide):
 
 ```sql
 CREATE ROLE grafana_reader WITH LOGIN PASSWORD '<generate-and-store>';
-GRANT CONNECT ON DATABASE bfs TO grafana_reader;
+```
+
+Then connect to the `bless2n_food_system` database on each branch and run the GRANTs there. The `ALTER DEFAULT PRIVILEGES` statement should be run as the role that owns/creates the tables (the migration role) so that `grafana_reader` automatically picks up future tables:
+
+```sql
+GRANT CONNECT ON DATABASE bless2n_food_system TO grafana_reader;
 GRANT USAGE ON SCHEMA public TO grafana_reader;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO grafana_reader;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
@@ -103,7 +110,7 @@ Terraform variables:
 | `neon_pg_host_production`     | —         | Step 4 (or `""` to skip Postgres)     |
 | `neon_grafana_password`       | ✅        | Step 4 (or `""` to skip Postgres)     |
 
-Defaults in `variables.tf` cover `grafana_stack_url`, Sentry org slug, the Neon database name (`bfs`), and the remote state workspace names — override as needed.
+Defaults in `variables.tf` cover `grafana_stack_url`, Sentry org slug, the Neon database name (`bless2n_food_system`), and the remote state workspace names — override as needed.
 
 ### 6. Grant remote state access
 
