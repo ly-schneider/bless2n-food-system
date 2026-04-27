@@ -173,6 +173,8 @@ func NewRouter(
 
 			admin.Get("/settings", wrapper.GetSettings)
 			admin.Patch("/settings", wrapper.UpdateSettings)
+			admin.Get("/dashboard/ops-overview", apiHandlers.GetAdminOpsOverview)
+			admin.Get("/stations/{stationId}/summary", apiHandlers.GetAdminStationSummary)
 
 			admin.Get("/jetons", wrapper.ListJetons)
 			admin.Post("/jetons", wrapper.CreateJeton)

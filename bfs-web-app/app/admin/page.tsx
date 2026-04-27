@@ -1,11 +1,15 @@
 "use client"
 
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ArrowRight, RadioTower } from "lucide-react"
 import Image from "next/image"
+import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuthorizedFetch } from "@/hooks/use-authorized-fetch"
-import { formatChf } from "@/lib/utils"
+import { cn, formatChf } from "@/lib/utils"
+import type { AdminOpsOverview, DashboardStatusLevel } from "@/types"
 import { OrdersByOriginChart } from "./_components/orders-by-origin-chart"
 import { OrdersByStatusChart } from "./_components/orders-by-status-chart"
 import { PaymentMethodsChart } from "./_components/payment-methods-chart"
@@ -75,6 +79,32 @@ function isGratisMethod(method?: string) {
   return method?.startsWith("GRATIS_") ?? false
 }
 
+function eventKey(event: EventDay) {
+  return `${event.year}-${String(event.month).padStart(2, "0")}-${String(event.day).padStart(2, "0")}`
+}
+
+function formatEventLabel(event: EventDay | undefined) {
+  if (!event) return "–"
+  return new Date(event.year, event.month - 1, event.day).toLocaleDateString("de-CH", {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  })
+}
+
+function statusClasses(status: DashboardStatusLevel) {
+  if (status === "red") return "border-red-300 bg-red-50 text-red-800"
+  if (status === "yellow") return "border-amber-300 bg-amber-50 text-amber-900"
+  return "border-emerald-300 bg-emerald-50 text-emerald-900"
+}
+
+function severityCopy(status: DashboardStatusLevel) {
+  if (status === "red") return "Kritisch"
+  if (status === "yellow") return "Beobachten"
+  return "Stabil"
+}
+
 export default function AdminDashboard() {
   const fetchAuth = useAuthorizedFetch()
   const [error, setError] = useState<string | null>(null)
@@ -85,8 +115,12 @@ export default function AdminDashboard() {
   const [products, setProducts] = useState<ProductWithStock[]>([])
 
   const [events, setEvents] = useState<EventDay[]>([])
-  const [currentEventIndex, setCurrentEventIndex] = useState(0)
+  const [selectedEventKey, setSelectedEventKey] = useState("")
   const [eventsLoading, setEventsLoading] = useState(true)
+
+  const [opsOverview, setOpsOverview] = useState<AdminOpsOverview | null>(null)
+  const [opsLoading, setOpsLoading] = useState(true)
+  const [opsError, setOpsError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -96,7 +130,9 @@ export default function AdminDashboard() {
       .then((data) => {
         if (!cancelled) {
           const typedData = data as { items?: EventDay[] }
-          setEvents(typedData.items || [])
+          const nextEvents = typedData.items || []
+          setEvents(nextEvents)
+          setSelectedEventKey((current) => current || (nextEvents[0] ? eventKey(nextEvents[0]) : ""))
           setEventsLoading(false)
         }
       })
@@ -111,24 +147,58 @@ export default function AdminDashboard() {
   }, [fetchAuth])
 
   useEffect(() => {
+    let cancelled = false
+    setOpsLoading(true)
+    setOpsError(null)
+
+    fetchAuth("/api/v1/dashboard/ops-overview")
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
+      .then((data) => {
+        if (!cancelled) {
+          setOpsOverview(data as AdminOpsOverview)
+          setOpsLoading(false)
+        }
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setOpsOverview(null)
+          setOpsError(err instanceof Error ? err.message : "Live-Betrieb konnte nicht geladen werden.")
+          setOpsLoading(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [fetchAuth])
+
+  useEffect(() => {
     if (events.length === 0) {
       setLoading(false)
       return
     }
-    const event = events[currentEventIndex]
+
+    const currentIndex = Math.max(
+      0,
+      events.findIndex((event) => eventKey(event) === selectedEventKey)
+    )
+    const event = events[currentIndex]
     if (!event) {
       setLoading(false)
       return
     }
+
     let cancelled = false
     setLoading(true)
+    setError(null)
+
     ;(async () => {
       try {
         const from = new Date(event.year, event.month - 1, event.day)
         const to = new Date(event.year, event.month - 1, event.day + 1)
         const dateParams = `date_from=${encodeURIComponent(from.toISOString())}&date_to=${encodeURIComponent(to.toISOString())}`
 
-        const prevEvent = events[currentEventIndex + 1]
+        const prevEvent = events[currentIndex + 1]
         const prevDateParams = prevEvent
           ? `date_from=${encodeURIComponent(new Date(prevEvent.year, prevEvent.month - 1, prevEvent.day).toISOString())}&date_to=${encodeURIComponent(new Date(prevEvent.year, prevEvent.month - 1, prevEvent.day + 1).toISOString())}`
           : null
@@ -172,12 +242,11 @@ export default function AdminDashboard() {
         }
       }
     })()
+
     return () => {
       cancelled = true
     }
-  }, [fetchAuth, events, currentEventIndex])
-
-  // --- Derived data ---
+  }, [fetchAuth, events, selectedEventKey])
 
   const paidOrders = useMemo(() => orders.filter((o) => o.status === "paid"), [orders])
 
@@ -340,17 +409,6 @@ export default function AdminDashboard() {
       .slice(0, 10)
   }, [products])
 
-  const currentEventLabel = useMemo(() => {
-    if (events.length === 0) return "–"
-    const event = events[currentEventIndex]
-    if (!event) return "–"
-    return new Date(event.year, event.month - 1, event.day).toLocaleDateString("de-CH", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    })
-  }, [events, currentEventIndex])
-
   function comparisonLabel(current: number, previous: number): { label: string; positive: boolean } | null {
     if (previous === 0) return null
     const delta = current - previous
@@ -360,36 +418,141 @@ export default function AdminDashboard() {
   }
 
   const hasPrevDay = prevDayOrders.length > 0
+  const selectedEvent = events.find((event) => eventKey(event) === selectedEventKey) || events[0]
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Adminbereich</h1>
-      {error && <div className="text-sm text-red-600">{error}</div>}
-
-      <div className="flex items-center gap-3">
-        <span className="text-muted-foreground text-sm">Zeitraum:</span>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setCurrentEventIndex((i) => i + 1)}
-            disabled={eventsLoading || currentEventIndex >= events.length - 1}
-          >
-            <ChevronLeft className="size-4" />
-          </Button>
-          <span className="min-w-[160px] text-center font-medium">{currentEventLabel}</span>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setCurrentEventIndex((i) => i - 1)}
-            disabled={eventsLoading || currentEventIndex === 0}
-          >
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold">Adminbereich</h1>
+        <p className="text-muted-foreground text-sm">Live-Betrieb und Event-Auswertung in einer Ansicht.</p>
       </div>
 
-      {/* Stat cards */}
+      <Card className="overflow-hidden border-slate-200/80">
+        <CardHeader className="pb-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant="outline"
+                  className={cn("rounded-full border px-3 py-1", statusClasses(opsOverview?.overallStatus || "green"))}
+                >
+                  <RadioTower className="mr-1 size-3.5" />
+                  {severityCopy(opsOverview?.overallStatus || "green")}
+                </Badge>
+                <span className="text-muted-foreground text-sm">Live-Betrieb jetzt</span>
+              </div>
+              <CardTitle className="text-xl">Operative Übersicht</CardTitle>
+              <CardDescription>Systemstatus und Stationsdruck separat von der Event-Auswertung.</CardDescription>
+            </div>
+            <Link href="/admin/stations" className="text-sm font-medium underline underline-offset-4">
+              Stationen verwalten
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {opsError && <div className="text-sm text-red-600">{opsError}</div>}
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {(opsOverview?.statusChips || []).map((chip) => (
+              <div key={chip.key} className={cn("rounded-2xl border px-4 py-3", statusClasses(chip.status))}>
+                <div className="text-xs font-medium tracking-[0.16em] uppercase opacity-80">{chip.label}</div>
+                <div className="mt-1 text-sm font-semibold">{chip.summary}</div>
+              </div>
+            ))}
+            {opsLoading &&
+              Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="rounded-2xl border border-dashed px-4 py-6 text-sm text-slate-500">
+                  Lade Live-Status…
+                </div>
+              ))}
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {!opsLoading && (opsOverview?.stations.length || 0) === 0 && (
+              <div className="text-muted-foreground rounded-2xl border border-dashed px-4 py-8 text-sm md:col-span-2 xl:col-span-4">
+                Keine freigegebenen Stationen vorhanden.
+              </div>
+            )}
+
+            {(opsOverview?.stations || []).map((station) => (
+              <Link key={station.id} href={`/admin/stations/${station.id}`}>
+                <div className="rounded-2xl border border-slate-200 p-4 transition-shadow hover:shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-medium">{station.name}</div>
+                      <div className="text-muted-foreground mt-1 text-sm">
+                        {station.recentProductTitle
+                          ? `${station.recentProductTitle} · ${station.recentProductQuantity}× zuletzt`
+                          : "Keine aktuelle Produktbewegung"}
+                      </div>
+                    </div>
+                    <Badge variant="outline" className={cn("rounded-full", statusClasses(station.status))}>
+                      {severityCopy(station.status)}
+                    </Badge>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
+                    <div className="rounded-xl bg-slate-100 px-3 py-2">
+                      <div className="text-muted-foreground text-xs">Offene</div>
+                      <div className="mt-1 font-semibold">{station.openOrders}</div>
+                    </div>
+                    <div className="rounded-xl bg-slate-100 px-3 py-2">
+                      <div className="text-muted-foreground text-xs">Backlog</div>
+                      <div className="mt-1 font-semibold">{station.backlog}</div>
+                    </div>
+                    <div className="rounded-xl bg-slate-100 px-3 py-2">
+                      <div className="text-muted-foreground text-xs">Median</div>
+                      <div className="mt-1 font-semibold">{station.medianThroughputMinutes}m</div>
+                    </div>
+                  </div>
+
+                  <div className="text-muted-foreground mt-4 flex items-center justify-between text-sm">
+                    <span>Details öffnen</span>
+                    <ArrowRight className="size-4" />
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {error && <div className="text-sm text-red-600">{error}</div>}
+
+      <section className="space-y-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold">Event-Auswertung</h2>
+            <p className="text-muted-foreground mt-1 text-sm">Historische Kennzahlen und Vergleiche pro Eventtag.</p>
+          </div>
+          <div className="w-full sm:w-[280px]">
+            <Select
+              value={selectedEventKey || "__empty"}
+              onValueChange={(next) => setSelectedEventKey(next === "__empty" ? "" : next)}
+              disabled={eventsLoading || events.length === 0}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Eventtag wählen" />
+              </SelectTrigger>
+              <SelectContent>
+                {events.length === 0 ? (
+                  <SelectItem value="__empty">Kein Event vorhanden</SelectItem>
+                ) : (
+                  events.map((event) => (
+                    <SelectItem key={eventKey(event)} value={eventKey(event)}>
+                      {formatEventLabel(event)} · {event.orderCount} Orders
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        {!eventsLoading && selectedEvent && (
+          <div className="text-muted-foreground text-sm">Ausgewählt: {formatEventLabel(selectedEvent)}</div>
+        )}
+      </section>
+
       <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard
           title="Umsatz"
@@ -412,14 +575,12 @@ export default function AdminDashboard() {
         <StatCard title="Stornierungen" value={String(cancellationCount)} loading={loading} />
       </section>
 
-      {/* Revenue & Orders charts */}
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr_1fr]">
         <RevenueByHourChart data={revenueByHour} loading={loading} />
         <PaymentMethodsChart data={paymentMethodCounts} loading={loading} />
         <OrdersByOriginChart data={ordersByOrigin} loading={loading} />
       </section>
 
-      {/* Product rankings */}
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <TopProductsChart title="Top Produkte nach Menge" data={topProductsByUnits} loading={loading} />
         <TopProductsChart
@@ -430,13 +591,11 @@ export default function AdminDashboard() {
         />
       </section>
 
-      {/* Order health */}
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <OrdersByStatusChart data={ordersByStatusByHour} loading={loading} />
         <RecentCancellations data={recentCancellations} loading={loading} />
       </section>
 
-      {/* Low stock products */}
       <section>
         <h2 className="text-xl font-semibold">Artikel mit niedrigem Bestand</h2>
         <p className="text-muted-foreground mt-1 text-sm">Produkte mit weniger als {LOW_STOCK_THRESHOLD} Einheiten</p>
