@@ -129,14 +129,7 @@ func (s *stationService) RenameStation(ctx context.Context, stationID uuid.UUID,
 }
 
 func (s *stationService) AssignedItemsForOrder(ctx context.Context, stationID, orderID uuid.UUID) ([]*ent.OrderLine, error) {
-	pids, err := s.devices.ListProductIDsByDevice(ctx, stationID)
-	if err != nil {
-		return nil, err
-	}
-	if len(pids) == 0 {
-		return []*ent.OrderLine{}, nil
-	}
-	lines, err := s.orderLineRepo.GetByOrderAndProductIDs(ctx, orderID, pids)
+	lines, err := s.orderLineRepo.GetByOrderAndStationID(ctx, orderID, stationID)
 	if err != nil {
 		return nil, err
 	}

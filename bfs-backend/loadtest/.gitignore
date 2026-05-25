@@ -1,0 +1,4 @@
+*.html
+*.json.gz
+results/
+summary*.json

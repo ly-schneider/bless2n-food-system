@@ -8,6 +8,7 @@ import (
 	"backend/internal/generated/ent/orderline"
 	"backend/internal/generated/ent/orderlineredemption"
 
+	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 )
 
@@ -92,31 +93,35 @@ func (r *orderLineRedemptionRepo) RedeemUnredeemedByOrderLineIDs(ctx context.Con
 		return 0, nil
 	}
 
-	// Find unredeemed order line IDs (those without a redemption record)
-	unredeemedLines, err := r.ec(ctx).OrderLine.Query().
+	// Cheap COUNT of how many lines still need a redemption — used for the
+	// "redeemed" tally returned to the caller (and the response cached by the
+	// idempotency layer in the service).
+	newCount, err := r.ec(ctx).OrderLine.Query().
 		Where(
 			orderline.IDIn(orderLineIDs...),
 			orderline.Not(orderline.HasRedemption()),
 		).
-		All(ctx)
+		Count(ctx)
 	if err != nil {
 		return 0, translateError(err)
 	}
-
-	if len(unredeemedLines) == 0 {
+	if newCount == 0 {
 		return 0, nil
 	}
 
-	// Create redemptions for unredeemed lines
-	builders := make([]*ent.OrderLineRedemptionCreate, len(unredeemedLines))
-	for i, line := range unredeemedLines {
-		builders[i] = r.ec(ctx).OrderLineRedemption.Create().
-			SetOrderLineID(line.ID)
+	// One round-trip: bulk INSERT … ON CONFLICT (order_line_id) DO NOTHING.
+	// The unique index on order_line_id silently skips already-redeemed lines,
+	// replacing the previous SELECT-then-INSERT pair.
+	builders := make([]*ent.OrderLineRedemptionCreate, len(orderLineIDs))
+	for i, id := range orderLineIDs {
+		builders[i] = r.ec(ctx).OrderLineRedemption.Create().SetOrderLineID(id)
 	}
-	_, err = r.ec(ctx).OrderLineRedemption.CreateBulk(builders...).Save(ctx)
-	if err != nil {
+	if err := r.ec(ctx).OrderLineRedemption.CreateBulk(builders...).
+		OnConflict(sql.ConflictColumns(orderlineredemption.FieldOrderLineID)).
+		DoNothing().
+		Exec(ctx); err != nil {
 		return 0, translateError(err)
 	}
 
-	return int64(len(unredeemedLines)), nil
+	return int64(newCount), nil
 }

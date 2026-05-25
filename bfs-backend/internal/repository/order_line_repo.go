@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"backend/internal/generated/ent"
+	"backend/internal/generated/ent/deviceproduct"
 	"backend/internal/generated/ent/orderline"
 	"backend/internal/generated/ent/orderlineredemption"
 
@@ -19,6 +20,7 @@ type OrderLineRepository interface {
 	GetUnredeemed(ctx context.Context, orderID uuid.UUID) ([]*ent.OrderLine, error)
 	Update(ctx context.Context, id, orderID uuid.UUID, lineType orderline.LineType, productID uuid.UUID, title string, quantity int, unitPriceCents int64, parentLineID, menuSlotID *uuid.UUID, menuSlotName *string) (*ent.OrderLine, error)
 	GetByOrderAndProductIDs(ctx context.Context, orderID uuid.UUID, productIDs []uuid.UUID) ([]*ent.OrderLine, error)
+	GetByOrderAndStationID(ctx context.Context, orderID, stationID uuid.UUID) ([]*ent.OrderLine, error)
 	GetByParentLineIDs(ctx context.Context, parentIDs []uuid.UUID) ([]*ent.OrderLine, error)
 }
 
@@ -183,6 +185,33 @@ func (r *orderLineRepo) GetByOrderAndProductIDs(ctx context.Context, orderID uui
 		Where(
 			orderline.OrderIDEQ(orderID),
 			orderline.ProductIDIn(productIDs...),
+		).
+		WithProduct().
+		WithRedemption().
+		All(ctx)
+	if err != nil {
+		return nil, translateError(err)
+	}
+	return rows, nil
+}
+
+// GetByOrderAndStationID returns lines of `orderID` whose product is assigned
+// to `stationID`. Equivalent to the previous two-step ListProductIDsByDevice +
+// GetByOrderAndProductIDs flow, but folded into a single round-trip via a
+// correlated subquery on device_product.
+func (r *orderLineRepo) GetByOrderAndStationID(ctx context.Context, orderID, stationID uuid.UUID) ([]*ent.OrderLine, error) {
+	rows, err := r.ec(ctx).OrderLine.Query().
+		Where(
+			orderline.OrderIDEQ(orderID),
+			func(s *sql.Selector) {
+				dp := sql.Table(deviceproduct.Table)
+				s.Where(sql.In(
+					s.C(orderline.FieldProductID),
+					sql.Select(dp.C(deviceproduct.FieldProductID)).
+						From(dp).
+						Where(sql.EQ(dp.C(deviceproduct.FieldDeviceID), stationID)),
+				))
+			},
 		).
 		WithProduct().
 		WithRedemption().
