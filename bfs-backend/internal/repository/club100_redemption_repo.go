@@ -7,12 +7,14 @@ import (
 	"backend/internal/generated/ent"
 	"backend/internal/generated/ent/club100redemption"
 
+	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 )
 
 type Club100RedemptionRepository interface {
 	Create(ctx context.Context, elvantoPersonID, elvantoPersonName string, orderID uuid.UUID, quantity int) (*ent.Club100Redemption, error)
 	GetTotalRedemptions(ctx context.Context, elvantoPersonID string) (int, error)
+	GetTotalRedemptionsBatch(ctx context.Context, elvantoPersonIDs []string) (map[string]int, error)
 	GetByOrderID(ctx context.Context, orderID uuid.UUID) ([]*ent.Club100Redemption, error)
 }
 
@@ -62,6 +64,44 @@ func (r *club100RedemptionRepo) GetTotalRedemptions(ctx context.Context, elvanto
 		total += row.FreeProductQuantity
 	}
 	return total, nil
+}
+
+func (r *club100RedemptionRepo) GetTotalRedemptionsBatch(ctx context.Context, elvantoPersonIDs []string) (map[string]int, error) {
+	result := make(map[string]int, len(elvantoPersonIDs))
+	if len(elvantoPersonIDs) == 0 {
+		return result, nil
+	}
+
+	loc, _ := time.LoadLocation("Europe/Zurich")
+	now := time.Now().In(loc)
+	dayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+	dayEnd := dayStart.AddDate(0, 0, 1)
+
+	var rows []struct {
+		ElvantoPersonID string `json:"elvanto_person_id"`
+		Total           int    `json:"total"`
+	}
+	err := r.ec(ctx).Club100Redemption.Query().
+		Where(
+			club100redemption.ElvantoPersonIDIn(elvantoPersonIDs...),
+			club100redemption.CreatedAtGTE(dayStart),
+			club100redemption.CreatedAtLT(dayEnd),
+		).
+		Modify(func(s *sql.Selector) {
+			s.Select(
+				s.C(club100redemption.FieldElvantoPersonID),
+				sql.As(sql.Sum(s.C(club100redemption.FieldFreeProductQuantity)), "total"),
+			).GroupBy(s.C(club100redemption.FieldElvantoPersonID))
+		}).
+		Scan(ctx, &rows)
+	if err != nil {
+		return nil, translateError(err)
+	}
+
+	for _, row := range rows {
+		result[row.ElvantoPersonID] = row.Total
+	}
+	return result, nil
 }
 
 func (r *club100RedemptionRepo) GetByOrderID(ctx context.Context, orderID uuid.UUID) ([]*ent.Club100Redemption, error) {

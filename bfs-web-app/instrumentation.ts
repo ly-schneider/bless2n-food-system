@@ -9,4 +9,21 @@ export async function register() {
   }
 }
 
-export const onRequestError = Sentry.captureRequestError
+const COLD_START_FINGERPRINT = ["backend-proxy-cold-start"]
+
+function isColdStartProxyError(err: unknown, path: string | undefined): boolean {
+  if (!path?.startsWith("/api/") || path.startsWith("/api/auth/")) return false
+  if (!(err instanceof Error)) return false
+  return /fetch failed/i.test(err.message) || /failed to pipe response/i.test(err.message)
+}
+
+export const onRequestError: typeof Sentry.captureRequestError = (err, request, errorContext) => {
+  if (isColdStartProxyError(err, request.path)) {
+    Sentry.captureException(err, {
+      fingerprint: COLD_START_FINGERPRINT,
+      tags: { cause: "cold_start", proxy_failure: "escaped_request_error" },
+    })
+    return
+  }
+  return Sentry.captureRequestError(err, request, errorContext)
+}
