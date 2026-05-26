@@ -48,18 +48,21 @@ const profiles = {
   smoke: {
     customer: {
       executor: "constant-vus",
+      exec: "customer",
       vus: 1,
       duration: "30s",
       tags: { scenario: "customer" },
     },
     admin: {
       executor: "constant-vus",
+      exec: "admin",
       vus: 1,
       duration: "30s",
       tags: { scenario: "admin" },
     },
     station: {
       executor: "constant-vus",
+      exec: "station",
       vus: 1,
       duration: "30s",
       tags: { scenario: "station" },
@@ -69,6 +72,7 @@ const profiles = {
   baseline: {
     customer: {
       executor: "ramping-arrival-rate",
+      exec: "customer",
       startRate: 1,
       timeUnit: "1s",
       preAllocatedVUs: 30,
@@ -84,6 +88,7 @@ const profiles = {
     },
     admin: {
       executor: "constant-arrival-rate",
+      exec: "admin",
       rate: 1,
       timeUnit: "10s",
       preAllocatedVUs: 2,
@@ -93,6 +98,7 @@ const profiles = {
     },
     station: {
       executor: "ramping-arrival-rate",
+      exec: "station",
       startRate: 1,
       timeUnit: "1s",
       preAllocatedVUs: 10,
@@ -111,6 +117,7 @@ const profiles = {
   stress: {
     customer: {
       executor: "ramping-arrival-rate",
+      exec: "customer",
       startRate: 1,
       timeUnit: "1s",
       preAllocatedVUs: 50,
@@ -234,11 +241,16 @@ export function customer(data) {
 
   if (!orderId) return;
 
-  group("customer/pay-twint", () => {
+  // `cash` instead of `twint` to avoid Payrexx sandbox rate-limiting masking
+  // backend perf. The cash branch on the handler doesn't require a device
+  // context — when called from session auth (customer), device_id stays nil
+  // and the payment row is created cleanly. Switch back to `twint` if you
+  // want to load-test the actual production checkout flow end-to-end.
+  group("customer/pay-cash", () => {
     const r = postJSON(
       `${BASE_URL}/v1/orders/${orderId}/payment`,
       sessionToken,
-      { method: "twint", returnUrl: "https://loadtest.local/return" },
+      { method: "cash" },
       { "Idempotency-Key": uuidv4() },
     );
     check(r, { "pay 2xx": (res) => res.status === 200 || res.status === 201 });

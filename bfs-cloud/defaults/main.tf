@@ -80,7 +80,7 @@ variable "backend_min_replicas" {
 variable "backend_max_replicas" {
   description = "Maximum number of backend replicas"
   type        = number
-  default     = 10
+  default     = 4
 }
 
 variable "docs_cpu" {
@@ -291,10 +291,10 @@ output "config" {
           name                = "backend-http-scale"
           concurrent_requests = 40
         }
-        cpu_scale_rule = {
-          name           = "backend-cpu-scale"
-          cpu_percentage = 80
-        }
+        # cpu_scale_rule removed — Go's GC sawtooth at low load briefly crosses
+        # 80% even with negligible concurrent work, triggering false scale-outs.
+        # HTTP concurrent_requests is the honest signal for an I/O-bound service;
+        # if a future feature does sustained CPU work, add a scoped rule then.
         custom_scale_rules = contains(["production", "staging"], var.env) ? [
           {
             name             = "backend-cron-sunday"

@@ -94,6 +94,32 @@ SELECT
 FROM generate_series(1, 2) AS i
 ON CONFLICT (token_hash) DO UPDATE SET last_seen_at = NOW(), revoked_at = NULL, device_id = EXCLUDED.device_id;
 
+-- Sessions for each device token. The device auth middleware does TWO lookups
+-- per request: device_binding by token_hash AND session by raw token. Without
+-- the matching session row, every device-authenticated request returns 401.
+-- Sessions are owned by loadtest_user_admin_001 (admin role); the device
+-- middleware copies user_id+role into the request context, and station/POS
+-- handlers gate on device type (from the binding) not user role.
+INSERT INTO session (id, user_id, token, expires_at, updated_at)
+SELECT
+  'loadtest_sess_station_' || lpad(i::text, 3, '0'),
+  'loadtest_user_admin_001',
+  'loadtest_station_token_' || lpad(i::text, 3, '0'),
+  NOW() + INTERVAL '30 days',
+  NOW()
+FROM generate_series(1, 3) AS i
+ON CONFLICT (token) DO UPDATE SET expires_at = EXCLUDED.expires_at, updated_at = EXCLUDED.updated_at;
+
+INSERT INTO session (id, user_id, token, expires_at, updated_at)
+SELECT
+  'loadtest_sess_pos_' || lpad(i::text, 3, '0'),
+  'loadtest_user_admin_001',
+  'loadtest_pos_token_' || lpad(i::text, 3, '0'),
+  NOW() + INTERVAL '30 days',
+  NOW()
+FROM generate_series(1, 2) AS i
+ON CONFLICT (token) DO UPDATE SET expires_at = EXCLUDED.expires_at, updated_at = EXCLUDED.updated_at;
+
 COMMIT;
 
 \echo ''

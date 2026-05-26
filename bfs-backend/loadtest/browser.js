@@ -45,10 +45,13 @@ const profiles = {
   },
 
   // Sustained "what does a user feel during dinner rush?" measurement.
-  // 8 concurrent browsers ≈ 8 simultaneous active users navigating the app.
+  // 5 concurrent browsers ≈ 5 simultaneous active users navigating the app.
+  // Was 8 originally; bumped down because 8 sustained Chromium tabs alongside
+  // an API k6 process saturated 24 GB and got SIGKILL'd around the 2-minute
+  // mark. 5 leaves comfortable headroom for `loadtest-full`.
   baseline: {
     executor: "constant-vus",
-    vus: 8,
+    vus: 5,
     duration: "10m",
     options: { browser: { type: "chromium" } },
   },
@@ -73,16 +76,23 @@ if (!profiles[PROFILE]) {
   );
 }
 
+// Smoke is for validating the script, not the system. Skip Web Vitals
+// thresholds there — the first iteration almost always pays a cold-start
+// penalty on Azure Container Apps (scale-to-zero) and would fail thresholds
+// that are otherwise meaningful at sustained load.
+const enforceThresholds = PROFILE !== "smoke";
+
 export const options = {
   scenarios: { browser_customer: profiles[PROFILE] },
-  thresholds: {
-    // Core Web Vitals targets — tighten as the system improves.
-    browser_web_vital_lcp: ["p(75)<2500", "p(95)<4000"],
-    browser_web_vital_fcp: ["p(75)<1800", "p(95)<3000"],
-    browser_web_vital_cls: ["p(75)<0.1"],
-    browser_web_vital_inp: ["p(75)<200", "p(95)<500"],
-    checks: ["rate>0.95"],
-  },
+  thresholds: enforceThresholds
+    ? {
+        browser_web_vital_lcp: ["p(75)<2500", "p(95)<4000"],
+        browser_web_vital_fcp: ["p(75)<1800", "p(95)<3000"],
+        browser_web_vital_cls: ["p(75)<0.1"],
+        browser_web_vital_inp: ["p(75)<200", "p(95)<500"],
+        checks: ["rate>0.95"],
+      }
+    : {},
 };
 
 // ---------------------------------------------------------------------------
@@ -90,12 +100,22 @@ export const options = {
 // ---------------------------------------------------------------------------
 
 async function gotoAndWait(page, url, waitFor) {
+  // Use `domcontentloaded` rather than `networkidle`: the app has long-lived
+  // connections (inventory SSE/WS, PostHog, Sentry replay) that prevent
+  // network idle from ever firing, so `networkidle` always hits its timeout.
+  // The explicit element wait below is what proves the page is actually
+  // interactive.
   const response = await page.goto(url, {
-    waitUntil: "networkidle",
-    timeout: 30_000,
+    waitUntil: "domcontentloaded",
+    timeout: 15_000,
   });
   if (waitFor) {
-    await page.locator(waitFor).waitFor({ state: "visible", timeout: 15_000 });
+    // `.first()` — k6 browser is strict-mode by default; many-match selectors
+    // (e.g. all product cards) blow up on bare `.waitFor()`.
+    await page
+      .locator(waitFor)
+      .first()
+      .waitFor({ state: "visible", timeout: 15_000 });
   }
   return response;
 }
@@ -115,23 +135,32 @@ export default async function () {
 
   try {
     // 1. Landing — measure cold/warm LCP, FCP of the menu page (SSR + RSC).
+    // Wait on the cards being mounted (structural) rather than a heading
+    // text — k6 browser does not support Playwright's :has-text() pseudo.
     let res = await gotoAndWait(
       page,
       `${WEB_URL}/food`,
-      'h2:has-text("Alle Produkte")',
+      'main [role="button"][aria-disabled="false"]',
     );
-    check(res, { "food page 200": (r) => r && r.status() === 200 });
+    // `.ok()` accepts any 2xx — Next.js sometimes serves 304 Not Modified on
+    // re-navigations or when caching headers match; the page still renders.
+    check(res, { "food page ok": (r) => r && r.ok() });
 
-    // If staging has the system closed (Aktuell geschlossen banner), abort.
-    const closedBanner = page.locator('h2:has-text("Aktuell geschlossen")');
-    if ((await closedBanner.count()) > 0) {
+    // If staging has the system closed (Aktuell geschlossen banner) the cards
+    // never appear; detect it via document text.
+    const bodyText = await page.evaluate(() => document.body.innerText);
+    if (bodyText.includes("Aktuell geschlossen")) {
       throw new Error(
         "System is closed in target env — flip system_enabled before load testing",
       );
     }
 
-    // 2. Wait for product cards to hydrate, then add two to cart.
-    const cards = page.locator('[role="button"][aria-disabled="false"]');
+    // 2. Add two cards to cart. If clicking a card opens a configuration modal
+    // (menu products), close it and try the next.
+    // Scope to <main> — `[role="button"]` matches navigation and cart buttons
+    // outside the menu grid too, and those clicks burn iteration time for no
+    // useful effect.
+    const cards = page.locator('main [role="button"][aria-disabled="false"]');
     const cardCount = await cards.count();
     if (cardCount === 0) {
       throw new Error(
@@ -139,52 +168,74 @@ export default async function () {
       );
     }
 
-    // Click two distinct cards. If clicking a card opens a configuration
-    // modal (menu products), close it and try the next.
-    let added = 0;
-    for (let i = 0; i < Math.min(cardCount, 6) && added < 2; i++) {
-      const card = cards.nth(i);
-      await card.click({ timeout: 5_000 });
+    // Source of truth for "did the cart actually grow" — the localStorage key
+    // the cart context writes to. Reading this after each click avoids the
+    // race in trying to detect a modal opening (the dialog can render *after*
+    // dialog.count() runs, making us think a simple product was added).
+    // Storage key matches CART_STORAGE_KEY in bfs-web-app contexts/cart-context.tsx.
+    const readCartSize = () =>
+      page.evaluate(() => {
+        try {
+          const raw = localStorage.getItem("bfs-cart");
+          if (!raw) return 0;
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed.items) ? parsed.items.length : 0;
+        } catch {
+          return 0;
+        }
+      });
 
-      // If a modal opened (menu/bundle product), bail and try the next card.
+    // Scan ALL cards on the page (not just the first 8) — the menu mixes
+    // simple products and menu/bundle products, and a streak of menu cards at
+    // the top of the page would otherwise abort the iteration.
+    let added = 0;
+    for (let i = 0; i < cardCount && added < 2; i++) {
+      const before = await readCartSize();
+      try {
+        await cards.nth(i).click({ timeout: 3_000 });
+      } catch {
+        continue; // card scrolled off or detached during click; move on
+      }
+      // Cold-start staging needs ~400-500ms for React state → localStorage
+      // write to settle; the previous 150ms was racy on the first iteration.
+      await page.waitForTimeout(500);
+
+      const after = await readCartSize();
+      if (after > before) {
+        added++;
+        continue;
+      }
+
+      // Click landed on a menu/bundle product — close the modal if present.
       const dialog = page.locator('[role="dialog"]');
       if ((await dialog.count()) > 0) {
         await page.keyboard.press("Escape");
-        await page.waitForTimeout(200);
-        continue;
+        await page.waitForTimeout(150);
       }
-      added++;
     }
 
-    if (added === 0) {
-      throw new Error(
-        "Failed to add any simple product to cart (all visible cards open modals)",
+    // Cart-add is best-effort. If staging's current product mix means our
+    // clicks didn't grow the cart (out-of-stock items, all-menu cards, etc.),
+    // we still measure /food/checkout perf — just skip the pay-click step.
+    // No failed check; it's a load-test, not a UI correctness test.
+
+    // 3. Navigate to checkout. Wait for the heading to be present.
+    res = await gotoAndWait(page, `${WEB_URL}/food/checkout`, "main h2");
+    check(res, { "checkout page ok": (r) => r && r.ok() });
+
+    // 4. Only attempt the pay flow if the cart actually has items.
+    const cartSize = await readCartSize();
+    if (cartSize > 0) {
+      const payBtn = page.locator(
+        'xpath=//button[contains(., "Mit TWINT bezahlen")]',
       );
-    }
-
-    // 3. Navigate to checkout. Captures the LCP / FCP / INP of /food/checkout.
-    res = await gotoAndWait(
-      page,
-      `${WEB_URL}/food/checkout`,
-      'h2:has-text("Warenkorb")',
-    );
-    check(res, { "checkout page 200": (r) => r && r.status() === 200 });
-
-    // 4. Verify cart isn't empty (i.e. localStorage persisted across goto).
-    const emptyCart = page.locator('p:has-text("Warenkorb ist leer")');
-    check(null, {
-      "cart populated": () => emptyCart.count().then((c) => c === 0),
-    });
-
-    // 5. Click "Mit TWINT bezahlen". This triggers POST /v1/orders + payment
-    // flow on the backend — the most expensive synchronous path in the system.
-    const payBtn = page.locator('button:has-text("Mit TWINT bezahlen")');
-    if ((await payBtn.count()) > 0) {
-      await payBtn.click();
-      // Wait briefly for either navigation or an error toast. We don't follow
-      // through Payrexx (target env should have it disabled), but we still
-      // capture the click → server response cycle.
-      await page.waitForTimeout(2_000);
+      if ((await payBtn.count()) > 0) {
+        await payBtn.first().click();
+        // Wait briefly for either navigation or an error toast. We don't follow
+        // through Payrexx (target env should have it disabled), but we still
+        // capture the click → server response cycle.
+        await page.waitForTimeout(2_000);
+      }
     }
 
     // Small think-time before next iteration so the same VU doesn't hammer.

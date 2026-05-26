@@ -162,6 +162,12 @@ loadtest-seed station_device_id='NULL' pos_device_id='NULL':
         -v pos_device_id={{pos_device_id}} \
         -f loadtest/seed.sql
 
+# Bump inventory for simple products so a full baseline run can't deplete stock.
+# Re-run any time stock is low; each run adds +50k per product.
+[group('loadtest')]
+loadtest-stock:
+    psql "$DATABASE_URL" -f loadtest/stock.sql
+
 # Remove all loadtest_* rows from $DATABASE_URL
 [group('loadtest')]
 loadtest-cleanup:
