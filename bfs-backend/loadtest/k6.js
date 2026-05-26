@@ -1,20 +1,10 @@
 // k6 load test for the bless2n-food-system backend.
 //
-// Required env:
-//   BASE_URL   e.g. https://api.staging.bless2n.example.com (NO trailing slash)
-//   PROFILE    smoke | baseline | stress   (default: smoke)
+// Env: BASE_URL, PROFILE = smoke | baseline | stress
 //
-// Run:
-//   k6 run -e BASE_URL=https://api.staging.example.com -e PROFILE=baseline k6.js
-//
-// Or via just:
-//   just loadtest BASE_URL=… PROFILE=baseline
-//
-// Prerequisites in the target environment:
-//   1. Run seed.sql (see README) so the test tokens exist.
-//   2. At least one approved STATION device with products assigned via device_product.
-//   3. Payrexx NOT configured, so TWINT payments fall through to MarkOrderPaidDev.
-//      Confirm by checking that h.payments.IsPayrexxEnabled() returns false in target env.
+// Requires the target env to have: tokens seeded via seed.sql, an approved
+// STATION device with assigned products, and Payrexx unconfigured (so TWINT
+// falls through to MarkOrderPaidDev). See loadtest/README.md.
 
 import http from "k6/http";
 import { check, group, sleep } from "k6";
@@ -36,14 +26,8 @@ const PROFILE = __ENV.PROFILE || "smoke";
 
 const tokens = JSON.parse(open("./tokens.json"));
 
-// ---------------------------------------------------------------------------
-// Scenario profiles
-// ---------------------------------------------------------------------------
-//
-// `baseline` mirrors the dinner-rush shape seen in production around 18:30–22:30:
-// fast ramp up, sustained peak, gradual cool down. Compressed to ~12 minutes
-// for iteration speed; multiply durations to simulate a full evening.
-
+// `baseline` mirrors the production dinner-rush shape (18:30–22:30), compressed
+// to ~12 minutes. Multiply stage durations to simulate a full evening.
 const profiles = {
   smoke: {
     customer: {
@@ -78,11 +62,11 @@ const profiles = {
       preAllocatedVUs: 30,
       maxVUs: 80,
       stages: [
-        { target: 2, duration: "1m" }, // pre-rush warmup (avoids cold-start measurement)
-        { target: 7, duration: "2m" }, // ramp into rush
+        { target: 2, duration: "1m" }, // warmup — avoids measuring cold-start
+        { target: 7, duration: "2m" },
         { target: 7, duration: "5m" }, // sustained dinner peak
-        { target: 3, duration: "2m" }, // post-rush trickle
-        { target: 0, duration: "1m" }, // cool down
+        { target: 3, duration: "2m" },
+        { target: 0, duration: "1m" },
       ],
       tags: { scenario: "customer" },
     },
@@ -147,13 +131,8 @@ export const options = {
     "http_req_duration{scenario:station}": ["p(95)<1000"],
     "http_req_duration{scenario:admin}": ["p(95)<2000"],
   },
-  // Drop redirects for cleaner timings.
   maxRedirects: 0,
 };
-
-// ---------------------------------------------------------------------------
-// Setup: prefetch the product catalog once. Shared by every VU via the return.
-// ---------------------------------------------------------------------------
 
 export function setup() {
   const res = http.get(`${BASE_URL}/v1/products`);
@@ -174,10 +153,6 @@ export function setup() {
   console.log(`setup: ${simple.length} simple products available for ordering`);
   return { products: simple.map((p) => ({ id: p.id, price: p.priceCents })) };
 }
-
-// ---------------------------------------------------------------------------
-// Per-VU helpers
-// ---------------------------------------------------------------------------
 
 function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -210,10 +185,6 @@ function buildCartItems(products) {
   return picked;
 }
 
-// ---------------------------------------------------------------------------
-// Scenarios
-// ---------------------------------------------------------------------------
-
 export function customer(data) {
   const sessionToken = pick(tokens.customer_sessions);
 
@@ -241,11 +212,7 @@ export function customer(data) {
 
   if (!orderId) return;
 
-  // `cash` instead of `twint` to avoid Payrexx sandbox rate-limiting masking
-  // backend perf. The cash branch on the handler doesn't require a device
-  // context — when called from session auth (customer), device_id stays nil
-  // and the payment row is created cleanly. Switch back to `twint` if you
-  // want to load-test the actual production checkout flow end-to-end.
+  // Cash instead of TWINT — avoids Payrexx sandbox flakiness masking backend perf.
   group("customer/pay-cash", () => {
     const r = postJSON(
       `${BASE_URL}/v1/orders/${orderId}/payment`,
@@ -276,8 +243,8 @@ export function admin(data) {
   to.setHours(24, 0, 0, 0);
   const qs = `date_from=${encodeURIComponent(from.toISOString())}&date_to=${encodeURIComponent(to.toISOString())}`;
 
+  // Mirrors the parallel fetch in bfs-web-app/app/admin/page.tsx.
   group("admin/dashboard-fetch", () => {
-    // Mirrors the parallel fetch in bfs-web-app/app/admin/page.tsx.
     const responses = http.batch([
       ["GET", `${BASE_URL}/v1/orders?${qs}`, null, bearer(sessionToken)],
       ["GET", `${BASE_URL}/v1/products`, null, bearer(sessionToken)],
@@ -293,7 +260,6 @@ export function station(data) {
   const posToken = pick(tokens.pos_tokens);
   const stationToken = pick(tokens.station_tokens);
 
-  // POS creates and pays for an order (gratis_guest → no payment integration).
   let orderId;
   group("station/pos-create-order", () => {
     const r = postJSON(
@@ -325,7 +291,6 @@ export function station(data) {
     });
   });
 
-  // Station scans the order and redeems items assigned to it.
   group("station/redeem", () => {
     const r = postJSON(
       `${BASE_URL}/v1/stations/redeem`,

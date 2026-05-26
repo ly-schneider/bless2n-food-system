@@ -3,14 +3,10 @@
 -- USAGE
 --   psql "$DATABASE_URL" -v station_device_id=<uuid> -v pos_device_id=<uuid> -f seed.sql
 --
--- ARGS
---   :station_device_id  UUID of an existing approved STATION device (with products
---                       assigned via device_product). Required for station scenario.
---   :pos_device_id      UUID of an existing approved POS device. Optional; falls
---                       back to NULL (POS scenario still works via binding ID).
---
--- All rows created here use loadtest_* primary keys / email prefixes for easy
--- cleanup via cleanup.sql.
+-- station_device_id is required for the station scenario (it must be an
+-- approved STATION device with products assigned via device_product).
+-- pos_device_id is optional; without it the POS device_binding's device_id
+-- stays null and order_payment FK can't resolve (cash payments will fail).
 
 \set ON_ERROR_STOP on
 
@@ -27,7 +23,6 @@
 
 BEGIN;
 
--- 20 customer users + sessions
 INSERT INTO "user" (id, email, name, email_verified, role)
 SELECT
   'loadtest_user_customer_' || lpad(i::text, 3, '0'),
@@ -48,7 +43,6 @@ SELECT
 FROM generate_series(1, 20) AS i
 ON CONFLICT (token) DO UPDATE SET expires_at = EXCLUDED.expires_at, updated_at = EXCLUDED.updated_at;
 
--- 3 admin users + sessions
 INSERT INTO "user" (id, email, name, email_verified, role)
 SELECT
   'loadtest_user_admin_' || lpad(i::text, 3, '0'),
@@ -69,10 +63,7 @@ SELECT
 FROM generate_series(1, 3) AS i
 ON CONFLICT (token) DO UPDATE SET expires_at = EXCLUDED.expires_at, updated_at = EXCLUDED.updated_at;
 
--- 3 station device bindings.
 -- token_hash = sha256(plaintext_token), matching repository.HashToken().
--- station_id points at the operator-supplied station device so device_product
--- lookups succeed during station redeem.
 INSERT INTO device_binding (device_type, token_hash, name, created_by_user_id, station_id)
 SELECT
   'STATION',
@@ -83,7 +74,6 @@ SELECT
 FROM generate_series(1, 3) AS i
 ON CONFLICT (token_hash) DO UPDATE SET last_seen_at = NOW(), revoked_at = NULL, station_id = EXCLUDED.station_id;
 
--- 2 POS device bindings.
 INSERT INTO device_binding (device_type, token_hash, name, created_by_user_id, device_id)
 SELECT
   'POS',
@@ -94,12 +84,8 @@ SELECT
 FROM generate_series(1, 2) AS i
 ON CONFLICT (token_hash) DO UPDATE SET last_seen_at = NOW(), revoked_at = NULL, device_id = EXCLUDED.device_id;
 
--- Sessions for each device token. The device auth middleware does TWO lookups
--- per request: device_binding by token_hash AND session by raw token. Without
--- the matching session row, every device-authenticated request returns 401.
--- Sessions are owned by loadtest_user_admin_001 (admin role); the device
--- middleware copies user_id+role into the request context, and station/POS
--- handlers gate on device type (from the binding) not user role.
+-- Device auth middleware looks up device_binding by token_hash AND session by
+-- raw token; without the session row every device request returns 401.
 INSERT INTO session (id, user_id, token, expires_at, updated_at)
 SELECT
   'loadtest_sess_station_' || lpad(i::text, 3, '0'),
