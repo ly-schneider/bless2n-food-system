@@ -7,11 +7,19 @@ import (
 
 	"backend/internal/generated/ent"
 	"backend/internal/generated/ent/devicebinding"
+	"backend/internal/trace"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
+	"golang.org/x/sync/singleflight"
 )
 
-const authCacheTTL = 30 * time.Second
+const (
+	authCacheTTL        = 30 * time.Second
+	refreshAsyncBudget  = 5 * time.Second
+	lastSeenDebounce    = 60 * time.Second
+	lastSeenAsyncBudget = 5 * time.Second
+)
 
 type ttlEntry[V any] struct {
 	value     V
@@ -58,14 +66,24 @@ func (c *ttlCache[V]) invalidate(key string) {
 	c.mu.Unlock()
 }
 
-type cachedSessionRepo struct {
-	inner SessionRepository
-	cache *ttlCache[*SessionWithUser]
+func recordCacheResult(ctx context.Context, cacheType string, hit bool) {
+	result := "miss"
+	if hit {
+		result = "hit"
+	}
+	trace.Data(ctx, "auth.cache.type", cacheType)
+	trace.Data(ctx, "auth.cache.result", result)
+	trace.Tag(ctx, "auth.cache.result", result)
 }
 
-// NewCachedSessionRepository wraps a SessionRepository with a short-TTL in-memory
-// cache for GetByToken. The cache is per-replica; tokens revoked via the auth
-// service take at most authCacheTTL to fully propagate.
+type cachedSessionRepo struct {
+	inner     SessionRepository
+	cache     *ttlCache[*SessionWithUser]
+	refreshSF singleflight.Group
+}
+
+// NewCachedSessionRepository: cache is per-replica; revoked tokens take up to
+// authCacheTTL to propagate.
 func NewCachedSessionRepository(inner SessionRepository) SessionRepository {
 	return &cachedSessionRepo{
 		inner: inner,
@@ -74,10 +92,16 @@ func NewCachedSessionRepository(inner SessionRepository) SessionRepository {
 }
 
 func (r *cachedSessionRepo) GetByToken(ctx context.Context, token string) (*SessionWithUser, error) {
+	ctx, finish := trace.StartSpan(ctx, "cache", "session.GetByToken")
+	defer finish()
+
 	now := time.Now()
 	if v, ok := r.cache.get(token, now); ok {
+		recordCacheResult(ctx, "session", true)
 		return v, nil
 	}
+	recordCacheResult(ctx, "session", false)
+
 	v, err := r.inner.GetByToken(ctx, token)
 	if err != nil {
 		return nil, err
@@ -87,22 +111,54 @@ func (r *cachedSessionRepo) GetByToken(ctx context.Context, token string) (*Sess
 }
 
 func (r *cachedSessionRepo) RefreshSession(ctx context.Context, token string, expiresIn time.Duration) error {
-	r.cache.invalidate(token)
+	r.markRefreshed(token)
 	return r.inner.RefreshSession(ctx, token, expiresIn)
+}
+
+func (r *cachedSessionRepo) RefreshSessionAsync(token string, expiresIn time.Duration, logger *zap.Logger) {
+	r.markRefreshed(token)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), refreshAsyncBudget)
+		defer cancel()
+		_, err, _ := r.refreshSF.Do("refresh:"+token, func() (any, error) {
+			return nil, r.inner.RefreshSession(ctx, token, expiresIn)
+		})
+		if err != nil && logger != nil {
+			logger.Warn("async session refresh failed", zap.Error(err))
+		}
+	}()
+}
+
+// markRefreshed bumps cached UpdatedAt before the DB write so concurrent
+// requests skip the sliding-refresh check while the write is in flight.
+func (r *cachedSessionRepo) markRefreshed(token string) {
+	now := time.Now().UTC()
+	r.cache.mu.Lock()
+	defer r.cache.mu.Unlock()
+	e, ok := r.cache.entries[token]
+	if !ok || e.value == nil {
+		return
+	}
+	updated := *e.value
+	updated.UpdatedAt = now
+	e.value = &updated
+	r.cache.entries[token] = e
 }
 
 func (r *cachedSessionRepo) CreateSession(ctx context.Context, userID string, expiresIn time.Duration) (string, error) {
 	return r.inner.CreateSession(ctx, userID, expiresIn)
 }
 
-type cachedDeviceBindingRepo struct {
-	inner DeviceBindingRepository
-	cache *ttlCache[*ent.DeviceBinding]
+type AsyncSessionRefresher interface {
+	RefreshSessionAsync(token string, expiresIn time.Duration, logger *zap.Logger)
 }
 
-// NewCachedDeviceBindingRepository wraps a DeviceBindingRepository with a
-// short-TTL in-memory cache for GetByTokenHash. Revocations propagate within
-// authCacheTTL.
+type cachedDeviceBindingRepo struct {
+	inner    DeviceBindingRepository
+	cache    *ttlCache[*ent.DeviceBinding]
+	lastSeen sync.Map
+}
+
 func NewCachedDeviceBindingRepository(inner DeviceBindingRepository) DeviceBindingRepository {
 	return &cachedDeviceBindingRepo{
 		inner: inner,
@@ -110,15 +166,42 @@ func NewCachedDeviceBindingRepository(inner DeviceBindingRepository) DeviceBindi
 	}
 }
 
+func (r *cachedDeviceBindingRepo) UpdateLastSeenDebounced(id uuid.UUID, logger *zap.Logger) {
+	now := time.Now()
+	if prev, ok := r.lastSeen.Load(id); ok {
+		if last, ok := prev.(time.Time); ok && now.Sub(last) < lastSeenDebounce {
+			return
+		}
+	}
+	r.lastSeen.Store(id, now)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), lastSeenAsyncBudget)
+		defer cancel()
+		if err := r.inner.UpdateLastSeen(ctx, id); err != nil && logger != nil {
+			logger.Warn("debounced last_seen update failed", zap.Error(err))
+		}
+	}()
+}
+
+type DebouncedLastSeenWriter interface {
+	UpdateLastSeenDebounced(id uuid.UUID, logger *zap.Logger)
+}
+
 func (r *cachedDeviceBindingRepo) GetByID(ctx context.Context, id uuid.UUID) (*ent.DeviceBinding, error) {
 	return r.inner.GetByID(ctx, id)
 }
 
 func (r *cachedDeviceBindingRepo) GetByTokenHash(ctx context.Context, tokenHash string) (*ent.DeviceBinding, error) {
+	ctx, finish := trace.StartSpan(ctx, "cache", "device_binding.GetByTokenHash")
+	defer finish()
+
 	now := time.Now()
 	if v, ok := r.cache.get(tokenHash, now); ok {
+		recordCacheResult(ctx, "device_binding", true)
 		return v, nil
 	}
+	recordCacheResult(ctx, "device_binding", false)
+
 	v, err := r.inner.GetByTokenHash(ctx, tokenHash)
 	if err != nil {
 		return nil, err

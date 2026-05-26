@@ -155,13 +155,7 @@ func (h *Handlers) CreateOrder(w http.ResponseWriter, r *http.Request, params ge
 		return
 	}
 
-	createdOrder, err := h.orders.GetByID(ctx, prep.OrderID)
-	if err != nil {
-		writeEntError(w, err)
-		return
-	}
-
-	apiOrder := toAPIOrder(createdOrder)
+	apiOrder := toAPIOrder(prep.Order)
 
 	if idempotencyKey != "" {
 		respMap := map[string]any{

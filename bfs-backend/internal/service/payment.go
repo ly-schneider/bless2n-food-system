@@ -66,6 +66,7 @@ type CheckoutPreparation struct {
 	LineItems     []payrexx.InvoiceItem
 	CustomerEmail *string
 	UserID        *string
+	Order         *ent.Order
 }
 
 type paymentService struct {
@@ -177,8 +178,8 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 
 	slotByID := make(map[uuid.UUID]*ent.MenuSlot)
 	allowedBySlot := make(map[uuid.UUID]map[uuid.UUID]struct{})
-	for _, menuProdID := range menuProductIDs {
-		slots, err := s.menuSlotRepo.GetByMenuProductID(ctx, menuProdID)
+	if len(menuProductIDs) > 0 {
+		slots, err := s.menuSlotRepo.GetByMenuProductIDs(ctx, menuProductIDs)
 		if err != nil {
 			return nil, fmt.Errorf("load menu slots: %w", err)
 		}
@@ -384,6 +385,7 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 		LineItems:     lineItems,
 		CustomerEmail: in.CustomerEmail,
 		UserID:        userID,
+		Order:         ord,
 	}, nil
 }
 

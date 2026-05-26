@@ -260,7 +260,9 @@ func (m *SessionMiddleware) validateAndRefresh(traceCtx context.Context, r *http
 	}
 
 	if session.UpdatedAt.Add(sessionUpdateAge).Before(time.Now().UTC()) {
-		if refreshErr := m.sessionRepo.RefreshSession(traceCtx, tokenString, sessionExpiresIn); refreshErr != nil {
+		if async, ok := m.sessionRepo.(repository.AsyncSessionRefresher); ok {
+			async.RefreshSessionAsync(tokenString, sessionExpiresIn, m.logger)
+		} else if refreshErr := m.sessionRepo.RefreshSession(traceCtx, tokenString, sessionExpiresIn); refreshErr != nil {
 			m.logger.Warn("failed to refresh session", zap.Error(refreshErr))
 		}
 	}

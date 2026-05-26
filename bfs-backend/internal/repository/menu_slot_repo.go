@@ -13,6 +13,7 @@ type MenuSlotRepository interface {
 	Create(ctx context.Context, menuProductID uuid.UUID, name string, sequence int) (*ent.MenuSlot, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*ent.MenuSlot, error)
 	GetByMenuProductID(ctx context.Context, menuProductID uuid.UUID) ([]*ent.MenuSlot, error)
+	GetByMenuProductIDs(ctx context.Context, menuProductIDs []uuid.UUID) ([]*ent.MenuSlot, error)
 	Update(ctx context.Context, id, menuProductID uuid.UUID, name string, sequence int) (*ent.MenuSlot, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 	DeleteByMenuProductID(ctx context.Context, menuProductID uuid.UUID) error
@@ -58,6 +59,23 @@ func (r *menuSlotRepo) GetByID(ctx context.Context, id uuid.UUID) (*ent.MenuSlot
 func (r *menuSlotRepo) GetByMenuProductID(ctx context.Context, menuProductID uuid.UUID) ([]*ent.MenuSlot, error) {
 	rows, err := r.ec(ctx).MenuSlot.Query().
 		Where(menuslot.MenuProductIDEQ(menuProductID)).
+		WithOptions(func(oq *ent.MenuSlotOptionQuery) {
+			oq.WithOptionProduct()
+		}).
+		Order(menuslot.BySequence()).
+		All(ctx)
+	if err != nil {
+		return nil, translateError(err)
+	}
+	return rows, nil
+}
+
+func (r *menuSlotRepo) GetByMenuProductIDs(ctx context.Context, menuProductIDs []uuid.UUID) ([]*ent.MenuSlot, error) {
+	if len(menuProductIDs) == 0 {
+		return nil, nil
+	}
+	rows, err := r.ec(ctx).MenuSlot.Query().
+		Where(menuslot.MenuProductIDIn(menuProductIDs...)).
 		WithOptions(func(oq *ent.MenuSlotOptionQuery) {
 			oq.WithOptionProduct()
 		}).
