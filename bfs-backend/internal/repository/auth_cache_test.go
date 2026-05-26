@@ -176,24 +176,24 @@ func TestCachedSessionRepo_RefreshSessionAsync_DoesNotBlock(t *testing.T) {
 }
 
 func TestCachedSessionRepo_RefreshSessionAsync_Singleflight(t *testing.T) {
-	released := make(chan struct{})
 	inner := &fakeSessionRepo{
-		session:         newTestSession(),
-		refreshReleased: released,
+		session:      newTestSession(),
+		refreshDelay: 300 * time.Millisecond,
 	}
 	cached := NewCachedSessionRepository(inner).(*cachedSessionRepo)
 	_, _ = cached.GetByToken(context.Background(), "tok")
 
+	var spawned sync.WaitGroup
 	for i := 0; i < 50; i++ {
-		cached.RefreshSessionAsync("tok", time.Hour, zap.NewNop())
+		spawned.Add(1)
+		go func() {
+			defer spawned.Done()
+			cached.RefreshSessionAsync("tok", time.Hour, zap.NewNop())
+		}()
 	}
+	spawned.Wait()
 
-	require.Eventually(t, func() bool {
-		return atomic.LoadInt32(&inner.refreshCalls) >= 1
-	}, time.Second, 5*time.Millisecond)
-
-	close(released)
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(700 * time.Millisecond)
 
 	require.Equal(t, int32(1), atomic.LoadInt32(&inner.refreshCalls), "concurrent refreshes must collapse to one DB write")
 }

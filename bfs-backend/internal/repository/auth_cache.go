@@ -60,12 +60,6 @@ func (c *ttlCache[V]) set(key string, value V, expiresAt time.Time) {
 	c.mu.Unlock()
 }
 
-func (c *ttlCache[V]) invalidate(key string) {
-	c.mu.Lock()
-	delete(c.entries, key)
-	c.mu.Unlock()
-}
-
 func recordCacheResult(ctx context.Context, cacheType string, hit bool) {
 	result := "miss"
 	if hit {
