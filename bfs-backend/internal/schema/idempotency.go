@@ -7,6 +7,7 @@ import (
 	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 	"github.com/google/uuid"
 )
 
@@ -42,4 +43,11 @@ func (Idempotency) Fields() []ent.Field {
 
 func (Idempotency) Edges() []ent.Edge {
 	return nil
+}
+
+func (Idempotency) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("scope", "key").Unique(),
+		index.Fields("expires_at"),
+	}
 }

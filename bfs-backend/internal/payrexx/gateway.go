@@ -1,6 +1,7 @@
 package payrexx
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -45,7 +46,7 @@ type CreateGatewayParams struct {
 	LookAndFeelProfile string
 }
 
-func (c *Client) CreateGateway(params CreateGatewayParams) (*Gateway, error) {
+func (c *Client) CreateGateway(ctx context.Context, params CreateGatewayParams) (*Gateway, error) {
 	p := map[string]any{
 		"amount":   params.Amount,
 		"currency": params.Currency,
@@ -94,7 +95,7 @@ func (c *Client) CreateGateway(params CreateGatewayParams) (*Gateway, error) {
 		p["basket"] = basket
 	}
 
-	body, err := c.doRequest("POST", "Gateway/", p)
+	body, err := c.doRequest(ctx, "POST", "Gateway/", p)
 	if err != nil {
 		return nil, err
 	}
@@ -111,8 +112,8 @@ func (c *Client) CreateGateway(params CreateGatewayParams) (*Gateway, error) {
 	return &resp.Data[0], nil
 }
 
-func (c *Client) GetGateway(id int) (*Gateway, error) {
-	body, err := c.doRequest("GET", fmt.Sprintf("Gateway/%d/", id), nil)
+func (c *Client) GetGateway(ctx context.Context, id int) (*Gateway, error) {
+	body, err := c.doRequest(ctx, "GET", fmt.Sprintf("Gateway/%d/", id), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -129,8 +130,8 @@ func (c *Client) GetGateway(id int) (*Gateway, error) {
 	return &resp.Data[0], nil
 }
 
-func (c *Client) DeleteGateway(id int) error {
-	_, err := c.doRequest("DELETE", fmt.Sprintf("Gateway/%d/", id), nil)
+func (c *Client) DeleteGateway(ctx context.Context, id int) error {
+	_, err := c.doRequest(ctx, "DELETE", fmt.Sprintf("Gateway/%d/", id), nil)
 	return err
 }
 

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"backend/internal/generated/ent"
 	"backend/internal/generated/ent/settings"
@@ -13,6 +15,13 @@ import (
 
 	"github.com/google/uuid"
 )
+
+const systemEnabledCacheTTL = 5 * time.Second
+
+type systemEnabledCache struct {
+	enabled   bool
+	expiresAt time.Time
+}
 
 var (
 	ErrJetonRequired = errors.New("jeton_required")
@@ -50,9 +59,10 @@ type SettingsService interface {
 }
 
 type settingsService struct {
-	settings repository.SettingsRepository
-	jetons   repository.JetonRepository
-	products *repository.ProductRepository
+	settings           repository.SettingsRepository
+	jetons             repository.JetonRepository
+	products           *repository.ProductRepository
+	systemEnabledCache atomic.Pointer[systemEnabledCache]
 }
 
 func NewSettingsService(
@@ -103,11 +113,29 @@ func (s *settingsService) SetPosMode(ctx context.Context, mode settings.PosMode)
 }
 
 func (s *settingsService) IsSystemEnabled(ctx context.Context) (bool, error) {
-	return s.settings.IsSystemEnabled(ctx)
+	if cached := s.systemEnabledCache.Load(); cached != nil && time.Now().Before(cached.expiresAt) {
+		return cached.enabled, nil
+	}
+	enabled, err := s.settings.IsSystemEnabled(ctx)
+	if err != nil {
+		return enabled, err
+	}
+	s.systemEnabledCache.Store(&systemEnabledCache{
+		enabled:   enabled,
+		expiresAt: time.Now().Add(systemEnabledCacheTTL),
+	})
+	return enabled, nil
 }
 
 func (s *settingsService) SetSystemEnabled(ctx context.Context, enabled bool) error {
-	return s.settings.SetSystemEnabled(ctx, enabled)
+	if err := s.settings.SetSystemEnabled(ctx, enabled); err != nil {
+		return err
+	}
+	s.systemEnabledCache.Store(&systemEnabledCache{
+		enabled:   enabled,
+		expiresAt: time.Now().Add(systemEnabledCacheTTL),
+	})
+	return nil
 }
 
 func (s *settingsService) SetClub100Settings(ctx context.Context, freeProductIDs []uuid.UUID, maxRedemptions *int) error {

@@ -57,6 +57,7 @@ type productService struct {
 	inventoryRepo      repository.InventoryLedgerRepository
 	jetonRepo          repository.JetonRepository
 	inventoryHub       *inventory.Hub
+	cache              *catalogCache
 }
 
 func NewProductService(
@@ -76,6 +77,7 @@ func NewProductService(
 		inventoryRepo:      inventoryRepo,
 		jetonRepo:          jetonRepo,
 		inventoryHub:       inventoryHub,
+		cache:              newCatalogCache(),
 	}
 }
 
@@ -85,9 +87,13 @@ func (s *productService) ListProducts(ctx context.Context, categoryID *string, l
 		if err != nil {
 			return nil, err
 		}
-		return s.productRepo.GetByCategory(ctx, catID)
+		return s.cache.load(ctx, catalogKeyByCategory(catID), func(ctx context.Context) ([]*ent.Product, error) {
+			return s.productRepo.GetByCategory(ctx, catID)
+		})
 	}
-	return s.productRepo.GetAll(ctx)
+	return s.cache.load(ctx, catalogKeyAll(), func(ctx context.Context) ([]*ent.Product, error) {
+		return s.productRepo.GetAll(ctx)
+	})
 }
 
 func (s *productService) GetByID(ctx context.Context, id uuid.UUID) (*ent.Product, error) {
@@ -99,11 +105,15 @@ func (s *productService) GetByIDWithRelations(ctx context.Context, id uuid.UUID)
 }
 
 func (s *productService) GetAll(ctx context.Context) ([]*ent.Product, error) {
-	return s.productRepo.GetAll(ctx)
+	return s.cache.load(ctx, catalogKeyAll(), func(ctx context.Context) ([]*ent.Product, error) {
+		return s.productRepo.GetAll(ctx)
+	})
 }
 
 func (s *productService) GetByCategory(ctx context.Context, categoryID uuid.UUID) ([]*ent.Product, error) {
-	return s.productRepo.GetByCategory(ctx, categoryID)
+	return s.cache.load(ctx, catalogKeyByCategory(categoryID), func(ctx context.Context) ([]*ent.Product, error) {
+		return s.productRepo.GetByCategory(ctx, categoryID)
+	})
 }
 
 func (s *productService) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*ent.Product, error) {
@@ -111,17 +121,22 @@ func (s *productService) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*ent.
 }
 
 func (s *productService) Create(ctx context.Context, categoryID uuid.UUID, productType product.Type, name string, priceCents int64, isActive bool, image *string, description *string, jetonID *uuid.UUID) (*ent.Product, error) {
-	return s.productRepo.Create(ctx, categoryID, productType, name, priceCents, isActive, image, description, jetonID)
+	created, err := s.productRepo.Create(ctx, categoryID, productType, name, priceCents, isActive, image, description, jetonID)
+	if err == nil {
+		s.cache.invalidate()
+	}
+	return created, err
 }
 
 func (s *productService) Update(ctx context.Context, id, categoryID uuid.UUID, productType product.Type, name string, priceCents int64, isActive bool, image *string, description *string, jetonID *uuid.UUID) (*ent.Product, error) {
-	return s.productRepo.Update(ctx, id, categoryID, productType, name, priceCents, isActive, image, description, jetonID)
+	updated, err := s.productRepo.Update(ctx, id, categoryID, productType, name, priceCents, isActive, image, description, jetonID)
+	if err == nil {
+		s.cache.invalidate()
+	}
+	return updated, err
 }
 
 func (s *productService) Delete(ctx context.Context, id uuid.UUID) error {
-	// Clean up menu slots and their options before deleting.
-	// Ent sends a raw DELETE and the pgx driver's FK errors may not be
-	// recognised as constraint errors, so we remove children explicitly.
 	slots, _ := s.menuSlotRepo.GetByMenuProductID(ctx, id)
 	for _, slot := range slots {
 		_ = s.menuSlotOptionRepo.DeleteByMenuSlotID(ctx, slot.ID)
@@ -129,7 +144,11 @@ func (s *productService) Delete(ctx context.Context, id uuid.UUID) error {
 	if len(slots) > 0 {
 		_ = s.menuSlotRepo.DeleteByMenuProductID(ctx, id)
 	}
-	return s.productRepo.Delete(ctx, id)
+	err := s.productRepo.Delete(ctx, id)
+	if err == nil {
+		s.cache.invalidate()
+	}
+	return err
 }
 
 func (s *productService) CountActiveWithoutJeton(ctx context.Context) (int64, error) {
@@ -141,7 +160,11 @@ func (s *productService) CountByJetonIDs(ctx context.Context, ids []uuid.UUID) (
 }
 
 func (s *productService) UpdateJeton(ctx context.Context, id uuid.UUID, jetonID *uuid.UUID) error {
-	return s.productRepo.UpdateJeton(ctx, id, jetonID)
+	err := s.productRepo.UpdateJeton(ctx, id, jetonID)
+	if err == nil {
+		s.cache.invalidate()
+	}
+	return err
 }
 
 // ---------------------------------------------------------------------------
@@ -230,7 +253,11 @@ func (s *productService) CreateMenuSlot(ctx context.Context, menuID uuid.UUID, n
 			seq = slot.Sequence + 1
 		}
 	}
-	return s.menuSlotRepo.Create(ctx, menuID, name, seq)
+	created, err := s.menuSlotRepo.Create(ctx, menuID, name, seq)
+	if err == nil {
+		s.cache.invalidate()
+	}
+	return created, err
 }
 
 func (s *productService) UpdateMenuSlot(ctx context.Context, menuID, slotID uuid.UUID, name string) (*ent.MenuSlot, error) {
@@ -241,7 +268,11 @@ func (s *productService) UpdateMenuSlot(ctx context.Context, menuID, slotID uuid
 	if name == "" {
 		name = slot.Name
 	}
-	return s.menuSlotRepo.Update(ctx, slotID, menuID, name, slot.Sequence)
+	updated, err := s.menuSlotRepo.Update(ctx, slotID, menuID, name, slot.Sequence)
+	if err == nil {
+		s.cache.invalidate()
+	}
+	return updated, err
 }
 
 func (s *productService) DeleteMenuSlot(ctx context.Context, menuID, slotID uuid.UUID) error {
@@ -272,6 +303,7 @@ func (s *productService) DeleteMenuSlot(ctx context.Context, menuID, slotID uuid
 			}
 		}
 	}
+	s.cache.invalidate()
 	return nil
 }
 
@@ -287,13 +319,22 @@ func (s *productService) ReorderMenuSlots(ctx context.Context, menuID uuid.UUID,
 			}
 		}
 	}
+	s.cache.invalidate()
 	return nil
 }
 
 func (s *productService) AddSlotOption(ctx context.Context, menuID, slotID uuid.UUID, productID uuid.UUID) (*ent.MenuSlotOption, error) {
-	return s.menuSlotOptionRepo.Create(ctx, slotID, productID)
+	opt, err := s.menuSlotOptionRepo.Create(ctx, slotID, productID)
+	if err == nil {
+		s.cache.invalidate()
+	}
+	return opt, err
 }
 
 func (s *productService) RemoveSlotOption(ctx context.Context, menuID, slotID, optionProductID uuid.UUID) error {
-	return s.menuSlotOptionRepo.Delete(ctx, slotID, optionProductID)
+	err := s.menuSlotOptionRepo.Delete(ctx, slotID, optionProductID)
+	if err == nil {
+		s.cache.invalidate()
+	}
+	return err
 }

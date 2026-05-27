@@ -2,15 +2,19 @@ package payrexx
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"time"
 )
 
 const apiBaseURL = "https://api.payrexx.com/v1.0/"
+
+const DefaultRequestTimeout = 8 * time.Second
 
 type Client struct {
 	instanceName string
@@ -19,17 +23,37 @@ type Client struct {
 }
 
 func NewClient(instanceName, apiSecret string) *Client {
+	transport := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   3 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          50,
+		MaxIdleConnsPerHost:   10,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   5 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
 	return &Client{
 		instanceName: instanceName,
 		apiSecret:    apiSecret,
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout:   30 * time.Second,
+			Transport: transport,
 		},
 	}
 }
 
-func (c *Client) doRequest(method, endpoint string, params map[string]any) ([]byte, error) {
+func (c *Client) doRequest(ctx context.Context, method, endpoint string, params map[string]any) ([]byte, error) {
 	reqURL := apiBaseURL + endpoint + "?instance=" + url.QueryEscape(c.instanceName)
+
+	if _, ok := ctx.Deadline(); !ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, DefaultRequestTimeout)
+		defer cancel()
+	}
 
 	var req *http.Request
 	var err error
@@ -42,13 +66,13 @@ func (c *Client) doRequest(method, endpoint string, params map[string]any) ([]by
 			}
 			reqURL += "&" + v.Encode()
 		}
-		req, err = http.NewRequest(method, reqURL, nil)
+		req, err = http.NewRequestWithContext(ctx, method, reqURL, nil)
 	} else {
 		body, jsonErr := json.Marshal(params)
 		if jsonErr != nil {
 			return nil, fmt.Errorf("payrexx: failed to encode request: %w", jsonErr)
 		}
-		req, err = http.NewRequest(method, reqURL, bytes.NewReader(body))
+		req, err = http.NewRequestWithContext(ctx, method, reqURL, bytes.NewReader(body))
 		if req != nil {
 			req.Header.Set("Content-Type", "application/json")
 		}

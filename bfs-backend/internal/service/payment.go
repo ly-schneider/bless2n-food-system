@@ -229,6 +229,7 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 		}
 	}
 
+	preReservationStock := make(map[uuid.UUID]int)
 	if len(requiredQuantities) > 0 {
 		productIDsToCheck := make([]uuid.UUID, 0, len(requiredQuantities))
 		for pid := range requiredQuantities {
@@ -248,6 +249,7 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 				return nil, fmt.Errorf("insufficient inventory for %s: requested %d, available %d", pName, required, available)
 			}
 		}
+		preReservationStock = currentStock
 	}
 
 	origin := in.Origin
@@ -360,7 +362,7 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 		if _, err := s.inventoryRepo.CreateMany(ctx, inventoryEntries); err != nil {
 			return nil, fmt.Errorf("reserve inventory: %w", err)
 		}
-		s.publishInventoryUpdates(ctx, inventoryEntries)
+		s.publishInventoryUpdates(ctx, inventoryEntries, preReservationStock)
 	}
 
 	// Prepare Payrexx line items from the params (we have all the data we need)
@@ -400,7 +402,9 @@ func (s *paymentService) CreatePayrexxGateway(ctx context.Context, prep *Checkou
 		return nil, fmt.Errorf("payrexx client not configured")
 	}
 
-	gateway, err := s.payrexxClient.CreateGateway(payrexx.CreateGatewayParams{
+	gatewayCtx, gatewayCancel := context.WithTimeout(ctx, payrexx.DefaultRequestTimeout)
+	defer gatewayCancel()
+	gateway, err := s.payrexxClient.CreateGateway(gatewayCtx, payrexx.CreateGatewayParams{
 		Amount:             int(prep.TotalCents),
 		Currency:           "CHF",
 		ReferenceID:        prep.OrderID.String(),
@@ -554,7 +558,7 @@ func (s *paymentService) CleanupPendingOrderByID(ctx context.Context, orderID uu
 	}
 	if len(releaseEntries) > 0 {
 		_, _ = s.inventoryRepo.CreateMany(ctx, releaseEntries)
-		s.publishInventoryUpdates(ctx, releaseEntries)
+		s.publishInventoryUpdates(ctx, releaseEntries, nil)
 	}
 
 	// Delete order (cascade deletes order lines)
@@ -570,7 +574,7 @@ func (s *paymentService) GetPayrexxGateway(ctx context.Context, gatewayID int) (
 	if s.payrexxClient == nil {
 		return nil, fmt.Errorf("payrexx client not configured")
 	}
-	return s.payrexxClient.GetGateway(gatewayID)
+	return s.payrexxClient.GetGateway(ctx, gatewayID)
 }
 
 func (s *paymentService) sendReceipt(orderID uuid.UUID, to string, totalCents int64, paidAt time.Time, method string) {
@@ -632,7 +636,7 @@ func safeStr(p *string) string {
 	return *p
 }
 
-func (s *paymentService) publishInventoryUpdates(ctx context.Context, entries []repository.InventoryLedgerCreateParams) {
+func (s *paymentService) publishInventoryUpdates(ctx context.Context, entries []repository.InventoryLedgerCreateParams, preStock map[uuid.UUID]int) {
 	if s.inventoryHub == nil {
 		return
 	}
@@ -644,9 +648,23 @@ func (s *paymentService) publishInventoryUpdates(ctx context.Context, entries []
 		}
 		deltaByProduct[entry.ProductID] += entry.Delta
 	}
-	stocks, err := s.inventoryRepo.GetCurrentStockBatch(ctx, productIDs)
-	if err != nil {
-		return
+	stocks := make(map[uuid.UUID]int, len(productIDs))
+	missing := make([]uuid.UUID, 0)
+	for _, pid := range productIDs {
+		if pre, ok := preStock[pid]; ok {
+			stocks[pid] = pre + deltaByProduct[pid]
+		} else {
+			missing = append(missing, pid)
+		}
+	}
+	if len(missing) > 0 {
+		fetched, err := s.inventoryRepo.GetCurrentStockBatch(ctx, missing)
+		if err != nil {
+			return
+		}
+		for pid, v := range fetched {
+			stocks[pid] = v
+		}
 	}
 	now := time.Now()
 	for _, productID := range productIDs {

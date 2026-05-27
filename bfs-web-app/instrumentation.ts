@@ -2,10 +2,29 @@ import * as Sentry from "@sentry/nextjs"
 
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    await configureBackendKeepAlive()
     await import("./sentry.server.config")
   }
   if (process.env.NEXT_RUNTIME === "edge") {
     await import("./sentry.edge.config")
+  }
+}
+
+async function configureBackendKeepAlive() {
+  try {
+    const { Agent, setGlobalDispatcher } = await import("undici")
+    setGlobalDispatcher(
+      new Agent({
+        keepAliveTimeout: 30_000,
+        keepAliveMaxTimeout: 60_000,
+        connections: 64,
+        pipelining: 1,
+        headersTimeout: 15_000,
+        bodyTimeout: 30_000,
+      })
+    )
+  } catch (err) {
+    console.warn("undici keep-alive setup failed:", err)
   }
 }
 
