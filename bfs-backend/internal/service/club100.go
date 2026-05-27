@@ -66,12 +66,18 @@ func (s *club100Service) GetPeopleWithRedemptions(ctx context.Context) ([]Club10
 		return nil, fmt.Errorf("search people: %w", err)
 	}
 
+	ids := make([]string, 0, len(people))
+	for _, p := range people {
+		ids = append(ids, p.ID)
+	}
+	totals, err := s.redemptions.GetTotalRedemptionsBatch(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("get redemptions: %w", err)
+	}
+
 	result := make([]Club100Person, 0, len(people))
 	for _, p := range people {
-		total, err := s.redemptions.GetTotalRedemptions(ctx, p.ID)
-		if err != nil {
-			return nil, fmt.Errorf("get redemptions for %s: %w", p.ID, err)
-		}
+		total := totals[p.ID]
 		remaining := maxRedemptions - total
 		if remaining < 0 {
 			remaining = 0

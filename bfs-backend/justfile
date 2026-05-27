@@ -150,3 +150,72 @@ set-passwords:
 seed:
     #!/usr/bin/env bash
     for f in db/seed/*.sql; do echo "  $f..."; psql "$DATABASE_URL" -f "$f"; done
+
+# ── Load test ──
+
+# Seed loadtest users, sessions, and device bindings into $DATABASE_URL.
+# Pass station_device_id (required for station scenario) and optionally pos_device_id.
+[group('loadtest')]
+loadtest-seed station_device_id='NULL' pos_device_id='NULL':
+    psql "$DATABASE_URL" \
+        -v station_device_id={{station_device_id}} \
+        -v pos_device_id={{pos_device_id}} \
+        -f loadtest/seed.sql
+
+# Bump inventory for simple products so a full baseline run can't deplete stock.
+# Re-run any time stock is low; each run adds +50k per product.
+[group('loadtest')]
+loadtest-stock:
+    psql "$DATABASE_URL" -f loadtest/stock.sql
+
+# Remove all loadtest_* rows from $DATABASE_URL
+[group('loadtest')]
+loadtest-cleanup:
+    psql "$DATABASE_URL" -f loadtest/cleanup.sql
+
+# Run the API load test. Required: BASE_URL. Optional: PROFILE (smoke|baseline|stress).
+[group('loadtest')]
+loadtest:
+    #!/usr/bin/env bash
+    set -e
+    if [[ -z "${BASE_URL:-}" ]]; then echo "BASE_URL env var required"; exit 1; fi
+    k6 run -e BASE_URL="$BASE_URL" -e PROFILE="${PROFILE:-smoke}" loadtest/k6.js
+
+# Run the browser load test. Required: WEB_URL. Optional: PROFILE (smoke|baseline|stress).
+[group('loadtest')]
+loadtest-browser:
+    #!/usr/bin/env bash
+    set -e
+    if [[ -z "${WEB_URL:-}" ]]; then echo "WEB_URL env var required"; exit 1; fi
+    k6 run -e WEB_URL="$WEB_URL" -e PROFILE="${PROFILE:-smoke}" loadtest/browser.js
+
+# Run API + browser load tests in parallel. Requires BASE_URL and WEB_URL.
+# Output goes to loadtest/results/{api,browser}-<timestamp>.json for later diffing.
+[group('loadtest')]
+loadtest-full:
+    #!/usr/bin/env bash
+    set -e
+    if [[ -z "${BASE_URL:-}" || -z "${WEB_URL:-}" ]]; then
+      echo "Both BASE_URL and WEB_URL env vars required"; exit 1
+    fi
+    PROFILE="${PROFILE:-baseline}"
+    TS=$(date +%Y%m%d-%H%M%S)
+    mkdir -p loadtest/results
+    echo "▶ Starting API load (BASE_URL=$BASE_URL, PROFILE=$PROFILE)..."
+    k6 run \
+      -e BASE_URL="$BASE_URL" -e PROFILE="$PROFILE" \
+      --summary-export "loadtest/results/api-$TS.json" \
+      loadtest/k6.js &
+    API_PID=$!
+    echo "▶ Starting browser load (WEB_URL=$WEB_URL, PROFILE=$PROFILE)..."
+    k6 run \
+      -e WEB_URL="$WEB_URL" -e PROFILE="$PROFILE" \
+      --summary-export "loadtest/results/browser-$TS.json" \
+      loadtest/browser.js &
+    BROWSER_PID=$!
+    API_STATUS=0; BROWSER_STATUS=0
+    wait $API_PID || API_STATUS=$?
+    wait $BROWSER_PID || BROWSER_STATUS=$?
+    echo "API exit=$API_STATUS, browser exit=$BROWSER_STATUS"
+    echo "Results: loadtest/results/api-$TS.json  loadtest/results/browser-$TS.json"
+    exit $(( API_STATUS | BROWSER_STATUS ))

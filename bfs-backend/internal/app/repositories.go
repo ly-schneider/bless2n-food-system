@@ -1,10 +1,19 @@
 package app
 
 import (
+	"backend/internal/generated/ent"
 	"backend/internal/repository"
 
 	"go.uber.org/fx"
 )
+
+func newCachedSessionRepository(client *ent.Client) repository.SessionRepository {
+	return repository.NewCachedSessionRepository(repository.NewSessionRepository(client))
+}
+
+func newCachedDeviceBindingRepository(client *ent.Client) repository.DeviceBindingRepository {
+	return repository.NewCachedDeviceBindingRepository(repository.NewDeviceBindingRepository(client))
+}
 
 func NewRepositories() fx.Option {
 	return fx.Options(
@@ -25,8 +34,8 @@ func NewRepositories() fx.Option {
 			repository.NewAdminInviteRepository,
 			repository.NewUserRepository,
 			repository.NewVerificationRepository,
-			repository.NewSessionRepository,
-			repository.NewDeviceBindingRepository,
+			newCachedSessionRepository,
+			newCachedDeviceBindingRepository,
 			repository.NewClub100RedemptionRepository,
 			repository.NewVolunteerCampaignRepository,
 			repository.NewVolunteerRedemptionRepository,

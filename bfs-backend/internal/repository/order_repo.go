@@ -239,9 +239,10 @@ func (r *orderRepo) ListAdmin(ctx context.Context, status *order.Status, from, t
 		return nil, 0, translateError(err)
 	}
 
-	// Build data query with same filters
+	// Build data query with same filters.
+	// Intentionally no WithLines() — admin list consumers (dashboard + orders table)
+	// only read scalars + payments, and N×lines join is the dominant cost on /v1/orders.
 	dataQ := r.ec(ctx).Order.Query().
-		WithLines().
 		WithPayments()
 	if status != nil {
 		dataQ = dataQ.Where(order.StatusEQ(*status))
@@ -266,6 +267,7 @@ func (r *orderRepo) ListAdmin(ctx context.Context, status *order.Status, from, t
 
 	rows, err := dataQ.
 		Order(order.ByCreatedAt(entDescOpt())).
+		Limit(adminListHardCap).
 		All(ctx)
 	if err != nil {
 		return nil, 0, translateError(err)
@@ -273,6 +275,10 @@ func (r *orderRepo) ListAdmin(ctx context.Context, status *order.Status, from, t
 
 	return rows, int64(total), nil
 }
+
+// adminListHardCap bounds the admin /v1/orders response so a missing date filter
+// or a runaway query can't pull the full table into memory.
+const adminListHardCap = 1000
 
 func (r *orderRepo) ListByCustomerIDPaginated(ctx context.Context, customerID string) ([]*ent.Order, int64, error) {
 	total, err := r.ec(ctx).Order.Query().
@@ -284,8 +290,8 @@ func (r *orderRepo) ListByCustomerIDPaginated(ctx context.Context, customerID st
 
 	rows, err := r.ec(ctx).Order.Query().
 		Where(order.CustomerIDEQ(customerID)).
-		WithLines().
 		Order(order.ByCreatedAt(entDescOpt())).
+		Limit(customerListHardCap).
 		All(ctx)
 	if err != nil {
 		return nil, 0, translateError(err)
@@ -293,6 +299,8 @@ func (r *orderRepo) ListByCustomerIDPaginated(ctx context.Context, customerID st
 
 	return rows, int64(total), nil
 }
+
+const customerListHardCap = 200
 
 // CardMeta carries non-sensitive card payment details captured by the terminal.
 // All fields are optional.

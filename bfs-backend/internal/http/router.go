@@ -76,11 +76,11 @@ func NewRouter(
 		v1.Post("/invites/accept", wrapper.AcceptInvite)
 		v1.Post("/payments/webhooks/payrexx", wrapper.HandlePayrexxWebhook)
 		v1.Get("/payments/{paymentId}", wrapper.GetPayment)
+		v1.Post("/auth/otp-email", wrapper.SendOtpEmail)
 
 		// ── Public routes (no auth, blocked when system disabled) ─
 		v1.Group(func(pub chi.Router) {
 			pub.Use(systemMw.RequireEnabled)
-			pub.Post("/auth/otp-email", wrapper.SendOtpEmail)
 			pub.Get("/products", wrapper.ListProducts)
 			pub.Get("/products/{productId}", wrapper.GetProduct)
 			pub.Get("/orders/{orderId}", wrapper.GetOrder)

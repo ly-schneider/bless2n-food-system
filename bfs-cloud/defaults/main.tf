@@ -80,7 +80,7 @@ variable "backend_min_replicas" {
 variable "backend_max_replicas" {
   description = "Maximum number of backend replicas"
   type        = number
-  default     = 10
+  default     = 4
 }
 
 variable "docs_cpu" {
@@ -290,10 +290,6 @@ output "config" {
         http_scale_rule = {
           name                = "backend-http-scale"
           concurrent_requests = 40
-        }
-        cpu_scale_rule = {
-          name           = "backend-cpu-scale"
-          cpu_percentage = 80
         }
         custom_scale_rules = contains(["production", "staging"], var.env) ? [
           {

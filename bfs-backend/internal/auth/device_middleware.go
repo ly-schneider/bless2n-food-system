@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"backend/internal/generated/ent"
 	"backend/internal/repository"
 	"backend/internal/trace"
 
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -93,7 +93,9 @@ func (m *DeviceAuthMiddleware) RequireDevice(deviceType DeviceType) func(http.Ha
 			}
 
 			if session.UpdatedAt.Add(sessionUpdateAge).Before(time.Now().UTC()) {
-				if refreshErr := m.sessionRepo.RefreshSession(spanCtx, tokenString, sessionExpiresIn); refreshErr != nil {
+				if async, ok := m.sessionRepo.(repository.AsyncSessionRefresher); ok {
+					async.RefreshSessionAsync(tokenString, sessionExpiresIn, m.logger)
+				} else if refreshErr := m.sessionRepo.RefreshSession(spanCtx, tokenString, sessionExpiresIn); refreshErr != nil {
 					m.logger.Warn("failed to refresh device session", zap.Error(refreshErr))
 				}
 			}
@@ -102,13 +104,17 @@ func (m *DeviceAuthMiddleware) RequireDevice(deviceType DeviceType) func(http.Ha
 			trace.Data(spanCtx, "user.id", session.UserID)
 			finish()
 
-			go func(bindingID ent.DeviceBinding) {
-				bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				defer cancel()
-				if err := m.bindingRepo.UpdateLastSeen(bgCtx, bindingID.ID); err != nil {
-					m.logger.Warn("failed to update device last_seen", zap.Error(err))
-				}
-			}(*binding)
+			if debouncer, ok := m.bindingRepo.(repository.DebouncedLastSeenWriter); ok {
+				debouncer.UpdateLastSeenDebounced(binding.ID, m.logger)
+			} else {
+				go func(id uuid.UUID) {
+					bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+					defer cancel()
+					if err := m.bindingRepo.UpdateLastSeen(bgCtx, id); err != nil {
+						m.logger.Warn("failed to update device last_seen", zap.Error(err))
+					}
+				}(binding.ID)
+			}
 
 			ctx := r.Context()
 			ctx = WithAuthType(ctx, AuthTypeDevice)

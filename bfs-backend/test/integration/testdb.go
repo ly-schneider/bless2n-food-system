@@ -291,13 +291,17 @@ func TimeWithin(a, b time.Time, d time.Duration) bool {
 	return diff <= d
 }
 
-// MockElvantoService is a no-op ElvantoService for testing.
-type MockElvantoService struct{}
+// MockElvantoService is an ElvantoService stub for testing.
+// Defaults to unconfigured (returns no people); set Configured=true and People to simulate API responses.
+type MockElvantoService struct {
+	Configured bool
+	People     []service.ElvantoPerson
+}
 
 func (m *MockElvantoService) SearchPeople(_ context.Context) ([]service.ElvantoPerson, error) {
-	return nil, nil
+	return m.People, nil
 }
 
 func (m *MockElvantoService) IsConfigured() bool {
-	return false
+	return m.Configured
 }

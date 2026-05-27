@@ -1,9 +1,32 @@
+import * as Sentry from "@sentry/nextjs"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { resolveCookieNames } from "@/lib/server/cookies"
 
 function backendBase(): string {
   return process.env.BACKEND_INTERNAL_URL || "http://backend:8080"
+}
+
+// Azure Container Apps scales the backend to zero when idle (see GH issue #340).
+// The first request after a cold start surfaces here as either a connect-time
+// `TypeError: fetch failed` or an in-flight `Error: failed to pipe response`.
+// Both shapes are folded into one Sentry group so they don't keep re-opening
+// new issues. See GH issue #343.
+const COLD_START_FINGERPRINT = ["backend-proxy-cold-start"]
+
+function isColdStartFetchError(err: unknown): boolean {
+  return err instanceof TypeError && /fetch failed/i.test(err.message)
+}
+
+function isColdStartPipeError(err: unknown): boolean {
+  return err instanceof Error && /failed to pipe response/i.test(err.message)
+}
+
+function reportColdStart(err: unknown, kind: "fetch_failed" | "pipe_failed") {
+  Sentry.captureException(err, {
+    fingerprint: COLD_START_FINGERPRINT,
+    tags: { cause: "cold_start", proxy_failure: kind },
+  })
 }
 
 async function handle(req: Request, params: Promise<{ path: string[] }>) {
@@ -69,7 +92,19 @@ async function handle(req: Request, params: Promise<{ path: string[] }>) {
     }
   }
 
-  const res = await fetch(target.toString(), { method, headers: outHeaders, body, redirect: "manual" })
+  let res: Response
+  try {
+    res = await fetch(target.toString(), { method, headers: outHeaders, body, redirect: "manual" })
+  } catch (err) {
+    if (isColdStartFetchError(err)) {
+      reportColdStart(err, "fetch_failed")
+      return NextResponse.json(
+        { error: true, message: "Backend temporarily unavailable", cause: "cold_start" },
+        { status: 502 }
+      )
+    }
+    throw err
+  }
 
   const respHeaders = new Headers(res.headers)
 
@@ -83,8 +118,19 @@ async function handle(req: Request, params: Promise<{ path: string[] }>) {
     return new NextResponse(res.body, { status: res.status, headers: respHeaders })
   }
 
-  const buf = Buffer.from(await res.arrayBuffer())
-  return new NextResponse(buf, { status: res.status, headers: respHeaders })
+  try {
+    const buf = Buffer.from(await res.arrayBuffer())
+    return new NextResponse(buf, { status: res.status, headers: respHeaders })
+  } catch (err) {
+    if (isColdStartFetchError(err) || isColdStartPipeError(err)) {
+      reportColdStart(err, "pipe_failed")
+      return NextResponse.json(
+        { error: true, message: "Backend response interrupted", cause: "cold_start" },
+        { status: 504 }
+      )
+    }
+    throw err
+  }
 }
 
 export const dynamic = "force-dynamic"

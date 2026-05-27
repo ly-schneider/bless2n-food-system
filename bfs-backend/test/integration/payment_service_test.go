@@ -61,7 +61,12 @@ func TestPaymentService_PrepareAndCreateOrder(t *testing.T) {
 		require.Equal(t, int64(1050), prep.TotalCents) // 2*350 + 1*350
 		require.Len(t, prep.LineItems, 2)
 
-		// Verify order was created
+		require.NotNil(t, prep.Order, "prep.Order must be populated so handlers can skip the post-create re-fetch")
+		require.Equal(t, prep.OrderID, prep.Order.ID)
+		require.Equal(t, order.StatusPending, prep.Order.Status)
+		require.Equal(t, order.OriginShop, prep.Order.Origin)
+		require.Equal(t, int64(1050), prep.Order.TotalCents)
+
 		orderObj, err := repos.Order.GetByID(ctx, prep.OrderID)
 		require.NoError(t, err)
 		require.Equal(t, order.StatusPending, orderObj.Status)
@@ -79,6 +84,10 @@ func TestPaymentService_PrepareAndCreateOrder(t *testing.T) {
 		prep, err := svc.PrepareAndCreateOrder(ctx, input, &userID, nil)
 		require.NoError(t, err)
 		require.Equal(t, &userID, prep.UserID)
+
+		require.NotNil(t, prep.Order)
+		require.NotNil(t, prep.Order.CustomerID)
+		require.Equal(t, userID, *prep.Order.CustomerID)
 
 		orderObj, err := repos.Order.GetByID(ctx, prep.OrderID)
 		require.NoError(t, err)

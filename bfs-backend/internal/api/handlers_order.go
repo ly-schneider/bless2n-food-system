@@ -89,23 +89,38 @@ func (h *Handlers) CreateOrder(w http.ResponseWriter, r *http.Request, params ge
 	if params.IdempotencyKey != nil {
 		idempotencyKey = *params.IdempotencyKey
 	}
+	var claimedID *uuid.UUID
 	if idempotencyKey != "" {
-		if cached, err := h.idempotency.Get(ctx, idempotencyScopeOrder, idempotencyKey); err == nil && cached != nil {
-			respMap, _ := repository.GetResponseMap(cached)
+		claimed, existed, err := h.idempotency.Claim(ctx, idempotencyScopeOrder, idempotencyKey, idempotencyTTL)
+		if err != nil {
+			h.logger.Warn("idempotency claim failed", zap.Error(err))
+		} else if existed {
+			respMap, _ := repository.GetResponseMap(claimed)
 			if respMap != nil {
 				response.WriteJSON(w, http.StatusOK, respMap)
 				return
 			}
+			writeError(w, http.StatusConflict, "in_progress", "Request with this idempotency key is being processed")
+			return
+		} else {
+			id := claimed.ID
+			claimedID = &id
 		}
 	}
 
 	var body generated.OrderCreate
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if claimedID != nil {
+			_ = h.idempotency.Discard(ctx, *claimedID)
+		}
 		writeError(w, http.StatusBadRequest, "invalid_body", "Invalid request body")
 		return
 	}
 
 	if len(body.Items) == 0 {
+		if claimedID != nil {
+			_ = h.idempotency.Discard(ctx, *claimedID)
+		}
 		writeError(w, http.StatusBadRequest, "no_items", "At least one item is required")
 		return
 	}
@@ -151,19 +166,16 @@ func (h *Handlers) CreateOrder(w http.ResponseWriter, r *http.Request, params ge
 
 	prep, err := h.payments.PrepareAndCreateOrder(ctx, input, userID, nil)
 	if err != nil {
+		if claimedID != nil {
+			_ = h.idempotency.Discard(ctx, *claimedID)
+		}
 		writeError(w, http.StatusBadRequest, "order_failed", err.Error())
 		return
 	}
 
-	createdOrder, err := h.orders.GetByID(ctx, prep.OrderID)
-	if err != nil {
-		writeEntError(w, err)
-		return
-	}
+	apiOrder := toAPIOrder(prep.Order)
 
-	apiOrder := toAPIOrder(createdOrder)
-
-	if idempotencyKey != "" {
+	if claimedID != nil {
 		respMap := map[string]any{
 			"id":         apiOrder.Id.String(),
 			"status":     string(apiOrder.Status),
@@ -171,8 +183,8 @@ func (h *Handlers) CreateOrder(w http.ResponseWriter, r *http.Request, params ge
 			"createdAt":  apiOrder.CreatedAt.Format(time.RFC3339),
 			"origin":     string(apiOrder.Origin),
 		}
-		if _, err := h.idempotency.SaveIfAbsent(ctx, idempotencyScopeOrder, idempotencyKey, respMap, idempotencyTTL); err != nil {
-			h.logger.Warn("failed to cache idempotent order response", zap.Error(err))
+		if err := h.idempotency.FillResponse(ctx, *claimedID, respMap); err != nil {
+			h.logger.Warn("failed to fill idempotent order response", zap.Error(err))
 		}
 	}
 
@@ -255,16 +267,32 @@ func (h *Handlers) CreateOrderPayment(w http.ResponseWriter, r *http.Request, or
 	if params.IdempotencyKey != nil {
 		idempotencyKey = *params.IdempotencyKey
 	}
+	var claimedID *uuid.UUID
 	if idempotencyKey != "" {
 		scopeKey := idempotencyScopePayment + ":" + id.String()
-		if cached, err := h.idempotency.Get(ctx, scopeKey, idempotencyKey); err == nil && cached != nil {
-			respMap, _ := repository.GetResponseMap(cached)
+		claimed, existed, err := h.idempotency.Claim(ctx, scopeKey, idempotencyKey, idempotencyTTL)
+		if err != nil {
+			h.logger.Warn("idempotency claim failed", zap.Error(err))
+		} else if existed {
+			respMap, _ := repository.GetResponseMap(claimed)
 			if respMap != nil {
 				response.WriteJSON(w, http.StatusOK, respMap)
 				return
 			}
+			writeError(w, http.StatusConflict, "in_progress", "Request with this idempotency key is being processed")
+			return
+		} else {
+			cid := claimed.ID
+			claimedID = &cid
 		}
 	}
+
+	paymentSucceeded := false
+	defer func() {
+		if claimedID != nil && !paymentSucceeded {
+			_ = h.idempotency.Discard(ctx, *claimedID)
+		}
+	}()
 
 	var body generated.PaymentCreate
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -273,10 +301,10 @@ func (h *Handlers) CreateOrderPayment(w http.ResponseWriter, r *http.Request, or
 	}
 
 	cachePaymentResponse := func(resp map[string]any) {
-		if idempotencyKey != "" {
-			scopeKey := idempotencyScopePayment + ":" + id.String()
-			if _, err := h.idempotency.SaveIfAbsent(ctx, scopeKey, idempotencyKey, resp, idempotencyTTL); err != nil {
-				h.logger.Warn("failed to cache idempotent payment response", zap.Error(err))
+		paymentSucceeded = true
+		if claimedID != nil {
+			if err := h.idempotency.FillResponse(ctx, *claimedID, resp); err != nil {
+				h.logger.Warn("failed to fill idempotent payment response", zap.Error(err))
 			}
 		}
 	}
