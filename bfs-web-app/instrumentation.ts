@@ -19,8 +19,8 @@ async function configureBackendKeepAlive() {
         keepAliveMaxTimeout: 60_000,
         connections: 64,
         pipelining: 1,
-        headersTimeout: 15_000,
-        bodyTimeout: 30_000,
+        headersTimeout: 0,
+        bodyTimeout: 0,
       })
     )
   } catch (err) {

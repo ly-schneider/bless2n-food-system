@@ -10,6 +10,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
+	"golang.org/x/sync/errgroup"
 )
 
 type OrderRepository interface {
@@ -210,66 +211,51 @@ func (r *orderRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status order
 }
 
 func (r *orderRepo) ListAdmin(ctx context.Context, status *order.Status, from, to *time.Time, q *string) ([]*ent.Order, int64, error) {
-	// Build count query with filters
-	countQ := r.ec(ctx).Order.Query()
-	if status != nil {
-		countQ = countQ.Where(order.StatusEQ(*status))
-	}
-	if from != nil {
-		countQ = countQ.Where(order.CreatedAtGTE(*from))
-	}
-	if to != nil {
-		countQ = countQ.Where(order.CreatedAtLT(*to))
-	}
-	if q != nil && *q != "" {
-		searchPattern := *q
-		countQ = countQ.Where(
-			order.Or(
-				order.ContactEmailContainsFold(searchPattern),
-				// For UUID prefix search, use a raw predicate
-				func(s *sql.Selector) {
-					s.Where(sql.Like(s.C(order.FieldID)+"::text", searchPattern+"%"))
-				},
-			),
-		)
-	}
-
-	total, err := countQ.Count(ctx)
-	if err != nil {
-		return nil, 0, translateError(err)
+	applyFilters := func(query *ent.OrderQuery) *ent.OrderQuery {
+		if status != nil {
+			query = query.Where(order.StatusEQ(*status))
+		}
+		if from != nil {
+			query = query.Where(order.CreatedAtGTE(*from))
+		}
+		if to != nil {
+			query = query.Where(order.CreatedAtLT(*to))
+		}
+		if q != nil && *q != "" {
+			searchPattern := *q
+			query = query.Where(
+				order.Or(
+					order.ContactEmailContainsFold(searchPattern),
+					func(s *sql.Selector) {
+						s.Where(sql.Like(s.C(order.FieldID)+"::text", searchPattern+"%"))
+					},
+				),
+			)
+		}
+		return query
 	}
 
-	// Build data query with same filters.
-	// Intentionally no WithLines() — admin list consumers (dashboard + orders table)
-	// only read scalars + payments, and N×lines join is the dominant cost on /v1/orders.
-	dataQ := r.ec(ctx).Order.Query().
-		WithPayments()
-	if status != nil {
-		dataQ = dataQ.Where(order.StatusEQ(*status))
-	}
-	if from != nil {
-		dataQ = dataQ.Where(order.CreatedAtGTE(*from))
-	}
-	if to != nil {
-		dataQ = dataQ.Where(order.CreatedAtLT(*to))
-	}
-	if q != nil && *q != "" {
-		searchPattern := *q
-		dataQ = dataQ.Where(
-			order.Or(
-				order.ContactEmailContainsFold(searchPattern),
-				func(s *sql.Selector) {
-					s.Where(sql.Like(s.C(order.FieldID)+"::text", searchPattern+"%"))
-				},
-			),
-		)
-	}
-
-	rows, err := dataQ.
-		Order(order.ByCreatedAt(entDescOpt())).
-		Limit(adminListHardCap).
-		All(ctx)
-	if err != nil {
+	var (
+		total int
+		rows  []*ent.Order
+	)
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		var err error
+		total, err = applyFilters(r.ec(gctx).Order.Query()).Count(gctx)
+		return err
+	})
+	g.Go(func() error {
+		// Intentionally no WithLines() — admin list consumers (dashboard + orders table)
+		// only read scalars + payments, and N×lines join is the dominant cost on /v1/orders.
+		var err error
+		rows, err = applyFilters(r.ec(gctx).Order.Query().WithPayments()).
+			Order(order.ByCreatedAt(entDescOpt())).
+			Limit(adminListHardCap).
+			All(gctx)
+		return err
+	})
+	if err := g.Wait(); err != nil {
 		return nil, 0, translateError(err)
 	}
 
@@ -281,19 +267,28 @@ func (r *orderRepo) ListAdmin(ctx context.Context, status *order.Status, from, t
 const adminListHardCap = 1000
 
 func (r *orderRepo) ListByCustomerIDPaginated(ctx context.Context, customerID string) ([]*ent.Order, int64, error) {
-	total, err := r.ec(ctx).Order.Query().
-		Where(order.CustomerIDEQ(customerID)).
-		Count(ctx)
-	if err != nil {
-		return nil, 0, translateError(err)
-	}
-
-	rows, err := r.ec(ctx).Order.Query().
-		Where(order.CustomerIDEQ(customerID)).
-		Order(order.ByCreatedAt(entDescOpt())).
-		Limit(customerListHardCap).
-		All(ctx)
-	if err != nil {
+	var (
+		total int
+		rows  []*ent.Order
+	)
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		var err error
+		total, err = r.ec(gctx).Order.Query().
+			Where(order.CustomerIDEQ(customerID)).
+			Count(gctx)
+		return err
+	})
+	g.Go(func() error {
+		var err error
+		rows, err = r.ec(gctx).Order.Query().
+			Where(order.CustomerIDEQ(customerID)).
+			Order(order.ByCreatedAt(entDescOpt())).
+			Limit(customerListHardCap).
+			All(gctx)
+		return err
+	})
+	if err := g.Wait(); err != nil {
 		return nil, 0, translateError(err)
 	}
 

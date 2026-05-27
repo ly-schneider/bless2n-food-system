@@ -117,7 +117,34 @@ func (s *productService) GetByCategory(ctx context.Context, categoryID uuid.UUID
 }
 
 func (s *productService) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*ent.Product, error) {
-	return s.productRepo.GetByIDs(ctx, ids)
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	all, err := s.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+	byID := make(map[uuid.UUID]*ent.Product, len(all))
+	for _, p := range all {
+		byID[p.ID] = p
+	}
+	result := make([]*ent.Product, 0, len(ids))
+	missing := make([]uuid.UUID, 0)
+	for _, id := range ids {
+		if p, ok := byID[id]; ok {
+			result = append(result, p)
+			continue
+		}
+		missing = append(missing, id)
+	}
+	if len(missing) > 0 {
+		fetched, err := s.productRepo.GetByIDs(ctx, missing)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, fetched...)
+	}
+	return result, nil
 }
 
 func (s *productService) Create(ctx context.Context, categoryID uuid.UUID, productType product.Type, name string, priceCents int64, isActive bool, image *string, description *string, jetonID *uuid.UUID) (*ent.Product, error) {

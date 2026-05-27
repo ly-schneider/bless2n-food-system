@@ -171,6 +171,20 @@ func NewFixtures(repos *Repositories) *Fixtures {
 	return &Fixtures{repos: repos, ctx: context.Background()}
 }
 
+// NewProductSvc builds a ProductService wired to the test repositories.
+// Useful for tests that need to pass a ProductService into other services.
+func NewProductSvc(repos *Repositories) service.ProductService {
+	return service.NewProductService(
+		repos.Product,
+		repos.Category,
+		repos.MenuSlot,
+		repos.MenuSlotOption,
+		repos.Inventory,
+		repos.Jeton,
+		nil,
+	)
+}
+
 // CreateCategory creates a test category.
 func (f *Fixtures) CreateCategory(name string, position int, isActive bool) *ent.Category {
 	cat, err := f.repos.Category.Create(f.ctx, name, position, isActive)

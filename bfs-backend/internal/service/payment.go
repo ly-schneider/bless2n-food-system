@@ -20,6 +20,7 @@ import (
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
 
 type PaymentService interface {
@@ -75,7 +76,7 @@ type paymentService struct {
 	orderRepo        repository.OrderRepository
 	orderLineRepo    repository.OrderLineRepository
 	orderPaymentRepo repository.OrderPaymentRepository
-	productRepo      *repository.ProductRepository
+	products         ProductService
 	menuSlotRepo     repository.MenuSlotRepository
 	inventoryRepo    repository.InventoryLedgerRepository
 	inventoryHub     *inventory.Hub
@@ -88,7 +89,7 @@ func NewPaymentService(
 	orderRepo repository.OrderRepository,
 	orderLineRepo repository.OrderLineRepository,
 	orderPaymentRepo repository.OrderPaymentRepository,
-	productRepo *repository.ProductRepository,
+	products ProductService,
 	menuSlotRepo repository.MenuSlotRepository,
 	inventoryRepo repository.InventoryLedgerRepository,
 	inventoryHub *inventory.Hub,
@@ -105,7 +106,7 @@ func NewPaymentService(
 		orderRepo:        orderRepo,
 		orderLineRepo:    orderLineRepo,
 		orderPaymentRepo: orderPaymentRepo,
-		productRepo:      productRepo,
+		products:         products,
 		menuSlotRepo:     menuSlotRepo,
 		inventoryRepo:    inventoryRepo,
 		inventoryHub:     inventoryHub,
@@ -158,39 +159,54 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 		ids = append(ids, id)
 	}
 
-	products, err := s.productRepo.GetByIDs(ctx, ids)
-	if err != nil {
-		return nil, fmt.Errorf("load products: %w", err)
+	var (
+		products       []*ent.Product
+		slots          []*ent.MenuSlot
+		preloadedStock map[uuid.UUID]int
+	)
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		var err error
+		products, err = s.products.GetByIDs(gctx, ids)
+		if err != nil {
+			return fmt.Errorf("load products: %w", err)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		slots, err = s.menuSlotRepo.GetByMenuProductIDs(gctx, ids)
+		if err != nil {
+			return fmt.Errorf("load menu slots: %w", err)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		var err error
+		preloadedStock, err = s.inventoryRepo.GetCurrentStockBatch(gctx, ids)
+		if err != nil {
+			return fmt.Errorf("check inventory: %w", err)
+		}
+		return nil
+	})
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
+
 	productMap := make(map[uuid.UUID]*ent.Product, len(products))
 	for _, p := range products {
 		productMap[p.ID] = p
 	}
 
-	// Preload menu slots for menu products
-	menuProductIDs := make([]uuid.UUID, 0)
-	for _, it := range in.Items {
-		pid, _ := uuid.Parse(it.ProductID)
-		if p, ok := productMap[pid]; ok && p.Type == product.TypeMenu {
-			menuProductIDs = append(menuProductIDs, pid)
+	slotByID := make(map[uuid.UUID]*ent.MenuSlot, len(slots))
+	allowedBySlot := make(map[uuid.UUID]map[uuid.UUID]struct{}, len(slots))
+	for _, slot := range slots {
+		slotByID[slot.ID] = slot
+		allowed := make(map[uuid.UUID]struct{})
+		for _, opt := range slot.Edges.Options {
+			allowed[opt.OptionProductID] = struct{}{}
 		}
-	}
-
-	slotByID := make(map[uuid.UUID]*ent.MenuSlot)
-	allowedBySlot := make(map[uuid.UUID]map[uuid.UUID]struct{})
-	if len(menuProductIDs) > 0 {
-		slots, err := s.menuSlotRepo.GetByMenuProductIDs(ctx, menuProductIDs)
-		if err != nil {
-			return nil, fmt.Errorf("load menu slots: %w", err)
-		}
-		for _, slot := range slots {
-			slotByID[slot.ID] = slot
-			allowed := make(map[uuid.UUID]struct{})
-			for _, opt := range slot.Edges.Options {
-				allowed[opt.OptionProductID] = struct{}{}
-			}
-			allowedBySlot[slot.ID] = allowed
-		}
+		allowedBySlot[slot.ID] = allowed
 	}
 
 	// Calculate total and validate
@@ -229,27 +245,15 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 		}
 	}
 
-	preReservationStock := make(map[uuid.UUID]int)
-	if len(requiredQuantities) > 0 {
-		productIDsToCheck := make([]uuid.UUID, 0, len(requiredQuantities))
-		for pid := range requiredQuantities {
-			productIDsToCheck = append(productIDsToCheck, pid)
-		}
-		currentStock, err := s.inventoryRepo.GetCurrentStockBatch(ctx, productIDsToCheck)
-		if err != nil {
-			return nil, fmt.Errorf("check inventory: %w", err)
-		}
-		for pid, required := range requiredQuantities {
-			available := currentStock[pid]
-			if available < required {
-				pName := "unknown"
-				if p, ok := productMap[pid]; ok {
-					pName = p.Name
-				}
-				return nil, fmt.Errorf("insufficient inventory for %s: requested %d, available %d", pName, required, available)
+	for pid, required := range requiredQuantities {
+		available := preloadedStock[pid]
+		if available < required {
+			pName := "unknown"
+			if p, ok := productMap[pid]; ok {
+				pName = p.Name
 			}
+			return nil, fmt.Errorf("insufficient inventory for %s: requested %d, available %d", pName, required, available)
 		}
-		preReservationStock = currentStock
 	}
 
 	origin := in.Origin
@@ -362,7 +366,7 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 		if _, err := s.inventoryRepo.CreateMany(ctx, inventoryEntries); err != nil {
 			return nil, fmt.Errorf("reserve inventory: %w", err)
 		}
-		s.publishInventoryUpdates(ctx, inventoryEntries, preReservationStock)
+		s.publishInventoryUpdates(ctx, inventoryEntries, preloadedStock)
 	}
 
 	// Prepare Payrexx line items from the params (we have all the data we need)
