@@ -7,11 +7,16 @@ import (
 
 	"backend/internal/generated/ent"
 	"backend/internal/generated/ent/idempotency"
+
+	"github.com/google/uuid"
 )
 
 type IdempotencyRepository interface {
 	Get(ctx context.Context, scope, key string) (*ent.Idempotency, error)
 	SaveIfAbsent(ctx context.Context, scope, key string, response map[string]any, ttl time.Duration) (*ent.Idempotency, error)
+	Claim(ctx context.Context, scope, key string, ttl time.Duration) (row *ent.Idempotency, existed bool, err error)
+	FillResponse(ctx context.Context, id uuid.UUID, response map[string]any) error
+	Discard(ctx context.Context, id uuid.UUID) error
 	CleanupExpired(ctx context.Context) (int64, error)
 }
 
@@ -74,6 +79,56 @@ func (r *idempotencyRepo) SaveIfAbsent(ctx context.Context, scope, key string, r
 	}
 
 	return created, nil
+}
+
+func (r *idempotencyRepo) Claim(ctx context.Context, scope, key string, ttl time.Duration) (*ent.Idempotency, bool, error) {
+	if ttl <= 0 {
+		ttl = 24 * time.Hour
+	}
+	expiresAt := time.Now().Add(ttl)
+
+	created, err := r.ec(ctx).Idempotency.Create().
+		SetScope(scope).
+		SetKey(key).
+		SetExpiresAt(expiresAt).
+		Save(ctx)
+	if err == nil {
+		return created, false, nil
+	}
+	if !ent.IsConstraintError(err) {
+		return nil, false, translateError(err)
+	}
+	existing, getErr := r.Get(ctx, scope, key)
+	if getErr != nil {
+		return nil, false, getErr
+	}
+	return existing, true, nil
+}
+
+func (r *idempotencyRepo) FillResponse(ctx context.Context, id uuid.UUID, response map[string]any) error {
+	var responseJSON []byte
+	if response != nil {
+		var err error
+		responseJSON, err = json.Marshal(response)
+		if err != nil {
+			return err
+		}
+	}
+	n, err := r.ec(ctx).Idempotency.Update().
+		Where(idempotency.IDEQ(id)).
+		SetResponse(responseJSON).
+		Save(ctx)
+	if err != nil {
+		return translateError(err)
+	}
+	if n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (r *idempotencyRepo) Discard(ctx context.Context, id uuid.UUID) error {
+	return translateError(r.ec(ctx).Idempotency.DeleteOneID(id).Exec(ctx))
 }
 
 func (r *idempotencyRepo) CleanupExpired(ctx context.Context) (int64, error) {
