@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -60,14 +61,14 @@ func (c *ttlCache[V]) set(key string, value V, expiresAt time.Time) {
 	c.mu.Unlock()
 }
 
-func recordCacheResult(ctx context.Context, cacheType string, hit bool) {
-	result := "miss"
+func recordCacheResult(ctx context.Context, layer string, hit bool) {
+	outcome := "miss"
 	if hit {
-		result = "hit"
+		outcome = "hit"
 	}
-	trace.Data(ctx, "auth.cache.type", cacheType)
-	trace.Data(ctx, "auth.cache.result", result)
-	trace.Tag(ctx, "auth.cache.result", result)
+	trace.Data(ctx, "cache.layer", layer)
+	trace.Data(ctx, "cache.outcome", outcome)
+	trace.Tag(ctx, "cache.outcome", outcome)
 }
 
 type cachedSessionRepo struct {
@@ -92,12 +93,18 @@ func (r *cachedSessionRepo) GetByToken(ctx context.Context, token string) (*Sess
 	now := time.Now()
 	if v, ok := r.cache.get(token, now); ok {
 		recordCacheResult(ctx, "session", true)
+		if v == nil {
+			return nil, ErrNotFound
+		}
 		return v, nil
 	}
 	recordCacheResult(ctx, "session", false)
 
 	v, err := r.inner.GetByToken(ctx, token)
 	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			r.cache.set(token, nil, now.Add(authCacheTTL))
+		}
 		return nil, err
 	}
 	r.cache.set(token, v, now.Add(authCacheTTL))
@@ -192,12 +199,18 @@ func (r *cachedDeviceBindingRepo) GetByTokenHash(ctx context.Context, tokenHash 
 	now := time.Now()
 	if v, ok := r.cache.get(tokenHash, now); ok {
 		recordCacheResult(ctx, "device_binding", true)
+		if v == nil {
+			return nil, ErrNotFound
+		}
 		return v, nil
 	}
 	recordCacheResult(ctx, "device_binding", false)
 
 	v, err := r.inner.GetByTokenHash(ctx, tokenHash)
 	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			r.cache.set(tokenHash, nil, now.Add(authCacheTTL))
+		}
 		return nil, err
 	}
 	r.cache.set(tokenHash, v, now.Add(authCacheTTL))
@@ -205,7 +218,12 @@ func (r *cachedDeviceBindingRepo) GetByTokenHash(ctx context.Context, tokenHash 
 }
 
 func (r *cachedDeviceBindingRepo) Create(ctx context.Context, deviceType devicebinding.DeviceType, tokenHash, createdByUserID string, name *string, deviceID, stationID *uuid.UUID) (*ent.DeviceBinding, error) {
-	return r.inner.Create(ctx, deviceType, tokenHash, createdByUserID, name, deviceID, stationID)
+	created, err := r.inner.Create(ctx, deviceType, tokenHash, createdByUserID, name, deviceID, stationID)
+	if err != nil {
+		return nil, err
+	}
+	r.cache.set(tokenHash, created, time.Now().Add(authCacheTTL))
+	return created, nil
 }
 
 func (r *cachedDeviceBindingRepo) UpdateLastSeen(ctx context.Context, id uuid.UUID) error {

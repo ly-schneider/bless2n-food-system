@@ -127,7 +127,7 @@ func TestCachedSessionRepo_GetByToken_DistinctTokensMiss(t *testing.T) {
 	require.Equal(t, 2, inner.getCalls)
 }
 
-func TestCachedSessionRepo_GetByToken_ErrorNotCached(t *testing.T) {
+func TestCachedSessionRepo_GetByToken_TransientErrorNotCached(t *testing.T) {
 	inner := &fakeSessionRepo{getErr: errors.New("boom")}
 	repo := NewCachedSessionRepository(inner)
 	ctx := context.Background()
@@ -136,7 +136,21 @@ func TestCachedSessionRepo_GetByToken_ErrorNotCached(t *testing.T) {
 	_, err2 := repo.GetByToken(ctx, "tok")
 	require.Error(t, err1)
 	require.Error(t, err2)
-	require.Equal(t, 2, inner.getCalls, "errors must not be cached")
+	require.Equal(t, 2, inner.getCalls, "transient errors must not be cached")
+}
+
+func TestCachedSessionRepo_GetByToken_NotFoundCachedNegatively(t *testing.T) {
+	inner := &fakeSessionRepo{getErr: ErrNotFound}
+	repo := NewCachedSessionRepository(inner)
+	ctx := context.Background()
+
+	_, err1 := repo.GetByToken(ctx, "missing")
+	_, err2 := repo.GetByToken(ctx, "missing")
+	_, err3 := repo.GetByToken(ctx, "missing")
+	require.ErrorIs(t, err1, ErrNotFound)
+	require.ErrorIs(t, err2, ErrNotFound)
+	require.ErrorIs(t, err3, ErrNotFound)
+	require.Equal(t, 1, inner.getCalls, "NotFound must be cached negatively to stop DB thrash")
 }
 
 func TestCachedSessionRepo_RefreshSession_SyncBumpsCache(t *testing.T) {
@@ -228,6 +242,36 @@ func TestCachedBindingRepo_GetByTokenHash_HitAfterMiss(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, 1, inner.getCalls)
+}
+
+func TestCachedBindingRepo_GetByTokenHash_NotFoundCachedNegatively(t *testing.T) {
+	inner := &fakeBindingRepo{getErr: ErrNotFound}
+	repo := NewCachedDeviceBindingRepository(inner)
+	ctx := context.Background()
+
+	_, err1 := repo.GetByTokenHash(ctx, "missing")
+	_, err2 := repo.GetByTokenHash(ctx, "missing")
+	_, err3 := repo.GetByTokenHash(ctx, "missing")
+	require.ErrorIs(t, err1, ErrNotFound)
+	require.ErrorIs(t, err2, ErrNotFound)
+	require.ErrorIs(t, err3, ErrNotFound)
+	require.Equal(t, 1, inner.getCalls, "user-session tokens repeatedly hashing miss must be cached negatively")
+}
+
+func TestCachedBindingRepo_Create_PrepopulatesPositiveEntry(t *testing.T) {
+	id := uuid.Must(uuid.NewV7())
+	inner := &fakeBindingRepo{binding: &ent.DeviceBinding{ID: id}}
+	repo := NewCachedDeviceBindingRepository(inner)
+	ctx := context.Background()
+
+	created, err := repo.Create(ctx, devicebinding.DeviceTypePOS, "fresh-hash", "admin-1", nil, nil, nil)
+	require.NoError(t, err)
+	require.Equal(t, id, created.ID)
+
+	got, err := repo.GetByTokenHash(ctx, "fresh-hash")
+	require.NoError(t, err)
+	require.Equal(t, id, got.ID)
+	require.Equal(t, 0, inner.getCalls, "Create must prepopulate cache so first auth attempt is a hit")
 }
 
 func TestCachedBindingRepo_UpdateLastSeenDebounced_FiresOnceWithinWindow(t *testing.T) {
