@@ -16,6 +16,7 @@ type Html5QrcodeScannerPluginProps = {
   aspectRatio?: number
   disableFlip?: boolean
   verbose?: boolean
+  maxWidthRem?: number
   qrCodeSuccessCallback: QrcodeSuccessCallback
   qrCodeErrorCallback?: QrcodeErrorCallback
   onReady?: (scanner: Html5Qrcode) => void
@@ -37,6 +38,7 @@ const createConfig = (props: Html5QrcodeScannerPluginProps): Html5QrcodeCameraSc
 const Html5QrcodeScannerPlugin = (props: Html5QrcodeScannerPluginProps) => {
   const reactId = useId()
   const regionId = useMemo(() => `html5qr-code-full-region-${reactId.replace(/[:]/g, "")}`, [reactId])
+  const maxWidthRem = Number.isFinite(props.maxWidthRem) ? (props.maxWidthRem as number) : 28
 
   useEffect(() => {
     const region = document.getElementById(regionId)
@@ -45,9 +47,9 @@ const Html5QrcodeScannerPlugin = (props: Html5QrcodeScannerPluginProps) => {
     }
     const styleEl = document.createElement("style")
     styleEl.setAttribute("data-html5qr-style", regionId)
-    styleEl.innerHTML = `
-#${regionId} { position: relative; display: block; width: 100% !important; max-width: 28rem; aspect-ratio: 1 / 1; margin: 0 auto; }
-@media (max-width: 640px) { #${regionId} { max-width: 100vw !important; } }
+    styleEl.textContent = `
+#${regionId} { position: relative; display: block; width: 100% !important; max-width: ${maxWidthRem}rem; aspect-ratio: 1 / 1; margin: 0 auto; }
+@media (max-width: 640px) { #${regionId} { max-width: min(100vw, ${maxWidthRem}rem) !important; } }
 #${regionId} video { width: 100% !important; height: 100% !important; object-fit: cover; display: block !important; }
 #${regionId} video:nth-of-type(n+2) { display: none !important; }
 `
@@ -55,7 +57,7 @@ const Html5QrcodeScannerPlugin = (props: Html5QrcodeScannerPluginProps) => {
     return () => {
       styleEl.remove()
     }
-  }, [regionId])
+  }, [regionId, maxWidthRem])
 
   useEffect(() => {
     const config = createConfig(props)
