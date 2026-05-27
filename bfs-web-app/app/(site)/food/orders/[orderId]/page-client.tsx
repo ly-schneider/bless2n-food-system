@@ -293,12 +293,7 @@ export default function OrderPageClient() {
           <div className="mt-6 rounded-xl border p-3 text-sm">
             <p className="font-semibold">BlessThun Food</p>
             <p className="text-muted-foreground">Industriestrasse 5, 3600 Thun</p>
-            <p className="text-muted-foreground mt-2">
-              Fragen zur Bestellung?{" "}
-              <a className="underline" href="mailto:hello@bless2n.ch">
-                hello@bless2n.ch
-              </a>
-            </p>
+            <p className="text-muted-foreground mt-2">Fragen zur Bestellung? Sprich uns an der Kasse an.</p>
             <p className="text-muted-foreground mt-2 text-xs">
               <a className="underline" href="/nutzungsbedingungen">
                 Nutzungsbedingungen
