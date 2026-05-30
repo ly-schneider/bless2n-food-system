@@ -278,15 +278,21 @@ output "config" {
           PUBLIC_BASE_URL          = local.frontend_url
           SECURITY_TRUSTED_ORIGINS = local.frontend_url
         }
-        key_vault_secrets = {
-          "DATABASE_URL"           = "database-url"
-          "PAYREXX_INSTANCE"       = "payrexx-instance"
-          "PAYREXX_API_SECRET"     = "payrexx-api-secret"
-          "PAYREXX_WEBHOOK_SECRET" = "payrexx-webhook-secret"
-          "PLUNK_API_KEY"          = "plunk-api-key"
-          "ELVANTO_API_KEY"        = "elvanto-api-key"
-          "SENTRY_DSN"             = "backend-sentry-dsn"
-        }
+        key_vault_secrets = merge(
+          {
+            "DATABASE_URL"    = "database-url"
+            "PLUNK_API_KEY"   = "plunk-api-key"
+            "ELVANTO_API_KEY" = "elvanto-api-key"
+            "SENTRY_DSN"      = "backend-sentry-dsn"
+          },
+          # Staging intentionally omits Payrexx secrets so the backend falls back to
+          # simulated dev payments (IsPayrexxEnabled() == false). Production wires real Payrexx.
+          var.env == "staging" ? {} : {
+            "PAYREXX_INSTANCE"       = "payrexx-instance"
+            "PAYREXX_API_SECRET"     = "payrexx-api-secret"
+            "PAYREXX_WEBHOOK_SECRET" = "payrexx-webhook-secret"
+          }
+        )
         http_scale_rule = {
           name                = "backend-http-scale"
           concurrent_requests = 40
