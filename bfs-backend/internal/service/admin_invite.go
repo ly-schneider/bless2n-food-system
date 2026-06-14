@@ -69,7 +69,7 @@ func NewAdminInviteService(
 }
 
 func (s *adminInviteService) GetByID(ctx context.Context, id string) (*ent.AdminInvite, error) {
-	uid, err := parseUUID(id)
+	uid, err := parseID(id)
 	if err != nil {
 		return nil, ErrInviteNotFound
 	}
@@ -133,7 +133,7 @@ func (s *adminInviteService) Create(ctx context.Context, inviterID, email string
 }
 
 func (s *adminInviteService) Delete(ctx context.Context, id string) error {
-	uuid, err := parseUUID(id)
+	uuid, err := parseID(id)
 	if err != nil {
 		return ErrInviteNotFound
 	}
@@ -148,7 +148,7 @@ func (s *adminInviteService) Delete(ctx context.Context, id string) error {
 }
 
 func (s *adminInviteService) Revoke(ctx context.Context, id string) error {
-	uuid, err := parseUUID(id)
+	uuid, err := parseID(id)
 	if err != nil {
 		return ErrInviteNotFound
 	}
@@ -169,7 +169,7 @@ func (s *adminInviteService) Revoke(ctx context.Context, id string) error {
 }
 
 func (s *adminInviteService) Resend(ctx context.Context, id string) error {
-	uuid, err := parseUUID(id)
+	uuid, err := parseID(id)
 	if err != nil {
 		return ErrInviteNotFound
 	}
@@ -310,5 +310,3 @@ func parseID(s string) (string, error) {
 	}
 	return s, nil
 }
-
-func parseUUID(s string) (string, error) { return parseID(s) }

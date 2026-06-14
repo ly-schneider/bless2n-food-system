@@ -49,10 +49,10 @@ describe("parseScan", () => {
     expect(parseScan("CAMP:not-an-id")).toBeNull()
   })
 
-it("rejects ids with confusable characters (0, O, I, l)", () => {
-  expect(parseScan("O0Il0OIl0OIl")).toBeNull()
-  expect(parseScan("llllllllllll")).toBeNull()
-})
+  it("rejects ids with confusable characters (0, O, I, l)", () => {
+    expect(parseScan("O0Il0OIl0OIl")).toBeNull()
+    expect(parseScan("llllllllllll")).toBeNull()
+  })
 
   it("does not match a 12-char window inside a hostname", () => {
     expect(parseScan("https://very-long-tenant.bless2n.ch/")).toBeNull()
