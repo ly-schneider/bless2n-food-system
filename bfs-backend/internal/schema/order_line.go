@@ -22,8 +22,8 @@ func (OrderLine) Fields() []ent.Field {
 	return []ent.Field{
 		nanoidPK(),
 		field.String("order_id").
-			MaxLen(36),
-		field.Enum("line_type").
+			MaxLen(36).
+			NotEmpty(),
 			Values("simple", "bundle", "component").
 			StorageKey("line_type"),
 		field.String("product_id").
