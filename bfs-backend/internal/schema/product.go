@@ -24,7 +24,8 @@ func (Product) Fields() []ent.Field {
 	return []ent.Field{
 		nanoidPK(),
 		field.String("category_id").
-			MaxLen(36),
+			MaxLen(36).
+			NotEmpty(),
 		field.Enum("type").
 			Values("simple", "menu").
 			Default("simple").
