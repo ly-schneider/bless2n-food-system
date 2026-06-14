@@ -27,7 +27,8 @@ func (OrderLine) Fields() []ent.Field {
 			Values("simple", "bundle", "component").
 			StorageKey("line_type"),
 		field.String("product_id").
-			MaxLen(36),
+			MaxLen(36).
+			NotEmpty(),
 		field.String("title").
 			MaxLen(20).
 			NotEmpty(),
