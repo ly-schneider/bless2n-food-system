@@ -14,8 +14,6 @@ import (
 	"backend/internal/response"
 	"backend/internal/service"
 
-	"github.com/google/uuid"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 	"go.uber.org/zap"
 )
 
@@ -89,7 +87,7 @@ func (h *Handlers) CreateOrder(w http.ResponseWriter, r *http.Request, params ge
 	if params.IdempotencyKey != nil {
 		idempotencyKey = *params.IdempotencyKey
 	}
-	var claimedID *uuid.UUID
+	var claimedID *string
 	if idempotencyKey != "" {
 		claimed, existed, err := h.idempotency.Claim(ctx, idempotencyScopeOrder, idempotencyKey, idempotencyTTL)
 		if err != nil {
@@ -128,13 +126,13 @@ func (h *Handlers) CreateOrder(w http.ResponseWriter, r *http.Request, params ge
 	checkoutItems := make([]service.CheckoutItemInput, 0, len(body.Items))
 	for _, item := range body.Items {
 		ci := service.CheckoutItemInput{
-			ProductID: item.ProductId.String(),
+			ProductID: item.ProductId,
 			Quantity:  item.Quantity,
 		}
 		if item.MenuSelections != nil {
 			ci.Configuration = make(map[string]string, len(*item.MenuSelections))
 			for _, sel := range *item.MenuSelections {
-				ci.Configuration[sel.SlotId.String()] = sel.ProductId.String()
+				ci.Configuration[sel.SlotId] = sel.ProductId
 			}
 		}
 		checkoutItems = append(checkoutItems, ci)
@@ -177,7 +175,7 @@ func (h *Handlers) CreateOrder(w http.ResponseWriter, r *http.Request, params ge
 
 	if claimedID != nil {
 		respMap := map[string]any{
-			"id":         apiOrder.Id.String(),
+			"id":         apiOrder.Id,
 			"status":     string(apiOrder.Status),
 			"totalCents": apiOrder.TotalCents,
 			"createdAt":  apiOrder.CreatedAt.Format(time.RFC3339),
@@ -193,8 +191,8 @@ func (h *Handlers) CreateOrder(w http.ResponseWriter, r *http.Request, params ge
 
 // GetOrder returns a single order by ID with lines, payments, and redemptions.
 // (GET /orders/{orderId})
-func (h *Handlers) GetOrder(w http.ResponseWriter, r *http.Request, orderId openapi_types.UUID) {
-	o, err := h.orders.GetByIDWithRelations(r.Context(), uuid.UUID(orderId))
+func (h *Handlers) GetOrder(w http.ResponseWriter, r *http.Request, orderId string) {
+	o, err := h.orders.GetByIDWithRelations(r.Context(), orderId)
 	if err != nil {
 		writeEntError(w, err)
 		return
@@ -204,7 +202,7 @@ func (h *Handlers) GetOrder(w http.ResponseWriter, r *http.Request, orderId open
 
 // UpdateOrderStatus updates the status of an order.
 // (PATCH /orders/{orderId})
-func (h *Handlers) UpdateOrderStatus(w http.ResponseWriter, r *http.Request, orderId openapi_types.UUID) {
+func (h *Handlers) UpdateOrderStatus(w http.ResponseWriter, r *http.Request, orderId string) {
 	var body generated.OrderStatusUpdate
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_body", "Invalid request body")
@@ -212,7 +210,7 @@ func (h *Handlers) UpdateOrderStatus(w http.ResponseWriter, r *http.Request, ord
 	}
 
 	ctx := r.Context()
-	id := uuid.UUID(orderId)
+	id := orderId
 
 	// After Task 6, UpdateStatus takes order.Status from the ent package.
 	if err := h.orders.UpdateStatus(ctx, id, order.Status(body.Status)); err != nil {
@@ -230,10 +228,10 @@ func (h *Handlers) UpdateOrderStatus(w http.ResponseWriter, r *http.Request, ord
 
 // GetOrderPayment returns the payment details for an order.
 // (GET /orders/{orderId}/payment)
-func (h *Handlers) GetOrderPayment(w http.ResponseWriter, r *http.Request, orderId openapi_types.UUID) {
+func (h *Handlers) GetOrderPayment(w http.ResponseWriter, r *http.Request, orderId string) {
 	ctx := r.Context()
 
-	o, err := h.orders.GetByID(ctx, uuid.UUID(orderId))
+	o, err := h.orders.GetByID(ctx, orderId)
 	if err != nil {
 		writeEntError(w, err)
 		return
@@ -242,7 +240,7 @@ func (h *Handlers) GetOrderPayment(w http.ResponseWriter, r *http.Request, order
 	if o.PayrexxGatewayID == nil {
 		if o.Status == order.StatusPaid {
 			response.WriteJSON(w, http.StatusOK, map[string]any{
-				"orderId": o.ID.String(),
+				"orderId": o.ID,
 				"status":  "paid",
 			})
 			return
@@ -252,24 +250,24 @@ func (h *Handlers) GetOrderPayment(w http.ResponseWriter, r *http.Request, order
 	}
 
 	response.WriteJSON(w, http.StatusOK, map[string]any{
-		"orderId": o.ID.String(),
+		"orderId": o.ID,
 		"status":  string(o.Status),
 	})
 }
 
 // CreateOrderPayment creates a payment for an order.
 // (POST /orders/{orderId}/payment)
-func (h *Handlers) CreateOrderPayment(w http.ResponseWriter, r *http.Request, orderId openapi_types.UUID, params generated.CreateOrderPaymentParams) {
+func (h *Handlers) CreateOrderPayment(w http.ResponseWriter, r *http.Request, orderId string, params generated.CreateOrderPaymentParams) {
 	ctx := r.Context()
-	id := uuid.UUID(orderId)
+	id := orderId
 
 	var idempotencyKey string
 	if params.IdempotencyKey != nil {
 		idempotencyKey = *params.IdempotencyKey
 	}
-	var claimedID *uuid.UUID
+	var claimedID *string
 	if idempotencyKey != "" {
-		scopeKey := idempotencyScopePayment + ":" + id.String()
+		scopeKey := idempotencyScopePayment + ":" + id
 		claimed, existed, err := h.idempotency.Claim(ctx, scopeKey, idempotencyKey, idempotencyTTL)
 		if err != nil {
 			h.logger.Warn("idempotency claim failed", zap.Error(err))
@@ -311,7 +309,7 @@ func (h *Handlers) CreateOrderPayment(w http.ResponseWriter, r *http.Request, or
 
 	switch body.Method {
 	case generated.Cash:
-		var deviceID *uuid.UUID
+		var deviceID *string
 		if did, ok := auth.GetDeviceID(ctx); ok {
 			deviceID = &did
 		}
@@ -324,7 +322,7 @@ func (h *Handlers) CreateOrderPayment(w http.ResponseWriter, r *http.Request, or
 			writeError(w, http.StatusBadRequest, "payment_failed", err.Error())
 			return
 		}
-		resp := map[string]any{"orderId": id.String(), "method": "cash"}
+		resp := map[string]any{"orderId": id, "method": "cash"}
 		if body.Club100 != nil {
 			resp["club100PersonId"] = body.Club100.ElvantoPersonId
 		}
@@ -332,7 +330,7 @@ func (h *Handlers) CreateOrderPayment(w http.ResponseWriter, r *http.Request, or
 		response.WriteJSON(w, http.StatusCreated, resp)
 
 	case generated.Card:
-		var deviceID *uuid.UUID
+		var deviceID *string
 		if did, ok := auth.GetDeviceID(ctx); ok {
 			deviceID = &did
 		}
@@ -354,7 +352,7 @@ func (h *Handlers) CreateOrderPayment(w http.ResponseWriter, r *http.Request, or
 			writeError(w, http.StatusBadRequest, "payment_failed", err.Error())
 			return
 		}
-		resp := map[string]any{"orderId": id.String(), "method": "card"}
+		resp := map[string]any{"orderId": id, "method": "card"}
 		if body.Club100 != nil {
 			resp["club100PersonId"] = body.Club100.ElvantoPersonId
 		}
@@ -363,7 +361,7 @@ func (h *Handlers) CreateOrderPayment(w http.ResponseWriter, r *http.Request, or
 
 	case generated.Twint:
 		if body.Channel != nil && *body.Channel == generated.PaymentChannelPos {
-			var deviceID *uuid.UUID
+			var deviceID *string
 			if did, ok := auth.GetDeviceID(ctx); ok {
 				deviceID = &did
 			}
@@ -376,7 +374,7 @@ func (h *Handlers) CreateOrderPayment(w http.ResponseWriter, r *http.Request, or
 				writeError(w, http.StatusBadRequest, "payment_failed", err.Error())
 				return
 			}
-			resp := map[string]any{"orderId": id.String(), "method": "twint", "channel": "pos"}
+			resp := map[string]any{"orderId": id, "method": "twint", "channel": "pos"}
 			if body.Club100 != nil {
 				resp["club100PersonId"] = body.Club100.ElvantoPersonId
 			}
@@ -398,12 +396,12 @@ func (h *Handlers) CreateOrderPayment(w http.ResponseWriter, r *http.Request, or
 
 		if !h.payments.IsPayrexxEnabled() {
 			h.logger.Warn("Payrexx not configured — simulating payment for dev",
-				zap.String("orderId", id.String()))
+				zap.String("orderId", id))
 			if err := h.payments.MarkOrderPaidDev(ctx, id); err != nil {
 				writeError(w, http.StatusInternalServerError, "dev_pay_failed", err.Error())
 				return
 			}
-			resp := map[string]any{"orderId": id.String(), "method": "twint", "redirectUrl": returnURL}
+			resp := map[string]any{"orderId": id, "method": "twint", "redirectUrl": returnURL}
 			cachePaymentResponse(resp)
 			response.WriteJSON(w, http.StatusCreated, resp)
 			return
@@ -427,18 +425,18 @@ func (h *Handlers) CreateOrderPayment(w http.ResponseWriter, r *http.Request, or
 		if err != nil {
 			h.logger.Error("payrexx gateway creation failed",
 				zap.Error(err),
-				zap.String("orderId", id.String()),
+				zap.String("orderId", id),
 				zap.Int64("totalCents", prep.TotalCents),
 			)
 			writeError(w, http.StatusBadGateway, "gateway_error", err.Error())
 			return
 		}
-		resp := map[string]any{"orderId": id.String(), "method": "twint", "redirectUrl": gw.Link, "gatewayId": gw.ID}
+		resp := map[string]any{"orderId": id, "method": "twint", "redirectUrl": gw.Link, "gatewayId": gw.ID}
 		cachePaymentResponse(resp)
 		response.WriteJSON(w, http.StatusCreated, resp)
 
 	case generated.GratisGuest:
-		var deviceID *uuid.UUID
+		var deviceID *string
 		if did, ok := auth.GetDeviceID(ctx); ok {
 			deviceID = &did
 		}
@@ -446,12 +444,12 @@ func (h *Handlers) CreateOrderPayment(w http.ResponseWriter, r *http.Request, or
 			writeError(w, http.StatusBadRequest, "payment_failed", err.Error())
 			return
 		}
-		resp := map[string]any{"orderId": id.String(), "method": "gratis_guest"}
+		resp := map[string]any{"orderId": id, "method": "gratis_guest"}
 		cachePaymentResponse(resp)
 		response.WriteJSON(w, http.StatusCreated, resp)
 
 	case generated.GratisVip:
-		var deviceID *uuid.UUID
+		var deviceID *string
 		if did, ok := auth.GetDeviceID(ctx); ok {
 			deviceID = &did
 		}
@@ -459,12 +457,12 @@ func (h *Handlers) CreateOrderPayment(w http.ResponseWriter, r *http.Request, or
 			writeError(w, http.StatusBadRequest, "payment_failed", err.Error())
 			return
 		}
-		resp := map[string]any{"orderId": id.String(), "method": "gratis_vip"}
+		resp := map[string]any{"orderId": id, "method": "gratis_vip"}
 		cachePaymentResponse(resp)
 		response.WriteJSON(w, http.StatusCreated, resp)
 
 	case generated.GratisStaff:
-		var deviceID *uuid.UUID
+		var deviceID *string
 		if did, ok := auth.GetDeviceID(ctx); ok {
 			deviceID = &did
 		}
@@ -472,7 +470,7 @@ func (h *Handlers) CreateOrderPayment(w http.ResponseWriter, r *http.Request, or
 			writeError(w, http.StatusBadRequest, "payment_failed", err.Error())
 			return
 		}
-		resp := map[string]any{"orderId": id.String(), "method": "gratis_staff"}
+		resp := map[string]any{"orderId": id, "method": "gratis_staff"}
 		cachePaymentResponse(resp)
 		response.WriteJSON(w, http.StatusCreated, resp)
 
@@ -481,7 +479,7 @@ func (h *Handlers) CreateOrderPayment(w http.ResponseWriter, r *http.Request, or
 			writeError(w, http.StatusBadRequest, "missing_club100_info", "Club100 info required for gratis_100club payment")
 			return
 		}
-		var deviceID *uuid.UUID
+		var deviceID *string
 		if did, ok := auth.GetDeviceID(ctx); ok {
 			deviceID = &did
 		}
@@ -493,7 +491,7 @@ func (h *Handlers) CreateOrderPayment(w http.ResponseWriter, r *http.Request, or
 			writeError(w, http.StatusBadRequest, "payment_failed", err.Error())
 			return
 		}
-		resp := map[string]any{"orderId": id.String(), "method": "gratis_100club", "elvantoPersonId": body.Club100.ElvantoPersonId}
+		resp := map[string]any{"orderId": id, "method": "gratis_100club", "elvantoPersonId": body.Club100.ElvantoPersonId}
 		cachePaymentResponse(resp)
 		response.WriteJSON(w, http.StatusCreated, resp)
 

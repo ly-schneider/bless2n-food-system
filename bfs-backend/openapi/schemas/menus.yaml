@@ -7,10 +7,8 @@ Menu:
   properties:
     id:
       type: string
-      format: uuid
     categoryId:
       type: string
-      format: uuid
     name:
       type: string
       maxLength: 20
@@ -43,7 +41,6 @@ MenuCreate:
   properties:
     categoryId:
       type: string
-      format: uuid
     name:
       type: string
       maxLength: 20
@@ -94,10 +91,8 @@ MenuSlot:
   properties:
     id:
       type: string
-      format: uuid
     menuProductId:
       type: string
-      format: uuid
     name:
       type: string
       maxLength: 20
@@ -114,7 +109,6 @@ MenuSlotSummary:
   properties:
     id:
       type: string
-      format: uuid
     name:
       type: string
     sequence:
@@ -126,7 +120,6 @@ MenuSlotSummary:
         properties:
           productId:
             type: string
-            format: uuid
           name:
             type: string
           priceCents:
@@ -169,7 +162,7 @@ MenuSlotReorder:
         minimum: 0
       description: |
         Map of slot UUID to desired sequence number.
-        Example: `{ "slot-uuid-1": 0, "slot-uuid-2": 1 }`
+        Example: `{ "mns_______11": 0, "mns_______12": 1 }`
 
 MenuSlotList:
   type: object
@@ -186,17 +179,14 @@ MenuSlotOption:
   properties:
     menuSlotId:
       type: string
-      format: uuid
     optionProductId:
       type: string
-      format: uuid
     optionProduct:
       type: object
       description: Embedded product summary (when included)
       properties:
         id:
           type: string
-          format: uuid
         name:
           type: string
         priceCents:
@@ -212,4 +202,3 @@ MenuSlotOptionCreate:
   properties:
     productId:
       type: string
-      format: uuid

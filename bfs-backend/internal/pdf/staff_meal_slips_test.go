@@ -8,7 +8,7 @@ import (
 func TestRenderStaffMealSlips_ProducesPDF(t *testing.T) {
 	out, err := RenderStaffMealSlips(SlipInput{
 		CampaignName: "Helferessen Samstag",
-		QRPayload:    "CAMP:01937c7a-0000-7000-8000-000000000000",
+		QRPayload:    "CAMP:tkn_camp___1",
 		Products: []SlipProduct{
 			{Name: "Pizza Margherita", Quantity: 1},
 			{Name: "Getränk", Quantity: 1},

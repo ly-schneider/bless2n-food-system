@@ -10,8 +10,6 @@ import (
 	"backend/internal/generated/ent/device"
 	"backend/internal/generated/ent/devicebinding"
 	"backend/internal/repository"
-
-	"github.com/google/uuid"
 )
 
 // PairingResult is the result of creating a new device pairing code.
@@ -29,8 +27,8 @@ type PairingStatusResult struct {
 
 type DeviceService interface {
 	ListAll(ctx context.Context, deviceType *string, status *string) ([]*ent.Device, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*ent.Device, error)
-	Revoke(ctx context.Context, id uuid.UUID) error
+	GetByID(ctx context.Context, id string) (*ent.Device, error)
+	Revoke(ctx context.Context, id string) error
 	CreatePairing(ctx context.Context, deviceKey, name, deviceType string, model, os *string) (*PairingResult, error)
 	GetPairingStatus(ctx context.Context, code string) (*PairingStatusResult, error)
 	CompletePairing(ctx context.Context, code string, adminUserID string) (*ent.Device, error)
@@ -68,11 +66,11 @@ func (s *deviceService) ListAll(ctx context.Context, deviceType *string, status 
 	return q.Order(device.ByCreatedAt()).All(ctx)
 }
 
-func (s *deviceService) GetByID(ctx context.Context, id uuid.UUID) (*ent.Device, error) {
+func (s *deviceService) GetByID(ctx context.Context, id string) (*ent.Device, error) {
 	return s.devices.GetByID(ctx, id)
 }
 
-func (s *deviceService) Revoke(ctx context.Context, id uuid.UUID) error {
+func (s *deviceService) Revoke(ctx context.Context, id string) error {
 	d, err := s.devices.GetByID(ctx, id)
 	if err != nil {
 		return err

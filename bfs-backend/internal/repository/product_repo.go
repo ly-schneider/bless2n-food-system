@@ -7,7 +7,6 @@ import (
 	"backend/internal/generated/ent/product"
 
 	"entgo.io/ent/dialect/sql"
-	"github.com/google/uuid"
 )
 
 type ProductRepository struct {
@@ -18,7 +17,7 @@ func NewProductRepository(client *ent.Client) *ProductRepository {
 	return &ProductRepository{client: client}
 }
 
-func (r *ProductRepository) Create(ctx context.Context, categoryID uuid.UUID, productType product.Type, name string, priceCents int64, isActive bool, image *string, description *string, jetonID *uuid.UUID) (*ent.Product, error) {
+func (r *ProductRepository) Create(ctx context.Context, categoryID string, productType product.Type, name string, priceCents int64, isActive bool, image *string, description *string, jetonID *string) (*ent.Product, error) {
 	builder := r.client.Product.Create().
 		SetCategoryID(categoryID).
 		SetType(productType).
@@ -41,7 +40,7 @@ func (r *ProductRepository) Create(ctx context.Context, categoryID uuid.UUID, pr
 	return created, nil
 }
 
-func (r *ProductRepository) GetByID(ctx context.Context, id uuid.UUID) (*ent.Product, error) {
+func (r *ProductRepository) GetByID(ctx context.Context, id string) (*ent.Product, error) {
 	e, err := r.client.Product.Get(ctx, id)
 	if err != nil {
 		return nil, translateError(err)
@@ -49,7 +48,7 @@ func (r *ProductRepository) GetByID(ctx context.Context, id uuid.UUID) (*ent.Pro
 	return e, nil
 }
 
-func (r *ProductRepository) GetByIDWithRelations(ctx context.Context, id uuid.UUID) (*ent.Product, error) {
+func (r *ProductRepository) GetByIDWithRelations(ctx context.Context, id string) (*ent.Product, error) {
 	e, err := r.client.Product.Query().
 		Where(product.ID(id)).
 		WithCategory().
@@ -107,7 +106,7 @@ func (r *ProductRepository) GetAllActive(ctx context.Context) ([]*ent.Product, e
 	return rows, nil
 }
 
-func (r *ProductRepository) GetByCategory(ctx context.Context, categoryID uuid.UUID) ([]*ent.Product, error) {
+func (r *ProductRepository) GetByCategory(ctx context.Context, categoryID string) ([]*ent.Product, error) {
 	rows, err := r.client.Product.Query().
 		Where(product.CategoryIDEQ(categoryID)).
 		WithCategory().
@@ -127,7 +126,7 @@ func (r *ProductRepository) GetByCategory(ctx context.Context, categoryID uuid.U
 	return rows, nil
 }
 
-func (r *ProductRepository) GetByCategoryActive(ctx context.Context, categoryID uuid.UUID) ([]*ent.Product, error) {
+func (r *ProductRepository) GetByCategoryActive(ctx context.Context, categoryID string) ([]*ent.Product, error) {
 	rows, err := r.client.Product.Query().
 		Where(
 			product.CategoryIDEQ(categoryID),
@@ -150,7 +149,7 @@ func (r *ProductRepository) GetByCategoryActive(ctx context.Context, categoryID 
 	return rows, nil
 }
 
-func (r *ProductRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*ent.Product, error) {
+func (r *ProductRepository) GetByIDs(ctx context.Context, ids []string) ([]*ent.Product, error) {
 	rows, err := r.client.Product.Query().
 		Where(product.IDIn(ids...)).
 		WithCategory().
@@ -162,7 +161,7 @@ func (r *ProductRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*e
 	return rows, nil
 }
 
-func (r *ProductRepository) Update(ctx context.Context, id, categoryID uuid.UUID, productType product.Type, name string, priceCents int64, isActive bool, image *string, description *string, jetonID *uuid.UUID) (*ent.Product, error) {
+func (r *ProductRepository) Update(ctx context.Context, id, categoryID string, productType product.Type, name string, priceCents int64, isActive bool, image *string, description *string, jetonID *string) (*ent.Product, error) {
 	builder := r.client.Product.UpdateOneID(id).
 		SetCategoryID(categoryID).
 		SetType(productType).
@@ -191,7 +190,7 @@ func (r *ProductRepository) Update(ctx context.Context, id, categoryID uuid.UUID
 	return updated, nil
 }
 
-func (r *ProductRepository) Delete(ctx context.Context, id uuid.UUID) error {
+func (r *ProductRepository) Delete(ctx context.Context, id string) error {
 	return translateError(r.client.Product.DeleteOneID(id).Exec(ctx))
 }
 
@@ -254,16 +253,16 @@ func (r *ProductRepository) CountActiveWithoutJeton(ctx context.Context) (int64,
 	return int64(count), nil
 }
 
-func (r *ProductRepository) CountByJetonIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]int64, error) {
-	result := make(map[uuid.UUID]int64)
+func (r *ProductRepository) CountByJetonIDs(ctx context.Context, ids []string) (map[string]int64, error) {
+	result := make(map[string]int64)
 	if len(ids) == 0 {
 		return result, nil
 	}
 
 	// Use raw GroupBy query for aggregation
 	var rows []struct {
-		JetonID uuid.UUID `json:"jeton_id"`
-		Count   int       `json:"count"`
+		JetonID string `json:"jeton_id"`
+		Count   int    `json:"count"`
 	}
 	err := r.client.Product.Query().
 		Where(
@@ -283,7 +282,7 @@ func (r *ProductRepository) CountByJetonIDs(ctx context.Context, ids []uuid.UUID
 	return result, nil
 }
 
-func (r *ProductRepository) UpdateJeton(ctx context.Context, id uuid.UUID, jetonID *uuid.UUID) error {
+func (r *ProductRepository) UpdateJeton(ctx context.Context, id string, jetonID *string) error {
 	builder := r.client.Product.UpdateOneID(id)
 	if jetonID != nil {
 		builder.SetJetonID(*jetonID)

@@ -4,7 +4,6 @@ Category:
   properties:
     id:
       type: string
-      format: uuid
     name:
       type: string
       maxLength: 20
@@ -25,7 +24,6 @@ CategorySummary:
   properties:
     id:
       type: string
-      format: uuid
     name:
       type: string
     position:

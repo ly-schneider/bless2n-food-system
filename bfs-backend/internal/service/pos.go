@@ -10,23 +10,21 @@ import (
 	"backend/internal/generated/ent/device"
 	"backend/internal/generated/ent/order"
 	"backend/internal/repository"
-
-	"github.com/google/uuid"
 )
 
 type POSService interface {
 	// Device
 	GetDeviceByToken(ctx context.Context, token string) (*ent.Device, error)
-	GetDeviceByID(ctx context.Context, id uuid.UUID) (*ent.Device, error)
+	GetDeviceByID(ctx context.Context, id string) (*ent.Device, error)
 	// Orders
-	CreateOrder(ctx context.Context, items []POSCheckoutItem, customerEmail *string) (uuid.UUID, error)
-	PayCash(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID) error
-	PayCard(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, card *repository.CardMeta) error
-	PayTwint(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID) error
-	PayGratisGuest(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID) error
-	PayGratisVIP(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID) error
-	PayGratisStaff(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID) error
-	PayGratis100Club(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, elvantoPersonID, elvantoPersonName string, freeQty int) error
+	CreateOrder(ctx context.Context, items []POSCheckoutItem, customerEmail *string) (string, error)
+	PayCash(ctx context.Context, orderID string, deviceID *string) error
+	PayCard(ctx context.Context, orderID string, deviceID *string, card *repository.CardMeta) error
+	PayTwint(ctx context.Context, orderID string, deviceID *string) error
+	PayGratisGuest(ctx context.Context, orderID string, deviceID *string) error
+	PayGratisVIP(ctx context.Context, orderID string, deviceID *string) error
+	PayGratisStaff(ctx context.Context, orderID string, deviceID *string) error
+	PayGratis100Club(ctx context.Context, orderID string, deviceID *string, elvantoPersonID, elvantoPersonName string, freeQty int) error
 }
 
 type POSCheckoutItem struct {
@@ -70,7 +68,7 @@ func (s *posService) GetDeviceByToken(ctx context.Context, token string) (*ent.D
 	return d, nil
 }
 
-func (s *posService) GetDeviceByID(ctx context.Context, id uuid.UUID) (*ent.Device, error) {
+func (s *posService) GetDeviceByID(ctx context.Context, id string) (*ent.Device, error) {
 	d, err := s.devices.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -81,9 +79,9 @@ func (s *posService) GetDeviceByID(ctx context.Context, id uuid.UUID) (*ent.Devi
 	return d, nil
 }
 
-func (s *posService) CreateOrder(ctx context.Context, items []POSCheckoutItem, customerEmail *string) (uuid.UUID, error) {
+func (s *posService) CreateOrder(ctx context.Context, items []POSCheckoutItem, customerEmail *string) (string, error) {
 	if len(items) == 0 {
-		return uuid.Nil, fmt.Errorf("no items")
+		return "", fmt.Errorf("no items")
 	}
 
 	// Convert to payment service input
@@ -100,14 +98,14 @@ func (s *posService) CreateOrder(ctx context.Context, items []POSCheckoutItem, c
 
 	prep, err := s.payments.PrepareAndCreateOrder(ctx, in, nil, nil)
 	if err != nil {
-		return uuid.Nil, err
+		return "", err
 	}
 
 	return prep.OrderID, nil
 }
 
-func (s *posService) PayCash(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID) error {
-	if orderID == uuid.Nil {
+func (s *posService) PayCash(ctx context.Context, orderID string, deviceID *string) error {
+	if orderID == "" {
 		return fmt.Errorf("invalid order id")
 	}
 
@@ -122,8 +120,8 @@ func (s *posService) PayCash(ctx context.Context, orderID uuid.UUID, deviceID *u
 	return s.orders.SetPosPaymentCash(ctx, orderID, deviceID, ord.TotalCents)
 }
 
-func (s *posService) PayCard(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, card *repository.CardMeta) error {
-	if orderID == uuid.Nil {
+func (s *posService) PayCard(ctx context.Context, orderID string, deviceID *string, card *repository.CardMeta) error {
+	if orderID == "" {
 		return fmt.Errorf("invalid order id")
 	}
 
@@ -138,8 +136,8 @@ func (s *posService) PayCard(ctx context.Context, orderID uuid.UUID, deviceID *u
 	return s.orders.SetPosPaymentCard(ctx, orderID, deviceID, ord.TotalCents, card)
 }
 
-func (s *posService) PayTwint(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID) error {
-	if orderID == uuid.Nil {
+func (s *posService) PayTwint(ctx context.Context, orderID string, deviceID *string) error {
+	if orderID == "" {
 		return fmt.Errorf("invalid order id")
 	}
 
@@ -154,8 +152,8 @@ func (s *posService) PayTwint(ctx context.Context, orderID uuid.UUID, deviceID *
 	return s.orders.SetPosPaymentTwint(ctx, orderID, deviceID, ord.TotalCents)
 }
 
-func (s *posService) PayGratisGuest(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID) error {
-	if orderID == uuid.Nil {
+func (s *posService) PayGratisGuest(ctx context.Context, orderID string, deviceID *string) error {
+	if orderID == "" {
 		return fmt.Errorf("invalid order id")
 	}
 
@@ -170,8 +168,8 @@ func (s *posService) PayGratisGuest(ctx context.Context, orderID uuid.UUID, devi
 	return s.orders.SetPosPaymentGratisGuest(ctx, orderID, deviceID, ord.TotalCents)
 }
 
-func (s *posService) PayGratisVIP(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID) error {
-	if orderID == uuid.Nil {
+func (s *posService) PayGratisVIP(ctx context.Context, orderID string, deviceID *string) error {
+	if orderID == "" {
 		return fmt.Errorf("invalid order id")
 	}
 
@@ -186,8 +184,8 @@ func (s *posService) PayGratisVIP(ctx context.Context, orderID uuid.UUID, device
 	return s.orders.SetPosPaymentGratisVIP(ctx, orderID, deviceID, ord.TotalCents)
 }
 
-func (s *posService) PayGratisStaff(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID) error {
-	if orderID == uuid.Nil {
+func (s *posService) PayGratisStaff(ctx context.Context, orderID string, deviceID *string) error {
+	if orderID == "" {
 		return fmt.Errorf("invalid order id")
 	}
 
@@ -202,8 +200,8 @@ func (s *posService) PayGratisStaff(ctx context.Context, orderID uuid.UUID, devi
 	return s.orders.SetPosPaymentGratisStaff(ctx, orderID, deviceID, ord.TotalCents)
 }
 
-func (s *posService) PayGratis100Club(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, elvantoPersonID, elvantoPersonName string, freeQty int) error {
-	if orderID == uuid.Nil {
+func (s *posService) PayGratis100Club(ctx context.Context, orderID string, deviceID *string, elvantoPersonID, elvantoPersonName string, freeQty int) error {
+	if orderID == "" {
 		return fmt.Errorf("invalid order id")
 	}
 

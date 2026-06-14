@@ -12,21 +12,19 @@ import (
 	"backend/internal/inventory"
 	"backend/internal/repository"
 	"backend/internal/trace"
-
-	"github.com/google/uuid"
 )
 
 type OrderService interface {
 	// GetByID retrieves an order by ID.
-	GetByID(ctx context.Context, id uuid.UUID) (*ent.Order, error)
+	GetByID(ctx context.Context, id string) (*ent.Order, error)
 	// GetByIDWithRelations retrieves an order by ID with lines, payments, and redemptions eagerly loaded.
-	GetByIDWithRelations(ctx context.Context, id uuid.UUID) (*ent.Order, error)
+	GetByIDWithRelations(ctx context.Context, id string) (*ent.Order, error)
 	// GetOrderLines retrieves all order lines for an order.
-	GetOrderLines(ctx context.Context, orderID uuid.UUID) ([]*ent.OrderLine, error)
+	GetOrderLines(ctx context.Context, orderID string) ([]*ent.OrderLine, error)
 	ListByCustomerID(ctx context.Context, customerID string) ([]*ent.Order, int64, error)
 	ListAdmin(ctx context.Context, params OrderListParams) ([]*ent.Order, int64, error)
 	// UpdateStatus updates an order's status.
-	UpdateStatus(ctx context.Context, id uuid.UUID, status order.Status) error
+	UpdateStatus(ctx context.Context, id string, status order.Status) error
 	// ListEvents returns days with paid orders for dashboard navigation.
 	ListEvents(ctx context.Context) ([]repository.EventDay, error)
 }
@@ -59,15 +57,15 @@ func NewOrderService(
 	}
 }
 
-func (s *orderService) GetByID(ctx context.Context, id uuid.UUID) (*ent.Order, error) {
+func (s *orderService) GetByID(ctx context.Context, id string) (*ent.Order, error) {
 	return s.orderRepo.GetByID(ctx, id)
 }
 
-func (s *orderService) GetByIDWithRelations(ctx context.Context, id uuid.UUID) (*ent.Order, error) {
+func (s *orderService) GetByIDWithRelations(ctx context.Context, id string) (*ent.Order, error) {
 	return s.orderRepo.GetByIDWithRelations(ctx, id)
 }
 
-func (s *orderService) GetOrderLines(ctx context.Context, orderID uuid.UUID) ([]*ent.OrderLine, error) {
+func (s *orderService) GetOrderLines(ctx context.Context, orderID string) ([]*ent.OrderLine, error) {
 	return s.orderLineRepo.GetByOrderID(ctx, orderID)
 }
 
@@ -94,10 +92,10 @@ func (s *orderService) ListAdmin(ctx context.Context, params OrderListParams) ([
 	return s.orderRepo.ListAdmin(ctx, params.Status, from, to, params.Query)
 }
 
-func (s *orderService) UpdateStatus(ctx context.Context, id uuid.UUID, status order.Status) error {
+func (s *orderService) UpdateStatus(ctx context.Context, id string, status order.Status) error {
 	ctx, finish := trace.StartSpan(ctx, "service", "order.update_status")
 	defer finish()
-	trace.Data(ctx, "order.id", id.String())
+	trace.Data(ctx, "order.id", id)
 	trace.Data(ctx, "order.target_status", string(status))
 
 	ord, err := s.orderRepo.GetByID(ctx, id)
@@ -135,10 +133,10 @@ func (s *orderService) UpdateStatus(ctx context.Context, id uuid.UUID, status or
 	return nil
 }
 
-func (s *orderService) restoreInventory(ctx context.Context, orderID uuid.UUID, reason inventoryledger.Reason) error {
+func (s *orderService) restoreInventory(ctx context.Context, orderID string, reason inventoryledger.Reason) error {
 	ctx, finish := trace.StartSpan(ctx, "service", "order.restore_inventory")
 	defer finish()
-	trace.Data(ctx, "inventory.order_id", orderID.String())
+	trace.Data(ctx, "inventory.order_id", orderID)
 	trace.Data(ctx, "inventory.reason", string(reason))
 
 	lines, err := s.orderLineRepo.GetByOrderID(ctx, orderID)
@@ -177,8 +175,8 @@ func (s *orderService) publishInventoryUpdates(ctx context.Context, entries []re
 	if s.inventoryHub == nil {
 		return
 	}
-	productIDs := make([]uuid.UUID, 0, len(entries))
-	deltaByProduct := make(map[uuid.UUID]int)
+	productIDs := make([]string, 0, len(entries))
+	deltaByProduct := make(map[string]int)
 	for _, entry := range entries {
 		if _, seen := deltaByProduct[entry.ProductID]; !seen {
 			productIDs = append(productIDs, entry.ProductID)

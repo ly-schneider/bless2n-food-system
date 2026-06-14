@@ -8,12 +8,7 @@ import (
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
-	"github.com/google/uuid"
 )
-
-func uuidV7() uuid.UUID {
-	return uuid.Must(uuid.NewV7())
-}
 
 type Category struct {
 	ent.Schema
@@ -27,9 +22,7 @@ func (Category) Annotations() []schema.Annotation {
 
 func (Category) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("id", uuid.UUID{}).
-			Default(uuidV7).
-			Immutable(),
+		nanoidPK(),
 		field.String("name").
 			MaxLen(20).
 			NotEmpty(),

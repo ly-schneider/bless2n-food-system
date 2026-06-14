@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	"backend/internal/repository"
-
-	"github.com/google/uuid"
 )
 
 var ErrProductNotFreeForClub100 = fmt.Errorf("product_not_free_for_club100")
@@ -14,10 +12,10 @@ var ErrProductNotFreeForClub100 = fmt.Errorf("product_not_free_for_club100")
 type Club100Service interface {
 	GetPeopleWithRedemptions(ctx context.Context) ([]Club100Person, error)
 	GetRemainingRedemptions(ctx context.Context, elvantoPersonID string) (remaining int, max int, err error)
-	RecordRedemption(ctx context.Context, elvantoPersonID, elvantoPersonName string, orderID uuid.UUID, qty int) error
-	GetFreeProductIDs(ctx context.Context) ([]uuid.UUID, error)
+	RecordRedemption(ctx context.Context, elvantoPersonID, elvantoPersonName string, orderID string, qty int) error
+	GetFreeProductIDs(ctx context.Context) ([]string, error)
 	GetMaxRedemptions(ctx context.Context) (int, error)
-	ValidateOrderForRedemption(ctx context.Context, orderID uuid.UUID) error
+	ValidateOrderForRedemption(ctx context.Context, orderID string) error
 }
 
 type Club100Person struct {
@@ -114,7 +112,7 @@ func (s *club100Service) GetRemainingRedemptions(ctx context.Context, elvantoPer
 	return remaining, max, nil
 }
 
-func (s *club100Service) RecordRedemption(ctx context.Context, elvantoPersonID, elvantoPersonName string, orderID uuid.UUID, qty int) error {
+func (s *club100Service) RecordRedemption(ctx context.Context, elvantoPersonID, elvantoPersonName string, orderID string, qty int) error {
 	if qty <= 0 {
 		return nil
 	}
@@ -134,15 +132,15 @@ func (s *club100Service) RecordRedemption(ctx context.Context, elvantoPersonID, 
 	return nil
 }
 
-func (s *club100Service) GetFreeProductIDs(ctx context.Context) ([]uuid.UUID, error) {
+func (s *club100Service) GetFreeProductIDs(ctx context.Context) ([]string, error) {
 	settingsWithProducts, err := s.settings.GetWithProducts(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get settings: %w", err)
 	}
 	if settingsWithProducts.Edges.Club100FreeProducts == nil {
-		return []uuid.UUID{}, nil
+		return []string{}, nil
 	}
-	ids := make([]uuid.UUID, 0, len(settingsWithProducts.Edges.Club100FreeProducts))
+	ids := make([]string, 0, len(settingsWithProducts.Edges.Club100FreeProducts))
 	for _, p := range settingsWithProducts.Edges.Club100FreeProducts {
 		ids = append(ids, p.ID)
 	}
@@ -157,7 +155,7 @@ func (s *club100Service) GetMaxRedemptions(ctx context.Context) (int, error) {
 	return settingsData.Club100MaxRedemptions, nil
 }
 
-func (s *club100Service) ValidateOrderForRedemption(ctx context.Context, orderID uuid.UUID) error {
+func (s *club100Service) ValidateOrderForRedemption(ctx context.Context, orderID string) error {
 	freeProductIDs, err := s.GetFreeProductIDs(ctx)
 	if err != nil {
 		return fmt.Errorf("get free product IDs: %w", err)
@@ -167,7 +165,7 @@ func (s *club100Service) ValidateOrderForRedemption(ctx context.Context, orderID
 		return fmt.Errorf("%w: no free products configured", ErrProductNotFreeForClub100)
 	}
 
-	freeProductSet := make(map[uuid.UUID]bool, len(freeProductIDs))
+	freeProductSet := make(map[string]bool, len(freeProductIDs))
 	for _, id := range freeProductIDs {
 		freeProductSet[id] = true
 	}

@@ -6,7 +6,6 @@ import (
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
-	"github.com/google/uuid"
 )
 
 type MenuSlotOption struct {
@@ -22,8 +21,10 @@ func (MenuSlotOption) Annotations() []schema.Annotation {
 
 func (MenuSlotOption) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("menu_slot_id", uuid.UUID{}),
-		field.UUID("option_product_id", uuid.UUID{}),
+		field.String("menu_slot_id").
+			MaxLen(36),
+		field.String("option_product_id").
+			MaxLen(36),
 	}
 }
 

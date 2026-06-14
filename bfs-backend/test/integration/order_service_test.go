@@ -10,7 +10,7 @@ import (
 	entProduct "backend/internal/generated/ent/product"
 	"backend/internal/service"
 
-	"github.com/google/uuid"
+	nanoid "backend/internal/id"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,7 +37,7 @@ func TestOrderService_GetByID(t *testing.T) {
 	})
 
 	t.Run("GetByID returns error for non-existent order", func(t *testing.T) {
-		_, err := svc.GetByID(ctx, uuid.Must(uuid.NewV7()))
+		_, err := svc.GetByID(ctx, nanoid.New())
 		require.Error(t, err)
 	})
 }
@@ -87,24 +87,24 @@ func TestOrderService_ListByCustomerID(t *testing.T) {
 	ctx := context.Background()
 
 	// Setup test data
-	customerID := uuid.Must(uuid.NewV7())
-	fixtures.CreateOrderWithCustomer(1000, entOrder.StatusPaid, entOrder.OriginShop, customerID.String())
-	fixtures.CreateOrderWithCustomer(1500, entOrder.StatusPending, entOrder.OriginShop, customerID.String())
-	fixtures.CreateOrderWithCustomer(2000, entOrder.StatusPaid, entOrder.OriginShop, customerID.String())
+	customerID := nanoid.New()
+	fixtures.CreateOrderWithCustomer(1000, entOrder.StatusPaid, entOrder.OriginShop, customerID)
+	fixtures.CreateOrderWithCustomer(1500, entOrder.StatusPending, entOrder.OriginShop, customerID)
+	fixtures.CreateOrderWithCustomer(2000, entOrder.StatusPaid, entOrder.OriginShop, customerID)
 
 	// Create an order for a different customer
-	otherCustomer := uuid.Must(uuid.NewV7())
-	fixtures.CreateOrderWithCustomer(500, entOrder.StatusPaid, entOrder.OriginShop, otherCustomer.String())
+	otherCustomer := nanoid.New()
+	fixtures.CreateOrderWithCustomer(500, entOrder.StatusPaid, entOrder.OriginShop, otherCustomer)
 
 	t.Run("ListByCustomerID returns customer orders", func(t *testing.T) {
-		orders, total, err := svc.ListByCustomerID(ctx, customerID.String())
+		orders, total, err := svc.ListByCustomerID(ctx, customerID)
 		require.NoError(t, err)
 		require.Equal(t, int64(3), total)
 		require.Len(t, orders, 3)
 	})
 
 	t.Run("ListByCustomerID returns empty for customer without orders", func(t *testing.T) {
-		orders, total, err := svc.ListByCustomerID(ctx, uuid.Must(uuid.NewV7()).String())
+		orders, total, err := svc.ListByCustomerID(ctx, nanoid.New())
 		require.NoError(t, err)
 		require.Equal(t, int64(0), total)
 		require.Empty(t, orders)
@@ -232,7 +232,7 @@ func TestOrderService_UpdateStatus(t *testing.T) {
 	})
 
 	t.Run("UpdateStatus returns error for non-existent order", func(t *testing.T) {
-		err := svc.UpdateStatus(ctx, uuid.Must(uuid.NewV7()), entOrder.StatusPaid)
+		err := svc.UpdateStatus(ctx, nanoid.New(), entOrder.StatusPaid)
 		require.Error(t, err)
 	})
 }

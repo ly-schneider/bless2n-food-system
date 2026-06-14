@@ -16,12 +16,12 @@ collection:
               $ref: "../schemas/jetons.yaml#/JetonList"
             example:
               items:
-                - id: "019412ab-0000-7000-8000-000000000501"
+                - id: "spec_______3"
                   name: "Grill"
                   color: "#EF4444"
                   createdAt: "2025-01-15T10:00:00Z"
                   updatedAt: "2025-01-15T10:00:00Z"
-                - id: "019412ab-0000-7000-8000-000000000502"
+                - id: "spec_______4"
                   name: "Getranke"
                   color: "#3B82F6"
                   createdAt: "2025-01-15T10:00:00Z"
@@ -85,7 +85,6 @@ item:
       required: true
       schema:
         type: string
-        format: uuid
 
   patch:
     tags: [Jetons]

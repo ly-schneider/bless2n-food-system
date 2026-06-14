@@ -5,18 +5,16 @@ import (
 
 	"backend/internal/generated/ent"
 	"backend/internal/generated/ent/category"
-
-	"github.com/google/uuid"
 )
 
 type CategoryRepository interface {
 	Create(ctx context.Context, name string, position int, isActive bool) (*ent.Category, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*ent.Category, error)
+	GetByID(ctx context.Context, id string) (*ent.Category, error)
 	GetAll(ctx context.Context) ([]*ent.Category, error)
 	GetAllActive(ctx context.Context) ([]*ent.Category, error)
 	List(ctx context.Context, limit, offset int) ([]*ent.Category, int64, error)
-	Update(ctx context.Context, id uuid.UUID, name string, position int, isActive bool) (*ent.Category, error)
-	Delete(ctx context.Context, id uuid.UUID) error
+	Update(ctx context.Context, id string, name string, position int, isActive bool) (*ent.Category, error)
+	Delete(ctx context.Context, id string) error
 }
 
 type categoryRepo struct {
@@ -43,7 +41,7 @@ func (r *categoryRepo) Create(ctx context.Context, name string, position int, is
 	return created, nil
 }
 
-func (r *categoryRepo) GetByID(ctx context.Context, id uuid.UUID) (*ent.Category, error) {
+func (r *categoryRepo) GetByID(ctx context.Context, id string) (*ent.Category, error) {
 	e, err := r.ec(ctx).Category.Get(ctx, id)
 	if err != nil {
 		return nil, translateError(err)
@@ -92,7 +90,7 @@ func (r *categoryRepo) List(ctx context.Context, limit, offset int) ([]*ent.Cate
 	return rows, int64(total), nil
 }
 
-func (r *categoryRepo) Update(ctx context.Context, id uuid.UUID, name string, position int, isActive bool) (*ent.Category, error) {
+func (r *categoryRepo) Update(ctx context.Context, id string, name string, position int, isActive bool) (*ent.Category, error) {
 	updated, err := r.ec(ctx).Category.UpdateOneID(id).
 		SetName(name).
 		SetIsActive(isActive).
@@ -104,7 +102,7 @@ func (r *categoryRepo) Update(ctx context.Context, id uuid.UUID, name string, po
 	return updated, nil
 }
 
-func (r *categoryRepo) Delete(ctx context.Context, id uuid.UUID) error {
+func (r *categoryRepo) Delete(ctx context.Context, id string) error {
 	err := r.ec(ctx).Category.DeleteOneID(id).Exec(ctx)
 	return translateError(err)
 }

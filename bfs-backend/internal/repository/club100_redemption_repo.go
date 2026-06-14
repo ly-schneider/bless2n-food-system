@@ -8,14 +8,13 @@ import (
 	"backend/internal/generated/ent/club100redemption"
 
 	"entgo.io/ent/dialect/sql"
-	"github.com/google/uuid"
 )
 
 type Club100RedemptionRepository interface {
-	Create(ctx context.Context, elvantoPersonID, elvantoPersonName string, orderID uuid.UUID, quantity int) (*ent.Club100Redemption, error)
+	Create(ctx context.Context, elvantoPersonID, elvantoPersonName string, orderID string, quantity int) (*ent.Club100Redemption, error)
 	GetTotalRedemptions(ctx context.Context, elvantoPersonID string) (int, error)
 	GetTotalRedemptionsBatch(ctx context.Context, elvantoPersonIDs []string) (map[string]int, error)
-	GetByOrderID(ctx context.Context, orderID uuid.UUID) ([]*ent.Club100Redemption, error)
+	GetByOrderID(ctx context.Context, orderID string) ([]*ent.Club100Redemption, error)
 }
 
 type club100RedemptionRepo struct {
@@ -30,7 +29,7 @@ func (r *club100RedemptionRepo) ec(ctx context.Context) *ent.Client {
 	return ClientFromContext(ctx, r.client)
 }
 
-func (r *club100RedemptionRepo) Create(ctx context.Context, elvantoPersonID, elvantoPersonName string, orderID uuid.UUID, quantity int) (*ent.Club100Redemption, error) {
+func (r *club100RedemptionRepo) Create(ctx context.Context, elvantoPersonID, elvantoPersonName string, orderID string, quantity int) (*ent.Club100Redemption, error) {
 	e, err := r.ec(ctx).Club100Redemption.Create().
 		SetElvantoPersonID(elvantoPersonID).
 		SetElvantoPersonName(elvantoPersonName).
@@ -104,7 +103,7 @@ func (r *club100RedemptionRepo) GetTotalRedemptionsBatch(ctx context.Context, el
 	return result, nil
 }
 
-func (r *club100RedemptionRepo) GetByOrderID(ctx context.Context, orderID uuid.UUID) ([]*ent.Club100Redemption, error) {
+func (r *club100RedemptionRepo) GetByOrderID(ctx context.Context, orderID string) ([]*ent.Club100Redemption, error) {
 	rows, err := r.ec(ctx).Club100Redemption.Query().
 		Where(club100redemption.OrderIDEQ(orderID)).
 		All(ctx)

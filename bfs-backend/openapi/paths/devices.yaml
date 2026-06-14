@@ -42,7 +42,6 @@ item:
       required: true
       schema:
         type: string
-        format: uuid
 
   get:
     tags: [Devices]
@@ -167,7 +166,7 @@ pairing-item:
                   status: completed
                   token: "eyJhbGciOiJIUzI1NiJ9..."
                   device:
-                    id: "019412ab-0000-7000-8000-000000000400"
+                    id: "spec_______1"
                     name: "Station Grillplatz"
                     type: STATION
                     status: approved

@@ -10,9 +10,6 @@ import (
 	"backend/internal/generated/ent/settings"
 	"backend/internal/response"
 	"backend/internal/service"
-
-	"github.com/google/uuid"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // GetSettings returns the current application settings.
@@ -67,11 +64,11 @@ func (h *Handlers) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if body.Club100FreeProductIds != nil || body.Club100MaxRedemptions != nil {
-		var productIDs []uuid.UUID
+		var productIDs []string
 		if body.Club100FreeProductIds != nil {
-			productIDs = make([]uuid.UUID, 0, len(*body.Club100FreeProductIds))
+			productIDs = make([]string, 0, len(*body.Club100FreeProductIds))
 			for _, id := range *body.Club100FreeProductIds {
-				productIDs = append(productIDs, uuid.UUID(id))
+				productIDs = append(productIDs, id)
 			}
 		}
 		if err := h.settings.SetClub100Settings(ctx, productIDs, body.Club100MaxRedemptions); err != nil {
@@ -104,9 +101,9 @@ func toAPISettings(e *ent.Settings, missingJetons int) generated.Settings {
 	}
 
 	if e.Edges.Club100FreeProducts != nil {
-		ids := make([]openapi_types.UUID, 0, len(e.Edges.Club100FreeProducts))
+		ids := make([]string, 0, len(e.Edges.Club100FreeProducts))
 		for _, p := range e.Edges.Club100FreeProducts {
-			ids = append(ids, openapi_types.UUID(p.ID))
+			ids = append(ids, p.ID)
 		}
 		s.Club100FreeProductIds = &ids
 	}

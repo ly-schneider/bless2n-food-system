@@ -6,7 +6,6 @@ import (
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
-	"github.com/google/uuid"
 )
 
 type VolunteerCampaignProduct struct {
@@ -22,8 +21,10 @@ func (VolunteerCampaignProduct) Annotations() []schema.Annotation {
 
 func (VolunteerCampaignProduct) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("campaign_id", uuid.UUID{}),
-		field.UUID("product_id", uuid.UUID{}),
+		field.String("campaign_id").
+			MaxLen(36),
+		field.String("product_id").
+			MaxLen(36),
 		field.Int("quantity").
 			Default(1),
 	}

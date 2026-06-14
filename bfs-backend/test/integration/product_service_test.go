@@ -51,7 +51,7 @@ func TestProductService_ListProducts(t *testing.T) {
 		otherCat := fixtures.CreateCategory("Food", 2, true)
 		fixtures.CreateProduct("Burger", otherCat.ID, 1200, product.TypeSimple, nil)
 
-		catIDStr := category.ID.String()
+		catIDStr := category.ID
 		products, err := svc.ListProducts(ctx, &catIDStr, 50, 0)
 		require.NoError(t, err)
 		// Only products from the Drinks category

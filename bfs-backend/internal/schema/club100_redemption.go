@@ -8,7 +8,6 @@ import (
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
-	"github.com/google/uuid"
 )
 
 type Club100Redemption struct {
@@ -23,16 +22,15 @@ func (Club100Redemption) Annotations() []schema.Annotation {
 
 func (Club100Redemption) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("id", uuid.UUID{}).
-			Default(uuidV7).
-			Immutable(),
+		nanoidPK(),
 		field.String("elvanto_person_id").
 			MaxLen(50).
 			NotEmpty(),
 		field.String("elvanto_person_name").
 			MaxLen(100).
 			NotEmpty(),
-		field.UUID("order_id", uuid.UUID{}),
+		field.String("order_id").
+			MaxLen(36),
 		field.Int("free_product_quantity").
 			Default(1),
 		field.Time("created_at").

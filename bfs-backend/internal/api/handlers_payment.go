@@ -4,11 +4,10 @@ import (
 	"io"
 	"net/http"
 
+	nanoid "backend/internal/id"
 	"backend/internal/payrexx"
 	"backend/internal/response"
 
-	"github.com/google/uuid"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 	"go.uber.org/zap"
 )
 
@@ -48,8 +47,8 @@ func (h *Handlers) HandlePayrexxWebhook(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	orderID, err := uuid.Parse(txn.ReferenceID)
-	if err != nil {
+	orderID := txn.ReferenceID
+	if !nanoid.Valid(orderID) {
 		h.logger.Warn("payrexx webhook: invalid referenceId", zap.String("referenceId", txn.ReferenceID))
 		writeError(w, http.StatusBadRequest, "invalid_payload", "Invalid referenceId")
 		return
@@ -68,14 +67,14 @@ func (h *Handlers) HandlePayrexxWebhook(w http.ResponseWriter, r *http.Request) 
 	if err := h.payments.MarkOrderPaidByPayrexx(ctx, orderID, gatewayID, txn.ID, contactEmail); err != nil {
 		h.logger.Error("payrexx webhook: failed to mark order paid",
 			zap.Error(err),
-			zap.String("orderId", orderID.String()),
+			zap.String("orderId", orderID),
 		)
 		writeError(w, http.StatusInternalServerError, "processing_error", "Failed to process payment")
 		return
 	}
 
 	h.logger.Info("payrexx webhook: order marked as paid",
-		zap.String("orderId", orderID.String()),
+		zap.String("orderId", orderID),
 		zap.Int("gatewayId", gatewayID),
 		zap.Int("transactionId", txn.ID),
 	)
@@ -85,7 +84,7 @@ func (h *Handlers) HandlePayrexxWebhook(w http.ResponseWriter, r *http.Request) 
 
 // GetPayment returns a payment by ID.
 // (GET /payments/{paymentId})
-func (h *Handlers) GetPayment(w http.ResponseWriter, r *http.Request, paymentId openapi_types.UUID) {
+func (h *Handlers) GetPayment(w http.ResponseWriter, r *http.Request, paymentId string) {
 	// Payment retrieval is handled by looking up the order payment.
 	// The paymentId here corresponds to an OrderPayment UUID.
 	// For now, delegate to the order service to fetch the order that contains this payment.

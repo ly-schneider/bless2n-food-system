@@ -418,7 +418,7 @@ export default function AdminStaffMealDetailPage() {
                         {formatShort(r.createdAt)}
                       </TableCell>
                       <TableCell className="text-muted-foreground pr-6 font-mono text-xs sm:pr-4">
-                        {r.orderId.slice(0, 8)}
+                        {r.orderId}
                       </TableCell>
                     </TableRow>
                   ))

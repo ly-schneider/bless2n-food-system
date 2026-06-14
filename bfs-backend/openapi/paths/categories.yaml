@@ -58,7 +58,6 @@ item:
       required: true
       schema:
         type: string
-        format: uuid
 
   get:
     tags: [Categories]

@@ -7,19 +7,17 @@ import (
 	"backend/internal/generated/ent"
 	"backend/internal/generated/ent/admininvite"
 	"backend/internal/generated/ent/predicate"
-
-	"github.com/google/uuid"
 )
 
 type AdminInviteRepository interface {
 	Create(ctx context.Context, invitedByUserID, inviteeEmail, tokenHash string, status admininvite.Status, expiresAt time.Time) (*ent.AdminInvite, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*ent.AdminInvite, error)
+	GetByID(ctx context.Context, id string) (*ent.AdminInvite, error)
 	GetByTokenHash(ctx context.Context, tokenHash string) (*ent.AdminInvite, error)
 	List(ctx context.Context, status *admininvite.Status, email *string) ([]*ent.AdminInvite, int64, error)
-	Delete(ctx context.Context, id uuid.UUID) error
-	UpdateStatus(ctx context.Context, id uuid.UUID, status admininvite.Status) error
-	UpdateTokenAndExpiry(ctx context.Context, id uuid.UUID, tokenHash string, expiresAt time.Time) error
-	MarkAccepted(ctx context.Context, id uuid.UUID) error
+	Delete(ctx context.Context, id string) error
+	UpdateStatus(ctx context.Context, id string, status admininvite.Status) error
+	UpdateTokenAndExpiry(ctx context.Context, id string, tokenHash string, expiresAt time.Time) error
+	MarkAccepted(ctx context.Context, id string) error
 }
 
 type adminInviteRepo struct {
@@ -48,7 +46,7 @@ func (r *adminInviteRepo) Create(ctx context.Context, invitedByUserID, inviteeEm
 	return created, nil
 }
 
-func (r *adminInviteRepo) GetByID(ctx context.Context, id uuid.UUID) (*ent.AdminInvite, error) {
+func (r *adminInviteRepo) GetByID(ctx context.Context, id string) (*ent.AdminInvite, error) {
 	e, err := r.ec(ctx).AdminInvite.Get(ctx, id)
 	if err != nil {
 		return nil, translateError(err)
@@ -92,12 +90,12 @@ func (r *adminInviteRepo) List(ctx context.Context, status *admininvite.Status, 
 	return rows, int64(total), nil
 }
 
-func (r *adminInviteRepo) Delete(ctx context.Context, id uuid.UUID) error {
+func (r *adminInviteRepo) Delete(ctx context.Context, id string) error {
 	err := r.ec(ctx).AdminInvite.DeleteOneID(id).Exec(ctx)
 	return translateError(err)
 }
 
-func (r *adminInviteRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status admininvite.Status) error {
+func (r *adminInviteRepo) UpdateStatus(ctx context.Context, id string, status admininvite.Status) error {
 	n, err := r.ec(ctx).AdminInvite.Update().
 		Where(admininvite.IDEQ(id)).
 		SetStatus(status).
@@ -111,7 +109,7 @@ func (r *adminInviteRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status
 	return nil
 }
 
-func (r *adminInviteRepo) UpdateTokenAndExpiry(ctx context.Context, id uuid.UUID, tokenHash string, expiresAt time.Time) error {
+func (r *adminInviteRepo) UpdateTokenAndExpiry(ctx context.Context, id string, tokenHash string, expiresAt time.Time) error {
 	n, err := r.ec(ctx).AdminInvite.Update().
 		Where(admininvite.IDEQ(id)).
 		SetTokenHash(tokenHash).
@@ -126,7 +124,7 @@ func (r *adminInviteRepo) UpdateTokenAndExpiry(ctx context.Context, id uuid.UUID
 	return nil
 }
 
-func (r *adminInviteRepo) MarkAccepted(ctx context.Context, id uuid.UUID) error {
+func (r *adminInviteRepo) MarkAccepted(ctx context.Context, id string) error {
 	n, err := r.ec(ctx).AdminInvite.Update().
 		Where(admininvite.IDEQ(id)).
 		SetStatus(admininvite.StatusAccepted).

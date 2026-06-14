@@ -46,7 +46,7 @@ collection:
           example:
             name: "Lunch Menu"
             priceCents: 1200
-            categoryId: "019412ab-0000-7000-8000-000000000001"
+            categoryId: "spec_______5"
     responses:
       "201":
         description: Menu created
@@ -75,7 +75,6 @@ item:
       description: UUID of the menu product
       schema:
         type: string
-        format: uuid
 
   get:
     tags: [Menus]
@@ -185,7 +184,6 @@ slots:
       description: UUID of the menu product
       schema:
         type: string
-        format: uuid
 
   post:
     tags: [Menus]
@@ -230,7 +228,6 @@ slots-reorder:
       description: UUID of the menu product
       schema:
         type: string
-        format: uuid
 
   patch:
     tags: [Menus]
@@ -248,9 +245,9 @@ slots-reorder:
             $ref: "../schemas/menus.yaml#/MenuSlotReorder"
           example:
             positions:
-              "019412ab-0000-7000-8000-000000000010": 0
-              "019412ab-0000-7000-8000-000000000011": 1
-              "019412ab-0000-7000-8000-000000000012": 2
+              "spec_______6": 0
+              "spec_______7": 1
+              "spec_______8": 2
     responses:
       "200":
         description: Slots reordered
@@ -279,13 +276,11 @@ slot-item:
       description: UUID of the menu product
       schema:
         type: string
-        format: uuid
     - name: slotId
       in: path
       required: true
       schema:
         type: string
-        format: uuid
 
   patch:
     tags: [Menus]
@@ -366,13 +361,11 @@ options:
       description: UUID of the menu product
       schema:
         type: string
-        format: uuid
     - name: slotId
       in: path
       required: true
       schema:
         type: string
-        format: uuid
 
   post:
     tags: [Menus]
@@ -389,7 +382,7 @@ options:
           schema:
             $ref: "../schemas/menus.yaml#/MenuSlotOptionCreate"
           example:
-            productId: "019412ab-0000-7000-8000-000000000005"
+            productId: "spec_______9"
     responses:
       "201":
         description: Option added
@@ -424,19 +417,16 @@ option-item:
       description: UUID of the menu product
       schema:
         type: string
-        format: uuid
     - name: slotId
       in: path
       required: true
       schema:
         type: string
-        format: uuid
     - name: optionProductId
       in: path
       required: true
       schema:
         type: string
-        format: uuid
 
   delete:
     tags: [Menus]

@@ -6,7 +6,7 @@ import (
 
 	"backend/internal/generated/ent/product"
 
-	"github.com/google/uuid"
+	nanoid "backend/internal/id"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,11 +38,11 @@ func TestMenuSlotRepository_GetByMenuProductIDs(t *testing.T) {
 	fixtures.CreateMenuSlotOption(slotB1.ID, cola.ID)
 
 	t.Run("returns slots across multiple menu products", func(t *testing.T) {
-		slots, err := repos.MenuSlot.GetByMenuProductIDs(ctx, []uuid.UUID{menuA.ID, menuB.ID})
+		slots, err := repos.MenuSlot.GetByMenuProductIDs(ctx, []string{menuA.ID, menuB.ID})
 		require.NoError(t, err)
 		require.Len(t, slots, 3)
 
-		byMenu := map[uuid.UUID]int{}
+		byMenu := map[string]int{}
 		for _, s := range slots {
 			byMenu[s.MenuProductID]++
 		}
@@ -51,7 +51,7 @@ func TestMenuSlotRepository_GetByMenuProductIDs(t *testing.T) {
 	})
 
 	t.Run("loads options edge", func(t *testing.T) {
-		slots, err := repos.MenuSlot.GetByMenuProductIDs(ctx, []uuid.UUID{menuA.ID})
+		slots, err := repos.MenuSlot.GetByMenuProductIDs(ctx, []string{menuA.ID})
 		require.NoError(t, err)
 		require.Len(t, slots, 2)
 		for _, s := range slots {
@@ -61,7 +61,7 @@ func TestMenuSlotRepository_GetByMenuProductIDs(t *testing.T) {
 	})
 
 	t.Run("excludes unrelated menus", func(t *testing.T) {
-		slots, err := repos.MenuSlot.GetByMenuProductIDs(ctx, []uuid.UUID{menuA.ID})
+		slots, err := repos.MenuSlot.GetByMenuProductIDs(ctx, []string{menuA.ID})
 		require.NoError(t, err)
 		for _, s := range slots {
 			require.Equal(t, menuA.ID, s.MenuProductID)
@@ -75,13 +75,13 @@ func TestMenuSlotRepository_GetByMenuProductIDs(t *testing.T) {
 	})
 
 	t.Run("unknown ids return no rows", func(t *testing.T) {
-		slots, err := repos.MenuSlot.GetByMenuProductIDs(ctx, []uuid.UUID{uuid.Must(uuid.NewV7())})
+		slots, err := repos.MenuSlot.GetByMenuProductIDs(ctx, []string{nanoid.New()})
 		require.NoError(t, err)
 		require.Empty(t, slots)
 	})
 
 	t.Run("matches single-id legacy method", func(t *testing.T) {
-		batch, err := repos.MenuSlot.GetByMenuProductIDs(ctx, []uuid.UUID{menuC.ID})
+		batch, err := repos.MenuSlot.GetByMenuProductIDs(ctx, []string{menuC.ID})
 		require.NoError(t, err)
 		single, err := repos.MenuSlot.GetByMenuProductID(ctx, menuC.ID)
 		require.NoError(t, err)

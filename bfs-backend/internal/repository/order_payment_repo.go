@@ -6,15 +6,13 @@ import (
 
 	"backend/internal/generated/ent"
 	"backend/internal/generated/ent/orderpayment"
-
-	"github.com/google/uuid"
 )
 
 type OrderPaymentRepository interface {
-	Create(ctx context.Context, orderID uuid.UUID, method orderpayment.Method, amountCents int64, paidAt time.Time, deviceID *uuid.UUID) (*ent.OrderPayment, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*ent.OrderPayment, error)
-	GetByOrderID(ctx context.Context, orderID uuid.UUID) ([]*ent.OrderPayment, error)
-	Update(ctx context.Context, id, orderID uuid.UUID, method orderpayment.Method, amountCents int64, paidAt time.Time, deviceID *uuid.UUID) (*ent.OrderPayment, error)
+	Create(ctx context.Context, orderID string, method orderpayment.Method, amountCents int64, paidAt time.Time, deviceID *string) (*ent.OrderPayment, error)
+	GetByID(ctx context.Context, id string) (*ent.OrderPayment, error)
+	GetByOrderID(ctx context.Context, orderID string) ([]*ent.OrderPayment, error)
+	Update(ctx context.Context, id, orderID string, method orderpayment.Method, amountCents int64, paidAt time.Time, deviceID *string) (*ent.OrderPayment, error)
 }
 
 type orderPaymentRepo struct {
@@ -29,7 +27,7 @@ func (r *orderPaymentRepo) ec(ctx context.Context) *ent.Client {
 	return ClientFromContext(ctx, r.client)
 }
 
-func (r *orderPaymentRepo) Create(ctx context.Context, orderID uuid.UUID, method orderpayment.Method, amountCents int64, paidAt time.Time, deviceID *uuid.UUID) (*ent.OrderPayment, error) {
+func (r *orderPaymentRepo) Create(ctx context.Context, orderID string, method orderpayment.Method, amountCents int64, paidAt time.Time, deviceID *string) (*ent.OrderPayment, error) {
 	builder := r.ec(ctx).OrderPayment.Create().
 		SetOrderID(orderID).
 		SetMethod(method).
@@ -45,7 +43,7 @@ func (r *orderPaymentRepo) Create(ctx context.Context, orderID uuid.UUID, method
 	return created, nil
 }
 
-func (r *orderPaymentRepo) GetByID(ctx context.Context, id uuid.UUID) (*ent.OrderPayment, error) {
+func (r *orderPaymentRepo) GetByID(ctx context.Context, id string) (*ent.OrderPayment, error) {
 	e, err := r.ec(ctx).OrderPayment.Get(ctx, id)
 	if err != nil {
 		return nil, translateError(err)
@@ -53,7 +51,7 @@ func (r *orderPaymentRepo) GetByID(ctx context.Context, id uuid.UUID) (*ent.Orde
 	return e, nil
 }
 
-func (r *orderPaymentRepo) GetByOrderID(ctx context.Context, orderID uuid.UUID) ([]*ent.OrderPayment, error) {
+func (r *orderPaymentRepo) GetByOrderID(ctx context.Context, orderID string) ([]*ent.OrderPayment, error) {
 	rows, err := r.ec(ctx).OrderPayment.Query().
 		Where(orderpayment.OrderIDEQ(orderID)).
 		Order(orderpayment.ByPaidAt()).
@@ -64,7 +62,7 @@ func (r *orderPaymentRepo) GetByOrderID(ctx context.Context, orderID uuid.UUID) 
 	return rows, nil
 }
 
-func (r *orderPaymentRepo) Update(ctx context.Context, id, orderID uuid.UUID, method orderpayment.Method, amountCents int64, paidAt time.Time, deviceID *uuid.UUID) (*ent.OrderPayment, error) {
+func (r *orderPaymentRepo) Update(ctx context.Context, id, orderID string, method orderpayment.Method, amountCents int64, paidAt time.Time, deviceID *string) (*ent.OrderPayment, error) {
 	builder := r.ec(ctx).OrderPayment.UpdateOneID(id).
 		SetOrderID(orderID).
 		SetMethod(method).

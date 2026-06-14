@@ -15,9 +15,8 @@ import (
 	"backend/internal/generated/ent"
 	"backend/internal/generated/ent/admininvite"
 	"backend/internal/generated/ent/user"
+	nanoid "backend/internal/id"
 	"backend/internal/repository"
-
-	"github.com/google/uuid"
 )
 
 const (
@@ -305,7 +304,9 @@ func hashToken(token string) string {
 	return hex.EncodeToString(h[:])
 }
 
-// parseUUID parses a string UUID, returning an error if invalid.
-func parseUUID(s string) (uuid.UUID, error) {
-	return uuid.Parse(s)
+func parseUUID(s string) (string, error) {
+	if !nanoid.Valid(s) {
+		return "", fmt.Errorf("invalid id")
+	}
+	return s, nil
 }

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/google/uuid"
+	nanoid "backend/internal/id"
 )
 
 func (h *Handlers) StreamInventory(w http.ResponseWriter, r *http.Request) {
@@ -23,7 +23,7 @@ func (h *Handlers) StreamInventory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ids := make([]uuid.UUID, len(products))
+	ids := make([]string, len(products))
 	for i, p := range products {
 		ids[i] = p.ID
 	}
@@ -37,14 +37,14 @@ func (h *Handlers) StreamInventory(w http.ResponseWriter, r *http.Request) {
 
 	snapshot := make(map[string]int, len(stocks))
 	for id, stock := range stocks {
-		snapshot[id.String()] = stock
+		snapshot[id] = stock
 	}
 
 	data, _ := json.Marshal(snapshot)
 	_, _ = w.Write(append(append([]byte("event: inventory-snapshot\ndata: "), data...), '\n', '\n'))
 	_ = rc.Flush()
 
-	subID := uuid.New().String()
+	subID := nanoid.New()
 	ch := h.inventoryHub.Subscribe(subID)
 	defer h.inventoryHub.Unsubscribe(subID)
 

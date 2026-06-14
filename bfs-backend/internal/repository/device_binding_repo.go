@@ -8,16 +8,14 @@ import (
 
 	"backend/internal/generated/ent"
 	"backend/internal/generated/ent/devicebinding"
-
-	"github.com/google/uuid"
 )
 
 type DeviceBindingRepository interface {
-	GetByID(ctx context.Context, id uuid.UUID) (*ent.DeviceBinding, error)
+	GetByID(ctx context.Context, id string) (*ent.DeviceBinding, error)
 	GetByTokenHash(ctx context.Context, tokenHash string) (*ent.DeviceBinding, error)
-	Create(ctx context.Context, deviceType devicebinding.DeviceType, tokenHash, createdByUserID string, name *string, deviceID, stationID *uuid.UUID) (*ent.DeviceBinding, error)
-	UpdateLastSeen(ctx context.Context, id uuid.UUID) error
-	Revoke(ctx context.Context, id uuid.UUID) error
+	Create(ctx context.Context, deviceType devicebinding.DeviceType, tokenHash, createdByUserID string, name *string, deviceID, stationID *string) (*ent.DeviceBinding, error)
+	UpdateLastSeen(ctx context.Context, id string) error
+	Revoke(ctx context.Context, id string) error
 	ListActive(ctx context.Context) ([]*ent.DeviceBinding, error)
 	ListByType(ctx context.Context, deviceType devicebinding.DeviceType) ([]*ent.DeviceBinding, error)
 }
@@ -34,7 +32,7 @@ func (r *deviceBindingRepo) ec(ctx context.Context) *ent.Client {
 	return ClientFromContext(ctx, r.client)
 }
 
-func (r *deviceBindingRepo) GetByID(ctx context.Context, id uuid.UUID) (*ent.DeviceBinding, error) {
+func (r *deviceBindingRepo) GetByID(ctx context.Context, id string) (*ent.DeviceBinding, error) {
 	e, err := r.ec(ctx).DeviceBinding.Get(ctx, id)
 	if err != nil {
 		return nil, translateError(err)
@@ -52,7 +50,7 @@ func (r *deviceBindingRepo) GetByTokenHash(ctx context.Context, tokenHash string
 	return e, nil
 }
 
-func (r *deviceBindingRepo) Create(ctx context.Context, deviceType devicebinding.DeviceType, tokenHash, createdByUserID string, name *string, deviceID, stationID *uuid.UUID) (*ent.DeviceBinding, error) {
+func (r *deviceBindingRepo) Create(ctx context.Context, deviceType devicebinding.DeviceType, tokenHash, createdByUserID string, name *string, deviceID, stationID *string) (*ent.DeviceBinding, error) {
 	builder := r.ec(ctx).DeviceBinding.Create().
 		SetDeviceType(deviceType).
 		SetTokenHash(tokenHash).
@@ -76,7 +74,7 @@ func (r *deviceBindingRepo) Create(ctx context.Context, deviceType devicebinding
 	return created, nil
 }
 
-func (r *deviceBindingRepo) UpdateLastSeen(ctx context.Context, id uuid.UUID) error {
+func (r *deviceBindingRepo) UpdateLastSeen(ctx context.Context, id string) error {
 	n, err := r.ec(ctx).DeviceBinding.Update().
 		Where(devicebinding.IDEQ(id)).
 		SetLastSeenAt(time.Now().UTC()).
@@ -90,7 +88,7 @@ func (r *deviceBindingRepo) UpdateLastSeen(ctx context.Context, id uuid.UUID) er
 	return nil
 }
 
-func (r *deviceBindingRepo) Revoke(ctx context.Context, id uuid.UUID) error {
+func (r *deviceBindingRepo) Revoke(ctx context.Context, id string) error {
 	now := time.Now().UTC()
 	n, err := r.ec(ctx).DeviceBinding.Update().
 		Where(devicebinding.IDEQ(id), devicebinding.RevokedAtIsNil()).

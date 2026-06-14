@@ -4,17 +4,15 @@ import (
 	"context"
 
 	"backend/internal/generated/ent"
-
-	"github.com/google/uuid"
 )
 
 type MenuSlotOptionRepository interface {
-	Create(ctx context.Context, menuSlotID, optionProductID uuid.UUID) (*ent.MenuSlotOption, error)
-	CreateBatch(ctx context.Context, menuSlotID uuid.UUID, optionProductIDs []uuid.UUID) ([]*ent.MenuSlotOption, error)
-	GetByMenuSlotID(ctx context.Context, menuSlotID uuid.UUID) ([]*ent.MenuSlotOption, error)
-	Delete(ctx context.Context, menuSlotID, optionProductID uuid.UUID) error
-	DeleteByMenuSlotID(ctx context.Context, menuSlotID uuid.UUID) error
-	CountByOptionProductID(ctx context.Context, optionProductID uuid.UUID) (int64, error)
+	Create(ctx context.Context, menuSlotID, optionProductID string) (*ent.MenuSlotOption, error)
+	CreateBatch(ctx context.Context, menuSlotID string, optionProductIDs []string) ([]*ent.MenuSlotOption, error)
+	GetByMenuSlotID(ctx context.Context, menuSlotID string) ([]*ent.MenuSlotOption, error)
+	Delete(ctx context.Context, menuSlotID, optionProductID string) error
+	DeleteByMenuSlotID(ctx context.Context, menuSlotID string) error
+	CountByOptionProductID(ctx context.Context, optionProductID string) (int64, error)
 }
 
 type menuSlotOptionRepo struct {
@@ -29,7 +27,7 @@ func (r *menuSlotOptionRepo) ec(ctx context.Context) *ent.Client {
 	return ClientFromContext(ctx, r.client)
 }
 
-func (r *menuSlotOptionRepo) Create(ctx context.Context, menuSlotID, optionProductID uuid.UUID) (*ent.MenuSlotOption, error) {
+func (r *menuSlotOptionRepo) Create(ctx context.Context, menuSlotID, optionProductID string) (*ent.MenuSlotOption, error) {
 	created, err := r.ec(ctx).MenuSlotOption.Create().
 		SetMenuSlotID(menuSlotID).
 		SetOptionProductID(optionProductID).
@@ -40,7 +38,7 @@ func (r *menuSlotOptionRepo) Create(ctx context.Context, menuSlotID, optionProdu
 	return created, nil
 }
 
-func (r *menuSlotOptionRepo) CreateBatch(ctx context.Context, menuSlotID uuid.UUID, optionProductIDs []uuid.UUID) ([]*ent.MenuSlotOption, error) {
+func (r *menuSlotOptionRepo) CreateBatch(ctx context.Context, menuSlotID string, optionProductIDs []string) ([]*ent.MenuSlotOption, error) {
 	if len(optionProductIDs) == 0 {
 		return nil, nil
 	}
@@ -57,7 +55,7 @@ func (r *menuSlotOptionRepo) CreateBatch(ctx context.Context, menuSlotID uuid.UU
 	return created, nil
 }
 
-func (r *menuSlotOptionRepo) GetByMenuSlotID(ctx context.Context, menuSlotID uuid.UUID) ([]*ent.MenuSlotOption, error) {
+func (r *menuSlotOptionRepo) GetByMenuSlotID(ctx context.Context, menuSlotID string) ([]*ent.MenuSlotOption, error) {
 	rows, err := r.ec(ctx).MenuSlotOption.Query().
 		Where(entMenuSlotOptionMenuSlotID(menuSlotID)).
 		WithOptionProduct().
@@ -68,7 +66,7 @@ func (r *menuSlotOptionRepo) GetByMenuSlotID(ctx context.Context, menuSlotID uui
 	return rows, nil
 }
 
-func (r *menuSlotOptionRepo) Delete(ctx context.Context, menuSlotID, optionProductID uuid.UUID) error {
+func (r *menuSlotOptionRepo) Delete(ctx context.Context, menuSlotID, optionProductID string) error {
 	_, err := r.ec(ctx).MenuSlotOption.Delete().
 		Where(
 			entMenuSlotOptionMenuSlotID(menuSlotID),
@@ -78,14 +76,14 @@ func (r *menuSlotOptionRepo) Delete(ctx context.Context, menuSlotID, optionProdu
 	return translateError(err)
 }
 
-func (r *menuSlotOptionRepo) DeleteByMenuSlotID(ctx context.Context, menuSlotID uuid.UUID) error {
+func (r *menuSlotOptionRepo) DeleteByMenuSlotID(ctx context.Context, menuSlotID string) error {
 	_, err := r.ec(ctx).MenuSlotOption.Delete().
 		Where(entMenuSlotOptionMenuSlotID(menuSlotID)).
 		Exec(ctx)
 	return translateError(err)
 }
 
-func (r *menuSlotOptionRepo) CountByOptionProductID(ctx context.Context, optionProductID uuid.UUID) (int64, error) {
+func (r *menuSlotOptionRepo) CountByOptionProductID(ctx context.Context, optionProductID string) (int64, error) {
 	count, err := r.ec(ctx).MenuSlotOption.Query().
 		Where(entMenuSlotOptionProductID(optionProductID)).
 		Count(ctx)
