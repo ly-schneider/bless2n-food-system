@@ -304,9 +304,11 @@ func hashToken(token string) string {
 	return hex.EncodeToString(h[:])
 }
 
-func parseUUID(s string) (string, error) {
+func parseID(s string) (string, error) {
 	if !nanoid.Valid(s) {
 		return "", fmt.Errorf("invalid id")
 	}
 	return s, nil
 }
+
+func parseUUID(s string) (string, error) { return parseID(s) }
