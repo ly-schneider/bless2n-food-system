@@ -22,9 +22,11 @@ func (MenuSlotOption) Annotations() []schema.Annotation {
 func (MenuSlotOption) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("menu_slot_id").
-			MaxLen(36),
+			MaxLen(36).
+			NotEmpty(),
 		field.String("option_product_id").
-			MaxLen(36),
+			MaxLen(36).
+			NotEmpty(),
 	}
 }
 

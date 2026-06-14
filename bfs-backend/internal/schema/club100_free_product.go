@@ -23,7 +23,8 @@ func (Club100FreeProduct) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("settings_id").MaxLen(50),
 		field.String("product_id").
-			MaxLen(36),
+			MaxLen(36).
+			NotEmpty(),
 	}
 }
 

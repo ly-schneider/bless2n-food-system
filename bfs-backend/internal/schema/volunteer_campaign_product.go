@@ -22,9 +22,11 @@ func (VolunteerCampaignProduct) Annotations() []schema.Annotation {
 func (VolunteerCampaignProduct) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("campaign_id").
-			MaxLen(36),
+			MaxLen(36).
+			NotEmpty(),
 		field.String("product_id").
-			MaxLen(36),
+			MaxLen(36).
+			NotEmpty(),
 		field.Int("quantity").
 			Default(1),
 	}

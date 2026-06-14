@@ -22,7 +22,8 @@ func (MenuSlot) Fields() []ent.Field {
 	return []ent.Field{
 		nanoidPK(),
 		field.String("menu_product_id").
-			MaxLen(36),
+			MaxLen(36).
+			NotEmpty(),
 		field.String("name").
 			MaxLen(20).
 			NotEmpty(),
