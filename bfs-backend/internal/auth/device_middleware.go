@@ -8,7 +8,6 @@ import (
 	"backend/internal/repository"
 	"backend/internal/trace"
 
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -84,7 +83,7 @@ func (m *DeviceAuthMiddleware) RequireDevice(deviceType DeviceType) func(http.Ha
 				trace.Err(spanCtx, err)
 				finish()
 				m.logger.Debug("device session invalid or expired",
-					zap.String("deviceID", binding.ID.String()),
+					zap.String("deviceID", binding.ID),
 					zap.Error(err),
 				)
 				w.Header().Set("WWW-Authenticate", `Bearer realm="api"`)
@@ -100,14 +99,14 @@ func (m *DeviceAuthMiddleware) RequireDevice(deviceType DeviceType) func(http.Ha
 				}
 			}
 
-			trace.Data(spanCtx, "device.id", binding.ID.String())
+			trace.Data(spanCtx, "device.id", binding.ID)
 			trace.Data(spanCtx, "user.id", session.UserID)
 			finish()
 
 			if debouncer, ok := m.bindingRepo.(repository.DebouncedLastSeenWriter); ok {
 				debouncer.UpdateLastSeenDebounced(binding.ID, m.logger)
 			} else {
-				go func(id uuid.UUID) {
+				go func(id string) {
 					bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 					defer cancel()
 					if err := m.bindingRepo.UpdateLastSeen(bgCtx, id); err != nil {

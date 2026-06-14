@@ -5,7 +5,6 @@ Station:
   properties:
     id:
       type: string
-      format: uuid
     name:
       type: string
       maxLength: 20
@@ -40,10 +39,8 @@ StationProduct:
   properties:
     deviceId:
       type: string
-      format: uuid
     productId:
       type: string
-      format: uuid
     name:
       type: string
     priceCents:
@@ -85,7 +82,6 @@ StationProductAssignment:
       type: array
       items:
         type: string
-        format: uuid
 
 QRVerifyResult:
   type: object
@@ -95,7 +91,6 @@ QRVerifyResult:
       type: boolean
     orderId:
       type: string
-      format: uuid
     items:
       type: array
       items:
@@ -103,7 +98,6 @@ QRVerifyResult:
         properties:
           id:
             type: string
-            format: uuid
           title:
             type: string
           quantity:
@@ -118,7 +112,6 @@ RedemptionCreate:
   properties:
     orderId:
       type: string
-      format: uuid
 
 RedemptionResult:
   type: object
@@ -137,7 +130,6 @@ RedemptionResult:
         properties:
           id:
             type: string
-            format: uuid
           title:
             type: string
           quantity:

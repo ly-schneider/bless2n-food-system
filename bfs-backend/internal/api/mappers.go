@@ -49,7 +49,7 @@ func toAPICategories(rows []*ent.Category) []generated.Category {
 
 func toAPICategorySummary(e *ent.Category) generated.CategorySummary {
 	return generated.CategorySummary{
-		Id:       ptr(openapi_types.UUID(e.ID)),
+		Id:       ptr(e.ID),
 		Name:     ptr(e.Name),
 		Position: ptr(e.Position),
 	}
@@ -68,7 +68,7 @@ func toAPIProduct(e *ent.Product) generated.Product {
 		Image:       e.Image,
 		Description: e.Description,
 		PriceCents:  e.PriceCents,
-		JetonId:     (*openapi_types.UUID)(e.JetonID),
+		JetonId:     (*string)(e.JetonID),
 		IsActive:    e.IsActive,
 		CreatedAt:   ptr(e.CreatedAt),
 		UpdatedAt:   ptr(e.UpdatedAt),
@@ -130,7 +130,7 @@ func toAPIJetons(rows []*ent.Jeton) []generated.Jeton {
 
 func toAPIJetonSummary(e *ent.Jeton) generated.JetonSummary {
 	return generated.JetonSummary{
-		Id:    ptr(openapi_types.UUID(e.ID)),
+		Id:    ptr(e.ID),
 		Name:  ptr(e.Name),
 		Color: ptr(e.Color),
 	}
@@ -193,8 +193,8 @@ func toAPIOrderLine(e *ent.OrderLine) generated.OrderLine {
 		Title:          e.Title,
 		Quantity:       e.Quantity,
 		UnitPriceCents: e.UnitPriceCents,
-		ParentLineId:   (*openapi_types.UUID)(e.ParentLineID),
-		MenuSlotId:     (*openapi_types.UUID)(e.MenuSlotID),
+		ParentLineId:   (*string)(e.ParentLineID),
+		MenuSlotId:     (*string)(e.MenuSlotID),
 		MenuSlotName:   e.MenuSlotName,
 	}
 
@@ -240,7 +240,7 @@ func toAPIOrderLineRedemption(e *ent.OrderLineRedemption) generated.OrderLineRed
 func toAPIOrderPaymentSummary(e *ent.OrderPayment) generated.OrderPaymentSummary {
 	method := generated.OrderPaymentSummaryMethod(e.Method)
 	return generated.OrderPaymentSummary{
-		Id:                ptr(openapi_types.UUID(e.ID)),
+		Id:                ptr(e.ID),
 		Method:            &method,
 		AmountCents:       ptr(e.AmountCents),
 		PaidAt:            ptr(e.PaidAt),
@@ -381,7 +381,7 @@ func toAPIMenuSlot(e *ent.MenuSlot) generated.MenuSlot {
 
 func toAPIMenuSlotSummary(e *ent.MenuSlot) generated.MenuSlotSummary {
 	ms := generated.MenuSlotSummary{
-		Id:       ptr(openapi_types.UUID(e.ID)),
+		Id:       ptr(e.ID),
 		Name:     ptr(e.Name),
 		Sequence: ptr(e.Sequence),
 	}
@@ -394,12 +394,12 @@ func toAPIMenuSlotSummary(e *ent.MenuSlot) generated.MenuSlotSummary {
 			Jeton       *generated.JetonSummary `json:"jeton,omitempty"`
 			Name        *string                 `json:"name,omitempty"`
 			PriceCents  *int64                  `json:"priceCents,omitempty"`
-			ProductId   *openapi_types.UUID     `json:"productId,omitempty"`
+			ProductId   *string                 `json:"productId,omitempty"`
 		}
 		optSummaries := make([]optEntry, 0, len(opts))
 		for _, o := range opts {
 			entry := optEntry{
-				ProductId: ptr(openapi_types.UUID(o.OptionProductID)),
+				ProductId: ptr(o.OptionProductID),
 			}
 			if o.Edges.OptionProduct != nil {
 				entry.Name = ptr(o.Edges.OptionProduct.Name)
@@ -433,12 +433,12 @@ func toAPIMenuSlotOption(e *ent.MenuSlotOption) generated.MenuSlotOption {
 	if e.Edges.OptionProduct != nil {
 		p := e.Edges.OptionProduct
 		mso.OptionProduct = &struct {
-			Id         *openapi_types.UUID `json:"id,omitempty"`
-			Image      *string             `json:"image"`
-			Name       *string             `json:"name,omitempty"`
-			PriceCents *int64              `json:"priceCents,omitempty"`
+			Id         *string `json:"id,omitempty"`
+			Image      *string `json:"image"`
+			Name       *string `json:"name,omitempty"`
+			PriceCents *int64  `json:"priceCents,omitempty"`
 		}{
-			Id:         ptr(openapi_types.UUID(p.ID)),
+			Id:         ptr(p.ID),
 			Image:      p.Image,
 			Name:       ptr(p.Name),
 			PriceCents: ptr(p.PriceCents),
@@ -470,8 +470,8 @@ func toAPIStation(e *ent.Device) generated.Station {
 		products := make([]generated.StationProduct, 0, len(dps))
 		for _, dp := range dps {
 			sp := generated.StationProduct{
-				DeviceId:  ptr(openapi_types.UUID(dp.DeviceID)),
-				ProductId: ptr(openapi_types.UUID(dp.ProductID)),
+				DeviceId:  ptr(dp.DeviceID),
+				ProductId: ptr(dp.ProductID),
 			}
 			// If the Product edge is loaded on the DeviceProduct, include details.
 			if dp.Edges.Product != nil {
@@ -501,20 +501,20 @@ func toAPIStations(rows []*ent.Device) []generated.Station {
 func toAPIInventoryLedgerEntry(e *ent.InventoryLedger) generated.InventoryLedgerEntry {
 	entry := generated.InventoryLedgerEntry{
 		Id:        e.ID,
-		ProductId: openapi_types.UUID(e.ProductID),
+		ProductId: e.ProductID,
 		Delta:     e.Delta,
 		Reason:    generated.InventoryReason(e.Reason),
 		CreatedAt: e.CreatedAt,
 		CreatedBy: e.CreatedBy,
 	}
 	if e.OrderID != nil {
-		entry.OrderId = (*openapi_types.UUID)(e.OrderID)
+		entry.OrderId = (*string)(e.OrderID)
 	}
 	if e.OrderLineID != nil {
-		entry.OrderLineId = (*openapi_types.UUID)(e.OrderLineID)
+		entry.OrderLineId = (*string)(e.OrderLineID)
 	}
 	if e.DeviceID != nil {
-		entry.DeviceId = (*openapi_types.UUID)(e.DeviceID)
+		entry.DeviceId = (*string)(e.DeviceID)
 	}
 	return entry
 }

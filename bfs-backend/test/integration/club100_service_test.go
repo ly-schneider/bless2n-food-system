@@ -9,9 +9,9 @@ import (
 	"backend/internal/repository"
 	"backend/internal/service"
 
+	nanoid "backend/internal/id"
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,10 +50,10 @@ func TestClub100Service_GetPeopleWithRedemptions_NoNPlusOne(t *testing.T) {
 	}
 
 	for _, p := range people {
-		_, err := repos.Club100Redemption.Create(ctx, p.ID, p.FirstName+" "+p.LastName, uuid.New(), 1)
+		_, err := repos.Club100Redemption.Create(ctx, p.ID, p.FirstName+" "+p.LastName, nanoid.New(), 1)
 		require.NoError(t, err)
 	}
-	_, err := repos.Club100Redemption.Create(ctx, "p1", "Alice A", uuid.New(), 1)
+	_, err := repos.Club100Redemption.Create(ctx, "p1", "Alice A", nanoid.New(), 1)
 	require.NoError(t, err)
 
 	counter := &countingDriver{Driver: entsql.OpenDB(dialect.Postgres, tdb.DB)}

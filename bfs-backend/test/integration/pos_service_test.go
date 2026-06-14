@@ -11,7 +11,6 @@ import (
 	entOrder "backend/internal/generated/ent/order"
 	entProduct "backend/internal/generated/ent/product"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -104,13 +103,13 @@ func TestPOSService_CreateOrder(t *testing.T) {
 
 	t.Run("CreateOrder creates order with items", func(t *testing.T) {
 		items := []service.POSCheckoutItem{
-			{ProductID: cola.ID.String(), Quantity: 2},
-			{ProductID: sprite.ID.String(), Quantity: 1},
+			{ProductID: cola.ID, Quantity: 2},
+			{ProductID: sprite.ID, Quantity: 1},
 		}
 
 		orderID, err := svc.CreateOrder(ctx, items, nil)
 		require.NoError(t, err)
-		require.NotEqual(t, uuid.Nil, orderID)
+		require.NotEqual(t, "", orderID)
 
 		// Verify order was created
 		order, err := repos.Order.GetByID(ctx, orderID)
@@ -122,7 +121,7 @@ func TestPOSService_CreateOrder(t *testing.T) {
 
 	t.Run("CreateOrder with customer email", func(t *testing.T) {
 		items := []service.POSCheckoutItem{
-			{ProductID: cola.ID.String(), Quantity: 1},
+			{ProductID: cola.ID, Quantity: 1},
 		}
 		email := "customer@test.com"
 
@@ -202,7 +201,7 @@ func TestPOSService_PayCash(t *testing.T) {
 	})
 
 	t.Run("PayCash fails with invalid order ID", func(t *testing.T) {
-		err := svc.PayCash(ctx, uuid.Nil, &device.ID)
+		err := svc.PayCash(ctx, "", &device.ID)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "invalid order id")
 	})

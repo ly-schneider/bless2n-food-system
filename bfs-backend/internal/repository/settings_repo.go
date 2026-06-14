@@ -6,15 +6,13 @@ import (
 	"backend/internal/generated/ent"
 	"backend/internal/generated/ent/club100freeproduct"
 	"backend/internal/generated/ent/settings"
-
-	"github.com/google/uuid"
 )
 
 type SettingsRepository interface {
 	Get(ctx context.Context) (*ent.Settings, error)
 	GetWithProducts(ctx context.Context) (*ent.Settings, error)
 	Upsert(ctx context.Context, mode settings.PosMode) error
-	UpdateClub100Settings(ctx context.Context, freeProductIDs []uuid.UUID, maxRedemptions int) error
+	UpdateClub100Settings(ctx context.Context, freeProductIDs []string, maxRedemptions int) error
 	IsSystemEnabled(ctx context.Context) (bool, error)
 	SetSystemEnabled(ctx context.Context, enabled bool) error
 }
@@ -76,7 +74,7 @@ func (r *settingsRepo) Upsert(ctx context.Context, mode settings.PosMode) error 
 	return translateError(err)
 }
 
-func (r *settingsRepo) UpdateClub100Settings(ctx context.Context, freeProductIDs []uuid.UUID, maxRedemptions int) error {
+func (r *settingsRepo) UpdateClub100Settings(ctx context.Context, freeProductIDs []string, maxRedemptions int) error {
 	client := r.ec(ctx)
 
 	err := client.Settings.Create().

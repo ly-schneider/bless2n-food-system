@@ -8,27 +8,25 @@ import (
 
 	"backend/internal/generated/ent"
 	"backend/internal/generated/ent/device"
-
-	"github.com/google/uuid"
 )
 
 type DeviceRepository interface {
 	Create(ctx context.Context, name, deviceKey string, deviceType device.Type, status device.Status, model *string, os *string, decidedBy *string, decidedAt, expiresAt *time.Time, pendingSessionToken, pairingCode *string, pairingCodeExpiresAt *time.Time) (*ent.Device, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*ent.Device, error)
+	GetByID(ctx context.Context, id string) (*ent.Device, error)
 	GetByDeviceKey(ctx context.Context, deviceKey string) (*ent.Device, error)
 	GetAll(ctx context.Context) ([]*ent.Device, error)
 	GetByType(ctx context.Context, deviceType device.Type) ([]*ent.Device, error)
 	GetByStatus(ctx context.Context, status device.Status) ([]*ent.Device, error)
 	GetApproved(ctx context.Context) ([]*ent.Device, error)
-	Update(ctx context.Context, id uuid.UUID, name, deviceKey string, deviceType device.Type, status device.Status, model *string, os *string, decidedBy *string, decidedAt, expiresAt *time.Time, pendingSessionToken, pairingCode *string, pairingCodeExpiresAt *time.Time) (*ent.Device, error)
-	Delete(ctx context.Context, id uuid.UUID) error
+	Update(ctx context.Context, id string, name, deviceKey string, deviceType device.Type, status device.Status, model *string, os *string, decidedBy *string, decidedAt, expiresAt *time.Time, pendingSessionToken, pairingCode *string, pairingCodeExpiresAt *time.Time) (*ent.Device, error)
+	Delete(ctx context.Context, id string) error
 	UpsertPendingByDeviceKey(ctx context.Context, name, deviceModel, os, deviceKey string, deviceType device.Type) (*ent.Device, error)
-	ListProductIDsByDevice(ctx context.Context, deviceID uuid.UUID) ([]uuid.UUID, error)
-	SetPendingSessionToken(ctx context.Context, deviceID uuid.UUID, token string) error
-	ClearPendingSessionToken(ctx context.Context, deviceID uuid.UUID) error
+	ListProductIDsByDevice(ctx context.Context, deviceID string) ([]string, error)
+	SetPendingSessionToken(ctx context.Context, deviceID string, token string) error
+	ClearPendingSessionToken(ctx context.Context, deviceID string) error
 	GeneratePairingCode(ctx context.Context, name, deviceModel, os, deviceKey string, deviceType device.Type) (*ent.Device, error)
 	GetByPairingCode(ctx context.Context, code string) (*ent.Device, error)
-	ClearPairingCode(ctx context.Context, deviceID uuid.UUID) error
+	ClearPairingCode(ctx context.Context, deviceID string) error
 }
 
 type deviceRepo struct {
@@ -80,7 +78,7 @@ func (r *deviceRepo) Create(ctx context.Context, name, deviceKey string, deviceT
 	return created, nil
 }
 
-func (r *deviceRepo) GetByID(ctx context.Context, id uuid.UUID) (*ent.Device, error) {
+func (r *deviceRepo) GetByID(ctx context.Context, id string) (*ent.Device, error) {
 	e, err := r.ec(ctx).Device.Get(ctx, id)
 	if err != nil {
 		return nil, translateError(err)
@@ -141,7 +139,7 @@ func (r *deviceRepo) GetApproved(ctx context.Context) ([]*ent.Device, error) {
 	return rows, nil
 }
 
-func (r *deviceRepo) Update(ctx context.Context, id uuid.UUID, name, deviceKey string, deviceType device.Type, status device.Status, deviceModel *string, os *string, decidedBy *string, decidedAt, expiresAt *time.Time, pendingSessionToken, pairingCode *string, pairingCodeExpiresAt *time.Time) (*ent.Device, error) {
+func (r *deviceRepo) Update(ctx context.Context, id string, name, deviceKey string, deviceType device.Type, status device.Status, deviceModel *string, os *string, decidedBy *string, decidedAt, expiresAt *time.Time, pendingSessionToken, pairingCode *string, pairingCodeExpiresAt *time.Time) (*ent.Device, error) {
 	builder := r.ec(ctx).Device.UpdateOneID(id).
 		SetName(name).
 		SetDeviceKey(deviceKey).
@@ -194,7 +192,7 @@ func (r *deviceRepo) Update(ctx context.Context, id uuid.UUID, name, deviceKey s
 	return updated, nil
 }
 
-func (r *deviceRepo) Delete(ctx context.Context, id uuid.UUID) error {
+func (r *deviceRepo) Delete(ctx context.Context, id string) error {
 	return translateError(r.ec(ctx).Device.DeleteOneID(id).Exec(ctx))
 }
 
@@ -250,21 +248,21 @@ func (r *deviceRepo) UpsertPendingByDeviceKey(ctx context.Context, name, deviceM
 	return created, nil
 }
 
-func (r *deviceRepo) ListProductIDsByDevice(ctx context.Context, deviceID uuid.UUID) ([]uuid.UUID, error) {
+func (r *deviceRepo) ListProductIDsByDevice(ctx context.Context, deviceID string) ([]string, error) {
 	dps, err := r.ec(ctx).DeviceProduct.Query().
 		Where(entDeviceProductDeviceID(deviceID)).
 		All(ctx)
 	if err != nil {
 		return nil, translateError(err)
 	}
-	ids := make([]uuid.UUID, len(dps))
+	ids := make([]string, len(dps))
 	for i, dp := range dps {
 		ids[i] = dp.ProductID
 	}
 	return ids, nil
 }
 
-func (r *deviceRepo) SetPendingSessionToken(ctx context.Context, deviceID uuid.UUID, token string) error {
+func (r *deviceRepo) SetPendingSessionToken(ctx context.Context, deviceID string, token string) error {
 	n, err := r.ec(ctx).Device.Update().
 		Where(device.ID(deviceID)).
 		SetPendingSessionToken(token).
@@ -278,7 +276,7 @@ func (r *deviceRepo) SetPendingSessionToken(ctx context.Context, deviceID uuid.U
 	return nil
 }
 
-func (r *deviceRepo) ClearPendingSessionToken(ctx context.Context, deviceID uuid.UUID) error {
+func (r *deviceRepo) ClearPendingSessionToken(ctx context.Context, deviceID string) error {
 	n, err := r.ec(ctx).Device.Update().
 		Where(device.ID(deviceID)).
 		ClearPendingSessionToken().
@@ -349,7 +347,7 @@ func (r *deviceRepo) GetByPairingCode(ctx context.Context, code string) (*ent.De
 	return e, nil
 }
 
-func (r *deviceRepo) ClearPairingCode(ctx context.Context, deviceID uuid.UUID) error {
+func (r *deviceRepo) ClearPairingCode(ctx context.Context, deviceID string) error {
 	_, err := r.ec(ctx).Device.UpdateOneID(deviceID).
 		ClearPairingCode().
 		ClearPairingCodeExpiresAt().

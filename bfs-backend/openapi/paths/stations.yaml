@@ -74,7 +74,7 @@ redeem:
           schema:
             $ref: "../schemas/stations.yaml#/RedemptionCreate"
           example:
-            orderId: "019412ab-0000-7000-8000-000000000002"
+            orderId: "spec______11"
     responses:
       "201":
         description: Items redeemed
@@ -86,11 +86,11 @@ redeem:
               matched: 3
               redeemed: 3
               items:
-                - id: "019412ab-0000-7000-8000-000000000050"
+                - id: "spec______22"
                   title: "Bratwurst"
                   quantity: 2
                   redeemedAt: "2025-01-30T14:35:00Z"
-                - id: "019412ab-0000-7000-8000-000000000051"
+                - id: "spec______23"
                   title: "Pommes"
                   quantity: 1
                   redeemedAt: "2025-01-30T14:35:00Z"
@@ -118,7 +118,6 @@ item:
       required: true
       schema:
         type: string
-        format: uuid
 
   get:
     tags: [Stations]
@@ -224,7 +223,6 @@ products:
       required: true
       schema:
         type: string
-        format: uuid
 
   get:
     tags: [Stations]
@@ -264,9 +262,9 @@ products:
             $ref: "../schemas/stations.yaml#/StationProductAssignment"
           example:
             productIds:
-              - "019412ab-0000-7000-8000-000000000001"
-              - "019412ab-0000-7000-8000-000000000002"
-              - "019412ab-0000-7000-8000-000000000003"
+              - "spec_______5"
+              - "spec______11"
+              - "spec______24"
     responses:
       "200":
         description: Products assigned
@@ -300,13 +298,11 @@ product-item:
       required: true
       schema:
         type: string
-        format: uuid
     - name: productId
       in: path
       required: true
       schema:
         type: string
-        format: uuid
 
   post:
     tags: [Stations]

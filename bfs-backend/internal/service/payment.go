@@ -13,12 +13,12 @@ import (
 	"backend/internal/generated/ent/orderline"
 	"backend/internal/generated/ent/orderpayment"
 	"backend/internal/generated/ent/product"
+	nanoid "backend/internal/id"
 	"backend/internal/inventory"
 	"backend/internal/payrexx"
 	"backend/internal/repository"
 	"backend/internal/trace"
 
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
@@ -31,17 +31,17 @@ type PaymentService interface {
 	// CreatePayrexxGateway creates a Payrexx payment gateway for the prepared order.
 	CreatePayrexxGateway(ctx context.Context, prep *CheckoutPreparation, successURL, failedURL, cancelURL string) (*payrexx.Gateway, error)
 	// MarkOrderPaidByPayrexx marks an order as paid based on Payrexx webhook data.
-	MarkOrderPaidByPayrexx(ctx context.Context, orderID uuid.UUID, gatewayID, transactionID int, contactEmail *string) error
+	MarkOrderPaidByPayrexx(ctx context.Context, orderID string, gatewayID, transactionID int, contactEmail *string) error
 	// MarkOrderPaidDev marks an order as paid in dev mode (no Payrexx gateway/transaction IDs).
-	MarkOrderPaidDev(ctx context.Context, orderID uuid.UUID) error
+	MarkOrderPaidDev(ctx context.Context, orderID string) error
 	// FindPendingOrderByAttemptID finds a pending order by payment attempt ID.
 	FindPendingOrderByAttemptID(ctx context.Context, attemptID string) (*ent.Order, error)
 	// SetOrderAttemptID sets the payment attempt ID on an order.
-	SetOrderAttemptID(ctx context.Context, orderID uuid.UUID, attemptID string) error
+	SetOrderAttemptID(ctx context.Context, orderID string, attemptID string) error
 	// CleanupPendingOrderByID deletes a pending order and releases inventory.
-	CleanupPendingOrderByID(ctx context.Context, orderID uuid.UUID) error
+	CleanupPendingOrderByID(ctx context.Context, orderID string) error
 	// CleanupOtherPendingOrdersByAttemptID deletes other pending orders with the same attempt ID.
-	CleanupOtherPendingOrdersByAttemptID(ctx context.Context, attemptID string, keepOrderID uuid.UUID) (int64, error)
+	CleanupOtherPendingOrdersByAttemptID(ctx context.Context, attemptID string, keepOrderID string) (int64, error)
 	// GetPayrexxGateway retrieves a Payrexx gateway by ID.
 	GetPayrexxGateway(ctx context.Context, gatewayID int) (*payrexx.Gateway, error)
 }
@@ -62,7 +62,7 @@ type CheckoutItemInput struct {
 }
 
 type CheckoutPreparation struct {
-	OrderID       uuid.UUID
+	OrderID       string
 	TotalCents    int64
 	LineItems     []payrexx.InvoiceItem
 	CustomerEmail *string
@@ -134,27 +134,25 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 	}
 
 	// Collect all product IDs
-	productIDSet := make(map[uuid.UUID]struct{})
+	productIDSet := make(map[string]struct{})
 	for _, it := range in.Items {
-		pid, err := uuid.Parse(it.ProductID)
-		if err != nil {
+		if !nanoid.Valid(it.ProductID) {
 			return nil, fmt.Errorf("invalid productId: %s", it.ProductID)
 		}
-		productIDSet[pid] = struct{}{}
+		productIDSet[it.ProductID] = struct{}{}
 		// Also collect configured child products
 		for _, childID := range it.Configuration {
 			if childID == "" {
 				continue
 			}
-			cid, err := uuid.Parse(childID)
-			if err != nil {
+			if !nanoid.Valid(childID) {
 				return nil, fmt.Errorf("invalid configuration productId: %s", childID)
 			}
-			productIDSet[cid] = struct{}{}
+			productIDSet[childID] = struct{}{}
 		}
 	}
 
-	ids := make([]uuid.UUID, 0, len(productIDSet))
+	ids := make([]string, 0, len(productIDSet))
 	for id := range productIDSet {
 		ids = append(ids, id)
 	}
@@ -162,7 +160,7 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 	var (
 		products       []*ent.Product
 		slots          []*ent.MenuSlot
-		preloadedStock map[uuid.UUID]int
+		preloadedStock map[string]int
 	)
 	g, gctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
@@ -193,16 +191,16 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 		return nil, err
 	}
 
-	productMap := make(map[uuid.UUID]*ent.Product, len(products))
+	productMap := make(map[string]*ent.Product, len(products))
 	for _, p := range products {
 		productMap[p.ID] = p
 	}
 
-	slotByID := make(map[uuid.UUID]*ent.MenuSlot, len(slots))
-	allowedBySlot := make(map[uuid.UUID]map[uuid.UUID]struct{}, len(slots))
+	slotByID := make(map[string]*ent.MenuSlot, len(slots))
+	allowedBySlot := make(map[string]map[string]struct{}, len(slots))
 	for _, slot := range slots {
 		slotByID[slot.ID] = slot
-		allowed := make(map[uuid.UUID]struct{})
+		allowed := make(map[string]struct{})
 		for _, opt := range slot.Edges.Options {
 			allowed[opt.OptionProductID] = struct{}{}
 		}
@@ -212,7 +210,7 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 	// Calculate total and validate
 	var totalCents int64
 	for _, it := range in.Items {
-		pid, _ := uuid.Parse(it.ProductID)
+		pid := it.ProductID
 		p, ok := productMap[pid]
 		if !ok {
 			return nil, fmt.Errorf("unknown product: %s", it.ProductID)
@@ -229,9 +227,9 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 	}
 
 	// Validate inventory availability
-	requiredQuantities := make(map[uuid.UUID]int)
+	requiredQuantities := make(map[string]int)
 	for _, it := range in.Items {
-		pid, _ := uuid.Parse(it.ProductID)
+		pid := it.ProductID
 		p := productMap[pid]
 		if p.Type == product.TypeSimple {
 			requiredQuantities[pid] += it.Quantity
@@ -240,7 +238,7 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 			if childIDStr == "" {
 				continue
 			}
-			childID, _ := uuid.Parse(childIDStr)
+			childID := childIDStr
 			requiredQuantities[childID] += it.Quantity
 		}
 	}
@@ -272,7 +270,7 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 	var inventoryEntries []repository.InventoryLedgerCreateParams
 
 	for _, it := range in.Items {
-		pid, _ := uuid.Parse(it.ProductID)
+		pid := it.ProductID
 		p := productMap[pid]
 
 		// Determine parent line type
@@ -281,7 +279,7 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 			lt = orderline.LineTypeBundle
 		}
 
-		parentLineID := uuid.Must(uuid.NewV7())
+		parentLineID := nanoid.New()
 		parentLine := repository.OrderLineCreateParams{
 			ID:             &parentLineID,
 			OrderID:        ord.ID,
@@ -309,16 +307,16 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 				if childProdIDStr == "" {
 					continue
 				}
-				slotID, err := uuid.Parse(slotIDStr)
-				if err != nil {
+				slotID := slotIDStr
+				if !nanoid.Valid(slotID) {
 					return nil, fmt.Errorf("invalid menu slot id: %s", slotIDStr)
 				}
 				slot, ok := slotByID[slotID]
 				if !ok || slot.MenuProductID != p.ID {
 					return nil, fmt.Errorf("slot does not belong to product: %s", slotIDStr)
 				}
-				childProdID, err := uuid.Parse(childProdIDStr)
-				if err != nil {
+				childProdID := childProdIDStr
+				if !nanoid.Valid(childProdID) {
 					return nil, fmt.Errorf("invalid configured product id: %s", childProdIDStr)
 				}
 				// Validate allowed
@@ -381,7 +379,7 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 		}
 	}
 
-	trace.Data(ctx, "checkout.order_id", ord.ID.String())
+	trace.Data(ctx, "checkout.order_id", ord.ID)
 	trace.Data(ctx, "checkout.total_cents", totalCents)
 	trace.Data(ctx, "checkout.line_count", len(orderLines))
 
@@ -398,7 +396,7 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 func (s *paymentService) CreatePayrexxGateway(ctx context.Context, prep *CheckoutPreparation, successURL, failedURL, cancelURL string) (*payrexx.Gateway, error) {
 	ctx, finish := trace.StartSpan(ctx, "service", "payment.create_gateway")
 	defer finish()
-	trace.Data(ctx, "gateway.order_id", prep.OrderID.String())
+	trace.Data(ctx, "gateway.order_id", prep.OrderID)
 	trace.Data(ctx, "gateway.amount_cents", prep.TotalCents)
 
 	if s.payrexxClient == nil {
@@ -411,7 +409,7 @@ func (s *paymentService) CreatePayrexxGateway(ctx context.Context, prep *Checkou
 	gateway, err := s.payrexxClient.CreateGateway(gatewayCtx, payrexx.CreateGatewayParams{
 		Amount:             int(prep.TotalCents),
 		Currency:           "CHF",
-		ReferenceID:        prep.OrderID.String(),
+		ReferenceID:        prep.OrderID,
 		SuccessRedirectURL: successURL,
 		FailedRedirectURL:  failedURL,
 		CancelRedirectURL:  cancelURL,
@@ -438,10 +436,10 @@ func (s *paymentService) CreatePayrexxGateway(ctx context.Context, prep *Checkou
 	return gateway, nil
 }
 
-func (s *paymentService) MarkOrderPaidByPayrexx(ctx context.Context, orderID uuid.UUID, gatewayID, transactionID int, contactEmail *string) error {
+func (s *paymentService) MarkOrderPaidByPayrexx(ctx context.Context, orderID string, gatewayID, transactionID int, contactEmail *string) error {
 	ctx, finish := trace.StartSpan(ctx, "service", "payment.mark_paid_payrexx")
 	defer finish()
-	trace.Data(ctx, "payment.order_id", orderID.String())
+	trace.Data(ctx, "payment.order_id", orderID)
 	trace.Data(ctx, "payment.gateway_id", gatewayID)
 	trace.Data(ctx, "payment.transaction_id", transactionID)
 
@@ -471,20 +469,20 @@ func (s *paymentService) MarkOrderPaidByPayrexx(ctx context.Context, orderID uui
 	}
 	if email != "" {
 		s.logger.Info("scheduling receipt email",
-			zap.String("orderId", ord.ID.String()),
+			zap.String("orderId", ord.ID),
 			zap.String("to", email),
 		)
 		go s.sendReceipt(ord.ID, email, ord.TotalCents, now, "TWINT")
 	} else {
 		s.logger.Info("no contact email, skipping receipt",
-			zap.String("orderId", ord.ID.String()),
+			zap.String("orderId", ord.ID),
 		)
 	}
 
 	return nil
 }
 
-func (s *paymentService) MarkOrderPaidDev(ctx context.Context, orderID uuid.UUID) error {
+func (s *paymentService) MarkOrderPaidDev(ctx context.Context, orderID string) error {
 	ord, err := s.orderRepo.GetByID(ctx, orderID)
 	if err != nil {
 		return fmt.Errorf("order not found: %w", err)
@@ -504,7 +502,7 @@ func (s *paymentService) MarkOrderPaidDev(ctx context.Context, orderID uuid.UUID
 	}
 	if email != "" {
 		s.logger.Info("scheduling receipt email (dev)",
-			zap.String("orderId", ord.ID.String()),
+			zap.String("orderId", ord.ID),
 			zap.String("to", email),
 		)
 		go s.sendReceipt(ord.ID, email, ord.TotalCents, time.Now(), "TWINT (Dev)")
@@ -520,14 +518,14 @@ func (s *paymentService) FindPendingOrderByAttemptID(ctx context.Context, attemp
 	return s.orderRepo.FindPendingByAttemptID(ctx, attemptID)
 }
 
-func (s *paymentService) SetOrderAttemptID(ctx context.Context, orderID uuid.UUID, attemptID string) error {
+func (s *paymentService) SetOrderAttemptID(ctx context.Context, orderID string, attemptID string) error {
 	return s.orderRepo.SetPaymentAttemptID(ctx, orderID, attemptID)
 }
 
-func (s *paymentService) CleanupPendingOrderByID(ctx context.Context, orderID uuid.UUID) error {
+func (s *paymentService) CleanupPendingOrderByID(ctx context.Context, orderID string) error {
 	ctx, finish := trace.StartSpan(ctx, "service", "payment.cleanup_pending")
 	defer finish()
-	trace.Data(ctx, "cleanup.order_id", orderID.String())
+	trace.Data(ctx, "cleanup.order_id", orderID)
 
 	ord, err := s.orderRepo.GetByID(ctx, orderID)
 	if err != nil {
@@ -570,7 +568,7 @@ func (s *paymentService) CleanupPendingOrderByID(ctx context.Context, orderID uu
 	return err
 }
 
-func (s *paymentService) CleanupOtherPendingOrdersByAttemptID(ctx context.Context, attemptID string, keepOrderID uuid.UUID) (int64, error) {
+func (s *paymentService) CleanupOtherPendingOrdersByAttemptID(ctx context.Context, attemptID string, keepOrderID string) (int64, error) {
 	return s.orderRepo.DeletePendingByAttemptIDExcept(ctx, attemptID, keepOrderID)
 }
 
@@ -581,17 +579,17 @@ func (s *paymentService) GetPayrexxGateway(ctx context.Context, gatewayID int) (
 	return s.payrexxClient.GetGateway(ctx, gatewayID)
 }
 
-func (s *paymentService) sendReceipt(orderID uuid.UUID, to string, totalCents int64, paidAt time.Time, method string) {
+func (s *paymentService) sendReceipt(orderID string, to string, totalCents int64, paidAt time.Time, method string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	lines, err := s.orderLineRepo.GetByOrderID(ctx, orderID)
 	if err != nil {
-		s.logger.Error("receipt: failed to load order lines", zap.Error(err), zap.String("orderId", orderID.String()))
+		s.logger.Error("receipt: failed to load order lines", zap.Error(err), zap.String("orderId", orderID))
 		return
 	}
 
-	childrenByParent := make(map[uuid.UUID][]ReceiptLineItem)
+	childrenByParent := make(map[string][]ReceiptLineItem)
 	var roots []*ent.OrderLine
 	for _, l := range lines {
 		if l.ParentLineID != nil {
@@ -616,11 +614,11 @@ func (s *paymentService) sendReceipt(orderID uuid.UUID, to string, totalCents in
 	}
 
 	baseURL := strings.TrimRight(s.cfg.App.PublicBaseURL, "/")
-	orderURL := baseURL + "/food/orders/" + orderID.String()
+	orderURL := baseURL + "/food/orders/" + orderID
 
 	data := ReceiptEmailData{
 		Brand:      "BlessThun Food",
-		OrderID:    orderID.String(),
+		OrderID:    orderID,
 		OrderURL:   orderURL,
 		OrderDate:  formatOrderDate(paidAt),
 		Items:      items,
@@ -629,7 +627,7 @@ func (s *paymentService) sendReceipt(orderID uuid.UUID, to string, totalCents in
 	}
 
 	if err := s.emailService.SendReceiptEmail(ctx, to, data); err != nil {
-		s.logger.Error("receipt: failed to send", zap.Error(err), zap.String("orderId", orderID.String()), zap.String("to", to))
+		s.logger.Error("receipt: failed to send", zap.Error(err), zap.String("orderId", orderID), zap.String("to", to))
 	}
 }
 
@@ -640,20 +638,20 @@ func safeStr(p *string) string {
 	return *p
 }
 
-func (s *paymentService) publishInventoryUpdates(ctx context.Context, entries []repository.InventoryLedgerCreateParams, preStock map[uuid.UUID]int) {
+func (s *paymentService) publishInventoryUpdates(ctx context.Context, entries []repository.InventoryLedgerCreateParams, preStock map[string]int) {
 	if s.inventoryHub == nil {
 		return
 	}
-	productIDs := make([]uuid.UUID, 0, len(entries))
-	deltaByProduct := make(map[uuid.UUID]int)
+	productIDs := make([]string, 0, len(entries))
+	deltaByProduct := make(map[string]int)
 	for _, entry := range entries {
 		if _, seen := deltaByProduct[entry.ProductID]; !seen {
 			productIDs = append(productIDs, entry.ProductID)
 		}
 		deltaByProduct[entry.ProductID] += entry.Delta
 	}
-	stocks := make(map[uuid.UUID]int, len(productIDs))
-	missing := make([]uuid.UUID, 0)
+	stocks := make(map[string]int, len(productIDs))
+	missing := make([]string, 0)
 	for _, pid := range productIDs {
 		if pre, ok := preStock[pid]; ok {
 			stocks[pid] = pre + deltaByProduct[pid]

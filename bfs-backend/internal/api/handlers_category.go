@@ -6,8 +6,6 @@ import (
 
 	"backend/internal/generated/api/generated"
 	"backend/internal/response"
-
-	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // ListCategories returns all categories.
@@ -47,7 +45,7 @@ func (h *Handlers) CreateCategory(w http.ResponseWriter, r *http.Request) {
 
 // GetCategory returns a single category by ID.
 // (GET /categories/{categoryId})
-func (h *Handlers) GetCategory(w http.ResponseWriter, r *http.Request, categoryId openapi_types.UUID) {
+func (h *Handlers) GetCategory(w http.ResponseWriter, r *http.Request, categoryId string) {
 	cat, err := h.categories.GetByID(r.Context(), categoryId)
 	if err != nil {
 		writeEntError(w, err)
@@ -58,7 +56,7 @@ func (h *Handlers) GetCategory(w http.ResponseWriter, r *http.Request, categoryI
 
 // UpdateCategory partially updates a category.
 // (PATCH /categories/{categoryId})
-func (h *Handlers) UpdateCategory(w http.ResponseWriter, r *http.Request, categoryId openapi_types.UUID) {
+func (h *Handlers) UpdateCategory(w http.ResponseWriter, r *http.Request, categoryId string) {
 	// Fetch current state so we can merge partial updates.
 	existing, err := h.categories.GetByID(r.Context(), categoryId)
 	if err != nil {
@@ -95,7 +93,7 @@ func (h *Handlers) UpdateCategory(w http.ResponseWriter, r *http.Request, catego
 
 // DeleteCategory removes a category.
 // (DELETE /categories/{categoryId})
-func (h *Handlers) DeleteCategory(w http.ResponseWriter, r *http.Request, categoryId openapi_types.UUID) {
+func (h *Handlers) DeleteCategory(w http.ResponseWriter, r *http.Request, categoryId string) {
 	if err := h.categories.Delete(r.Context(), categoryId); err != nil {
 		writeEntError(w, err)
 		return

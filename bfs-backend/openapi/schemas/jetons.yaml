@@ -4,7 +4,6 @@ Jeton:
   properties:
     id:
       type: string
-      format: uuid
     name:
       type: string
       maxLength: 20
@@ -25,7 +24,6 @@ JetonSummary:
   properties:
     id:
       type: string
-      format: uuid
     name:
       type: string
     color:

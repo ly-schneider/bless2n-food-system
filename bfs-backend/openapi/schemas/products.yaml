@@ -11,10 +11,8 @@ Product:
   properties:
     id:
       type: string
-      format: uuid
     categoryId:
       type: string
-      format: uuid
     type:
       $ref: "#/ProductType"
     name:
@@ -35,7 +33,6 @@ Product:
       description: Price in cents (CHF)
     jetonId:
       type: string
-      format: uuid
       nullable: true
     isActive:
       type: boolean
@@ -70,7 +67,6 @@ ProductCreate:
   properties:
     categoryId:
       type: string
-      format: uuid
     type:
       $ref: "#/ProductType"
       default: simple
@@ -88,7 +84,6 @@ ProductCreate:
       minimum: 0
     jetonId:
       type: string
-      format: uuid
 
 ProductUpdate:
   type: object
@@ -111,10 +106,8 @@ ProductUpdate:
       type: boolean
     categoryId:
       type: string
-      format: uuid
     jetonId:
       type: string
-      format: uuid
       nullable: true
 
 ProductImageResponse:
@@ -139,7 +132,6 @@ Inventory:
   properties:
     productId:
       type: string
-      format: uuid
     quantity:
       type: integer
     updatedAt:
@@ -166,10 +158,8 @@ InventoryLedgerEntry:
   properties:
     id:
       type: string
-      format: uuid
     productId:
       type: string
-      format: uuid
     delta:
       type: integer
     reason:
@@ -179,15 +169,12 @@ InventoryLedgerEntry:
       format: date-time
     orderId:
       type: string
-      format: uuid
       nullable: true
     orderLineId:
       type: string
-      format: uuid
       nullable: true
     deviceId:
       type: string
-      format: uuid
       nullable: true
     createdBy:
       type: string

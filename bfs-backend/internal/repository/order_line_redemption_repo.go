@@ -9,16 +9,15 @@ import (
 	"backend/internal/generated/ent/orderlineredemption"
 
 	"entgo.io/ent/dialect/sql"
-	"github.com/google/uuid"
 )
 
 type OrderLineRedemptionRepository interface {
-	Create(ctx context.Context, orderLineID uuid.UUID, redeemedAt time.Time) (*ent.OrderLineRedemption, error)
-	CreateBatch(ctx context.Context, orderLineIDs []uuid.UUID) ([]*ent.OrderLineRedemption, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*ent.OrderLineRedemption, error)
-	GetByOrderLineID(ctx context.Context, orderLineID uuid.UUID) (*ent.OrderLineRedemption, error)
-	ExistsByOrderLineID(ctx context.Context, orderLineID uuid.UUID) (bool, error)
-	RedeemUnredeemedByOrderLineIDs(ctx context.Context, orderLineIDs []uuid.UUID) (int64, error)
+	Create(ctx context.Context, orderLineID string, redeemedAt time.Time) (*ent.OrderLineRedemption, error)
+	CreateBatch(ctx context.Context, orderLineIDs []string) ([]*ent.OrderLineRedemption, error)
+	GetByID(ctx context.Context, id string) (*ent.OrderLineRedemption, error)
+	GetByOrderLineID(ctx context.Context, orderLineID string) (*ent.OrderLineRedemption, error)
+	ExistsByOrderLineID(ctx context.Context, orderLineID string) (bool, error)
+	RedeemUnredeemedByOrderLineIDs(ctx context.Context, orderLineIDs []string) (int64, error)
 }
 
 type orderLineRedemptionRepo struct {
@@ -33,7 +32,7 @@ func (r *orderLineRedemptionRepo) ec(ctx context.Context) *ent.Client {
 	return ClientFromContext(ctx, r.client)
 }
 
-func (r *orderLineRedemptionRepo) Create(ctx context.Context, orderLineID uuid.UUID, redeemedAt time.Time) (*ent.OrderLineRedemption, error) {
+func (r *orderLineRedemptionRepo) Create(ctx context.Context, orderLineID string, redeemedAt time.Time) (*ent.OrderLineRedemption, error) {
 	created, err := r.ec(ctx).OrderLineRedemption.Create().
 		SetOrderLineID(orderLineID).
 		SetRedeemedAt(redeemedAt).
@@ -44,7 +43,7 @@ func (r *orderLineRedemptionRepo) Create(ctx context.Context, orderLineID uuid.U
 	return created, nil
 }
 
-func (r *orderLineRedemptionRepo) CreateBatch(ctx context.Context, orderLineIDs []uuid.UUID) ([]*ent.OrderLineRedemption, error) {
+func (r *orderLineRedemptionRepo) CreateBatch(ctx context.Context, orderLineIDs []string) ([]*ent.OrderLineRedemption, error) {
 	if len(orderLineIDs) == 0 {
 		return nil, nil
 	}
@@ -60,7 +59,7 @@ func (r *orderLineRedemptionRepo) CreateBatch(ctx context.Context, orderLineIDs 
 	return created, nil
 }
 
-func (r *orderLineRedemptionRepo) GetByID(ctx context.Context, id uuid.UUID) (*ent.OrderLineRedemption, error) {
+func (r *orderLineRedemptionRepo) GetByID(ctx context.Context, id string) (*ent.OrderLineRedemption, error) {
 	e, err := r.ec(ctx).OrderLineRedemption.Get(ctx, id)
 	if err != nil {
 		return nil, translateError(err)
@@ -68,7 +67,7 @@ func (r *orderLineRedemptionRepo) GetByID(ctx context.Context, id uuid.UUID) (*e
 	return e, nil
 }
 
-func (r *orderLineRedemptionRepo) GetByOrderLineID(ctx context.Context, orderLineID uuid.UUID) (*ent.OrderLineRedemption, error) {
+func (r *orderLineRedemptionRepo) GetByOrderLineID(ctx context.Context, orderLineID string) (*ent.OrderLineRedemption, error) {
 	e, err := r.ec(ctx).OrderLineRedemption.Query().
 		Where(orderlineredemption.OrderLineIDEQ(orderLineID)).
 		Only(ctx)
@@ -78,7 +77,7 @@ func (r *orderLineRedemptionRepo) GetByOrderLineID(ctx context.Context, orderLin
 	return e, nil
 }
 
-func (r *orderLineRedemptionRepo) ExistsByOrderLineID(ctx context.Context, orderLineID uuid.UUID) (bool, error) {
+func (r *orderLineRedemptionRepo) ExistsByOrderLineID(ctx context.Context, orderLineID string) (bool, error) {
 	exists, err := r.ec(ctx).OrderLineRedemption.Query().
 		Where(orderlineredemption.OrderLineIDEQ(orderLineID)).
 		Exist(ctx)
@@ -88,7 +87,7 @@ func (r *orderLineRedemptionRepo) ExistsByOrderLineID(ctx context.Context, order
 	return exists, nil
 }
 
-func (r *orderLineRedemptionRepo) RedeemUnredeemedByOrderLineIDs(ctx context.Context, orderLineIDs []uuid.UUID) (int64, error) {
+func (r *orderLineRedemptionRepo) RedeemUnredeemedByOrderLineIDs(ctx context.Context, orderLineIDs []string) (int64, error) {
 	if len(orderLineIDs) == 0 {
 		return 0, nil
 	}

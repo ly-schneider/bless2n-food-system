@@ -707,7 +707,7 @@ function SlotRow({
       <div className="mt-2 flex flex-wrap gap-1.5">
         {(slot.options || []).map((opt) => (
           <Badge key={opt.optionProductId} variant="secondary" className="gap-1 pr-1">
-            {opt.optionProduct?.name ?? opt.optionProductId.slice(0, 8)}
+            {opt.optionProduct?.name ?? opt.optionProductId}
             <button
               className="hover:bg-destructive/20 rounded p-0.5"
               onClick={() => handleRemoveOption(opt.optionProductId)}

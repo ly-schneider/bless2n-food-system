@@ -19,7 +19,6 @@ collection:
         description: Filter by category
         schema:
           type: string
-          format: uuid
     responses:
       "200":
         description: Product list
@@ -45,14 +44,14 @@ collection:
             simple:
               summary: Simple product
               value:
-                categoryId: "019412ab-0000-7000-8000-000000000001"
+                categoryId: "spec_______5"
                 name: "Bratwurst"
                 priceCents: 650
                 image: "https://cdn.example.com/bratwurst.jpg"
             menu:
               summary: Menu product
               value:
-                categoryId: "019412ab-0000-7000-8000-000000000001"
+                categoryId: "spec_______5"
                 type: menu
                 name: "Lunch Menu"
                 priceCents: 1200
@@ -83,7 +82,6 @@ item:
       required: true
       schema:
         type: string
-        format: uuid
 
   get:
     tags: [Products]
@@ -131,7 +129,7 @@ item:
             assign_jeton:
               summary: Assign jeton
               value:
-                jetonId: "019412ab-0000-7000-8000-000000000099"
+                jetonId: "spec______19"
     responses:
       "200":
         description: Product updated
@@ -194,7 +192,6 @@ image:
       required: true
       schema:
         type: string
-        format: uuid
 
   post:
     tags: [Products]
@@ -258,7 +255,6 @@ inventory-history:
       required: true
       schema:
         type: string
-        format: uuid
 
   get:
     tags: [Products]
@@ -312,7 +308,6 @@ inventory:
       required: true
       schema:
         type: string
-        format: uuid
 
   get:
     tags: [Products]
@@ -329,7 +324,7 @@ inventory:
             schema:
               $ref: "../schemas/products.yaml#/Inventory"
             example:
-              productId: "019412ab-0000-7000-8000-000000000001"
+              productId: "spec_______5"
               quantity: 42
               updatedAt: "2025-01-30T10:00:00Z"
       "401":

@@ -7,9 +7,6 @@ import (
 	"backend/internal/auth"
 	"backend/internal/generated/api/generated"
 	"backend/internal/response"
-
-	"github.com/google/uuid"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // ListDevices returns all device bindings, optionally filtered by type and status.
@@ -40,8 +37,8 @@ func (h *Handlers) ListDevices(w http.ResponseWriter, r *http.Request, params ge
 
 // GetDevice returns a single device by ID.
 // (GET /devices/{deviceId})
-func (h *Handlers) GetDevice(w http.ResponseWriter, r *http.Request, deviceId openapi_types.UUID) {
-	device, err := h.devices.GetByID(r.Context(), uuid.UUID(deviceId))
+func (h *Handlers) GetDevice(w http.ResponseWriter, r *http.Request, deviceId string) {
+	device, err := h.devices.GetByID(r.Context(), deviceId)
 	if err != nil {
 		writeEntError(w, err)
 		return
@@ -51,8 +48,8 @@ func (h *Handlers) GetDevice(w http.ResponseWriter, r *http.Request, deviceId op
 
 // RevokeDevice revokes a device binding.
 // (DELETE /devices/{deviceId})
-func (h *Handlers) RevokeDevice(w http.ResponseWriter, r *http.Request, deviceId openapi_types.UUID) {
-	if err := h.devices.Revoke(r.Context(), uuid.UUID(deviceId)); err != nil {
+func (h *Handlers) RevokeDevice(w http.ResponseWriter, r *http.Request, deviceId string) {
+	if err := h.devices.Revoke(r.Context(), deviceId); err != nil {
 		writeEntError(w, err)
 		return
 	}

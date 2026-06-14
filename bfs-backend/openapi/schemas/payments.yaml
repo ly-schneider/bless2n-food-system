@@ -35,7 +35,6 @@ OrderPaymentStatus:
   properties:
     orderId:
       type: string
-      format: uuid
     status:
       type: string
       enum: [pending, paid, cancelled, refunded]
@@ -87,10 +86,8 @@ Payment:
   properties:
     id:
       type: string
-      format: uuid
     orderId:
       type: string
-      format: uuid
     method:
       $ref: "#/PaymentMethod"
     channel:
@@ -103,7 +100,6 @@ Payment:
       description: Order total in cents (CHF)
     deviceId:
       type: string
-      format: uuid
       description: POS device that processed the payment
       x-admin-only: true
     gatewayId:

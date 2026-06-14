@@ -163,7 +163,7 @@ export default function InventoryHistoryPage() {
                         href={`/admin/orders/${encodeURIComponent(e.orderId)}`}
                         className="text-xs underline underline-offset-2"
                       >
-                        {e.orderId.slice(0, 8)}…
+                        {e.orderId}
                       </Link>
                     ) : (
                       <span className="text-muted-foreground">–</span>

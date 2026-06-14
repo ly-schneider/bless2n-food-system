@@ -91,22 +91,22 @@ collection:
               summary: Simple product order
               value:
                 items:
-                  - productId: "019412ab-0000-7000-8000-000000000001"
+                  - productId: "spec_______5"
                     quantity: 2
-                  - productId: "019412ab-0000-7000-8000-000000000002"
+                  - productId: "spec______11"
                     quantity: 1
                 contactEmail: "customer@example.com"
             menu_order:
               summary: Order with menu selections
               value:
                 items:
-                  - productId: "019412ab-0000-7000-8000-000000000010"
+                  - productId: "spec_______6"
                     quantity: 1
                     menuSelections:
-                      - slotId: "019412ab-0000-7000-8000-000000000020"
-                        productId: "019412ab-0000-7000-8000-000000000005"
-                      - slotId: "019412ab-0000-7000-8000-000000000021"
-                        productId: "019412ab-0000-7000-8000-000000000006"
+                      - slotId: "spec______12"
+                        productId: "spec_______9"
+                      - slotId: "spec______13"
+                        productId: "spec______14"
     responses:
       "201":
         description: Order created
@@ -115,7 +115,7 @@ collection:
             schema:
               $ref: "../schemas/orders.yaml#/Order"
             example:
-              id: "019412ab-0000-7000-8000-000000000100"
+              id: "spec______15"
               totalCents: 1950
               status: pending
               origin: shop
@@ -134,7 +134,6 @@ item:
       required: true
       schema:
         type: string
-        format: uuid
 
   get:
     tags: [Orders]

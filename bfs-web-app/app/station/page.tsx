@@ -15,25 +15,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import { getDeviceToken } from "@/lib/device-auth"
 import { playScanSound, primeScanAudio } from "@/lib/scan-sound"
+import { parseScan } from "@/lib/station-scan"
 
-const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
-const CAMPAIGN_PREFIX = "CAMP:"
 const SCAN_RESUME_DELAY_MS = 1400
 const DUPLICATE_SCAN_WINDOW_MS = 5000
 const HISTORY_LIMIT = 8
-
-type ParsedScan = { kind: "order" | "campaign"; id: string }
-
-function parseScan(raw: string): ParsedScan | null {
-  const trimmed = (raw ?? "").trim()
-  if (!trimmed) return null
-  if (trimmed.toUpperCase().startsWith(CAMPAIGN_PREFIX)) {
-    const match = trimmed.slice(CAMPAIGN_PREFIX.length).match(UUID_RE)
-    return match ? { kind: "campaign", id: match[0] } : null
-  }
-  const match = trimmed.match(UUID_RE)
-  return match ? { kind: "order", id: match[0] } : null
-}
 
 type StationProduct = { productId: string; name?: string }
 type StationStatus = {

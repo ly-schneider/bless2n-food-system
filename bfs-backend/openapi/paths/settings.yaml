@@ -59,7 +59,7 @@ collection:
             club100:
               summary: Update Club100 settings
               value:
-                club100FreeProductIds: ["123e4567-e89b-12d3-a456-426614174000"]
+                club100FreeProductIds: ["spec______21"]
                 club100MaxRedemptions: 3
     responses:
       "200":

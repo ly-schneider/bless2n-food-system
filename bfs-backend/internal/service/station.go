@@ -11,21 +11,19 @@ import (
 	"backend/internal/generated/ent/device"
 	"backend/internal/generated/ent/orderline"
 	"backend/internal/repository"
-
-	"github.com/google/uuid"
 )
 
 type StationService interface {
 	ListStations(ctx context.Context, status *string) ([]*ent.Device, error)
 	GetStationByKey(ctx context.Context, deviceKey string) (*ent.Device, error)
-	GetStationByID(ctx context.Context, id uuid.UUID) (*ent.Device, error)
-	SetStationProducts(ctx context.Context, stationID uuid.UUID, productIDs []uuid.UUID) error
-	AddStationProduct(ctx context.Context, stationID uuid.UUID, productID uuid.UUID) error
-	RemoveStationProduct(ctx context.Context, stationID uuid.UUID, productID uuid.UUID) error
-	ListStationProductIDs(ctx context.Context, stationID uuid.UUID) ([]uuid.UUID, error)
-	AssignedItemsForOrder(ctx context.Context, stationID, orderID uuid.UUID) ([]*ent.OrderLine, error)
-	RedeemAssigned(ctx context.Context, stationID, orderID uuid.UUID, idemKey string) (map[string]any, error)
-	RenameStation(ctx context.Context, stationID uuid.UUID, name string) (*ent.Device, error)
+	GetStationByID(ctx context.Context, id string) (*ent.Device, error)
+	SetStationProducts(ctx context.Context, stationID string, productIDs []string) error
+	AddStationProduct(ctx context.Context, stationID string, productID string) error
+	RemoveStationProduct(ctx context.Context, stationID string, productID string) error
+	ListStationProductIDs(ctx context.Context, stationID string) ([]string, error)
+	AssignedItemsForOrder(ctx context.Context, stationID, orderID string) ([]*ent.OrderLine, error)
+	RedeemAssigned(ctx context.Context, stationID, orderID string, idemKey string) (map[string]any, error)
+	RenameStation(ctx context.Context, stationID string, name string) (*ent.Device, error)
 }
 
 type stationService struct {
@@ -81,7 +79,7 @@ func (s *stationService) GetStationByKey(ctx context.Context, deviceKey string) 
 	return d, nil
 }
 
-func (s *stationService) GetStationByID(ctx context.Context, id uuid.UUID) (*ent.Device, error) {
+func (s *stationService) GetStationByID(ctx context.Context, id string) (*ent.Device, error) {
 	d, err := s.getStationWithProducts(ctx, id)
 	if err != nil {
 		return nil, err
@@ -91,7 +89,7 @@ func (s *stationService) GetStationByID(ctx context.Context, id uuid.UUID) (*ent
 
 // getStationWithProducts loads a station device by ID with its device products
 // (and each product) eagerly loaded via ent edges.
-func (s *stationService) getStationWithProducts(ctx context.Context, id uuid.UUID) (*ent.Device, error) {
+func (s *stationService) getStationWithProducts(ctx context.Context, id string) (*ent.Device, error) {
 	return s.client.Device.Query().
 		Where(device.ID(id), device.TypeEQ(device.TypeSTATION)).
 		WithDeviceProducts(func(q *ent.DeviceProductQuery) {
@@ -100,24 +98,24 @@ func (s *stationService) getStationWithProducts(ctx context.Context, id uuid.UUI
 		Only(ctx)
 }
 
-func (s *stationService) SetStationProducts(ctx context.Context, stationID uuid.UUID, productIDs []uuid.UUID) error {
+func (s *stationService) SetStationProducts(ctx context.Context, stationID string, productIDs []string) error {
 	return s.deviceProducts.ReplaceForDevice(ctx, stationID, productIDs)
 }
 
-func (s *stationService) AddStationProduct(ctx context.Context, stationID uuid.UUID, productID uuid.UUID) error {
+func (s *stationService) AddStationProduct(ctx context.Context, stationID string, productID string) error {
 	_, err := s.deviceProducts.Create(ctx, stationID, productID)
 	return err
 }
 
-func (s *stationService) RemoveStationProduct(ctx context.Context, stationID uuid.UUID, productID uuid.UUID) error {
+func (s *stationService) RemoveStationProduct(ctx context.Context, stationID string, productID string) error {
 	return s.deviceProducts.Delete(ctx, stationID, productID)
 }
 
-func (s *stationService) ListStationProductIDs(ctx context.Context, stationID uuid.UUID) ([]uuid.UUID, error) {
+func (s *stationService) ListStationProductIDs(ctx context.Context, stationID string) ([]string, error) {
 	return s.devices.ListProductIDsByDevice(ctx, stationID)
 }
 
-func (s *stationService) RenameStation(ctx context.Context, stationID uuid.UUID, name string) (*ent.Device, error) {
+func (s *stationService) RenameStation(ctx context.Context, stationID string, name string) (*ent.Device, error) {
 	_, err := s.client.Device.UpdateOneID(stationID).
 		Where(device.TypeEQ(device.TypeSTATION)).
 		SetName(name).
@@ -128,14 +126,14 @@ func (s *stationService) RenameStation(ctx context.Context, stationID uuid.UUID,
 	return s.getStationWithProducts(ctx, stationID)
 }
 
-func (s *stationService) AssignedItemsForOrder(ctx context.Context, stationID, orderID uuid.UUID) ([]*ent.OrderLine, error) {
+func (s *stationService) AssignedItemsForOrder(ctx context.Context, stationID, orderID string) ([]*ent.OrderLine, error) {
 	lines, err := s.orderLineRepo.GetByOrderAndStationID(ctx, orderID, stationID)
 	if err != nil {
 		return nil, err
 	}
 
 	// Bundle lines are not redeemable — expand them to their component children.
-	var bundleIDs []uuid.UUID
+	var bundleIDs []string
 	var result []*ent.OrderLine
 	for _, line := range lines {
 		if line.LineType == orderline.LineTypeBundle {
@@ -155,8 +153,8 @@ func (s *stationService) AssignedItemsForOrder(ctx context.Context, stationID, o
 	return result, nil
 }
 
-func (s *stationService) RedeemAssigned(ctx context.Context, stationID, orderID uuid.UUID, idemKey string) (map[string]any, error) {
-	scope := fmt.Sprintf("station:%s:order:%s", stationID.String(), orderID.String())
+func (s *stationService) RedeemAssigned(ctx context.Context, stationID, orderID string, idemKey string) (map[string]any, error) {
+	scope := fmt.Sprintf("station:%s:order:%s", stationID, orderID)
 
 	// Check idempotency
 	if idemKey != "" {
@@ -173,7 +171,7 @@ func (s *stationService) RedeemAssigned(ctx context.Context, stationID, orderID 
 	}
 
 	// Filter unredeemed items, skipping bundle parents (only components are redeemable)
-	var unredeemedIDs []uuid.UUID
+	var unredeemedIDs []string
 	for _, line := range assigned {
 		if line.Edges.Redemption == nil && line.LineType != orderline.LineTypeBundle {
 			unredeemedIDs = append(unredeemedIDs, line.ID)
@@ -193,8 +191,8 @@ func (s *stationService) RedeemAssigned(ctx context.Context, stationID, orderID 
 
 	// Build response
 	resp := map[string]any{
-		"orderId":    orderID.String(),
-		"stationId":  stationID.String(),
+		"orderId":    orderID,
+		"stationId":  stationID,
 		"matched":    len(assigned),
 		"redeemed":   redeemed,
 		"items":      toPublicOrderLines(assigned),
@@ -212,21 +210,13 @@ func (s *stationService) RedeemAssigned(ctx context.Context, stationID, orderID 
 func toPublicOrderLines(lines []*ent.OrderLine) []map[string]any {
 	out := make([]map[string]any, 0, len(lines))
 	for _, line := range lines {
-		var parentID *string
-		if line.ParentLineID != nil {
-			s := line.ParentLineID.String()
-			parentID = &s
-		}
-		var msID *string
-		if line.MenuSlotID != nil {
-			s := line.MenuSlotID.String()
-			msID = &s
-		}
+		parentID := line.ParentLineID
+		msID := line.MenuSlotID
 		isRedeemed := line.Edges.Redemption != nil
 		out = append(out, map[string]any{
-			"id":           line.ID.String(),
-			"orderId":      line.OrderID.String(),
-			"productId":    line.ProductID.String(),
+			"id":           line.ID,
+			"orderId":      line.OrderID,
+			"productId":    line.ProductID,
 			"title":        line.Title,
 			"quantity":     line.Quantity,
 			"isRedeemed":   isRedeemed,

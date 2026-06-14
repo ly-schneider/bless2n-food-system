@@ -6,7 +6,7 @@ import (
 
 	"backend/internal/service"
 
-	"github.com/google/uuid"
+	nanoid "backend/internal/id"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,7 +22,7 @@ func TestCategoryService_CRUD(t *testing.T) {
 	t.Run("Create category", func(t *testing.T) {
 		cat, err := svc.Create(ctx, "Drinks", 1)
 		require.NoError(t, err)
-		require.NotEqual(t, uuid.Nil, cat.ID)
+		require.NotEqual(t, "", cat.ID)
 		require.Equal(t, "Drinks", cat.Name)
 		require.Equal(t, 1, cat.Position)
 		require.True(t, cat.IsActive)
@@ -128,12 +128,12 @@ func TestCategoryService_NotFound(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("GetByID returns error for non-existent ID", func(t *testing.T) {
-		_, err := svc.GetByID(ctx, uuid.Must(uuid.NewV7()))
+		_, err := svc.GetByID(ctx, nanoid.New())
 		require.Error(t, err)
 	})
 
 	t.Run("Update returns error for non-existent ID", func(t *testing.T) {
-		_, err := svc.Update(ctx, uuid.Must(uuid.NewV7()), "Test", 1, true)
+		_, err := svc.Update(ctx, nanoid.New(), "Test", 1, true)
 		require.Error(t, err)
 	})
 }

@@ -8,7 +8,6 @@ import (
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
-	"github.com/google/uuid"
 )
 
 type AdminInvite struct {
@@ -23,9 +22,7 @@ func (AdminInvite) Annotations() []schema.Annotation {
 
 func (AdminInvite) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("id", uuid.UUID{}).
-			Default(uuidV7).
-			Immutable(),
+		nanoidPK(),
 		field.String("invited_by_user_id").
 			NotEmpty().
 			StorageKey("invited_by_user_id"),

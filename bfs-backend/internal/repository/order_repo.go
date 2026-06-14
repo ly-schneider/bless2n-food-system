@@ -9,38 +9,37 @@ import (
 	"backend/internal/generated/ent/orderpayment"
 
 	"entgo.io/ent/dialect/sql"
-	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
 )
 
 type OrderRepository interface {
 	Create(ctx context.Context, totalCents int64, status order.Status, origin order.Origin, customerID, contactEmail, paymentAttemptID *string, payrexxGatewayID, payrexxTransactionID *int) (*ent.Order, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*ent.Order, error)
-	GetByIDWithRelations(ctx context.Context, id uuid.UUID) (*ent.Order, error)
+	GetByID(ctx context.Context, id string) (*ent.Order, error)
+	GetByIDWithRelations(ctx context.Context, id string) (*ent.Order, error)
 	GetByCustomerID(ctx context.Context, customerID string) ([]*ent.Order, error)
 	GetByStatus(ctx context.Context, status order.Status) ([]*ent.Order, error)
 	GetByDateRange(ctx context.Context, start, end time.Time) ([]*ent.Order, error)
 	GetRecent(ctx context.Context, limit int) ([]*ent.Order, error)
-	Update(ctx context.Context, id uuid.UUID, totalCents int64, status order.Status, origin order.Origin, customerID, contactEmail, paymentAttemptID *string, payrexxGatewayID, payrexxTransactionID *int) (*ent.Order, error)
-	UpdateStatus(ctx context.Context, id uuid.UUID, status order.Status) error
+	Update(ctx context.Context, id string, totalCents int64, status order.Status, origin order.Origin, customerID, contactEmail, paymentAttemptID *string, payrexxGatewayID, payrexxTransactionID *int) (*ent.Order, error)
+	UpdateStatus(ctx context.Context, id string, status order.Status) error
 
 	ListAdmin(ctx context.Context, status *order.Status, from, to *time.Time, q *string) ([]*ent.Order, int64, error)
 	ListByCustomerIDPaginated(ctx context.Context, customerID string) ([]*ent.Order, int64, error)
 
 	// POS payment methods - creates payment record and updates order status
-	SetPosPaymentCash(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error
-	SetPosPaymentCard(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64, card *CardMeta) error
-	SetPosPaymentTwint(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error
-	SetPosPaymentGratisGuest(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error
-	SetPosPaymentGratisVIP(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error
-	SetPosPaymentGratisStaff(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error
-	SetPosPaymentGratis100Club(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error
+	SetPosPaymentCash(ctx context.Context, orderID string, deviceID *string, amountCents int64) error
+	SetPosPaymentCard(ctx context.Context, orderID string, deviceID *string, amountCents int64, card *CardMeta) error
+	SetPosPaymentTwint(ctx context.Context, orderID string, deviceID *string, amountCents int64) error
+	SetPosPaymentGratisGuest(ctx context.Context, orderID string, deviceID *string, amountCents int64) error
+	SetPosPaymentGratisVIP(ctx context.Context, orderID string, deviceID *string, amountCents int64) error
+	SetPosPaymentGratisStaff(ctx context.Context, orderID string, deviceID *string, amountCents int64) error
+	SetPosPaymentGratis100Club(ctx context.Context, orderID string, deviceID *string, amountCents int64) error
 
 	// Additional methods
-	DeleteIfPending(ctx context.Context, id uuid.UUID) (bool, error)
-	SetPaymentAttemptID(ctx context.Context, id uuid.UUID, attemptID string) error
+	DeleteIfPending(ctx context.Context, id string) (bool, error)
+	SetPaymentAttemptID(ctx context.Context, id string, attemptID string) error
 	FindPendingByAttemptID(ctx context.Context, attemptID string) (*ent.Order, error)
-	DeletePendingByAttemptIDExcept(ctx context.Context, attemptID string, except uuid.UUID) (int64, error)
+	DeletePendingByAttemptIDExcept(ctx context.Context, attemptID string, except string) (int64, error)
 
 	// Aggregation
 	GetEventDays(ctx context.Context) ([]EventDay, error)
@@ -92,7 +91,7 @@ func (r *orderRepo) Create(ctx context.Context, totalCents int64, status order.S
 	return created, nil
 }
 
-func (r *orderRepo) GetByID(ctx context.Context, id uuid.UUID) (*ent.Order, error) {
+func (r *orderRepo) GetByID(ctx context.Context, id string) (*ent.Order, error) {
 	e, err := r.ec(ctx).Order.Get(ctx, id)
 	if err != nil {
 		return nil, translateError(err)
@@ -100,7 +99,7 @@ func (r *orderRepo) GetByID(ctx context.Context, id uuid.UUID) (*ent.Order, erro
 	return e, nil
 }
 
-func (r *orderRepo) GetByIDWithRelations(ctx context.Context, id uuid.UUID) (*ent.Order, error) {
+func (r *orderRepo) GetByIDWithRelations(ctx context.Context, id string) (*ent.Order, error) {
 	e, err := r.ec(ctx).Order.Query().
 		Where(order.ID(id)).
 		WithPayments().
@@ -166,7 +165,7 @@ func (r *orderRepo) GetRecent(ctx context.Context, limit int) ([]*ent.Order, err
 	return rows, nil
 }
 
-func (r *orderRepo) Update(ctx context.Context, id uuid.UUID, totalCents int64, status order.Status, origin order.Origin, customerID, contactEmail, paymentAttemptID *string, payrexxGatewayID, payrexxTransactionID *int) (*ent.Order, error) {
+func (r *orderRepo) Update(ctx context.Context, id string, totalCents int64, status order.Status, origin order.Origin, customerID, contactEmail, paymentAttemptID *string, payrexxGatewayID, payrexxTransactionID *int) (*ent.Order, error) {
 	builder := r.ec(ctx).Order.UpdateOneID(id).
 		SetTotalCents(totalCents).
 		SetStatus(status).
@@ -203,7 +202,7 @@ func (r *orderRepo) Update(ctx context.Context, id uuid.UUID, totalCents int64, 
 	return updated, nil
 }
 
-func (r *orderRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status order.Status) error {
+func (r *orderRepo) UpdateStatus(ctx context.Context, id string, status order.Status) error {
 	_, err := r.ec(ctx).Order.UpdateOneID(id).
 		SetStatus(status).
 		Save(ctx)
@@ -306,7 +305,7 @@ type CardMeta struct {
 	TransactionID *string
 }
 
-func (r *orderRepo) setPosPayment(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, method orderpayment.Method, amountCents int64, card *CardMeta) error {
+func (r *orderRepo) setPosPayment(ctx context.Context, orderID string, deviceID *string, method orderpayment.Method, amountCents int64, card *CardMeta) error {
 	tx, err := r.ec(ctx).Tx(ctx)
 	if err != nil {
 		return err
@@ -348,35 +347,35 @@ func (r *orderRepo) setPosPayment(ctx context.Context, orderID uuid.UUID, device
 	return tx.Commit()
 }
 
-func (r *orderRepo) SetPosPaymentCash(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error {
+func (r *orderRepo) SetPosPaymentCash(ctx context.Context, orderID string, deviceID *string, amountCents int64) error {
 	return r.setPosPayment(ctx, orderID, deviceID, orderpayment.MethodCASH, amountCents, nil)
 }
 
-func (r *orderRepo) SetPosPaymentCard(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64, card *CardMeta) error {
+func (r *orderRepo) SetPosPaymentCard(ctx context.Context, orderID string, deviceID *string, amountCents int64, card *CardMeta) error {
 	return r.setPosPayment(ctx, orderID, deviceID, orderpayment.MethodCARD, amountCents, card)
 }
 
-func (r *orderRepo) SetPosPaymentTwint(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error {
+func (r *orderRepo) SetPosPaymentTwint(ctx context.Context, orderID string, deviceID *string, amountCents int64) error {
 	return r.setPosPayment(ctx, orderID, deviceID, orderpayment.MethodTWINT, amountCents, nil)
 }
 
-func (r *orderRepo) SetPosPaymentGratisGuest(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error {
+func (r *orderRepo) SetPosPaymentGratisGuest(ctx context.Context, orderID string, deviceID *string, amountCents int64) error {
 	return r.setPosPayment(ctx, orderID, deviceID, orderpayment.MethodGRATIS_GUEST, amountCents, nil)
 }
 
-func (r *orderRepo) SetPosPaymentGratisVIP(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error {
+func (r *orderRepo) SetPosPaymentGratisVIP(ctx context.Context, orderID string, deviceID *string, amountCents int64) error {
 	return r.setPosPayment(ctx, orderID, deviceID, orderpayment.MethodGRATIS_VIP, amountCents, nil)
 }
 
-func (r *orderRepo) SetPosPaymentGratisStaff(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error {
+func (r *orderRepo) SetPosPaymentGratisStaff(ctx context.Context, orderID string, deviceID *string, amountCents int64) error {
 	return r.setPosPayment(ctx, orderID, deviceID, orderpayment.MethodGRATIS_STAFF, amountCents, nil)
 }
 
-func (r *orderRepo) SetPosPaymentGratis100Club(ctx context.Context, orderID uuid.UUID, deviceID *uuid.UUID, amountCents int64) error {
+func (r *orderRepo) SetPosPaymentGratis100Club(ctx context.Context, orderID string, deviceID *string, amountCents int64) error {
 	return r.setPosPayment(ctx, orderID, deviceID, orderpayment.MethodGRATIS_100CLUB, amountCents, nil)
 }
 
-func (r *orderRepo) DeleteIfPending(ctx context.Context, id uuid.UUID) (bool, error) {
+func (r *orderRepo) DeleteIfPending(ctx context.Context, id string) (bool, error) {
 	n, err := r.ec(ctx).Order.Delete().
 		Where(
 			order.ID(id),
@@ -389,7 +388,7 @@ func (r *orderRepo) DeleteIfPending(ctx context.Context, id uuid.UUID) (bool, er
 	return n > 0, nil
 }
 
-func (r *orderRepo) SetPaymentAttemptID(ctx context.Context, id uuid.UUID, attemptID string) error {
+func (r *orderRepo) SetPaymentAttemptID(ctx context.Context, id string, attemptID string) error {
 	if attemptID == "" {
 		return nil
 	}
@@ -412,7 +411,7 @@ func (r *orderRepo) FindPendingByAttemptID(ctx context.Context, attemptID string
 	return e, nil
 }
 
-func (r *orderRepo) DeletePendingByAttemptIDExcept(ctx context.Context, attemptID string, except uuid.UUID) (int64, error) {
+func (r *orderRepo) DeletePendingByAttemptIDExcept(ctx context.Context, attemptID string, except string) (int64, error) {
 	if attemptID == "" {
 		return 0, nil
 	}

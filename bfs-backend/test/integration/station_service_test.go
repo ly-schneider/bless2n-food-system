@@ -155,8 +155,8 @@ func TestStationService_RedeemAssigned(t *testing.T) {
 		result, err := svc.RedeemAssigned(ctx, station.ID, ord.ID, "")
 		require.NoError(t, err)
 
-		require.Equal(t, ord.ID.String(), result["orderId"])
-		require.Equal(t, station.ID.String(), result["stationId"])
+		require.Equal(t, ord.ID, result["orderId"])
+		require.Equal(t, station.ID, result["stationId"])
 		require.EqualValues(t, 2, result["matched"])
 		require.EqualValues(t, 2, result["redeemed"])
 		require.NotNil(t, result["redeemedAt"])

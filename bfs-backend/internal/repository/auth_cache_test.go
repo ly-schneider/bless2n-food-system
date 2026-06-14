@@ -11,7 +11,7 @@ import (
 	"backend/internal/generated/ent"
 	"backend/internal/generated/ent/devicebinding"
 
-	"github.com/google/uuid"
+	nanoid "backend/internal/id"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
@@ -63,7 +63,7 @@ type fakeBindingRepo struct {
 	lastSeenErr   error
 }
 
-func (f *fakeBindingRepo) GetByID(_ context.Context, _ uuid.UUID) (*ent.DeviceBinding, error) {
+func (f *fakeBindingRepo) GetByID(_ context.Context, _ string) (*ent.DeviceBinding, error) {
 	return f.binding, f.getErr
 }
 
@@ -74,11 +74,11 @@ func (f *fakeBindingRepo) GetByTokenHash(_ context.Context, _ string) (*ent.Devi
 	return f.binding, f.getErr
 }
 
-func (f *fakeBindingRepo) Create(_ context.Context, _ devicebinding.DeviceType, _, _ string, _ *string, _, _ *uuid.UUID) (*ent.DeviceBinding, error) {
+func (f *fakeBindingRepo) Create(_ context.Context, _ devicebinding.DeviceType, _, _ string, _ *string, _, _ *string) (*ent.DeviceBinding, error) {
 	return f.binding, nil
 }
 
-func (f *fakeBindingRepo) UpdateLastSeen(_ context.Context, _ uuid.UUID) error {
+func (f *fakeBindingRepo) UpdateLastSeen(_ context.Context, _ string) error {
 	atomic.AddInt32(&f.lastSeenCalls, 1)
 	if f.lastSeenDelay > 0 {
 		time.Sleep(f.lastSeenDelay)
@@ -86,7 +86,7 @@ func (f *fakeBindingRepo) UpdateLastSeen(_ context.Context, _ uuid.UUID) error {
 	return f.lastSeenErr
 }
 
-func (f *fakeBindingRepo) Revoke(_ context.Context, _ uuid.UUID) error { return nil }
+func (f *fakeBindingRepo) Revoke(_ context.Context, _ string) error { return nil }
 
 func (f *fakeBindingRepo) ListActive(_ context.Context) ([]*ent.DeviceBinding, error) {
 	return nil, nil
@@ -232,7 +232,7 @@ func TestCachedSessionRepo_RefreshSessionAsync_OptimisticUpdatedAtBump(t *testin
 }
 
 func TestCachedBindingRepo_GetByTokenHash_HitAfterMiss(t *testing.T) {
-	inner := &fakeBindingRepo{binding: &ent.DeviceBinding{ID: uuid.Must(uuid.NewV7())}}
+	inner := &fakeBindingRepo{binding: &ent.DeviceBinding{ID: nanoid.New()}}
 	repo := NewCachedDeviceBindingRepository(inner)
 	ctx := context.Background()
 
@@ -259,7 +259,7 @@ func TestCachedBindingRepo_GetByTokenHash_NotFoundCachedNegatively(t *testing.T)
 }
 
 func TestCachedBindingRepo_Create_PrepopulatesPositiveEntry(t *testing.T) {
-	id := uuid.Must(uuid.NewV7())
+	id := nanoid.New()
 	inner := &fakeBindingRepo{binding: &ent.DeviceBinding{ID: id}}
 	repo := NewCachedDeviceBindingRepository(inner)
 	ctx := context.Background()
@@ -277,7 +277,7 @@ func TestCachedBindingRepo_Create_PrepopulatesPositiveEntry(t *testing.T) {
 func TestCachedBindingRepo_UpdateLastSeenDebounced_FiresOnceWithinWindow(t *testing.T) {
 	inner := &fakeBindingRepo{}
 	repo := NewCachedDeviceBindingRepository(inner).(*cachedDeviceBindingRepo)
-	id := uuid.Must(uuid.NewV7())
+	id := nanoid.New()
 
 	for i := 0; i < 25; i++ {
 		repo.UpdateLastSeenDebounced(id, zap.NewNop())
@@ -296,7 +296,7 @@ func TestCachedBindingRepo_UpdateLastSeenDebounced_DifferentIDsAllFire(t *testin
 	repo := NewCachedDeviceBindingRepository(inner).(*cachedDeviceBindingRepo)
 
 	for i := 0; i < 5; i++ {
-		repo.UpdateLastSeenDebounced(uuid.Must(uuid.NewV7()), zap.NewNop())
+		repo.UpdateLastSeenDebounced(nanoid.New(), zap.NewNop())
 	}
 
 	require.Eventually(t, func() bool {
@@ -305,7 +305,7 @@ func TestCachedBindingRepo_UpdateLastSeenDebounced_DifferentIDsAllFire(t *testin
 }
 
 func TestCachedBindingRepo_Revoke_ClearsCacheEntry(t *testing.T) {
-	id := uuid.Must(uuid.NewV7())
+	id := nanoid.New()
 	inner := &fakeBindingRepo{binding: &ent.DeviceBinding{ID: id}}
 	repo := NewCachedDeviceBindingRepository(inner)
 	ctx := context.Background()

@@ -8,9 +8,6 @@ import (
 	"backend/internal/generated/api/generated"
 	"backend/internal/response"
 	"backend/internal/service"
-
-	"github.com/google/uuid"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // ListJetons returns all jetons.
@@ -45,7 +42,7 @@ func (h *Handlers) CreateJeton(w http.ResponseWriter, r *http.Request) {
 
 // UpdateJeton updates an existing jeton.
 // (PATCH /jetons/{jetonId})
-func (h *Handlers) UpdateJeton(w http.ResponseWriter, r *http.Request, jetonId openapi_types.UUID) {
+func (h *Handlers) UpdateJeton(w http.ResponseWriter, r *http.Request, jetonId string) {
 	var body generated.JetonUpdate
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_body", "Invalid request body")
@@ -57,7 +54,7 @@ func (h *Handlers) UpdateJeton(w http.ResponseWriter, r *http.Request, jetonId o
 	name := derefStr(body.Name)
 	color := derefStr(body.Color)
 
-	jeton, err := h.settings.UpdateJeton(r.Context(), uuid.UUID(jetonId), name, color)
+	jeton, err := h.settings.UpdateJeton(r.Context(), jetonId, name, color)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "update_failed", err.Error())
 		return
@@ -67,8 +64,8 @@ func (h *Handlers) UpdateJeton(w http.ResponseWriter, r *http.Request, jetonId o
 
 // DeleteJeton removes a jeton.
 // (DELETE /jetons/{jetonId})
-func (h *Handlers) DeleteJeton(w http.ResponseWriter, r *http.Request, jetonId openapi_types.UUID) {
-	if err := h.settings.DeleteJeton(r.Context(), uuid.UUID(jetonId)); err != nil {
+func (h *Handlers) DeleteJeton(w http.ResponseWriter, r *http.Request, jetonId string) {
+	if err := h.settings.DeleteJeton(r.Context(), jetonId); err != nil {
 		var inUse service.JetonInUseError
 		if errors.As(err, &inUse) {
 			details := map[string]any{"usage": inUse.Count}

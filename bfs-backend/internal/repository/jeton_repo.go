@@ -5,16 +5,14 @@ import (
 
 	"backend/internal/generated/ent"
 	"backend/internal/generated/ent/jeton"
-
-	"github.com/google/uuid"
 )
 
 type JetonRepository interface {
 	Create(ctx context.Context, name, color string) (*ent.Jeton, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*ent.Jeton, error)
+	GetByID(ctx context.Context, id string) (*ent.Jeton, error)
 	GetAll(ctx context.Context) ([]*ent.Jeton, error)
-	Update(ctx context.Context, id uuid.UUID, name, color string) (*ent.Jeton, error)
-	Delete(ctx context.Context, id uuid.UUID) error
+	Update(ctx context.Context, id string, name, color string) (*ent.Jeton, error)
+	Delete(ctx context.Context, id string) error
 }
 
 type jetonRepo struct {
@@ -40,7 +38,7 @@ func (r *jetonRepo) Create(ctx context.Context, name, color string) (*ent.Jeton,
 	return created, nil
 }
 
-func (r *jetonRepo) GetByID(ctx context.Context, id uuid.UUID) (*ent.Jeton, error) {
+func (r *jetonRepo) GetByID(ctx context.Context, id string) (*ent.Jeton, error) {
 	e, err := r.ec(ctx).Jeton.Get(ctx, id)
 	if err != nil {
 		return nil, translateError(err)
@@ -58,7 +56,7 @@ func (r *jetonRepo) GetAll(ctx context.Context) ([]*ent.Jeton, error) {
 	return rows, nil
 }
 
-func (r *jetonRepo) Update(ctx context.Context, id uuid.UUID, name, color string) (*ent.Jeton, error) {
+func (r *jetonRepo) Update(ctx context.Context, id string, name, color string) (*ent.Jeton, error) {
 	updated, err := r.ec(ctx).Jeton.UpdateOneID(id).
 		SetName(name).
 		SetColor(color).
@@ -69,6 +67,6 @@ func (r *jetonRepo) Update(ctx context.Context, id uuid.UUID, name, color string
 	return updated, nil
 }
 
-func (r *jetonRepo) Delete(ctx context.Context, id uuid.UUID) error {
+func (r *jetonRepo) Delete(ctx context.Context, id string) error {
 	return translateError(r.ec(ctx).Jeton.DeleteOneID(id).Exec(ctx))
 }

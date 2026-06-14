@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"strconv"
 
+	nanoid "backend/internal/id"
 	"backend/internal/pdf"
 	"backend/internal/service"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -22,9 +22,9 @@ const (
 // PrintStaffMealSlips streams a PDF of printable QR slips for a campaign.
 // GET /v1/staff-meals/{campaignId}/print.pdf?count=30
 func (h *Handlers) PrintStaffMealSlips(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(chi.URLParam(r, "campaignId"))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_id", err.Error())
+	id := chi.URLParam(r, "campaignId")
+	if !nanoid.Valid(id) {
+		writeError(w, http.StatusBadRequest, "invalid_id", "Invalid id")
 		return
 	}
 
@@ -66,7 +66,7 @@ func (h *Handlers) PrintStaffMealSlips(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/pdf")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`inline; filename="staff-meal-%s.pdf"`, detail.Campaign.ID.String()))
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`inline; filename="staff-meal-%s.pdf"`, detail.Campaign.ID))
 	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 	_, _ = w.Write(body)
 }

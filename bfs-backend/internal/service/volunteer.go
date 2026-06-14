@@ -15,8 +15,6 @@ import (
 	"backend/internal/generated/ent/orderpayment"
 	"backend/internal/generated/ent/volunteercampaign"
 	"backend/internal/repository"
-
-	"github.com/google/uuid"
 )
 
 const (
@@ -41,16 +39,16 @@ var (
 type VolunteerService interface {
 	CreateCampaign(ctx context.Context, input CreateVolunteerCampaignInput) (*ent.VolunteerCampaign, error)
 	ListCampaigns(ctx context.Context) ([]VolunteerCampaignSummary, error)
-	GetCampaign(ctx context.Context, id uuid.UUID) (*VolunteerCampaignDetail, error)
-	UpdateCampaign(ctx context.Context, id uuid.UUID, input UpdateVolunteerCampaignInput) (*ent.VolunteerCampaign, error)
-	EndCampaign(ctx context.Context, id uuid.UUID) error
-	RotateClaimToken(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
+	GetCampaign(ctx context.Context, id string) (*VolunteerCampaignDetail, error)
+	UpdateCampaign(ctx context.Context, id string, input UpdateVolunteerCampaignInput) (*ent.VolunteerCampaign, error)
+	EndCampaign(ctx context.Context, id string) error
+	RotateClaimToken(ctx context.Context, id string) (string, error)
 
-	VerifyAccess(ctx context.Context, token uuid.UUID, code string) (sessionID string, err error)
+	VerifyAccess(ctx context.Context, token string, code string) (sessionID string, err error)
 	NewSessionID() string
 
-	GetClaimView(ctx context.Context, token uuid.UUID) (*VolunteerClaimView, error)
-	RedeemSharedQR(ctx context.Context, claimToken uuid.UUID, stationID uuid.UUID, idempotencyKey string) (*VolunteerRedemptionResult, error)
+	GetClaimView(ctx context.Context, token string) (*VolunteerClaimView, error)
+	RedeemSharedQR(ctx context.Context, claimToken string, stationID string, idempotencyKey string) (*VolunteerRedemptionResult, error)
 }
 
 type CreateVolunteerCampaignInput struct {
@@ -77,15 +75,15 @@ type VolunteerCampaignSummary struct {
 }
 
 type VolunteerCampaignProductView struct {
-	ProductID    uuid.UUID
+	ProductID    string
 	ProductName  string
 	ProductImage *string
 	Quantity     int
 }
 
 type VolunteerRedemptionView struct {
-	ID        uuid.UUID
-	OrderID   uuid.UUID
+	ID        string
+	OrderID   string
 	CreatedAt time.Time
 }
 
@@ -102,7 +100,7 @@ type VolunteerClaimView struct {
 }
 
 type VolunteerRedemptionResult struct {
-	OrderID         uuid.UUID
+	OrderID         string
 	RedemptionCount int
 	MaxRedemptions  int
 	StationResult   map[string]any
@@ -157,8 +155,8 @@ func generateAccessCode() string {
 
 // BuildQRPayload returns the string encoded in the shared campaign QR code.
 // Station scanner detects the CAMP: prefix and routes to the campaign-redeem endpoint.
-func BuildQRPayload(claimToken uuid.UUID) string {
-	return volunteerQRPayloadPfx + claimToken.String()
+func BuildQRPayload(claimToken string) string {
+	return volunteerQRPayloadPfx + claimToken
 }
 
 func (s *volunteerService) CreateCampaign(ctx context.Context, input CreateVolunteerCampaignInput) (*ent.VolunteerCampaign, error) {
@@ -198,25 +196,25 @@ func (s *volunteerService) CreateCampaign(ctx context.Context, input CreateVolun
 }
 
 type productSnapshot struct {
-	ID       uuid.UUID
+	ID       string
 	Name     string
 	Quantity int
 }
 
-func (s *volunteerService) createGratisOrder(ctx context.Context, products []productSnapshot) (uuid.UUID, error) {
+func (s *volunteerService) createGratisOrder(ctx context.Context, products []productSnapshot) (string, error) {
 	ord, err := s.orders.Create(ctx, 0, order.StatusPaid, order.OriginShop, nil, nil, nil, nil, nil)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("create order: %w", err)
+		return "", fmt.Errorf("create order: %w", err)
 	}
 
 	for _, p := range products {
 		if _, err := s.lines.Create(ctx, ord.ID, orderline.LineTypeSimple, p.ID, truncatedTitle(p.Name), p.Quantity, 0, nil, nil, nil); err != nil {
-			return uuid.Nil, fmt.Errorf("create order line: %w", err)
+			return "", fmt.Errorf("create order line: %w", err)
 		}
 	}
 
 	if _, err := s.payments.Create(ctx, ord.ID, orderpayment.MethodGRATIS_STAFF, 0, time.Now(), nil); err != nil {
-		return uuid.Nil, fmt.Errorf("create payment: %w", err)
+		return "", fmt.Errorf("create payment: %w", err)
 	}
 	return ord.ID, nil
 }
@@ -244,7 +242,7 @@ func (s *volunteerService) ListCampaigns(ctx context.Context) ([]VolunteerCampai
 	return out, nil
 }
 
-func (s *volunteerService) GetCampaign(ctx context.Context, id uuid.UUID) (*VolunteerCampaignDetail, error) {
+func (s *volunteerService) GetCampaign(ctx context.Context, id string) (*VolunteerCampaignDetail, error) {
 	campaign, err := s.campaigns.GetByID(ctx, id)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -277,7 +275,7 @@ func (s *volunteerService) GetCampaign(ctx context.Context, id uuid.UUID) (*Volu
 	}, nil
 }
 
-func (s *volunteerService) UpdateCampaign(ctx context.Context, id uuid.UUID, input UpdateVolunteerCampaignInput) (*ent.VolunteerCampaign, error) {
+func (s *volunteerService) UpdateCampaign(ctx context.Context, id string, input UpdateVolunteerCampaignInput) (*ent.VolunteerCampaign, error) {
 	if strings.TrimSpace(input.Name) == "" {
 		return nil, errors.New("name_required")
 	}
@@ -330,7 +328,7 @@ func (s *volunteerService) UpdateCampaign(ctx context.Context, id uuid.UUID, inp
 	return campaign, nil
 }
 
-func (s *volunteerService) EndCampaign(ctx context.Context, id uuid.UUID) error {
+func (s *volunteerService) EndCampaign(ctx context.Context, id string) error {
 	if err := s.campaigns.SetStatus(ctx, id, volunteercampaign.StatusEnded); err != nil {
 		if ent.IsNotFound(err) {
 			return ErrVolunteerCampaignNotFound
@@ -340,11 +338,11 @@ func (s *volunteerService) EndCampaign(ctx context.Context, id uuid.UUID) error 
 	return nil
 }
 
-func (s *volunteerService) RotateClaimToken(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+func (s *volunteerService) RotateClaimToken(ctx context.Context, id string) (string, error) {
 	return s.campaigns.RotateClaimToken(ctx, id)
 }
 
-func (s *volunteerService) VerifyAccess(ctx context.Context, token uuid.UUID, code string) (string, error) {
+func (s *volunteerService) VerifyAccess(ctx context.Context, token string, code string) (string, error) {
 	campaign, err := s.campaigns.GetByClaimToken(ctx, token)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -364,7 +362,7 @@ func (s *volunteerService) VerifyAccess(ctx context.Context, token uuid.UUID, co
 	return s.NewSessionID(), nil
 }
 
-func (s *volunteerService) GetClaimView(ctx context.Context, token uuid.UUID) (*VolunteerClaimView, error) {
+func (s *volunteerService) GetClaimView(ctx context.Context, token string) (*VolunteerClaimView, error) {
 	campaign, err := s.campaigns.GetByClaimToken(ctx, token)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -383,7 +381,7 @@ func (s *volunteerService) GetClaimView(ctx context.Context, token uuid.UUID) (*
 	}, nil
 }
 
-func (s *volunteerService) RedeemSharedQR(ctx context.Context, claimToken uuid.UUID, stationID uuid.UUID, idempotencyKey string) (*VolunteerRedemptionResult, error) {
+func (s *volunteerService) RedeemSharedQR(ctx context.Context, claimToken string, stationID string, idempotencyKey string) (*VolunteerRedemptionResult, error) {
 	campaign, err := s.campaigns.GetByClaimToken(ctx, claimToken)
 	if err != nil {
 		if ent.IsNotFound(err) {
@@ -422,7 +420,7 @@ func (s *volunteerService) RedeemSharedQR(ctx context.Context, claimToken uuid.U
 		return nil, ErrVolunteerCampaignHasNoProducts
 	}
 	products := make([]productSnapshot, 0, len(cps))
-	campaignProductIDs := make(map[uuid.UUID]struct{}, len(cps))
+	campaignProductIDs := make(map[string]struct{}, len(cps))
 	for _, cp := range cps {
 		p, _ := cp.Edges.ProductOrErr()
 		name := ""
@@ -480,8 +478,8 @@ func (s *volunteerService) RedeemSharedQR(ctx context.Context, claimToken uuid.U
 	if idempotencyKey != "" {
 		idemPtr = &idempotencyKey
 	}
-	var stationPtr *uuid.UUID
-	if stationID != uuid.Nil {
+	var stationPtr *string
+	if stationID != "" {
 		stationPtr = &stationID
 	}
 	if _, err := s.redemptions.Create(txCtx, campaign.ID, orderID, stationPtr, idemPtr); err != nil {

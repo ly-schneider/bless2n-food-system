@@ -9,7 +9,6 @@ Invite:
   properties:
     id:
       type: string
-      format: uuid
     inviteeEmail:
       type: string
       format: email
@@ -41,7 +40,6 @@ InvitePublic:
   properties:
     id:
       type: string
-      format: uuid
     inviteeEmail:
       type: string
       format: email

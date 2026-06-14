@@ -7,7 +7,6 @@ import (
 
 	"backend/internal/repository"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,7 +22,7 @@ func TestIdempotencyRepository_ClaimAndFillResponse(t *testing.T) {
 		row, existed, err := repos.Idempotency.Claim(ctx, "order", "fresh-key-1", time.Hour)
 		require.NoError(t, err)
 		require.False(t, existed)
-		require.NotEqual(t, uuid.Nil, row.ID)
+		require.NotEqual(t, "", row.ID)
 		require.Empty(t, row.Response, "newly claimed row must have nil response")
 	})
 

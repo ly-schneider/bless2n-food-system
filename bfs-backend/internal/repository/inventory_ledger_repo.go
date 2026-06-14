@@ -8,29 +8,28 @@ import (
 	"backend/internal/generated/ent/inventoryledger"
 
 	"entgo.io/ent/dialect/sql"
-	"github.com/google/uuid"
 )
 
 type InventoryLedgerRepository interface {
-	Create(ctx context.Context, productID uuid.UUID, delta int, reason inventoryledger.Reason, orderID, orderLineID, deviceID *uuid.UUID, createdBy *string) (*ent.InventoryLedger, error)
+	Create(ctx context.Context, productID string, delta int, reason inventoryledger.Reason, orderID, orderLineID, deviceID *string, createdBy *string) (*ent.InventoryLedger, error)
 	CreateMany(ctx context.Context, entries []InventoryLedgerCreateParams) ([]*ent.InventoryLedger, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*ent.InventoryLedger, error)
-	GetByProductID(ctx context.Context, productID uuid.UUID) ([]*ent.InventoryLedger, error)
-	GetByProductIDWithPagination(ctx context.Context, productID uuid.UUID, limit, offset int) ([]*ent.InventoryLedger, error)
+	GetByID(ctx context.Context, id string) (*ent.InventoryLedger, error)
+	GetByProductID(ctx context.Context, productID string) ([]*ent.InventoryLedger, error)
+	GetByProductIDWithPagination(ctx context.Context, productID string, limit, offset int) ([]*ent.InventoryLedger, error)
 	GetByDateRange(ctx context.Context, start, end time.Time) ([]*ent.InventoryLedger, error)
-	GetCurrentStock(ctx context.Context, productID uuid.UUID) (int, error)
-	GetCurrentStockBatch(ctx context.Context, productIDs []uuid.UUID) (map[uuid.UUID]int, error)
-	SumByProductIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]int64, error)
+	GetCurrentStock(ctx context.Context, productID string) (int, error)
+	GetCurrentStockBatch(ctx context.Context, productIDs []string) (map[string]int, error)
+	SumByProductIDs(ctx context.Context, ids []string) (map[string]int64, error)
 }
 
 // InventoryLedgerCreateParams holds the parameters for creating an inventory ledger entry in a batch.
 type InventoryLedgerCreateParams struct {
-	ProductID   uuid.UUID
+	ProductID   string
 	Delta       int
 	Reason      inventoryledger.Reason
-	OrderID     *uuid.UUID
-	OrderLineID *uuid.UUID
-	DeviceID    *uuid.UUID
+	OrderID     *string
+	OrderLineID *string
+	DeviceID    *string
 	CreatedBy   *string
 }
 
@@ -46,7 +45,7 @@ func (r *inventoryLedgerRepo) ec(ctx context.Context) *ent.Client {
 	return ClientFromContext(ctx, r.client)
 }
 
-func (r *inventoryLedgerRepo) Create(ctx context.Context, productID uuid.UUID, delta int, reason inventoryledger.Reason, orderID, orderLineID, deviceID *uuid.UUID, createdBy *string) (*ent.InventoryLedger, error) {
+func (r *inventoryLedgerRepo) Create(ctx context.Context, productID string, delta int, reason inventoryledger.Reason, orderID, orderLineID, deviceID *string, createdBy *string) (*ent.InventoryLedger, error) {
 	builder := r.ec(ctx).InventoryLedger.Create().
 		SetProductID(productID).
 		SetDelta(delta).
@@ -101,7 +100,7 @@ func (r *inventoryLedgerRepo) CreateMany(ctx context.Context, entries []Inventor
 	return created, nil
 }
 
-func (r *inventoryLedgerRepo) GetByID(ctx context.Context, id uuid.UUID) (*ent.InventoryLedger, error) {
+func (r *inventoryLedgerRepo) GetByID(ctx context.Context, id string) (*ent.InventoryLedger, error) {
 	e, err := r.ec(ctx).InventoryLedger.Get(ctx, id)
 	if err != nil {
 		return nil, translateError(err)
@@ -109,7 +108,7 @@ func (r *inventoryLedgerRepo) GetByID(ctx context.Context, id uuid.UUID) (*ent.I
 	return e, nil
 }
 
-func (r *inventoryLedgerRepo) GetByProductID(ctx context.Context, productID uuid.UUID) ([]*ent.InventoryLedger, error) {
+func (r *inventoryLedgerRepo) GetByProductID(ctx context.Context, productID string) ([]*ent.InventoryLedger, error) {
 	rows, err := r.ec(ctx).InventoryLedger.Query().
 		Where(inventoryledger.ProductIDEQ(productID)).
 		Order(inventoryledger.ByCreatedAt(entDescOpt())).
@@ -120,7 +119,7 @@ func (r *inventoryLedgerRepo) GetByProductID(ctx context.Context, productID uuid
 	return rows, nil
 }
 
-func (r *inventoryLedgerRepo) GetByProductIDWithPagination(ctx context.Context, productID uuid.UUID, limit, offset int) ([]*ent.InventoryLedger, error) {
+func (r *inventoryLedgerRepo) GetByProductIDWithPagination(ctx context.Context, productID string, limit, offset int) ([]*ent.InventoryLedger, error) {
 	rows, err := r.ec(ctx).InventoryLedger.Query().
 		Where(inventoryledger.ProductIDEQ(productID)).
 		Order(inventoryledger.ByCreatedAt(entDescOpt())).
@@ -147,7 +146,7 @@ func (r *inventoryLedgerRepo) GetByDateRange(ctx context.Context, start, end tim
 	return rows, nil
 }
 
-func (r *inventoryLedgerRepo) GetCurrentStock(ctx context.Context, productID uuid.UUID) (int, error) {
+func (r *inventoryLedgerRepo) GetCurrentStock(ctx context.Context, productID string) (int, error) {
 	// Use raw SQL aggregation via Modify
 	var result []struct {
 		Sum int `json:"sum"`
@@ -167,14 +166,14 @@ func (r *inventoryLedgerRepo) GetCurrentStock(ctx context.Context, productID uui
 	return result[0].Sum, nil
 }
 
-func (r *inventoryLedgerRepo) GetCurrentStockBatch(ctx context.Context, productIDs []uuid.UUID) (map[uuid.UUID]int, error) {
+func (r *inventoryLedgerRepo) GetCurrentStockBatch(ctx context.Context, productIDs []string) (map[string]int, error) {
 	if len(productIDs) == 0 {
-		return make(map[uuid.UUID]int), nil
+		return make(map[string]int), nil
 	}
 
 	var results []struct {
-		ProductID uuid.UUID `json:"product_id"`
-		Stock     int       `json:"stock"`
+		ProductID string `json:"product_id"`
+		Stock     int    `json:"stock"`
 	}
 	err := r.ec(ctx).InventoryLedger.Query().
 		Where(inventoryledger.ProductIDIn(productIDs...)).
@@ -189,7 +188,7 @@ func (r *inventoryLedgerRepo) GetCurrentStockBatch(ctx context.Context, productI
 		return nil, translateError(err)
 	}
 
-	stocks := make(map[uuid.UUID]int, len(results))
+	stocks := make(map[string]int, len(results))
 	for _, r := range results {
 		stocks[r.ProductID] = r.Stock
 	}
@@ -202,15 +201,15 @@ func (r *inventoryLedgerRepo) GetCurrentStockBatch(ctx context.Context, productI
 	return stocks, nil
 }
 
-func (r *inventoryLedgerRepo) SumByProductIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]int64, error) {
-	result := make(map[uuid.UUID]int64)
+func (r *inventoryLedgerRepo) SumByProductIDs(ctx context.Context, ids []string) (map[string]int64, error) {
+	result := make(map[string]int64)
 	if len(ids) == 0 {
 		return result, nil
 	}
 
 	var results []struct {
-		ProductID uuid.UUID `json:"product_id"`
-		Total     int64     `json:"total"`
+		ProductID string `json:"product_id"`
+		Total     int64  `json:"total"`
 	}
 	err := r.ec(ctx).InventoryLedger.Query().
 		Where(inventoryledger.ProductIDIn(ids...)).

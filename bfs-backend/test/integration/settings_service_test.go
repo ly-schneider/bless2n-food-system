@@ -8,7 +8,7 @@ import (
 	"backend/internal/generated/ent/settings"
 	"backend/internal/service"
 
-	"github.com/google/uuid"
+	nanoid "backend/internal/id"
 	"github.com/stretchr/testify/require"
 )
 
@@ -103,7 +103,7 @@ func TestSettingsService_JetonCRUD(t *testing.T) {
 	t.Run("CreateJeton creates new jeton with hex color", func(t *testing.T) {
 		jeton, err := svc.CreateJeton(ctx, "Red Token", "#EF4444")
 		require.NoError(t, err)
-		require.NotEqual(t, uuid.Nil, jeton.ID)
+		require.NotEqual(t, "", jeton.ID)
 		require.Equal(t, "Red Token", jeton.Name)
 		require.Equal(t, "#EF4444", jeton.Color)
 	})
@@ -162,7 +162,7 @@ func TestSettingsService_JetonCRUD(t *testing.T) {
 	})
 
 	t.Run("UpdateJeton fails for non-existent jeton", func(t *testing.T) {
-		_, err := svc.UpdateJeton(ctx, uuid.Must(uuid.NewV7()), "Test", "#EF4444")
+		_, err := svc.UpdateJeton(ctx, nanoid.New(), "Test", "#EF4444")
 		require.Error(t, err)
 	})
 
@@ -243,7 +243,7 @@ func TestSettingsService_SetProductJeton(t *testing.T) {
 
 	t.Run("SetProductJeton fails for non-existent product", func(t *testing.T) {
 		jeton := fixtures.CreateJeton("Green", "#22C55E")
-		err := svc.SetProductJeton(ctx, uuid.Must(uuid.NewV7()), &jeton.ID)
+		err := svc.SetProductJeton(ctx, nanoid.New(), &jeton.ID)
 		require.Error(t, err)
 	})
 
@@ -251,7 +251,7 @@ func TestSettingsService_SetProductJeton(t *testing.T) {
 		category := fixtures.CreateCategory("Snacks", 3, true)
 		p := fixtures.CreateProduct("Chips", category.ID, 200, product.TypeSimple, nil)
 
-		nonExistentJeton := uuid.Must(uuid.NewV7())
+		nonExistentJeton := nanoid.New()
 		err := svc.SetProductJeton(ctx, p.ID, &nonExistentJeton)
 		require.Error(t, err)
 	})

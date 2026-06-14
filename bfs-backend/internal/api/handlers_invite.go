@@ -7,8 +7,6 @@ import (
 	"backend/internal/auth"
 	"backend/internal/generated/api/generated"
 	"backend/internal/response"
-
-	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // ListInvites returns admin invites with optional filtering.
@@ -59,8 +57,8 @@ func (h *Handlers) CreateInvite(w http.ResponseWriter, r *http.Request) {
 
 // GetInvite returns a public view of an invite by ID.
 // (GET /invites/{inviteId})
-func (h *Handlers) GetInvite(w http.ResponseWriter, r *http.Request, inviteId openapi_types.UUID) {
-	invite, err := h.invites.GetByID(r.Context(), inviteId.String())
+func (h *Handlers) GetInvite(w http.ResponseWriter, r *http.Request, inviteId string) {
+	invite, err := h.invites.GetByID(r.Context(), inviteId)
 	if err != nil {
 		writeEntError(w, err)
 		return
@@ -79,8 +77,8 @@ func (h *Handlers) GetInvite(w http.ResponseWriter, r *http.Request, inviteId op
 
 // DeleteInvite revokes/deletes an invite.
 // (DELETE /invites/{inviteId})
-func (h *Handlers) DeleteInvite(w http.ResponseWriter, r *http.Request, inviteId openapi_types.UUID) {
-	if err := h.invites.Delete(r.Context(), inviteId.String()); err != nil {
+func (h *Handlers) DeleteInvite(w http.ResponseWriter, r *http.Request, inviteId string) {
+	if err := h.invites.Delete(r.Context(), inviteId); err != nil {
 		writeEntError(w, err)
 		return
 	}

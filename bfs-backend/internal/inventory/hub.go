@@ -3,12 +3,10 @@ package inventory
 import (
 	"sync"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type Update struct {
-	ProductID uuid.UUID `json:"productId"`
+	ProductID string    `json:"productId"`
 	NewStock  int       `json:"newStock"`
 	Delta     int       `json:"delta"`
 	Timestamp time.Time `json:"timestamp"`

@@ -8,12 +8,12 @@ import (
 
 	"backend/internal/generated/ent"
 	"backend/internal/generated/ent/volunteercampaign"
+	nanoid "backend/internal/id"
 	"backend/internal/repository"
 	"backend/internal/response"
 	"backend/internal/service"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -22,8 +22,8 @@ const (
 )
 
 type volunteerCampaignProductPayload struct {
-	ProductID uuid.UUID `json:"productId"`
-	Quantity  int       `json:"quantity"`
+	ProductID string `json:"productId"`
+	Quantity  int    `json:"quantity"`
 }
 
 type createVolunteerCampaignRequest struct {
@@ -48,8 +48,8 @@ type verifyAccessRequest struct {
 }
 
 type adminCampaignResponse struct {
-	ID              uuid.UUID  `json:"id"`
-	ClaimToken      uuid.UUID  `json:"claimToken"`
+	ID              string     `json:"id"`
+	ClaimToken      string     `json:"claimToken"`
 	Name            string     `json:"name"`
 	AccessCode      string     `json:"accessCode"`
 	ValidFrom       *time.Time `json:"validFrom,omitempty"`
@@ -68,15 +68,15 @@ type adminCampaignDetailResponse struct {
 }
 
 type adminCampaignProductItem struct {
-	ProductID    uuid.UUID `json:"productId"`
-	ProductName  string    `json:"productName"`
-	ProductImage *string   `json:"productImage,omitempty"`
-	Quantity     int       `json:"quantity"`
+	ProductID    string  `json:"productId"`
+	ProductName  string  `json:"productName"`
+	ProductImage *string `json:"productImage,omitempty"`
+	Quantity     int     `json:"quantity"`
 }
 
 type adminCampaignRedemptionItem struct {
-	ID        uuid.UUID `json:"id"`
-	OrderID   uuid.UUID `json:"orderId"`
+	ID        string    `json:"id"`
+	OrderID   string    `json:"orderId"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
@@ -138,9 +138,9 @@ func (h *Handlers) ListVolunteerCampaigns(w http.ResponseWriter, r *http.Request
 
 // GetVolunteerCampaign (GET /v1/staff-meals/{campaignId})
 func (h *Handlers) GetVolunteerCampaign(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(chi.URLParam(r, "campaignId"))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_id", err.Error())
+	id := chi.URLParam(r, "campaignId")
+	if !nanoid.Valid(id) {
+		writeError(w, http.StatusBadRequest, "invalid_id", "Invalid id")
 		return
 	}
 	detail, err := h.volunteers.GetCampaign(r.Context(), id)
@@ -175,9 +175,9 @@ func (h *Handlers) GetVolunteerCampaign(w http.ResponseWriter, r *http.Request) 
 
 // UpdateVolunteerCampaign (PATCH /v1/staff-meals/{campaignId})
 func (h *Handlers) UpdateVolunteerCampaign(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(chi.URLParam(r, "campaignId"))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_id", err.Error())
+	id := chi.URLParam(r, "campaignId")
+	if !nanoid.Valid(id) {
+		writeError(w, http.StatusBadRequest, "invalid_id", "Invalid id")
 		return
 	}
 	var req updateVolunteerCampaignRequest
@@ -217,9 +217,9 @@ func (h *Handlers) UpdateVolunteerCampaign(w http.ResponseWriter, r *http.Reques
 
 // EndVolunteerCampaign (POST /v1/staff-meals/{campaignId}/end)
 func (h *Handlers) EndVolunteerCampaign(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(chi.URLParam(r, "campaignId"))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_id", err.Error())
+	id := chi.URLParam(r, "campaignId")
+	if !nanoid.Valid(id) {
+		writeError(w, http.StatusBadRequest, "invalid_id", "Invalid id")
 		return
 	}
 	if err := h.volunteers.EndCampaign(r.Context(), id); err != nil {
@@ -231,9 +231,9 @@ func (h *Handlers) EndVolunteerCampaign(w http.ResponseWriter, r *http.Request) 
 
 // RotateVolunteerCampaignToken (POST /v1/staff-meals/{campaignId}/rotate-token)
 func (h *Handlers) RotateVolunteerCampaignToken(w http.ResponseWriter, r *http.Request) {
-	id, err := uuid.Parse(chi.URLParam(r, "campaignId"))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_id", err.Error())
+	id := chi.URLParam(r, "campaignId")
+	if !nanoid.Valid(id) {
+		writeError(w, http.StatusBadRequest, "invalid_id", "Invalid id")
 		return
 	}
 	newToken, err := h.volunteers.RotateClaimToken(r.Context(), id)
@@ -246,9 +246,9 @@ func (h *Handlers) RotateVolunteerCampaignToken(w http.ResponseWriter, r *http.R
 
 // VerifyClaimAccess (POST /v1/claim/{token}/auth)
 func (h *Handlers) VerifyClaimAccess(w http.ResponseWriter, r *http.Request) {
-	token, err := uuid.Parse(chi.URLParam(r, "token"))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_token", err.Error())
+	token := chi.URLParam(r, "token")
+	if !nanoid.Valid(token) {
+		writeError(w, http.StatusBadRequest, "invalid_token", "Invalid id")
 		return
 	}
 	var req verifyAccessRequest
@@ -271,9 +271,9 @@ func (h *Handlers) VerifyClaimAccess(w http.ResponseWriter, r *http.Request) {
 
 // GetClaimCampaign (GET /v1/claim/{token})
 func (h *Handlers) GetClaimCampaign(w http.ResponseWriter, r *http.Request) {
-	token, err := uuid.Parse(chi.URLParam(r, "token"))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_token", err.Error())
+	token := chi.URLParam(r, "token")
+	if !nanoid.Valid(token) {
+		writeError(w, http.StatusBadRequest, "invalid_token", "Invalid id")
 		return
 	}
 	if readSessionCookie(r) == "" {

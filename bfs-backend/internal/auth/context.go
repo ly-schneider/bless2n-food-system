@@ -2,8 +2,6 @@ package auth
 
 import (
 	"context"
-
-	"github.com/google/uuid"
 )
 
 type contextKey string
@@ -107,14 +105,14 @@ func WithAuthType(ctx context.Context, authType AuthType) context.Context {
 	return context.WithValue(ctx, AuthTypeKey, authType)
 }
 
-func GetDeviceID(ctx context.Context) (uuid.UUID, bool) {
-	deviceID, ok := ctx.Value(DeviceIDKey).(uuid.UUID)
+func GetDeviceID(ctx context.Context) (string, bool) {
+	deviceID, ok := ctx.Value(DeviceIDKey).(string)
 	return deviceID, ok
 }
 
 // RequireDeviceID panics if the device ID is not in context.
 // Only safe after device auth middleware has validated the request.
-func RequireDeviceID(ctx context.Context) uuid.UUID {
+func RequireDeviceID(ctx context.Context) string {
 	deviceID, ok := GetDeviceID(ctx)
 	if !ok {
 		panic("auth: device ID not found in context - ensure device auth middleware is applied")
@@ -122,7 +120,7 @@ func RequireDeviceID(ctx context.Context) uuid.UUID {
 	return deviceID
 }
 
-func WithDeviceID(ctx context.Context, deviceID uuid.UUID) context.Context {
+func WithDeviceID(ctx context.Context, deviceID string) context.Context {
 	return context.WithValue(ctx, DeviceIDKey, deviceID)
 }
 

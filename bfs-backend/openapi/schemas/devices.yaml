@@ -18,7 +18,6 @@ Device:
   properties:
     id:
       type: string
-      format: uuid
     name:
       type: string
       maxLength: 20

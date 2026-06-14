@@ -9,7 +9,6 @@ import (
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
-	"github.com/google/uuid"
 )
 
 type VolunteerRedemption struct {
@@ -24,13 +23,14 @@ func (VolunteerRedemption) Annotations() []schema.Annotation {
 
 func (VolunteerRedemption) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("id", uuid.UUID{}).
-			Default(uuidV7).
-			Immutable(),
-		field.UUID("campaign_id", uuid.UUID{}),
-		field.UUID("order_id", uuid.UUID{}).
+		nanoidPK(),
+		field.String("campaign_id").
+			MaxLen(36),
+		field.String("order_id").
+			MaxLen(36).
 			Unique(),
-		field.UUID("station_device_id", uuid.UUID{}).
+		field.String("station_device_id").
+			MaxLen(36).
 			Optional().
 			Nillable(),
 		field.String("idempotency_key").

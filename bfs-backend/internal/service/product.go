@@ -9,44 +9,43 @@ import (
 	"backend/internal/generated/ent"
 	"backend/internal/generated/ent/inventoryledger"
 	"backend/internal/generated/ent/product"
+	nanoid "backend/internal/id"
 	"backend/internal/inventory"
 	"backend/internal/repository"
-
-	"github.com/google/uuid"
 )
 
 type ProductService interface {
 	ListProducts(ctx context.Context, categoryID *string, limit, offset int) ([]*ent.Product, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*ent.Product, error)
-	GetByIDWithRelations(ctx context.Context, id uuid.UUID) (*ent.Product, error)
+	GetByID(ctx context.Context, id string) (*ent.Product, error)
+	GetByIDWithRelations(ctx context.Context, id string) (*ent.Product, error)
 	GetAll(ctx context.Context) ([]*ent.Product, error)
-	GetByCategory(ctx context.Context, categoryID uuid.UUID) ([]*ent.Product, error)
-	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*ent.Product, error)
-	Create(ctx context.Context, categoryID uuid.UUID, productType product.Type, name string, priceCents int64, isActive bool, image *string, description *string, jetonID *uuid.UUID) (*ent.Product, error)
-	Update(ctx context.Context, id, categoryID uuid.UUID, productType product.Type, name string, priceCents int64, isActive bool, image *string, description *string, jetonID *uuid.UUID) (*ent.Product, error)
-	Delete(ctx context.Context, id uuid.UUID) error
+	GetByCategory(ctx context.Context, categoryID string) ([]*ent.Product, error)
+	GetByIDs(ctx context.Context, ids []string) ([]*ent.Product, error)
+	Create(ctx context.Context, categoryID string, productType product.Type, name string, priceCents int64, isActive bool, image *string, description *string, jetonID *string) (*ent.Product, error)
+	Update(ctx context.Context, id, categoryID string, productType product.Type, name string, priceCents int64, isActive bool, image *string, description *string, jetonID *string) (*ent.Product, error)
+	Delete(ctx context.Context, id string) error
 	CountActiveWithoutJeton(ctx context.Context) (int64, error)
-	CountByJetonIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]int64, error)
-	UpdateJeton(ctx context.Context, id uuid.UUID, jetonID *uuid.UUID) error
+	CountByJetonIDs(ctx context.Context, ids []string) (map[string]int64, error)
+	UpdateJeton(ctx context.Context, id string, jetonID *string) error
 
 	// Inventory
-	GetStock(ctx context.Context, id uuid.UUID) (int64, error)
-	GetStockBatch(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]int, error)
-	AdjustStock(ctx context.Context, id uuid.UUID, delta int64, reason string) error
-	ListInventoryHistory(ctx context.Context, productID uuid.UUID, limit, offset int) ([]*ent.InventoryLedger, error)
+	GetStock(ctx context.Context, id string) (int64, error)
+	GetStockBatch(ctx context.Context, ids []string) (map[string]int, error)
+	AdjustStock(ctx context.Context, id string, delta int64, reason string) error
+	ListInventoryHistory(ctx context.Context, productID string, limit, offset int) ([]*ent.InventoryLedger, error)
 
 	// Menus
 	GetMenus(ctx context.Context) ([]*ent.Product, error)
 
 	// Menu slots
-	CreateMenuSlot(ctx context.Context, menuID uuid.UUID, name string) (*ent.MenuSlot, error)
-	UpdateMenuSlot(ctx context.Context, menuID, slotID uuid.UUID, name string) (*ent.MenuSlot, error)
-	DeleteMenuSlot(ctx context.Context, menuID, slotID uuid.UUID) error
-	ReorderMenuSlots(ctx context.Context, menuID uuid.UUID, positions map[uuid.UUID]int) error
+	CreateMenuSlot(ctx context.Context, menuID string, name string) (*ent.MenuSlot, error)
+	UpdateMenuSlot(ctx context.Context, menuID, slotID string, name string) (*ent.MenuSlot, error)
+	DeleteMenuSlot(ctx context.Context, menuID, slotID string) error
+	ReorderMenuSlots(ctx context.Context, menuID string, positions map[string]int) error
 
 	// Menu slot options
-	AddSlotOption(ctx context.Context, menuID, slotID uuid.UUID, productID uuid.UUID) (*ent.MenuSlotOption, error)
-	RemoveSlotOption(ctx context.Context, menuID, slotID, optionProductID uuid.UUID) error
+	AddSlotOption(ctx context.Context, menuID, slotID string, productID string) (*ent.MenuSlotOption, error)
+	RemoveSlotOption(ctx context.Context, menuID, slotID, optionProductID string) error
 }
 
 type productService struct {
@@ -83,9 +82,9 @@ func NewProductService(
 
 func (s *productService) ListProducts(ctx context.Context, categoryID *string, limit, offset int) ([]*ent.Product, error) {
 	if categoryID != nil {
-		catID, err := uuid.Parse(*categoryID)
-		if err != nil {
-			return nil, err
+		catID := *categoryID
+		if !nanoid.Valid(catID) {
+			return nil, fmt.Errorf("invalid category id")
 		}
 		return s.cache.load(ctx, catalogKeyByCategory(catID), func(ctx context.Context) ([]*ent.Product, error) {
 			return s.productRepo.GetByCategory(ctx, catID)
@@ -96,11 +95,11 @@ func (s *productService) ListProducts(ctx context.Context, categoryID *string, l
 	})
 }
 
-func (s *productService) GetByID(ctx context.Context, id uuid.UUID) (*ent.Product, error) {
+func (s *productService) GetByID(ctx context.Context, id string) (*ent.Product, error) {
 	return s.productRepo.GetByID(ctx, id)
 }
 
-func (s *productService) GetByIDWithRelations(ctx context.Context, id uuid.UUID) (*ent.Product, error) {
+func (s *productService) GetByIDWithRelations(ctx context.Context, id string) (*ent.Product, error) {
 	return s.productRepo.GetByIDWithRelations(ctx, id)
 }
 
@@ -110,13 +109,13 @@ func (s *productService) GetAll(ctx context.Context) ([]*ent.Product, error) {
 	})
 }
 
-func (s *productService) GetByCategory(ctx context.Context, categoryID uuid.UUID) ([]*ent.Product, error) {
+func (s *productService) GetByCategory(ctx context.Context, categoryID string) ([]*ent.Product, error) {
 	return s.cache.load(ctx, catalogKeyByCategory(categoryID), func(ctx context.Context) ([]*ent.Product, error) {
 		return s.productRepo.GetByCategory(ctx, categoryID)
 	})
 }
 
-func (s *productService) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*ent.Product, error) {
+func (s *productService) GetByIDs(ctx context.Context, ids []string) ([]*ent.Product, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
@@ -124,12 +123,12 @@ func (s *productService) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*ent.
 	if err != nil {
 		return nil, err
 	}
-	byID := make(map[uuid.UUID]*ent.Product, len(all))
+	byID := make(map[string]*ent.Product, len(all))
 	for _, p := range all {
 		byID[p.ID] = p
 	}
 	result := make([]*ent.Product, 0, len(ids))
-	missing := make([]uuid.UUID, 0)
+	missing := make([]string, 0)
 	for _, id := range ids {
 		if p, ok := byID[id]; ok {
 			result = append(result, p)
@@ -147,7 +146,7 @@ func (s *productService) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*ent.
 	return result, nil
 }
 
-func (s *productService) Create(ctx context.Context, categoryID uuid.UUID, productType product.Type, name string, priceCents int64, isActive bool, image *string, description *string, jetonID *uuid.UUID) (*ent.Product, error) {
+func (s *productService) Create(ctx context.Context, categoryID string, productType product.Type, name string, priceCents int64, isActive bool, image *string, description *string, jetonID *string) (*ent.Product, error) {
 	created, err := s.productRepo.Create(ctx, categoryID, productType, name, priceCents, isActive, image, description, jetonID)
 	if err == nil {
 		s.cache.invalidate()
@@ -155,7 +154,7 @@ func (s *productService) Create(ctx context.Context, categoryID uuid.UUID, produ
 	return created, err
 }
 
-func (s *productService) Update(ctx context.Context, id, categoryID uuid.UUID, productType product.Type, name string, priceCents int64, isActive bool, image *string, description *string, jetonID *uuid.UUID) (*ent.Product, error) {
+func (s *productService) Update(ctx context.Context, id, categoryID string, productType product.Type, name string, priceCents int64, isActive bool, image *string, description *string, jetonID *string) (*ent.Product, error) {
 	updated, err := s.productRepo.Update(ctx, id, categoryID, productType, name, priceCents, isActive, image, description, jetonID)
 	if err == nil {
 		s.cache.invalidate()
@@ -163,7 +162,7 @@ func (s *productService) Update(ctx context.Context, id, categoryID uuid.UUID, p
 	return updated, err
 }
 
-func (s *productService) Delete(ctx context.Context, id uuid.UUID) error {
+func (s *productService) Delete(ctx context.Context, id string) error {
 	slots, _ := s.menuSlotRepo.GetByMenuProductID(ctx, id)
 	for _, slot := range slots {
 		_ = s.menuSlotOptionRepo.DeleteByMenuSlotID(ctx, slot.ID)
@@ -182,11 +181,11 @@ func (s *productService) CountActiveWithoutJeton(ctx context.Context) (int64, er
 	return s.productRepo.CountActiveWithoutJeton(ctx)
 }
 
-func (s *productService) CountByJetonIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]int64, error) {
+func (s *productService) CountByJetonIDs(ctx context.Context, ids []string) (map[string]int64, error) {
 	return s.productRepo.CountByJetonIDs(ctx, ids)
 }
 
-func (s *productService) UpdateJeton(ctx context.Context, id uuid.UUID, jetonID *uuid.UUID) error {
+func (s *productService) UpdateJeton(ctx context.Context, id string, jetonID *string) error {
 	err := s.productRepo.UpdateJeton(ctx, id, jetonID)
 	if err == nil {
 		s.cache.invalidate()
@@ -198,7 +197,7 @@ func (s *productService) UpdateJeton(ctx context.Context, id uuid.UUID, jetonID 
 // Inventory
 // ---------------------------------------------------------------------------
 
-func (s *productService) GetStock(ctx context.Context, id uuid.UUID) (int64, error) {
+func (s *productService) GetStock(ctx context.Context, id string) (int64, error) {
 	stock, err := s.inventoryRepo.GetCurrentStock(ctx, id)
 	if err != nil {
 		return 0, err
@@ -206,11 +205,11 @@ func (s *productService) GetStock(ctx context.Context, id uuid.UUID) (int64, err
 	return int64(stock), nil
 }
 
-func (s *productService) GetStockBatch(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]int, error) {
+func (s *productService) GetStockBatch(ctx context.Context, ids []string) (map[string]int, error) {
 	return s.inventoryRepo.GetCurrentStockBatch(ctx, ids)
 }
 
-func (s *productService) ListInventoryHistory(ctx context.Context, productID uuid.UUID, limit, offset int) ([]*ent.InventoryLedger, error) {
+func (s *productService) ListInventoryHistory(ctx context.Context, productID string, limit, offset int) ([]*ent.InventoryLedger, error) {
 	if limit <= 0 {
 		limit = 50
 	}
@@ -220,7 +219,7 @@ func (s *productService) ListInventoryHistory(ctx context.Context, productID uui
 	return s.inventoryRepo.GetByProductIDWithPagination(ctx, productID, limit, offset)
 }
 
-func (s *productService) AdjustStock(ctx context.Context, id uuid.UUID, delta int64, reason string) error {
+func (s *productService) AdjustStock(ctx context.Context, id string, delta int64, reason string) error {
 	r := inventoryledger.ReasonManualAdjust
 	switch reason {
 	case string(inventoryledger.ReasonOpeningBalance):
@@ -269,7 +268,7 @@ func (s *productService) GetMenus(ctx context.Context) ([]*ent.Product, error) {
 // Menu Slots
 // ---------------------------------------------------------------------------
 
-func (s *productService) CreateMenuSlot(ctx context.Context, menuID uuid.UUID, name string) (*ent.MenuSlot, error) {
+func (s *productService) CreateMenuSlot(ctx context.Context, menuID string, name string) (*ent.MenuSlot, error) {
 	existing, err := s.menuSlotRepo.GetByMenuProductID(ctx, menuID)
 	if err != nil {
 		return nil, err
@@ -287,7 +286,7 @@ func (s *productService) CreateMenuSlot(ctx context.Context, menuID uuid.UUID, n
 	return created, err
 }
 
-func (s *productService) UpdateMenuSlot(ctx context.Context, menuID, slotID uuid.UUID, name string) (*ent.MenuSlot, error) {
+func (s *productService) UpdateMenuSlot(ctx context.Context, menuID, slotID string, name string) (*ent.MenuSlot, error) {
 	slot, err := s.menuSlotRepo.GetByID(ctx, slotID)
 	if err != nil {
 		return nil, err
@@ -302,7 +301,7 @@ func (s *productService) UpdateMenuSlot(ctx context.Context, menuID, slotID uuid
 	return updated, err
 }
 
-func (s *productService) DeleteMenuSlot(ctx context.Context, menuID, slotID uuid.UUID) error {
+func (s *productService) DeleteMenuSlot(ctx context.Context, menuID, slotID string) error {
 	// Verify the slot belongs to this menu.
 	slot, err := s.menuSlotRepo.GetByID(ctx, slotID)
 	if err != nil {
@@ -334,7 +333,7 @@ func (s *productService) DeleteMenuSlot(ctx context.Context, menuID, slotID uuid
 	return nil
 }
 
-func (s *productService) ReorderMenuSlots(ctx context.Context, menuID uuid.UUID, positions map[uuid.UUID]int) error {
+func (s *productService) ReorderMenuSlots(ctx context.Context, menuID string, positions map[string]int) error {
 	slots, err := s.menuSlotRepo.GetByMenuProductID(ctx, menuID)
 	if err != nil {
 		return err
@@ -350,7 +349,7 @@ func (s *productService) ReorderMenuSlots(ctx context.Context, menuID uuid.UUID,
 	return nil
 }
 
-func (s *productService) AddSlotOption(ctx context.Context, menuID, slotID uuid.UUID, productID uuid.UUID) (*ent.MenuSlotOption, error) {
+func (s *productService) AddSlotOption(ctx context.Context, menuID, slotID string, productID string) (*ent.MenuSlotOption, error) {
 	opt, err := s.menuSlotOptionRepo.Create(ctx, slotID, productID)
 	if err == nil {
 		s.cache.invalidate()
@@ -358,7 +357,7 @@ func (s *productService) AddSlotOption(ctx context.Context, menuID, slotID uuid.
 	return opt, err
 }
 
-func (s *productService) RemoveSlotOption(ctx context.Context, menuID, slotID, optionProductID uuid.UUID) error {
+func (s *productService) RemoveSlotOption(ctx context.Context, menuID, slotID, optionProductID string) error {
 	err := s.menuSlotOptionRepo.Delete(ctx, slotID, optionProductID)
 	if err == nil {
 		s.cache.invalidate()

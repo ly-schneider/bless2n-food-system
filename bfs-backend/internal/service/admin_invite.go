@@ -15,9 +15,8 @@ import (
 	"backend/internal/generated/ent"
 	"backend/internal/generated/ent/admininvite"
 	"backend/internal/generated/ent/user"
+	nanoid "backend/internal/id"
 	"backend/internal/repository"
-
-	"github.com/google/uuid"
 )
 
 const (
@@ -70,7 +69,7 @@ func NewAdminInviteService(
 }
 
 func (s *adminInviteService) GetByID(ctx context.Context, id string) (*ent.AdminInvite, error) {
-	uid, err := parseUUID(id)
+	uid, err := parseID(id)
 	if err != nil {
 		return nil, ErrInviteNotFound
 	}
@@ -134,7 +133,7 @@ func (s *adminInviteService) Create(ctx context.Context, inviterID, email string
 }
 
 func (s *adminInviteService) Delete(ctx context.Context, id string) error {
-	uuid, err := parseUUID(id)
+	uuid, err := parseID(id)
 	if err != nil {
 		return ErrInviteNotFound
 	}
@@ -149,7 +148,7 @@ func (s *adminInviteService) Delete(ctx context.Context, id string) error {
 }
 
 func (s *adminInviteService) Revoke(ctx context.Context, id string) error {
-	uuid, err := parseUUID(id)
+	uuid, err := parseID(id)
 	if err != nil {
 		return ErrInviteNotFound
 	}
@@ -170,7 +169,7 @@ func (s *adminInviteService) Revoke(ctx context.Context, id string) error {
 }
 
 func (s *adminInviteService) Resend(ctx context.Context, id string) error {
-	uuid, err := parseUUID(id)
+	uuid, err := parseID(id)
 	if err != nil {
 		return ErrInviteNotFound
 	}
@@ -305,7 +304,9 @@ func hashToken(token string) string {
 	return hex.EncodeToString(h[:])
 }
 
-// parseUUID parses a string UUID, returning an error if invalid.
-func parseUUID(s string) (uuid.UUID, error) {
-	return uuid.Parse(s)
+func parseID(s string) (string, error) {
+	if !nanoid.Valid(s) {
+		return "", fmt.Errorf("invalid id")
+	}
+	return s, nil
 }

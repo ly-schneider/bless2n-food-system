@@ -9,32 +9,31 @@ import (
 	"backend/internal/generated/ent/orderlineredemption"
 
 	"entgo.io/ent/dialect/sql"
-	"github.com/google/uuid"
 )
 
 type OrderLineRepository interface {
-	Create(ctx context.Context, orderID uuid.UUID, lineType orderline.LineType, productID uuid.UUID, title string, quantity int, unitPriceCents int64, parentLineID, menuSlotID *uuid.UUID, menuSlotName *string) (*ent.OrderLine, error)
+	Create(ctx context.Context, orderID string, lineType orderline.LineType, productID string, title string, quantity int, unitPriceCents int64, parentLineID, menuSlotID *string, menuSlotName *string) (*ent.OrderLine, error)
 	CreateBatch(ctx context.Context, lines []OrderLineCreateParams) ([]*ent.OrderLine, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*ent.OrderLine, error)
-	GetByOrderID(ctx context.Context, orderID uuid.UUID) ([]*ent.OrderLine, error)
-	GetUnredeemed(ctx context.Context, orderID uuid.UUID) ([]*ent.OrderLine, error)
-	Update(ctx context.Context, id, orderID uuid.UUID, lineType orderline.LineType, productID uuid.UUID, title string, quantity int, unitPriceCents int64, parentLineID, menuSlotID *uuid.UUID, menuSlotName *string) (*ent.OrderLine, error)
-	GetByOrderAndProductIDs(ctx context.Context, orderID uuid.UUID, productIDs []uuid.UUID) ([]*ent.OrderLine, error)
-	GetByOrderAndStationID(ctx context.Context, orderID, stationID uuid.UUID) ([]*ent.OrderLine, error)
-	GetByParentLineIDs(ctx context.Context, parentIDs []uuid.UUID) ([]*ent.OrderLine, error)
+	GetByID(ctx context.Context, id string) (*ent.OrderLine, error)
+	GetByOrderID(ctx context.Context, orderID string) ([]*ent.OrderLine, error)
+	GetUnredeemed(ctx context.Context, orderID string) ([]*ent.OrderLine, error)
+	Update(ctx context.Context, id, orderID string, lineType orderline.LineType, productID string, title string, quantity int, unitPriceCents int64, parentLineID, menuSlotID *string, menuSlotName *string) (*ent.OrderLine, error)
+	GetByOrderAndProductIDs(ctx context.Context, orderID string, productIDs []string) ([]*ent.OrderLine, error)
+	GetByOrderAndStationID(ctx context.Context, orderID, stationID string) ([]*ent.OrderLine, error)
+	GetByParentLineIDs(ctx context.Context, parentIDs []string) ([]*ent.OrderLine, error)
 }
 
 // OrderLineCreateParams holds the parameters needed to create an order line in a batch.
 type OrderLineCreateParams struct {
-	ID             *uuid.UUID
-	OrderID        uuid.UUID
+	ID             *string
+	OrderID        string
 	LineType       orderline.LineType
-	ProductID      uuid.UUID
+	ProductID      string
 	Title          string
 	Quantity       int
 	UnitPriceCents int64
-	ParentLineID   *uuid.UUID
-	MenuSlotID     *uuid.UUID
+	ParentLineID   *string
+	MenuSlotID     *string
 	MenuSlotName   *string
 }
 
@@ -50,7 +49,7 @@ func (r *orderLineRepo) ec(ctx context.Context) *ent.Client {
 	return ClientFromContext(ctx, r.client)
 }
 
-func (r *orderLineRepo) Create(ctx context.Context, orderID uuid.UUID, lineType orderline.LineType, productID uuid.UUID, title string, quantity int, unitPriceCents int64, parentLineID, menuSlotID *uuid.UUID, menuSlotName *string) (*ent.OrderLine, error) {
+func (r *orderLineRepo) Create(ctx context.Context, orderID string, lineType orderline.LineType, productID string, title string, quantity int, unitPriceCents int64, parentLineID, menuSlotID *string, menuSlotName *string) (*ent.OrderLine, error) {
 	builder := r.ec(ctx).OrderLine.Create().
 		SetOrderID(orderID).
 		SetLineType(lineType).
@@ -108,7 +107,7 @@ func (r *orderLineRepo) CreateBatch(ctx context.Context, lines []OrderLineCreate
 	return created, nil
 }
 
-func (r *orderLineRepo) GetByID(ctx context.Context, id uuid.UUID) (*ent.OrderLine, error) {
+func (r *orderLineRepo) GetByID(ctx context.Context, id string) (*ent.OrderLine, error) {
 	e, err := r.ec(ctx).OrderLine.Query().
 		Where(orderline.ID(id)).
 		WithProduct().
@@ -120,7 +119,7 @@ func (r *orderLineRepo) GetByID(ctx context.Context, id uuid.UUID) (*ent.OrderLi
 	return e, nil
 }
 
-func (r *orderLineRepo) GetByOrderID(ctx context.Context, orderID uuid.UUID) ([]*ent.OrderLine, error) {
+func (r *orderLineRepo) GetByOrderID(ctx context.Context, orderID string) ([]*ent.OrderLine, error) {
 	rows, err := r.ec(ctx).OrderLine.Query().
 		Where(orderline.OrderIDEQ(orderID)).
 		WithProduct().
@@ -132,7 +131,7 @@ func (r *orderLineRepo) GetByOrderID(ctx context.Context, orderID uuid.UUID) ([]
 	return rows, nil
 }
 
-func (r *orderLineRepo) GetUnredeemed(ctx context.Context, orderID uuid.UUID) ([]*ent.OrderLine, error) {
+func (r *orderLineRepo) GetUnredeemed(ctx context.Context, orderID string) ([]*ent.OrderLine, error) {
 	// Find order lines that have no redemption record
 	rows, err := r.ec(ctx).OrderLine.Query().
 		Where(
@@ -147,7 +146,7 @@ func (r *orderLineRepo) GetUnredeemed(ctx context.Context, orderID uuid.UUID) ([
 	return rows, nil
 }
 
-func (r *orderLineRepo) Update(ctx context.Context, id, orderID uuid.UUID, lineType orderline.LineType, productID uuid.UUID, title string, quantity int, unitPriceCents int64, parentLineID, menuSlotID *uuid.UUID, menuSlotName *string) (*ent.OrderLine, error) {
+func (r *orderLineRepo) Update(ctx context.Context, id, orderID string, lineType orderline.LineType, productID string, title string, quantity int, unitPriceCents int64, parentLineID, menuSlotID *string, menuSlotName *string) (*ent.OrderLine, error) {
 	builder := r.ec(ctx).OrderLine.UpdateOneID(id).
 		SetOrderID(orderID).
 		SetLineType(lineType).
@@ -177,7 +176,7 @@ func (r *orderLineRepo) Update(ctx context.Context, id, orderID uuid.UUID, lineT
 	return updated, nil
 }
 
-func (r *orderLineRepo) GetByOrderAndProductIDs(ctx context.Context, orderID uuid.UUID, productIDs []uuid.UUID) ([]*ent.OrderLine, error) {
+func (r *orderLineRepo) GetByOrderAndProductIDs(ctx context.Context, orderID string, productIDs []string) ([]*ent.OrderLine, error) {
 	if len(productIDs) == 0 {
 		return []*ent.OrderLine{}, nil
 	}
@@ -199,7 +198,7 @@ func (r *orderLineRepo) GetByOrderAndProductIDs(ctx context.Context, orderID uui
 // to `stationID`. Equivalent to the previous two-step ListProductIDsByDevice +
 // GetByOrderAndProductIDs flow, but folded into a single round-trip via a
 // correlated subquery on device_product.
-func (r *orderLineRepo) GetByOrderAndStationID(ctx context.Context, orderID, stationID uuid.UUID) ([]*ent.OrderLine, error) {
+func (r *orderLineRepo) GetByOrderAndStationID(ctx context.Context, orderID, stationID string) ([]*ent.OrderLine, error) {
 	rows, err := r.ec(ctx).OrderLine.Query().
 		Where(
 			orderline.OrderIDEQ(orderID),
@@ -222,7 +221,7 @@ func (r *orderLineRepo) GetByOrderAndStationID(ctx context.Context, orderID, sta
 	return rows, nil
 }
 
-func (r *orderLineRepo) GetByParentLineIDs(ctx context.Context, parentIDs []uuid.UUID) ([]*ent.OrderLine, error) {
+func (r *orderLineRepo) GetByParentLineIDs(ctx context.Context, parentIDs []string) ([]*ent.OrderLine, error) {
 	if len(parentIDs) == 0 {
 		return []*ent.OrderLine{}, nil
 	}

@@ -18,7 +18,6 @@ Settings:
       type: array
       items:
         type: string
-        format: uuid
       description: Product IDs that 100 Club members can redeem for free
     club100MaxRedemptions:
       type: integer
@@ -39,7 +38,6 @@ SettingsUpdate:
       type: array
       items:
         type: string
-        format: uuid
     club100MaxRedemptions:
       type: integer
       minimum: 0

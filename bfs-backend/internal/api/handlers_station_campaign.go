@@ -6,10 +6,9 @@ import (
 	"net/http"
 
 	"backend/internal/auth"
+	nanoid "backend/internal/id"
 	"backend/internal/response"
 	"backend/internal/service"
-
-	"github.com/google/uuid"
 )
 
 type redeemCampaignRequest struct {
@@ -32,9 +31,9 @@ func (h *Handlers) RedeemCampaignAtStation(w http.ResponseWriter, r *http.Reques
 		writeError(w, http.StatusBadRequest, "invalid_body", "Invalid request body")
 		return
 	}
-	token, err := uuid.Parse(body.ClaimToken)
-	if err != nil {
-		writeError(w, http.StatusBadRequest, "invalid_claim_token", err.Error())
+	token := body.ClaimToken
+	if !nanoid.Valid(token) {
+		writeError(w, http.StatusBadRequest, "invalid_claim_token", "Invalid claim token")
 		return
 	}
 
@@ -56,7 +55,7 @@ func (h *Handlers) RedeemCampaignAtStation(w http.ResponseWriter, r *http.Reques
 	}
 
 	response.WriteJSON(w, http.StatusOK, map[string]any{
-		"orderId":         result.OrderID.String(),
+		"orderId":         result.OrderID,
 		"redemptionCount": result.RedemptionCount,
 		"maxRedemptions":  result.MaxRedemptions,
 		"station":         result.StationResult,

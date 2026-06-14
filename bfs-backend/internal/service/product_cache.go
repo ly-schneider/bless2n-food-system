@@ -8,7 +8,6 @@ import (
 
 	"backend/internal/generated/ent"
 
-	"github.com/google/uuid"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -87,5 +86,5 @@ func (c *catalogCache) load(ctx context.Context, key string, loader func(context
 	return v.([]*ent.Product), nil
 }
 
-func catalogKeyAll() string                    { return "all" }
-func catalogKeyByCategory(id uuid.UUID) string { return "cat:" + id.String() }
+func catalogKeyAll() string                 { return "all" }
+func catalogKeyByCategory(id string) string { return "cat:" + id }

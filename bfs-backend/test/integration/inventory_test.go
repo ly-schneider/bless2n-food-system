@@ -9,7 +9,6 @@ import (
 	productEnum "backend/internal/generated/ent/product"
 	pgRepo "backend/internal/repository"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,7 +28,7 @@ func TestInventoryRepository_CRUD(t *testing.T) {
 	t.Run("Create inventory entry", func(t *testing.T) {
 		entry, err := repos.Inventory.Create(ctx, product.ID, 100, inventoryledger.ReasonOpeningBalance, nil, nil, nil, nil)
 		require.NoError(t, err)
-		require.NotEqual(t, uuid.Nil, entry.ID)
+		require.NotEqual(t, "", entry.ID)
 	})
 
 	t.Run("GetCurrentStock calculates total", func(t *testing.T) {
@@ -65,7 +64,7 @@ func TestInventoryRepository_CRUD(t *testing.T) {
 		fixtures.AddInventory(sprite.ID, 50, inventoryledger.ReasonOpeningBalance)
 		// Fanta has no inventory
 
-		stocks, err := repos.Inventory.GetCurrentStockBatch(ctx, []uuid.UUID{cola.ID, sprite.ID, fanta.ID})
+		stocks, err := repos.Inventory.GetCurrentStockBatch(ctx, []string{cola.ID, sprite.ID, fanta.ID})
 		require.NoError(t, err)
 		require.Len(t, stocks, 3)
 		require.Equal(t, 100, stocks[cola.ID])
@@ -124,18 +123,18 @@ func TestInventoryRepository_CRUD(t *testing.T) {
 		fixtures.AddInventory(cola.ID, -20, inventoryledger.ReasonSale)
 		fixtures.AddInventory(sprite.ID, 50, inventoryledger.ReasonOpeningBalance)
 
-		sums, err := repos.Inventory.SumByProductIDs(ctx, []uuid.UUID{cola.ID, sprite.ID})
+		sums, err := repos.Inventory.SumByProductIDs(ctx, []string{cola.ID, sprite.ID})
 		require.NoError(t, err)
 		require.EqualValues(t, 80, sums[cola.ID])
 		require.EqualValues(t, 50, sums[sprite.ID])
 	})
 
 	t.Run("Empty product list returns empty map", func(t *testing.T) {
-		stocks, err := repos.Inventory.GetCurrentStockBatch(ctx, []uuid.UUID{})
+		stocks, err := repos.Inventory.GetCurrentStockBatch(ctx, []string{})
 		require.NoError(t, err)
 		require.Empty(t, stocks)
 
-		sums, err := repos.Inventory.SumByProductIDs(ctx, []uuid.UUID{})
+		sums, err := repos.Inventory.SumByProductIDs(ctx, []string{})
 		require.NoError(t, err)
 		require.Empty(t, sums)
 	})

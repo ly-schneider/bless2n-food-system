@@ -7,16 +7,14 @@ import (
 
 	"backend/internal/generated/ent"
 	"backend/internal/generated/ent/idempotency"
-
-	"github.com/google/uuid"
 )
 
 type IdempotencyRepository interface {
 	Get(ctx context.Context, scope, key string) (*ent.Idempotency, error)
 	SaveIfAbsent(ctx context.Context, scope, key string, response map[string]any, ttl time.Duration) (*ent.Idempotency, error)
 	Claim(ctx context.Context, scope, key string, ttl time.Duration) (row *ent.Idempotency, existed bool, err error)
-	FillResponse(ctx context.Context, id uuid.UUID, response map[string]any) error
-	Discard(ctx context.Context, id uuid.UUID) error
+	FillResponse(ctx context.Context, id string, response map[string]any) error
+	Discard(ctx context.Context, id string) error
 	CleanupExpired(ctx context.Context) (int64, error)
 }
 
@@ -105,7 +103,7 @@ func (r *idempotencyRepo) Claim(ctx context.Context, scope, key string, ttl time
 	return existing, true, nil
 }
 
-func (r *idempotencyRepo) FillResponse(ctx context.Context, id uuid.UUID, response map[string]any) error {
+func (r *idempotencyRepo) FillResponse(ctx context.Context, id string, response map[string]any) error {
 	var responseJSON []byte
 	if response != nil {
 		var err error
@@ -127,7 +125,7 @@ func (r *idempotencyRepo) FillResponse(ctx context.Context, id uuid.UUID, respon
 	return nil
 }
 
-func (r *idempotencyRepo) Discard(ctx context.Context, id uuid.UUID) error {
+func (r *idempotencyRepo) Discard(ctx context.Context, id string) error {
 	return translateError(r.ec(ctx).Idempotency.DeleteOneID(id).Exec(ctx))
 }
 

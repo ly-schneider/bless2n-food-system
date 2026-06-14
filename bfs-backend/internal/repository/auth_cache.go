@@ -10,7 +10,6 @@ import (
 	"backend/internal/generated/ent/devicebinding"
 	"backend/internal/trace"
 
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"golang.org/x/sync/singleflight"
 )
@@ -167,7 +166,7 @@ func NewCachedDeviceBindingRepository(inner DeviceBindingRepository) DeviceBindi
 	}
 }
 
-func (r *cachedDeviceBindingRepo) UpdateLastSeenDebounced(id uuid.UUID, logger *zap.Logger) {
+func (r *cachedDeviceBindingRepo) UpdateLastSeenDebounced(id string, logger *zap.Logger) {
 	now := time.Now()
 	if prev, ok := r.lastSeen.Load(id); ok {
 		if last, ok := prev.(time.Time); ok && now.Sub(last) < lastSeenDebounce {
@@ -185,10 +184,10 @@ func (r *cachedDeviceBindingRepo) UpdateLastSeenDebounced(id uuid.UUID, logger *
 }
 
 type DebouncedLastSeenWriter interface {
-	UpdateLastSeenDebounced(id uuid.UUID, logger *zap.Logger)
+	UpdateLastSeenDebounced(id string, logger *zap.Logger)
 }
 
-func (r *cachedDeviceBindingRepo) GetByID(ctx context.Context, id uuid.UUID) (*ent.DeviceBinding, error) {
+func (r *cachedDeviceBindingRepo) GetByID(ctx context.Context, id string) (*ent.DeviceBinding, error) {
 	return r.inner.GetByID(ctx, id)
 }
 
@@ -217,7 +216,7 @@ func (r *cachedDeviceBindingRepo) GetByTokenHash(ctx context.Context, tokenHash 
 	return v, nil
 }
 
-func (r *cachedDeviceBindingRepo) Create(ctx context.Context, deviceType devicebinding.DeviceType, tokenHash, createdByUserID string, name *string, deviceID, stationID *uuid.UUID) (*ent.DeviceBinding, error) {
+func (r *cachedDeviceBindingRepo) Create(ctx context.Context, deviceType devicebinding.DeviceType, tokenHash, createdByUserID string, name *string, deviceID, stationID *string) (*ent.DeviceBinding, error) {
 	created, err := r.inner.Create(ctx, deviceType, tokenHash, createdByUserID, name, deviceID, stationID)
 	if err != nil {
 		return nil, err
@@ -226,11 +225,11 @@ func (r *cachedDeviceBindingRepo) Create(ctx context.Context, deviceType deviceb
 	return created, nil
 }
 
-func (r *cachedDeviceBindingRepo) UpdateLastSeen(ctx context.Context, id uuid.UUID) error {
+func (r *cachedDeviceBindingRepo) UpdateLastSeen(ctx context.Context, id string) error {
 	return r.inner.UpdateLastSeen(ctx, id)
 }
 
-func (r *cachedDeviceBindingRepo) Revoke(ctx context.Context, id uuid.UUID) error {
+func (r *cachedDeviceBindingRepo) Revoke(ctx context.Context, id string) error {
 	r.cache.mu.Lock()
 	for k, v := range r.cache.entries {
 		if v.value != nil && v.value.ID == id {

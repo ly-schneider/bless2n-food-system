@@ -5,18 +5,16 @@ import (
 
 	"backend/internal/generated/ent"
 	"backend/internal/generated/ent/menuslot"
-
-	"github.com/google/uuid"
 )
 
 type MenuSlotRepository interface {
-	Create(ctx context.Context, menuProductID uuid.UUID, name string, sequence int) (*ent.MenuSlot, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*ent.MenuSlot, error)
-	GetByMenuProductID(ctx context.Context, menuProductID uuid.UUID) ([]*ent.MenuSlot, error)
-	GetByMenuProductIDs(ctx context.Context, menuProductIDs []uuid.UUID) ([]*ent.MenuSlot, error)
-	Update(ctx context.Context, id, menuProductID uuid.UUID, name string, sequence int) (*ent.MenuSlot, error)
-	Delete(ctx context.Context, id uuid.UUID) error
-	DeleteByMenuProductID(ctx context.Context, menuProductID uuid.UUID) error
+	Create(ctx context.Context, menuProductID string, name string, sequence int) (*ent.MenuSlot, error)
+	GetByID(ctx context.Context, id string) (*ent.MenuSlot, error)
+	GetByMenuProductID(ctx context.Context, menuProductID string) ([]*ent.MenuSlot, error)
+	GetByMenuProductIDs(ctx context.Context, menuProductIDs []string) ([]*ent.MenuSlot, error)
+	Update(ctx context.Context, id, menuProductID string, name string, sequence int) (*ent.MenuSlot, error)
+	Delete(ctx context.Context, id string) error
+	DeleteByMenuProductID(ctx context.Context, menuProductID string) error
 }
 
 type menuSlotRepo struct {
@@ -31,7 +29,7 @@ func (r *menuSlotRepo) ec(ctx context.Context) *ent.Client {
 	return ClientFromContext(ctx, r.client)
 }
 
-func (r *menuSlotRepo) Create(ctx context.Context, menuProductID uuid.UUID, name string, sequence int) (*ent.MenuSlot, error) {
+func (r *menuSlotRepo) Create(ctx context.Context, menuProductID string, name string, sequence int) (*ent.MenuSlot, error) {
 	created, err := r.ec(ctx).MenuSlot.Create().
 		SetMenuProductID(menuProductID).
 		SetName(name).
@@ -43,7 +41,7 @@ func (r *menuSlotRepo) Create(ctx context.Context, menuProductID uuid.UUID, name
 	return created, nil
 }
 
-func (r *menuSlotRepo) GetByID(ctx context.Context, id uuid.UUID) (*ent.MenuSlot, error) {
+func (r *menuSlotRepo) GetByID(ctx context.Context, id string) (*ent.MenuSlot, error) {
 	e, err := r.ec(ctx).MenuSlot.Query().
 		Where(menuslot.ID(id)).
 		WithOptions(func(oq *ent.MenuSlotOptionQuery) {
@@ -56,7 +54,7 @@ func (r *menuSlotRepo) GetByID(ctx context.Context, id uuid.UUID) (*ent.MenuSlot
 	return e, nil
 }
 
-func (r *menuSlotRepo) GetByMenuProductID(ctx context.Context, menuProductID uuid.UUID) ([]*ent.MenuSlot, error) {
+func (r *menuSlotRepo) GetByMenuProductID(ctx context.Context, menuProductID string) ([]*ent.MenuSlot, error) {
 	rows, err := r.ec(ctx).MenuSlot.Query().
 		Where(menuslot.MenuProductIDEQ(menuProductID)).
 		WithOptions(func(oq *ent.MenuSlotOptionQuery) {
@@ -70,7 +68,7 @@ func (r *menuSlotRepo) GetByMenuProductID(ctx context.Context, menuProductID uui
 	return rows, nil
 }
 
-func (r *menuSlotRepo) GetByMenuProductIDs(ctx context.Context, menuProductIDs []uuid.UUID) ([]*ent.MenuSlot, error) {
+func (r *menuSlotRepo) GetByMenuProductIDs(ctx context.Context, menuProductIDs []string) ([]*ent.MenuSlot, error) {
 	if len(menuProductIDs) == 0 {
 		return nil, nil
 	}
@@ -87,7 +85,7 @@ func (r *menuSlotRepo) GetByMenuProductIDs(ctx context.Context, menuProductIDs [
 	return rows, nil
 }
 
-func (r *menuSlotRepo) Update(ctx context.Context, id, menuProductID uuid.UUID, name string, sequence int) (*ent.MenuSlot, error) {
+func (r *menuSlotRepo) Update(ctx context.Context, id, menuProductID string, name string, sequence int) (*ent.MenuSlot, error) {
 	updated, err := r.ec(ctx).MenuSlot.UpdateOneID(id).
 		SetName(name).
 		SetSequence(sequence).
@@ -99,11 +97,11 @@ func (r *menuSlotRepo) Update(ctx context.Context, id, menuProductID uuid.UUID, 
 	return updated, nil
 }
 
-func (r *menuSlotRepo) Delete(ctx context.Context, id uuid.UUID) error {
+func (r *menuSlotRepo) Delete(ctx context.Context, id string) error {
 	return translateError(r.ec(ctx).MenuSlot.DeleteOneID(id).Exec(ctx))
 }
 
-func (r *menuSlotRepo) DeleteByMenuProductID(ctx context.Context, menuProductID uuid.UUID) error {
+func (r *menuSlotRepo) DeleteByMenuProductID(ctx context.Context, menuProductID string) error {
 	_, err := r.ec(ctx).MenuSlot.Delete().
 		Where(menuslot.MenuProductIDEQ(menuProductID)).
 		Exec(ctx)
