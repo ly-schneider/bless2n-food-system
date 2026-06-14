@@ -9,9 +9,9 @@ require (
 	github.com/getsentry/sentry-go v0.46.2
 	github.com/go-chi/chi/v5 v5.3.0
 	github.com/go-pdf/fpdf v0.9.0
-	github.com/go-playground/validator/v10 v10.30.2
+	github.com/go-playground/validator/v10 v10.30.3
 	github.com/google/uuid v1.6.0
-	github.com/jackc/pgx/v5 v5.9.2
+	github.com/jackc/pgx/v5 v5.10.0
 	github.com/joho/godotenv v1.5.1
 	github.com/matoous/go-nanoid/v2 v2.1.0
 	github.com/oapi-codegen/runtime v1.4.1
@@ -20,8 +20,8 @@ require (
 	github.com/swaggo/swag v1.16.6
 	go.uber.org/fx v1.24.0
 	go.uber.org/zap v1.28.0
-	golang.org/x/crypto v0.51.0
-	golang.org/x/sync v0.20.0
+	golang.org/x/crypto v0.52.0
+	golang.org/x/sync v0.21.0
 )
 
 require (
@@ -265,7 +265,7 @@ require (
 	golang.org/x/exp/typeparams v0.0.0-20250911091902-df9299821621 // indirect
 	golang.org/x/mod v0.35.0 // indirect
 	golang.org/x/net v0.54.0 // indirect
-	golang.org/x/sys v0.44.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 	golang.org/x/tools v0.44.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
