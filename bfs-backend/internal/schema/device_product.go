@@ -22,9 +22,11 @@ func (DeviceProduct) Annotations() []schema.Annotation {
 func (DeviceProduct) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("device_id").
-			MaxLen(36),
+			MaxLen(36).
+			NotEmpty(),
 		field.String("product_id").
-			MaxLen(36),
+			MaxLen(36).
+			NotEmpty(),
 	}
 }
 

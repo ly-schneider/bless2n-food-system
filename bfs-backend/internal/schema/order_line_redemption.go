@@ -25,6 +25,7 @@ func (OrderLineRedemption) Fields() []ent.Field {
 		nanoidPK(),
 		field.String("order_line_id").
 			MaxLen(36).
+			NotEmpty().
 			Unique(),
 		field.Time("redeemed_at").
 			Default(time.Now),

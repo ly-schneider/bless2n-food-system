@@ -30,7 +30,8 @@ func (Club100Redemption) Fields() []ent.Field {
 			MaxLen(100).
 			NotEmpty(),
 		field.String("order_id").
-			MaxLen(36),
+			MaxLen(36).
+			NotEmpty(),
 		field.Int("free_product_quantity").
 			Default(1),
 		field.Time("created_at").

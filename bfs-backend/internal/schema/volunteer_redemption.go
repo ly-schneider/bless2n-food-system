@@ -25,9 +25,11 @@ func (VolunteerRedemption) Fields() []ent.Field {
 	return []ent.Field{
 		nanoidPK(),
 		field.String("campaign_id").
-			MaxLen(36),
+			MaxLen(36).
+			NotEmpty(),
 		field.String("order_id").
 			MaxLen(36).
+			NotEmpty().
 			Unique(),
 		field.String("station_device_id").
 			MaxLen(36).

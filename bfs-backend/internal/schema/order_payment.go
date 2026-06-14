@@ -24,7 +24,8 @@ func (OrderPayment) Fields() []ent.Field {
 	return []ent.Field{
 		nanoidPK(),
 		field.String("order_id").
-			MaxLen(36),
+			MaxLen(36).
+			NotEmpty(),
 		field.Enum("method").
 			Values("CASH", "CARD", "TWINT", "GRATIS_GUEST", "GRATIS_VIP", "GRATIS_STAFF", "GRATIS_100CLUB").
 			StorageKey("method"),

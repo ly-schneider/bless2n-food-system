@@ -24,7 +24,8 @@ func (InventoryLedger) Fields() []ent.Field {
 	return []ent.Field{
 		nanoidPK(),
 		field.String("product_id").
-			MaxLen(36),
+			MaxLen(36).
+			NotEmpty(),
 		field.Int("delta"),
 		field.Enum("reason").
 			Values("opening_balance", "sale", "refund", "cancellation", "manual_adjust", "correction").
