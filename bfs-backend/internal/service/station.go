@@ -154,7 +154,7 @@ func (s *stationService) AssignedItemsForOrder(ctx context.Context, stationID, o
 }
 
 func (s *stationService) RedeemAssigned(ctx context.Context, stationID, orderID string, idemKey string) (map[string]any, error) {
-	scope := fmt.Sprintf("station:%s:order:%s", stationID, orderID)
+	scope := fmt.Sprintf("station:%q:order:%q", stationID, orderID)
 
 	// Check idempotency
 	if idemKey != "" {
