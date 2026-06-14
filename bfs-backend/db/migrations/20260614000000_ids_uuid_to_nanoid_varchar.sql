@@ -4,6 +4,10 @@
 -- values (uuid::text); new rows get nanoids from the app, old rows keep their
 -- uuids. Foreign keys must be dropped before the referenced/referencing column
 -- types can change, then recreated with their original ON DELETE behaviour.
+--
+-- One-time schema change run in a maintenance window; the table-rewrite/lock
+-- warnings below are expected and accepted.
+-- squawk-ignore-file prefer-robust-stmts, prefer-text-field, changing-column-type, constraint-missing-not-valid, adding-foreign-key-constraint, require-timeout-settings
 
 -- 1. Drop foreign-key constraints
 

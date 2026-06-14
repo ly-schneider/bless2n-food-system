@@ -101,9 +101,7 @@ func (h *Handlers) SetStationProducts(w http.ResponseWriter, r *http.Request, st
 	sid := stationId
 
 	productIDs := make([]string, 0, len(body.ProductIds))
-	for _, pid := range body.ProductIds {
-		productIDs = append(productIDs, pid)
-	}
+	productIDs = append(productIDs, body.ProductIds...)
 
 	if err := h.stations.SetStationProducts(ctx, sid, productIDs); err != nil {
 		writeEntError(w, err)

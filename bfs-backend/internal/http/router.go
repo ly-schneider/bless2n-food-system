@@ -42,7 +42,7 @@ func NewRouter(
 	r.Use(chiMw.Logger)
 	r.Use(chiMw.Recoverer)
 	r.Use(chiMw.RequestID)
-	r.Use(chiMw.RealIP)
+	r.Use(chiMw.RealIP) //nolint:staticcheck // client IP comes from the trusted ingress proxy
 	r.Use(chiMw.Heartbeat("/ping"))
 	r.Use(middleware.LogHTTPErrors)
 

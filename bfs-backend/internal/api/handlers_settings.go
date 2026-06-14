@@ -66,10 +66,7 @@ func (h *Handlers) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	if body.Club100FreeProductIds != nil || body.Club100MaxRedemptions != nil {
 		var productIDs []string
 		if body.Club100FreeProductIds != nil {
-			productIDs = make([]string, 0, len(*body.Club100FreeProductIds))
-			for _, id := range *body.Club100FreeProductIds {
-				productIDs = append(productIDs, id)
-			}
+			productIDs = append(productIDs, *body.Club100FreeProductIds...)
 		}
 		if err := h.settings.SetClub100Settings(ctx, productIDs, body.Club100MaxRedemptions); err != nil {
 			writeError(w, http.StatusBadRequest, "update_failed", err.Error())
