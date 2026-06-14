@@ -8,7 +8,7 @@ const CAMPAIGN_PREFIX = "CAMP:"
 // Order QR codes encode a pickup URL `${origin}/o/<orderId>`; extract the id
 // from the path segment rather than matching a window anywhere in the URL.
 const ORDER_URL_RE =
-  /\/o\/([1-9A-HKMNP-Za-hkmnp-z_-]{12}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i
+  /\/o\/([123456789ABCDEFGHKMNPQRSTUVWXYZ_abcdefghkmnpqrstuvwxyz-]{12}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i
 
 function isEntityId(s: string): boolean {
   return ENTITY_ID_RE.test(s) || UUID_RE.test(s)
