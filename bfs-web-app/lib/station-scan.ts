@@ -1,6 +1,6 @@
 // Scans must accept both forms: nanoids on new rows and legacy UUIDs on rows
 // created before the cutover. ENTITY_ID_RE mirrors the backend internal/id alphabet.
-export const ENTITY_ID_RE = /^[1-9A-HKMNP-Za-hkmnp-z_-]{12}$/
+export const ENTITY_ID_RE = /^[123456789ABCDEFGHKMNPQRSTUVWXYZ_abcdefghkmnpqrstuvwxyz-]{12}$/
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
