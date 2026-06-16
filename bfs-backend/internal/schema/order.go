@@ -61,10 +61,16 @@ func (Order) Fields() []ent.Field {
 }
 
 func (Order) Edges() []ent.Edge {
+	// ON DELETE mirrors db/migrations; Ent reads it from this assoc (To) side,
+	// not the child's inverse edge.
 	return []ent.Edge{
-		edge.To("payments", OrderPayment.Type),
-		edge.To("lines", OrderLine.Type),
-		edge.To("inventory_ledger_entries", InventoryLedger.Type),
-		edge.To("club100_redemptions", Club100Redemption.Type),
+		edge.To("payments", OrderPayment.Type).
+			Annotations(entsql.OnDelete(entsql.Cascade)),
+		edge.To("lines", OrderLine.Type).
+			Annotations(entsql.OnDelete(entsql.Cascade)),
+		edge.To("inventory_ledger_entries", InventoryLedger.Type).
+			Annotations(entsql.OnDelete(entsql.SetNull)),
+		edge.To("club100_redemptions", Club100Redemption.Type).
+			Annotations(entsql.OnDelete(entsql.Cascade)),
 	}
 }

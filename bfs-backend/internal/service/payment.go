@@ -29,6 +29,10 @@ type PaymentService interface {
 	IsPayrexxEnabled() bool
 	// PrepareAndCreateOrder validates items and creates a pending order with inventory reservation.
 	PrepareAndCreateOrder(ctx context.Context, in CreateCheckoutInput, userID *string, attemptID *string) (*CheckoutPreparation, error)
+	// EnsureOrderQRToken signs and persists the offline pickup token for a paid
+	// order, once. It is a no-op (returns "") while the order is still pending,
+	// and returns the existing token if one was already signed.
+	EnsureOrderQRToken(ctx context.Context, orderID string) (string, error)
 	// CreatePayrexxGateway creates a Payrexx payment gateway for the prepared order.
 	CreatePayrexxGateway(ctx context.Context, prep *CheckoutPreparation, successURL, failedURL, cancelURL string) (*payrexx.Gateway, error)
 	// MarkOrderPaidByPayrexx marks an order as paid based on Payrexx webhook data.
@@ -69,11 +73,11 @@ type CheckoutPreparation struct {
 	CustomerEmail *string
 	UserID        *string
 	Order         *ent.Order
-	QRPayload     string
 }
 
 type paymentService struct {
 	cfg              config.Config
+	entClient        *ent.Client
 	payrexxClient    *payrexx.Client
 	orderRepo        repository.OrderRepository
 	orderLineRepo    repository.OrderLineRepository
@@ -89,6 +93,7 @@ type paymentService struct {
 
 func NewPaymentService(
 	cfg config.Config,
+	entClient *ent.Client,
 	orderRepo repository.OrderRepository,
 	orderLineRepo repository.OrderLineRepository,
 	orderPaymentRepo repository.OrderPaymentRepository,
@@ -106,6 +111,7 @@ func NewPaymentService(
 	}
 	return &paymentService{
 		cfg:              cfg,
+		entClient:        entClient,
 		payrexxClient:    client,
 		orderRepo:        orderRepo,
 		orderLineRepo:    orderLineRepo,
@@ -264,8 +270,17 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 		origin = order.OriginShop
 	}
 
+	// Atomic so a partial failure (incl. a validation error in the loop below)
+	// leaves no phantom order or stranded stock decrement.
+	tx, err := s.entClient.Tx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	txCtx := repository.ContextWithClient(ctx, tx.Client())
+
 	// Create the order
-	ord, err := s.orderRepo.Create(ctx, totalCents, order.StatusPending, origin, userID, in.CustomerEmail, attemptID, nil, nil)
+	ord, err := s.orderRepo.Create(txCtx, totalCents, order.StatusPending, origin, userID, in.CustomerEmail, attemptID, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create order: %w", err)
 	}
@@ -360,30 +375,28 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 	}
 
 	// Insert order lines
-	if _, err := s.orderLineRepo.CreateBatch(ctx, orderLines); err != nil {
+	if _, err := s.orderLineRepo.CreateBatch(txCtx, orderLines); err != nil {
 		return nil, fmt.Errorf("insert order lines: %w", err)
 	}
 
 	// Reserve inventory
 	if len(inventoryEntries) > 0 {
-		if _, err := s.inventoryRepo.CreateMany(ctx, inventoryEntries); err != nil {
+		if _, err := s.inventoryRepo.CreateMany(txCtx, inventoryEntries); err != nil {
 			return nil, fmt.Errorf("reserve inventory: %w", err)
 		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit order: %w", err)
+	}
+
+	if len(inventoryEntries) > 0 {
 		s.publishInventoryUpdates(ctx, inventoryEntries, preloadedStock)
 	}
 
-	// An order is redeemed offline from its token, so a signing/persist failure
-	// must fail the order rather than create an unredeemable one.
-	qrToken, err := s.signOrderQR(ctx, ord.ID, orderLines)
-	if err != nil {
-		return nil, fmt.Errorf("sign order qr: %w", err)
-	}
-	if err := s.orderRepo.SetQRPayload(ctx, ord.ID, qrToken); err != nil {
-		return nil, fmt.Errorf("persist qr payload: %w", err)
-	}
-	ord.QrPayload = &qrToken
+	// Token is signed at payment time (EnsureOrderQRToken), not here — an unpaid
+	// order must never yield a redeemable token.
 
-	// Prepare Payrexx line items from the params (we have all the data we need)
 	lineItems := make([]payrexx.InvoiceItem, 0)
 	for _, line := range orderLines {
 		if line.ParentLineID == nil && line.UnitPriceCents > 0 && line.Quantity > 0 {
@@ -406,21 +419,51 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 		CustomerEmail: in.CustomerEmail,
 		UserID:        userID,
 		Order:         ord,
-		QRPayload:     qrToken,
 	}, nil
 }
 
-// signOrderQR signs over the redeemable physical items: simple products and
-// chosen menu components. A menu's bundle parent is omitted (its components carry
-// the items) unless it has none, then it falls back to the parent.
-func (s *paymentService) signOrderQR(ctx context.Context, orderID string, lines []repository.OrderLineCreateParams) (string, error) {
-	_, finish := trace.StartSpan(ctx, "service", "payment.sign_qr")
+func (s *paymentService) EnsureOrderQRToken(ctx context.Context, orderID string) (string, error) {
+	ctx, finish := trace.StartSpan(ctx, "service", "payment.ensure_qr")
 	defer finish()
 
-	if s.qrKeys == nil {
-		return "", fmt.Errorf("qr signing not configured")
+	ord, err := s.orderRepo.GetByID(ctx, orderID)
+	if err != nil {
+		return "", fmt.Errorf("ensure qr: load order: %w", err)
+	}
+	if ord.Status != order.StatusPaid {
+		return "", nil
+	}
+	if ord.QrPayload != nil && *ord.QrPayload != "" {
+		return *ord.QrPayload, nil
 	}
 
+	lines, err := s.orderLineRepo.GetByOrderID(ctx, orderID)
+	if err != nil {
+		return "", fmt.Errorf("ensure qr: load lines: %w", err)
+	}
+
+	priv, _ := s.qrKeys.SigningKey()
+	issuedAt, expiresAt := tokenValidity(time.Now())
+
+	token, err := qrsign.Sign(priv, qrsign.Payload{
+		Version:   qrsign.Version,
+		OrderID:   orderID,
+		IssuedAt:  issuedAt,
+		ExpiresAt: expiresAt,
+		Lines:     redeemableLines(lines),
+	})
+	if err != nil {
+		return "", fmt.Errorf("ensure qr: sign payload: %w", err)
+	}
+	if err := s.orderRepo.SetQRPayload(ctx, orderID, token); err != nil {
+		return "", fmt.Errorf("ensure qr: persist: %w", err)
+	}
+	return token, nil
+}
+
+// A bundle parent is omitted when it has components (they carry the redeemable
+// items); a bundle with no components falls back to the parent itself.
+func redeemableLines(lines []*ent.OrderLine) []qrsign.Line {
 	hasComponents := make(map[string]bool, len(lines))
 	for _, l := range lines {
 		if l.ParentLineID != nil {
@@ -434,24 +477,23 @@ func (s *paymentService) signOrderQR(ctx context.Context, orderID string, lines 
 		case orderline.LineTypeSimple, orderline.LineTypeComponent:
 			redeemable = append(redeemable, qrsign.Line{ProductID: l.ProductID, Quantity: l.Quantity})
 		case orderline.LineTypeBundle:
-			if l.ID == nil || !hasComponents[*l.ID] {
+			if !hasComponents[l.ID] {
 				redeemable = append(redeemable, qrsign.Line{ProductID: l.ProductID, Quantity: l.Quantity})
 			}
 		}
 	}
+	return redeemable
+}
 
-	priv, _ := s.qrKeys.SigningKey()
-
-	token, err := qrsign.Sign(priv, qrsign.Payload{
-		Version:  qrsign.Version,
-		OrderID:  orderID,
-		IssuedAt: time.Now().Unix(),
-		Lines:    redeemable,
-	})
+// A token is valid only through the end of its issue day (Europe/Zurich).
+func tokenValidity(now time.Time) (int64, int64) {
+	loc, err := time.LoadLocation("Europe/Zurich")
 	if err != nil {
-		return "", fmt.Errorf("qr sign: sign payload: %w", err)
+		loc = time.UTC
 	}
-	return token, nil
+	local := now.In(loc)
+	endOfDay := time.Date(local.Year(), local.Month(), local.Day(), 23, 59, 59, 0, loc)
+	return now.Unix(), endOfDay.Unix()
 }
 
 func (s *paymentService) CreatePayrexxGateway(ctx context.Context, prep *CheckoutPreparation, successURL, failedURL, cancelURL string) (*payrexx.Gateway, error) {
@@ -522,6 +564,12 @@ func (s *paymentService) MarkOrderPaidByPayrexx(ctx context.Context, orderID str
 
 	if _, err = s.orderRepo.Update(ctx, ord.ID, ord.TotalCents, order.StatusPaid, ord.Origin, ord.CustomerID, ce, ord.PaymentAttemptID, &gatewayID, &transactionID); err != nil {
 		return err
+	}
+
+	// Webhook path skips the payment handler, so mint here. Best-effort: the
+	// order is paid and the webhook must not be failed into a double payment.
+	if _, err := s.EnsureOrderQRToken(ctx, ord.ID); err != nil {
+		s.logger.Error("failed to sign pickup token", zap.String("orderId", ord.ID), zap.Error(err))
 	}
 
 	email := ""
@@ -641,6 +689,11 @@ func (s *paymentService) GetPayrexxGateway(ctx context.Context, gatewayID int) (
 }
 
 func (s *paymentService) sendReceipt(orderID string, to string, totalCents int64, paidAt time.Time, method string) {
+	// Fire-and-forget goroutine: a nil email service must not panic and crash the process.
+	if s.emailService == nil || to == "" {
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 

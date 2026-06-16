@@ -203,7 +203,7 @@ export class OrderQueueManager {
         body: JSON.stringify({ items: order.items }),
       })
 
-      const orderJson = (await resOrder.json()) as { id?: string; qrPayload?: string | null; detail?: string }
+      const orderJson = (await resOrder.json()) as { id?: string; detail?: string }
       if (!resOrder.ok || !orderJson.id) {
         throw new Error(orderJson.detail || "order_failed")
       }
@@ -212,15 +212,10 @@ export class OrderQueueManager {
       this.orders[idx] = {
         ...this.orders[idx]!,
         serverId,
-        serverQrPayload: orderJson.qrPayload ?? undefined,
         status: "synced",
       }
       this.saveToStorage()
       this.notifyStateListeners()
-
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("bfs:pos:order-server-id", { detail: this.orders[idx]! }))
-      }
 
       const paymentKey = `${order.idempotencyKey}:pay`
       const paymentBody: Record<string, unknown> = { method: order.paymentMethod, channel: "pos" }
@@ -244,7 +239,12 @@ export class OrderQueueManager {
         body: JSON.stringify(paymentBody),
       })
 
-      const payJson = (await resPay.json()) as { code?: string; message?: string; detail?: string }
+      const payJson = (await resPay.json()) as {
+        code?: string
+        message?: string
+        detail?: string
+        qrPayload?: string | null
+      }
       if (!resPay.ok) {
         const errorCode = payJson.code || "payment_failed"
         const errorMessage = payJson.message || payJson.detail || "payment_failed"
@@ -266,9 +266,20 @@ export class OrderQueueManager {
         throw new Error(errorMessage)
       }
 
-      this.orders[idx] = { ...this.orders[idx]!, status: "paid" }
+      this.orders[idx] = {
+        ...this.orders[idx]!,
+        serverQrPayload: payJson.qrPayload ?? undefined,
+        status: "paid",
+      }
       this.saveToStorage()
       this.notifyStateListeners()
+
+      // Dispatch after payment, not create: token is minted at payment time and
+      // a failed payment must not print a redeemable receipt.
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("bfs:pos:order-server-id", { detail: this.orders[idx]! }))
+      }
+
       this.notifySyncListeners(this.orders[idx]!)
     } catch (e) {
       const currentOrder = this.orders[idx]!

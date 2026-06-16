@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"time"
 )
 
 // Version is the payload schema version; bumping it requires updating the web
@@ -16,6 +17,7 @@ var (
 	ErrBadSignature       = errors.New("qrsign: signature verification failed")
 	ErrBadPayload         = errors.New("qrsign: invalid payload json")
 	ErrUnsupportedVersion = errors.New("qrsign: unsupported payload version")
+	ErrExpired            = errors.New("qrsign: token expired")
 )
 
 type Line struct {
@@ -23,12 +25,13 @@ type Line struct {
 	Quantity  int    `json:"q"`
 }
 
-// Field order is part of the signed bytes — never reorder (canonical order v,o,i,l).
+// Field order is part of the signed bytes — never reorder (canonical order v,o,i,e,l).
 type Payload struct {
-	Version  int    `json:"v"`
-	OrderID  string `json:"o"`
-	IssuedAt int64  `json:"i"`
-	Lines    []Line `json:"l"`
+	Version   int    `json:"v"`
+	OrderID   string `json:"o"`
+	IssuedAt  int64  `json:"i"`
+	ExpiresAt int64  `json:"e"`
+	Lines     []Line `json:"l"`
 }
 
 func Sign(priv ed25519.PrivateKey, p Payload) (string, error) {
@@ -45,7 +48,7 @@ func Sign(priv ed25519.PrivateKey, p Payload) (string, error) {
 
 // Verify checks the signature over the literal decoded body bytes, never the
 // re-serialized payload (which could drift and break the signature).
-func Verify(pub ed25519.PublicKey, token string) (Payload, error) {
+func Verify(pub ed25519.PublicKey, token string, now time.Time) (Payload, error) {
 	raw, err := base64.RawURLEncoding.DecodeString(token)
 	if err != nil {
 		return Payload{}, ErrMalformed
@@ -71,6 +74,10 @@ func Verify(pub ed25519.PublicKey, token string) (Payload, error) {
 	// A valid signature does not imply a known schema.
 	if p.Version != Version {
 		return Payload{}, ErrUnsupportedVersion
+	}
+	// Fail closed: a token with no/zero expiry is treated as already expired.
+	if now.Unix() > p.ExpiresAt {
+		return Payload{}, ErrExpired
 	}
 	return p, nil
 }

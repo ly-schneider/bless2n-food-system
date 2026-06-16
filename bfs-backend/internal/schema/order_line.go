@@ -64,8 +64,10 @@ func (OrderLine) Edges() []ent.Edge {
 			Field("product_id").
 			Unique().
 			Required(),
-		// Self-referencing: parent/child lines
-		edge.To("child_lines", OrderLine.Type),
+		// Self-referencing: parent/child lines. ON DELETE on these assoc edges
+		// mirrors db/migrations.
+		edge.To("child_lines", OrderLine.Type).
+			Annotations(entsql.OnDelete(entsql.Cascade)),
 		edge.From("parent_line", OrderLine.Type).
 			Ref("child_lines").
 			Field("parent_line_id").
@@ -75,7 +77,9 @@ func (OrderLine) Edges() []ent.Edge {
 			Field("menu_slot_id").
 			Unique(),
 		edge.To("redemption", OrderLineRedemption.Type).
-			Unique(),
-		edge.To("inventory_ledger_entries", InventoryLedger.Type),
+			Unique().
+			Annotations(entsql.OnDelete(entsql.Cascade)),
+		edge.To("inventory_ledger_entries", InventoryLedger.Type).
+			Annotations(entsql.OnDelete(entsql.SetNull)),
 	}
 }

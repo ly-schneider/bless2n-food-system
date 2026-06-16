@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"encoding/base64"
 	"testing"
+	"time"
 
 	"backend/internal/config"
 	"backend/internal/generated/ent/inventoryledger"
@@ -38,13 +39,14 @@ func TestQRKeyService_DerivesStableKeypair(t *testing.T) {
 	require.Equal(t, []byte(pub1), []byte(servedPub))
 
 	tok, err := qrsign.Sign(priv1, qrsign.Payload{
-		Version:  qrsign.Version,
-		OrderID:  "o",
-		IssuedAt: 1,
-		Lines:    []qrsign.Line{{ProductID: "p", Quantity: 1}},
+		Version:   qrsign.Version,
+		OrderID:   "o",
+		IssuedAt:  1,
+		ExpiresAt: time.Now().Add(time.Hour).Unix(),
+		Lines:     []qrsign.Line{{ProductID: "p", Quantity: 1}},
 	})
 	require.NoError(t, err)
-	_, err = qrsign.Verify(servedPub, tok)
+	_, err = qrsign.Verify(servedPub, tok, time.Now())
 	require.NoError(t, err, "served public key must verify a token from the signing key")
 }
 
@@ -60,7 +62,7 @@ func TestQRKeyService_RequiresSeed(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestPaymentService_SignsQRPayloadAtCreation(t *testing.T) {
+func TestPaymentService_SignsQRPayloadWhenPaid(t *testing.T) {
 	tdb := NewTestDB(t)
 	defer tdb.Close()
 	tdb.Cleanup(t)
@@ -70,6 +72,7 @@ func TestPaymentService_SignsQRPayloadAtCreation(t *testing.T) {
 	cfg := TestConfig()
 	svc := service.NewPaymentService(
 		cfg,
+		tdb.Client,
 		repos.Order,
 		repos.OrderLine,
 		repos.OrderPayment,
@@ -99,20 +102,42 @@ func TestPaymentService_SignsQRPayloadAtCreation(t *testing.T) {
 
 	prep, err := svc.PrepareAndCreateOrder(ctx, input, nil, nil)
 	require.NoError(t, err)
-	require.NotEmpty(t, prep.QRPayload, "created order must carry a signed qr payload")
 
 	ord, err := repos.Order.GetByID(ctx, prep.OrderID)
 	require.NoError(t, err)
+	require.Nil(t, ord.QrPayload, "pending order must not carry a pickup token")
+
+	empty, err := svc.EnsureOrderQRToken(ctx, prep.OrderID)
+	require.NoError(t, err)
+	require.Empty(t, empty, "no token is minted while the order is unpaid")
+
+	require.NoError(t, svc.MarkOrderPaidDev(ctx, prep.OrderID))
+
+	token, err := svc.EnsureOrderQRToken(ctx, prep.OrderID)
+	require.NoError(t, err)
+	require.NotEmpty(t, token, "a paid order must carry a signed qr payload")
+
+	again, err := svc.EnsureOrderQRToken(ctx, prep.OrderID)
+	require.NoError(t, err)
+	require.Equal(t, token, again, "re-signing a paid order returns the stored token")
+
+	ord, err = repos.Order.GetByID(ctx, prep.OrderID)
+	require.NoError(t, err)
 	require.NotNil(t, ord.QrPayload)
-	require.Equal(t, prep.QRPayload, *ord.QrPayload)
+	require.Equal(t, token, *ord.QrPayload)
 
 	pub := keys.PublicKey()
 
-	payload, err := qrsign.Verify(pub, prep.QRPayload)
+	payload, err := qrsign.Verify(pub, token, time.Now())
 	require.NoError(t, err)
 	require.Equal(t, qrsign.Version, payload.Version)
 	require.Equal(t, prep.OrderID, payload.OrderID)
 	require.NotZero(t, payload.IssuedAt)
+	require.NotZero(t, payload.ExpiresAt)
+	require.GreaterOrEqual(t, payload.ExpiresAt, payload.IssuedAt)
+
+	_, err = qrsign.Verify(pub, token, time.Unix(payload.ExpiresAt, 0).Add(time.Second))
+	require.ErrorIs(t, err, qrsign.ErrExpired)
 
 	require.Len(t, payload.Lines, 2)
 	byProduct := map[string]int{}
@@ -123,7 +148,7 @@ func TestPaymentService_SignsQRPayloadAtCreation(t *testing.T) {
 	require.Equal(t, 1, byProduct[sprite.ID])
 }
 
-func TestPaymentService_SignsBundleComponentsAtCreation(t *testing.T) {
+func TestPaymentService_SignsBundleComponentsWhenPaid(t *testing.T) {
 	tdb := NewTestDB(t)
 	defer tdb.Close()
 	tdb.Cleanup(t)
@@ -133,6 +158,7 @@ func TestPaymentService_SignsBundleComponentsAtCreation(t *testing.T) {
 	cfg := TestConfig()
 	svc := service.NewPaymentService(
 		cfg,
+		tdb.Client,
 		repos.Order,
 		repos.OrderLine,
 		repos.OrderPayment,
@@ -174,9 +200,13 @@ func TestPaymentService_SignsBundleComponentsAtCreation(t *testing.T) {
 
 	prep, err := svc.PrepareAndCreateOrder(ctx, input, nil, nil)
 	require.NoError(t, err)
+	require.NoError(t, svc.MarkOrderPaidDev(ctx, prep.OrderID))
+
+	token, err := svc.EnsureOrderQRToken(ctx, prep.OrderID)
+	require.NoError(t, err)
 
 	pub := keys.PublicKey()
-	payload, err := qrsign.Verify(pub, prep.QRPayload)
+	payload, err := qrsign.Verify(pub, token, time.Now())
 	require.NoError(t, err)
 
 	byProduct := map[string]int{}

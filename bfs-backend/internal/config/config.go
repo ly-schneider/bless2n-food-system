@@ -135,7 +135,7 @@ func Load() Config {
 			WebhookSecret: getEnvOptional("PAYREXX_WEBHOOK_SECRET"),
 		},
 		QRSigning: QRSigningConfig{
-			Ed25519PrivateSeed: getEnvOptional("QR_ED25519_PRIVATE_SEED"),
+			Ed25519PrivateSeed: getEnv("QR_ED25519_PRIVATE_SEED"),
 		},
 		Plunk: PlunkConfig{
 			APIKey:    getEnvOptional("PLUNK_API_KEY"),
