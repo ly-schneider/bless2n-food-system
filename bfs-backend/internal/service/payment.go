@@ -16,6 +16,7 @@ import (
 	nanoid "backend/internal/id"
 	"backend/internal/inventory"
 	"backend/internal/payrexx"
+	"backend/internal/qrsign"
 	"backend/internal/repository"
 	"backend/internal/trace"
 
@@ -68,6 +69,7 @@ type CheckoutPreparation struct {
 	CustomerEmail *string
 	UserID        *string
 	Order         *ent.Order
+	QRPayload     string
 }
 
 type paymentService struct {
@@ -81,6 +83,7 @@ type paymentService struct {
 	inventoryRepo    repository.InventoryLedgerRepository
 	inventoryHub     *inventory.Hub
 	emailService     EmailService
+	qrKeys           QRKeyService
 	logger           *zap.Logger
 }
 
@@ -94,6 +97,7 @@ func NewPaymentService(
 	inventoryRepo repository.InventoryLedgerRepository,
 	inventoryHub *inventory.Hub,
 	emailService EmailService,
+	qrKeys QRKeyService,
 	logger *zap.Logger,
 ) PaymentService {
 	var client *payrexx.Client
@@ -111,6 +115,7 @@ func NewPaymentService(
 		inventoryRepo:    inventoryRepo,
 		inventoryHub:     inventoryHub,
 		emailService:     emailService,
+		qrKeys:           qrKeys,
 		logger:           logger,
 	}
 }
@@ -367,6 +372,17 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 		s.publishInventoryUpdates(ctx, inventoryEntries, preloadedStock)
 	}
 
+	// An order is redeemed offline from its token, so a signing/persist failure
+	// must fail the order rather than create an unredeemable one.
+	qrToken, err := s.signOrderQR(ctx, ord.ID, orderLines)
+	if err != nil {
+		return nil, fmt.Errorf("sign order qr: %w", err)
+	}
+	if err := s.orderRepo.SetQRPayload(ctx, ord.ID, qrToken); err != nil {
+		return nil, fmt.Errorf("persist qr payload: %w", err)
+	}
+	ord.QrPayload = &qrToken
+
 	// Prepare Payrexx line items from the params (we have all the data we need)
 	lineItems := make([]payrexx.InvoiceItem, 0)
 	for _, line := range orderLines {
@@ -390,7 +406,52 @@ func (s *paymentService) PrepareAndCreateOrder(ctx context.Context, in CreateChe
 		CustomerEmail: in.CustomerEmail,
 		UserID:        userID,
 		Order:         ord,
+		QRPayload:     qrToken,
 	}, nil
+}
+
+// signOrderQR signs over the redeemable physical items: simple products and
+// chosen menu components. A menu's bundle parent is omitted (its components carry
+// the items) unless it has none, then it falls back to the parent.
+func (s *paymentService) signOrderQR(ctx context.Context, orderID string, lines []repository.OrderLineCreateParams) (string, error) {
+	_, finish := trace.StartSpan(ctx, "service", "payment.sign_qr")
+	defer finish()
+
+	if s.qrKeys == nil {
+		return "", fmt.Errorf("qr signing not configured")
+	}
+
+	hasComponents := make(map[string]bool, len(lines))
+	for _, l := range lines {
+		if l.ParentLineID != nil {
+			hasComponents[*l.ParentLineID] = true
+		}
+	}
+
+	redeemable := make([]qrsign.Line, 0, len(lines))
+	for _, l := range lines {
+		switch l.LineType {
+		case orderline.LineTypeSimple, orderline.LineTypeComponent:
+			redeemable = append(redeemable, qrsign.Line{ProductID: l.ProductID, Quantity: l.Quantity})
+		case orderline.LineTypeBundle:
+			if l.ID == nil || !hasComponents[*l.ID] {
+				redeemable = append(redeemable, qrsign.Line{ProductID: l.ProductID, Quantity: l.Quantity})
+			}
+		}
+	}
+
+	priv, _ := s.qrKeys.SigningKey()
+
+	token, err := qrsign.Sign(priv, qrsign.Payload{
+		Version:  qrsign.Version,
+		OrderID:  orderID,
+		IssuedAt: time.Now().Unix(),
+		Lines:    redeemable,
+	})
+	if err != nil {
+		return "", fmt.Errorf("qr sign: sign payload: %w", err)
+	}
+	return token, nil
 }
 
 func (s *paymentService) CreatePayrexxGateway(ctx context.Context, prep *CheckoutPreparation, successURL, failedURL, cancelURL string) (*payrexx.Gateway, error) {

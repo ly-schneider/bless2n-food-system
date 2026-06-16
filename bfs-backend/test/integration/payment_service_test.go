@@ -34,6 +34,7 @@ func TestPaymentService_PrepareAndCreateOrder(t *testing.T) {
 		repos.Inventory,
 		nil,
 		nil,
+		NewQRKeySvc(),
 		zap.NewNop(),
 	)
 	ctx := context.Background()
@@ -184,6 +185,7 @@ func TestPaymentService_MenuCheckout(t *testing.T) {
 		repos.Inventory,
 		nil,
 		nil,
+		NewQRKeySvc(),
 		zap.NewNop(),
 	)
 	ctx := context.Background()
@@ -303,6 +305,7 @@ func TestPaymentService_FindPendingOrderByAttemptID(t *testing.T) {
 		repos.Inventory,
 		nil,
 		nil,
+		NewQRKeySvc(),
 		zap.NewNop(),
 	)
 	ctx := context.Background()
@@ -359,6 +362,7 @@ func TestPaymentService_MarkOrderPaidByPayrexx(t *testing.T) {
 		repos.Inventory,
 		nil,
 		nil,
+		NewQRKeySvc(),
 		zap.NewNop(),
 	)
 	ctx := context.Background()
@@ -408,6 +412,7 @@ func TestPaymentService_CleanupPendingOrderByID(t *testing.T) {
 		repos.Inventory,
 		nil,
 		nil,
+		NewQRKeySvc(),
 		zap.NewNop(),
 	)
 	ctx := context.Background()
@@ -477,6 +482,7 @@ func TestPaymentService_TWINTLimits(t *testing.T) {
 		repos.Inventory,
 		nil,
 		nil,
+		NewQRKeySvc(),
 		zap.NewNop(),
 	)
 	ctx := context.Background()

@@ -70,6 +70,8 @@ export interface QueuedOrder {
   cardMeta?: CardMeta
   status: OrderSyncStatus
   serverId?: string
+  // Signed Ed25519 pickup token from order create; printed as the QR when present.
+  serverQrPayload?: string
   attemptCount: number
   lastAttemptAt?: number
   lastError?: string

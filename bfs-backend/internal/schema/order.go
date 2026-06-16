@@ -53,6 +53,10 @@ func (Order) Fields() []ent.Field {
 		field.Int("payrexx_transaction_id").
 			Optional().
 			Nillable(),
+		// Signed pickup token (see internal/qrsign), persisted so reprints don't re-sign.
+		field.Text("qr_payload").
+			Optional().
+			Nillable(),
 	}
 }
 

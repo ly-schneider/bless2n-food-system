@@ -206,9 +206,10 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
       }
     })
   }, [cart.items])
-  const generatePickupQr = useCallback((orderId: string) => {
+  const generatePickupQr = useCallback((order: QueuedOrder) => {
+    if (order.serverQrPayload) return order.serverQrPayload
     const base = process.env.NEXT_PUBLIC_APP_URL ?? (typeof window !== "undefined" ? window.location.origin : "")
-    return `${base}/o/${orderId}`
+    return `${base}/o/${order.serverId}`
   }, [])
 
   useEffect(() => {
@@ -222,7 +223,7 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
       const finalReceipt: Receipt & { orderTimestamp?: number } = {
         ...entry.template,
         orderId: synced.serverId,
-        pickupQr: generatePickupQr(synced.serverId),
+        pickupQr: generatePickupQr(synced),
       }
       try {
         getBridge()?.print?.(JSON.stringify(finalReceipt))

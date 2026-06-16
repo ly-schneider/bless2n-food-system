@@ -203,13 +203,18 @@ export class OrderQueueManager {
         body: JSON.stringify({ items: order.items }),
       })
 
-      const orderJson = (await resOrder.json()) as { id?: string; detail?: string }
+      const orderJson = (await resOrder.json()) as { id?: string; qrPayload?: string | null; detail?: string }
       if (!resOrder.ok || !orderJson.id) {
         throw new Error(orderJson.detail || "order_failed")
       }
 
       const serverId = orderJson.id
-      this.orders[idx] = { ...this.orders[idx]!, serverId, status: "synced" }
+      this.orders[idx] = {
+        ...this.orders[idx]!,
+        serverId,
+        serverQrPayload: orderJson.qrPayload ?? undefined,
+        status: "synced",
+      }
       this.saveToStorage()
       this.notifyStateListeners()
 

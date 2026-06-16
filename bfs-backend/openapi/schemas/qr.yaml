@@ -1,0 +1,15 @@
+QRConfig:
+  type: object
+  required: [alg, payloadVersion, publicKey]
+  properties:
+    alg:
+      type: string
+      description: Signature algorithm. Always "ed25519".
+      example: ed25519
+    payloadVersion:
+      type: integer
+      description: Signed QR payload schema version.
+      example: 1
+    publicKey:
+      type: string
+      description: base64url(no-pad) of the 32-byte Ed25519 public key.
