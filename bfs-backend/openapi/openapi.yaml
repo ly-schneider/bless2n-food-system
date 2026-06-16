@@ -133,6 +133,9 @@ paths:
   /system/status:
     $ref: "paths/system.yaml#/status"
 
+  /qr-config:
+    $ref: "paths/qr-config.yaml#/collection"
+
   /settings:
     $ref: "paths/settings.yaml#/collection"
 

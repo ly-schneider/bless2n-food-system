@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	"backend/internal/generated/ent"
+	entOrder "backend/internal/generated/ent/order"
 	"backend/internal/repository"
 	"backend/internal/service"
 
-	nanoid "backend/internal/id"
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
 	"github.com/stretchr/testify/require"
@@ -39,6 +39,7 @@ func TestClub100Service_GetPeopleWithRedemptions_NoNPlusOne(t *testing.T) {
 	ctx := context.Background()
 
 	repos := NewRepositories(tdb.Client)
+	fixtures := NewFixtures(repos)
 	require.NoError(t, repos.Settings.UpdateClub100Settings(ctx, nil, 2))
 
 	people := []service.ElvantoPerson{
@@ -49,11 +50,14 @@ func TestClub100Service_GetPeopleWithRedemptions_NoNPlusOne(t *testing.T) {
 		{ID: "p5", FirstName: "Eve", LastName: "E"},
 	}
 
+	// Redemptions reference real orders (order_id is a NOT NULL FK to "order").
 	for _, p := range people {
-		_, err := repos.Club100Redemption.Create(ctx, p.ID, p.FirstName+" "+p.LastName, nanoid.New(), 1)
+		ord := fixtures.CreateOrder(0, entOrder.StatusPaid, entOrder.OriginShop)
+		_, err := repos.Club100Redemption.Create(ctx, p.ID, p.FirstName+" "+p.LastName, ord.ID, 1)
 		require.NoError(t, err)
 	}
-	_, err := repos.Club100Redemption.Create(ctx, "p1", "Alice A", nanoid.New(), 1)
+	dupOrder := fixtures.CreateOrder(0, entOrder.StatusPaid, entOrder.OriginShop)
+	_, err := repos.Club100Redemption.Create(ctx, "p1", "Alice A", dupOrder.ID, 1)
 	require.NoError(t, err)
 
 	counter := &countingDriver{Driver: entsql.OpenDB(dialect.Postgres, tdb.DB)}
