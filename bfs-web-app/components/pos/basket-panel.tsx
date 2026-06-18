@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useCart } from "@/contexts/cart-context"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { getStockCap } from "@/hooks/use-stock-map"
 
 import type { Club100Person } from "@/lib/api/club100"
 import { formatChf } from "@/lib/utils"
@@ -86,13 +87,7 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
   const { cart, updateQuantity, removeFromCart, clearCart } = useCart()
   const isMobile = useIsMobile()
 
-  const getMaxQuantity = useCallback(
-    (item: CartItem): number | null => {
-      if (!stockMap || item.product.type === "menu") return null
-      return stockMap.get(item.product.id) ?? null
-    },
-    [stockMap]
-  )
+  const getMaxQuantity = useCallback((item: CartItem) => getStockCap(item, stockMap), [stockMap])
   const { suggestion, contiguous, startIndex, endIndex, dismissSuggestion } = useBestMenuSuggestion()
   const [showCheckout, setShowCheckout] = useState(false)
   const [tender, setTender] = useState<Tender>(null)
@@ -820,6 +815,7 @@ export function BasketPanel({ token, mode = "QR_CODE", submitOrder, stockMap }: 
                       onEditItem={(it) => setEditingItem(it)}
                       onDismiss={dismissSuggestion}
                       isPOS
+                      stockMap={stockMap}
                     />
                   </div>
                 )

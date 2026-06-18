@@ -10,11 +10,13 @@ import { ProductConfigurationModal } from "@/components/cart/product-configurati
 import { useBestMenuSuggestion } from "@/components/cart/use-best-menu-suggestion"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/contexts/cart-context"
+import { getStockCap, useStockMap } from "@/hooks/use-stock-map"
 import { formatChf } from "@/lib/utils"
 import { CartItem } from "@/types/cart"
 
 export default function CheckoutClient() {
   const { cart, updateQuantity, removeFromCart } = useCart()
+  const stockMap = useStockMap(cart.items.length > 0)
   const [editingItem, setEditingItem] = useState<CartItem | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -93,6 +95,7 @@ export default function CheckoutClient() {
                         onUpdateQuantity={(q) => updateQuantity(item.id, q)}
                         onRemove={() => removeFromCart(item.id)}
                         onEdit={() => setEditingItem(item)}
+                        maxQuantity={getStockCap(item, stockMap)}
                       />
                     )
                   }
@@ -104,6 +107,7 @@ export default function CheckoutClient() {
                       items={grouped}
                       onEditItem={(it) => setEditingItem(it)}
                       onDismiss={dismissSuggestion}
+                      stockMap={stockMap}
                     />
                   )
                   for (let i = endIndex + 1; i < cart.items.length; i++) {
@@ -115,6 +119,7 @@ export default function CheckoutClient() {
                         onUpdateQuantity={(q) => updateQuantity(item.id, q)}
                         onRemove={() => removeFromCart(item.id)}
                         onEdit={() => setEditingItem(item)}
+                        maxQuantity={getStockCap(item, stockMap)}
                       />
                     )
                   }
@@ -127,6 +132,7 @@ export default function CheckoutClient() {
                         onUpdateQuantity={(q) => updateQuantity(item.id, q)}
                         onRemove={() => removeFromCart(item.id)}
                         onEdit={() => setEditingItem(item)}
+                        maxQuantity={getStockCap(item, stockMap)}
                       />
                     )
                   }

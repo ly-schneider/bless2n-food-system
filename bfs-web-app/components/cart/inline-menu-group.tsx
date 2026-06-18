@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { useCart } from "@/contexts/cart-context"
+import { getStockCap } from "@/hooks/use-stock-map"
 import type { MenuSuggestion } from "@/lib/menu-suggestions"
 import { formatChf } from "@/lib/utils"
 import type { CartItem } from "@/types/cart"
@@ -16,9 +17,17 @@ interface InlineMenuGroupProps {
   onEditItem: (item: CartItem) => void
   onDismiss?: () => void
   isPOS?: boolean
+  stockMap?: Map<string, number>
 }
 
-export function InlineMenuGroup({ suggestion, items, onEditItem, onDismiss, isPOS = false }: InlineMenuGroupProps) {
+export function InlineMenuGroup({
+  suggestion,
+  items,
+  onEditItem,
+  onDismiss,
+  isPOS = false,
+  stockMap,
+}: InlineMenuGroupProps) {
   const { updateQuantity, removeFromCart, addToCart } = useCart()
 
   const sumSimpleCents = useMemo(() => items.reduce((sum, it) => sum + it.product.priceCents, 0), [items])
@@ -86,6 +95,7 @@ export function InlineMenuGroup({ suggestion, items, onEditItem, onDismiss, isPO
                 onRemove={() => removeFromCart(item.id)}
                 onEdit={() => onEditItem(item)}
                 isPOS={isPOS}
+                maxQuantity={getStockCap(item, stockMap)}
               />
             </div>
           ))}
