@@ -149,7 +149,7 @@
     "typed-query-selector": "^2.12.2",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.61.0",
-    "vite": "^7.3.2",
+    "vite": "^7.3.5",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.8",
     "webpack": "5.107.2"
