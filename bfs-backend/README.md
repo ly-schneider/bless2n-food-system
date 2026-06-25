@@ -38,7 +38,7 @@ The backend follows **Clean Architecture** with strict layer separation and depe
 
 | Category       | Technology                 |
 | -------------- | -------------------------- |
-| Language       | Go 1.25+                   |
+| Language       | Go 1.26+                   |
 | Router         | Chi v5                     |
 | Database       | PostgreSQL 18 via pgx v5   |
 | ORM / Schema   | Ent v0.14                  |
@@ -98,7 +98,7 @@ bfs-backend/
 
 ## Prerequisites
 
-- **Go 1.25+**
+- **Go 1.26+**
 - **Docker & Docker Compose** — for PostgreSQL, Mailpit, and Azurite
 - **Just** — for running development commands
 
