@@ -1,0 +1,17 @@
+collection:
+  get:
+    tags: [Stations]
+    summary: Get QR signing config
+    description: >
+      Returns the public Ed25519 verification key and the QR payload format
+      metadata. No authentication. A station/PWA fetches this once at setup to
+      verify pickup QR tokens fully offline. Read-only: the signing key is
+      mandatory and validated at boot, so the key is always available.
+    operationId: getQRConfig
+    responses:
+      "200":
+        description: QR signing config
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/qr.yaml#/QRConfig"

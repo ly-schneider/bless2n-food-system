@@ -23,6 +23,7 @@ import (
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"go.uber.org/zap"
 )
 
 // TestDB wraps an Ent client and raw sql.DB for integration tests.
@@ -168,6 +169,19 @@ type Fixtures struct {
 // NewFixtures creates a new Fixtures helper.
 func NewFixtures(repos *Repositories) *Fixtures {
 	return &Fixtures{repos: repos, ctx: context.Background()}
+}
+
+// testQRSeedB64 is a fixed, non-secret 32-byte Ed25519 seed for tests.
+const testQRSeedB64 = "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA="
+
+func NewQRKeySvc() service.QRKeyService {
+	svc, err := service.NewQRKeyService(config.Config{
+		QRSigning: config.QRSigningConfig{Ed25519PrivateSeed: testQRSeedB64},
+	}, zap.NewNop())
+	if err != nil {
+		panic(fmt.Sprintf("failed to build qr key service: %v", err))
+	}
+	return svc
 }
 
 // NewProductSvc builds a ProductService wired to the test repositories.
