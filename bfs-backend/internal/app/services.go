@@ -12,6 +12,7 @@ func NewServices() fx.Option {
 	return fx.Options(
 		fx.Provide(
 			service.NewPaymentService,
+			service.NewQRKeyService,
 			service.NewSettingsService,
 			service.NewProductService,
 			service.NewCategoryService,
