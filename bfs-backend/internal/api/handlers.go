@@ -17,6 +17,7 @@ type Handlers struct {
 	generated.Unimplemented
 
 	categories    service.CategoryService
+	dashboard     service.DashboardService
 	products      service.ProductService
 	orders        service.OrderService
 	payments      service.PaymentService
@@ -47,6 +48,7 @@ type HandlersDeps struct {
 
 	Config        config.Config
 	Categories    service.CategoryService
+	Dashboard     service.DashboardService
 	Products      service.ProductService
 	Orders        service.OrderService
 	Payments      service.PaymentService
@@ -71,6 +73,7 @@ type HandlersDeps struct {
 func NewHandlers(deps HandlersDeps) *Handlers {
 	return &Handlers{
 		categories:           deps.Categories,
+		dashboard:            deps.Dashboard,
 		products:             deps.Products,
 		orders:               deps.Orders,
 		payments:             deps.Payments,
