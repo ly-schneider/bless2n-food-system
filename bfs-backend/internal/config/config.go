@@ -17,6 +17,7 @@ type Config struct {
 	Logger      LoggerConfig
 	Security    SecurityConfig
 	Payrexx     PayrexxConfig
+	QRSigning   QRSigningConfig
 	Plunk       PlunkConfig
 	BlobStorage BlobStorageConfig
 	Elvanto     ElvantoConfig
@@ -68,6 +69,10 @@ type PayrexxConfig struct {
 	InstanceName  string // PAYREXX_INSTANCE - Payrexx instance name
 	APISecret     string // PAYREXX_API_SECRET - API secret for HMAC signature
 	WebhookSecret string // PAYREXX_WEBHOOK_SECRET - Secret for webhook verification
+}
+
+type QRSigningConfig struct {
+	Ed25519PrivateSeed string // QR_ED25519_PRIVATE_SEED - base64 32-byte seed signing pickup QR tokens
 }
 
 type PlunkConfig struct {
@@ -128,6 +133,9 @@ func Load() Config {
 			InstanceName:  getEnvOptional("PAYREXX_INSTANCE"),
 			APISecret:     getEnvOptional("PAYREXX_API_SECRET"),
 			WebhookSecret: getEnvOptional("PAYREXX_WEBHOOK_SECRET"),
+		},
+		QRSigning: QRSigningConfig{
+			Ed25519PrivateSeed: getEnv("QR_ED25519_PRIVATE_SEED"),
 		},
 		Plunk: PlunkConfig{
 			APIKey:    getEnvOptional("PLUNK_API_KEY"),

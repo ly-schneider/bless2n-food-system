@@ -77,6 +77,7 @@ func NewRouter(
 		v1.Post("/payments/webhooks/payrexx", wrapper.HandlePayrexxWebhook)
 		v1.Get("/payments/{paymentId}", wrapper.GetPayment)
 		v1.Post("/auth/otp-email", wrapper.SendOtpEmail)
+		v1.Get("/qr-config", wrapper.GetQRConfig)
 
 		// ── Public routes (no auth, blocked when system disabled) ─
 		v1.Group(func(pub chi.Router) {

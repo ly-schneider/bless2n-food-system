@@ -112,6 +112,13 @@ Payment:
       type: string
       format: uri
       description: Payrexx payment page URL (when status=pending, web payments)
+    qrPayload:
+      type: string
+      description: >
+        Signed, self-contained Ed25519 pickup QR token (offline-verifiable),
+        returned once the payment completes the order. Absent for web/Payrexx
+        payments that only return a redirect (the token is minted on the webhook;
+        fetch it later via GET /orders/{orderId}).
     createdAt:
       type: string
       format: date-time

@@ -152,6 +152,7 @@ func toAPIOrder(e *ent.Order) generated.Order {
 		PaymentAttemptId:     e.PaymentAttemptID,
 		PayrexxGatewayId:     e.PayrexxGatewayID,
 		PayrexxTransactionId: e.PayrexxTransactionID,
+		QrPayload:            e.QrPayload,
 	}
 
 	// ContactEmail: *string in ent -> *openapi_types.Email in API
