@@ -26,6 +26,7 @@ func TestPOSService_GetDeviceByToken(t *testing.T) {
 
 	paymentSvc := service.NewPaymentService(
 		cfg,
+		tdb.Client,
 		repos.Order,
 		repos.OrderLine,
 		repos.OrderPayment,
@@ -34,6 +35,7 @@ func TestPOSService_GetDeviceByToken(t *testing.T) {
 		repos.Inventory,
 		nil,
 		nil,
+		NewQRKeySvc(),
 		zap.NewNop(),
 	)
 
@@ -76,6 +78,7 @@ func TestPOSService_CreateOrder(t *testing.T) {
 
 	paymentSvc := service.NewPaymentService(
 		cfg,
+		tdb.Client,
 		repos.Order,
 		repos.OrderLine,
 		repos.OrderPayment,
@@ -84,6 +87,7 @@ func TestPOSService_CreateOrder(t *testing.T) {
 		repos.Inventory,
 		nil,
 		nil,
+		NewQRKeySvc(),
 		zap.NewNop(),
 	)
 
@@ -161,6 +165,7 @@ func TestPOSService_PayCash(t *testing.T) {
 
 	paymentSvc := service.NewPaymentService(
 		cfg,
+		tdb.Client,
 		repos.Order,
 		repos.OrderLine,
 		repos.OrderPayment,
@@ -169,6 +174,7 @@ func TestPOSService_PayCash(t *testing.T) {
 		repos.Inventory,
 		nil,
 		nil,
+		NewQRKeySvc(),
 		zap.NewNop(),
 	)
 
@@ -218,6 +224,7 @@ func TestPOSService_PayCard(t *testing.T) {
 
 	paymentSvc := service.NewPaymentService(
 		cfg,
+		tdb.Client,
 		repos.Order,
 		repos.OrderLine,
 		repos.OrderPayment,
@@ -226,6 +233,7 @@ func TestPOSService_PayCard(t *testing.T) {
 		repos.Inventory,
 		nil,
 		nil,
+		NewQRKeySvc(),
 		zap.NewNop(),
 	)
 
@@ -268,6 +276,7 @@ func TestPOSService_PayTwint(t *testing.T) {
 
 	paymentSvc := service.NewPaymentService(
 		cfg,
+		tdb.Client,
 		repos.Order,
 		repos.OrderLine,
 		repos.OrderPayment,
@@ -276,6 +285,7 @@ func TestPOSService_PayTwint(t *testing.T) {
 		repos.Inventory,
 		nil,
 		nil,
+		NewQRKeySvc(),
 		zap.NewNop(),
 	)
 

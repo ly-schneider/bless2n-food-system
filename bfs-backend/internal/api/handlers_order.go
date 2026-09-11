@@ -300,6 +300,11 @@ func (h *Handlers) CreateOrderPayment(w http.ResponseWriter, r *http.Request, or
 
 	cachePaymentResponse := func(resp map[string]any) {
 		paymentSucceeded = true
+		if token, err := h.payments.EnsureOrderQRToken(ctx, id); err != nil {
+			h.logger.Warn("failed to ensure qr token", zap.String("orderId", id), zap.Error(err))
+		} else if token != "" {
+			resp["qrPayload"] = token
+		}
 		if claimedID != nil {
 			if err := h.idempotency.FillResponse(ctx, *claimedID, resp); err != nil {
 				h.logger.Warn("failed to fill idempotent payment response", zap.Error(err))

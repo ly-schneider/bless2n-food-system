@@ -22,6 +22,7 @@ type OrderRepository interface {
 	GetRecent(ctx context.Context, limit int) ([]*ent.Order, error)
 	Update(ctx context.Context, id string, totalCents int64, status order.Status, origin order.Origin, customerID, contactEmail, paymentAttemptID *string, payrexxGatewayID, payrexxTransactionID *int) (*ent.Order, error)
 	UpdateStatus(ctx context.Context, id string, status order.Status) error
+	SetQRPayload(ctx context.Context, id string, token string) error
 
 	ListAdmin(ctx context.Context, status *order.Status, from, to *time.Time, q *string) ([]*ent.Order, int64, error)
 	ListByCustomerIDPaginated(ctx context.Context, customerID string) ([]*ent.Order, int64, error)
@@ -205,6 +206,13 @@ func (r *orderRepo) Update(ctx context.Context, id string, totalCents int64, sta
 func (r *orderRepo) UpdateStatus(ctx context.Context, id string, status order.Status) error {
 	_, err := r.ec(ctx).Order.UpdateOneID(id).
 		SetStatus(status).
+		Save(ctx)
+	return translateError(err)
+}
+
+func (r *orderRepo) SetQRPayload(ctx context.Context, id string, token string) error {
+	_, err := r.ec(ctx).Order.UpdateOneID(id).
+		SetQrPayload(token).
 		Save(ctx)
 	return translateError(err)
 }

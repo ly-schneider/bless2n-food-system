@@ -51,6 +51,10 @@ Order:
     updatedAt:
       type: string
       format: date-time
+    qrPayload:
+      type: string
+      nullable: true
+      description: Signed, self-contained Ed25519 pickup QR token (offline-verifiable).
     # Payment tracking (admin-only)
     paymentAttemptId:
       type: string
