@@ -6,6 +6,16 @@ export type { ProductType, Product, ProductSummaryDTO, ProductDTO } from "./prod
 export type { Menu, MenuSlot, MenuSlotOption, MenuSlotDTO, MenuSlotItem, MenuSlotItemDTO, MenuDTO } from "./menu"
 export type { OrderStatus, Order, OrderItemType, OrderItem } from "./order"
 export type { AdminInviteStatus, AdminInvite } from "./admin"
+export type {
+  DashboardStatusLevel,
+  SystemStatusChip,
+  AdminOpsOverview,
+  DashboardTopProductWindowItem,
+  StationOverviewCard,
+  DashboardSeriesPoint,
+  StationQueueMetric,
+  StationDetailSummary,
+} from "./admin-dashboard"
 export type { InventoryReason, InventoryLedger } from "./inventory"
 export type { CartItemConfiguration, CartItem, Cart, CartContextType } from "./cart"
 export type { Jeton, PosFulfillmentMode, PosSettings } from "./jeton"

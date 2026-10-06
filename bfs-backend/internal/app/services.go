@@ -13,6 +13,7 @@ func NewServices() fx.Option {
 		fx.Provide(
 			service.NewPaymentService,
 			service.NewSettingsService,
+			service.NewDashboardService,
 			service.NewProductService,
 			service.NewCategoryService,
 			service.NewOrderService,
