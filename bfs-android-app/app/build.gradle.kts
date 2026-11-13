@@ -210,5 +210,5 @@ dependencies {
 
     // Compile-only annotations used by transitive libraries to satisfy R8 analysis
     // Align with dependency constraints resolved for runtime classpath
-    compileOnly("com.google.errorprone:error_prone_annotations:2.51.0")
+    compileOnly("com.google.errorprone:error_prone_annotations:2.52.0")
 }
