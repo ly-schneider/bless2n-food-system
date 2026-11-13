@@ -10,11 +10,11 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "fumadocs-core": "16.17.8",
-    "fumadocs-mdx": "15.4.10",
-    "fumadocs-ui": "16.17.8",
-    "lucide-react": "^1.61.0",
-    "next": "16.4.3",
+    "fumadocs-core": "16.18.4",
+    "fumadocs-mdx": "15.5.3",
+    "fumadocs-ui": "16.18.4",
+    "lucide-react": "^1.70.0",
+    "next": "16.4.6",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
@@ -31,15 +31,15 @@
     }
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.3.3",
+    "@tailwindcss/postcss": "^4.3.5",
     "@types/mdx": "^2.0.14",
     "@types/node": "^25.9.3",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "postcss": "^8.5.32",
-    "tailwindcss": "^4.3.3",
+    "tailwindcss": "^4.3.5",
     "typescript": "^6.0.3",
-    "eslint-config-next": "16.4.3",
+    "eslint-config-next": "16.4.6",
     "eslint": "^9.39.2"
   },
   "packageManager": "pnpm@10.19.0"
