@@ -1,5 +1,8 @@
 # BlessThun Food System
 
+> [!IMPORTANT]
+> **This repository is archived.** Development continues in [ly-schneider/comanda](https://github.com/ly-schneider/comanda).
+
 A full-stack food ordering platform built for live event food stations in Thun, Switzerland. Handles the complete lifecycle from customer ordering and TWINT payment processing to kitchen fulfillment, inventory tracking, and POS terminal operations.
 
 ## Architecture
